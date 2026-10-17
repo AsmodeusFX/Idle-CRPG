@@ -6,6 +6,26 @@ using System.Linq;
 public partial class Main
 {
     private bool displaySmokeActive;
+    private void RunSceneSmoke()
+    {
+        try
+        {
+            if(session==null||viewMode==1||!castleButton.IsInsideTree())throw new Exception("默认视图或城堡控件不正确");
+            for(int i=0;i<5000;i++)
+            {
+                if(session.World!.Stage==CampaignStage.Dungeon&&!session.MovingBetweenRooms&&session.Floor.Rooms[session.CurrentRoom].Monsters.Exists(m=>m.Alive))break;
+                session.Tick(.05f);
+            }
+            for(int i=0;i<100;i++)UpdateCamera(.1);
+            var room=session.Floor.Rooms[session.CurrentRoom];var anchor=cameraCenter;float scale=cameraZoom;
+            if(System.Numerics.Vector2.Distance(anchor,room.Center)>.001f)throw new Exception("战斗镜头没有锁定房间中心");
+            for(int i=0;i<4;i++){session.Tick(.05f);UpdateCamera(.1);}
+            if(!session.MovingBetweenRooms&&(System.Numerics.Vector2.Distance(anchor,cameraCenter)>.001f||Math.Abs(scale-cameraZoom)>.001f))throw new Exception("战斗镜头随角色漂移");
+            if((room.HalfWidth+room.HalfHeight)*2*scale>931)throw new Exception("完整房间未适配战斗视口");
+            GD.Print("SCENE_SMOKE_OK: default party view, room lock, complete room framing, clipped renderer");
+        }
+        catch(Exception e){GD.PushError(e.ToString());QuitSafely(1);}
+    }
     private void RunReopenSmoke()
     {
         try

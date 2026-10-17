@@ -52,6 +52,9 @@ public sealed partial class GameSession
     public Floor Floor => Floors[FloorIndex];
     public string Status { get; private set; } = "探索";
     private int destination = -1, phase;
+    public bool MovingBetweenRooms => destination>=0;
+    /// <summary>行进时取沿路径最接近下一道门的存活成员，战斗镜头不使用此位置追踪。</summary>
+    public Actor Leader => Heroes.Where(h=>h.Alive).OrderBy(h=>destination<0?0:Vector2.DistanceSquared(h.Position,phase==0?Floor.Rooms[CurrentRoom].DoorTowards(Floor.Rooms[destination]):Floor.Rooms[destination].DoorTowards(Floor.Rooms[CurrentRoom]))).FirstOrDefault()??Heroes[0];
     private float regroup;
 
     public GameSession(Config config, int seed, IEnumerable<string> ids)
@@ -74,6 +77,11 @@ public sealed partial class GameSession
     }
     /// <summary>预留科技系统命令，只有后续首次生成的房间受影响。</summary>
     public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);SpawnModifiers=modifiers;MarkChanged();}
+    public bool RequestCastleChallenge(string castleId)
+    {
+        if(World?.RequestCastle(castleId)!=true)return false;
+        Note("已安排城堡挑战，完成当前地牢及返村交易后出发");return true;
+    }
     internal void BeginDungeon(DungeonSpec dungeon,int visit)
     {
         ActiveDungeon=dungeon;Won=false;FloorIndex=0;regroup=0;ResetRescue();
@@ -209,7 +217,7 @@ public sealed partial class GameSession
     {
         var a=Floor.Rooms[CurrentRoom]; var b=Floor.Rooms[destination];
         var dir=Vector2.Normalize(b.Center-a.Center);
-        var exit=a.Center+dir*3.5f; var entry=b.Center-dir*3.5f;
+        var exit=a.DoorTowards(b); var entry=b.DoorTowards(a);
         var goal=phase==0 ? exit : phase==1 ? entry : b.Center;
         foreach(var h in Heroes.Where(h=>h.Alive)) Move(h,goal,dt);
         // 任意队员实际触门才揭示。先等全队到入口，避免队尾留在未激活房间。
@@ -240,7 +248,7 @@ public sealed partial class GameSession
         for(int i=0;i<count;i++)
         {
             var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),room.Boss&&i==count-1,modifiers);
-            m.Position=room.Center+new Vector2((float)rng.NextDouble()*4-2,(float)rng.NextDouble()*4-2);
+            m.Position=room.Center+new Vector2(((float)rng.NextDouble()*2-1)*(room.HalfWidth-.8f),((float)rng.NextDouble()*2-1)*(room.HalfHeight-.8f));
             room.Monsters.Add(m);
         }
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
@@ -251,6 +259,18 @@ public sealed partial class GameSession
     {
         foreach(var h in Heroes.Where(h=>h.Alive)) Act(h,room.Monsters,dt,room);
         foreach(var m in room.Monsters.Where(m=>m.Alive)) Act(m,Heroes,dt,room);
+        Separate(Heroes,room,dt);Separate(room.Monsters,room,dt);
+    }
+    private static void Separate(List<Actor> actors,Room room,float dt)
+    {
+        for(int i=0;i<actors.Count;i++)for(int j=i+1;j<actors.Count;j++)
+        {
+            var a=actors[i];var b=actors[j];if(!a.Alive||!b.Alive)continue;
+            var delta=b.Position-a.Position;float distance=delta.Length();if(distance>=.62f)continue;
+            var push=(distance<.001f?new Vector2(1,0):delta/distance)*Math.Min((.62f-distance)*.5f,dt*2);
+            a.Position=Vector2.Clamp(a.Position-push,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
+            b.Position=Vector2.Clamp(b.Position+push,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
+        }
     }
     private void Act(Actor actor,List<Actor> opponents,float dt,Room room)
     {
@@ -261,7 +281,7 @@ public sealed partial class GameSession
         {
             Move(actor,target.Position,dt);
             // 进房门之后的战斗局限于当前房间，允许门口队员跨过边界。
-            actor.Position=Vector2.Clamp(actor.Position,room.Center-new Vector2(3.2f),room.Center+new Vector2(3.2f));
+            actor.Position=Vector2.Clamp(actor.Position,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
             return;
         }
         if(actor.Timer>0) return;

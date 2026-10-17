@@ -18,11 +18,11 @@ public partial class Main
     {
         if(session==null||input is not InputEventMouseButton {Pressed:true,ButtonIndex:MouseButton.Left} mouse)return;
         var w=session.World!;
-        bool map=viewMode==1||(viewMode==0&&w.Stage is CampaignStage.TravelDungeon or CampaignStage.TravelVillage);
+        bool map=viewMode==1;
         if(!map)return;
         var p=(mouse.Position-new Vector2(55,184))/MapTile;
         if(p.X>=0&&p.Y>=0&&p.X<config.WorldWidth&&p.Y<config.WorldHeight)
-            selectedRegion=config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id;
+        {selectedRegion=config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id;RefreshCastleButton();SaveNow();}
     }
 
     private void DrawWorld()
@@ -124,47 +124,5 @@ public partial class Main
         DrawColoredPolygon(new[]{p+new Vector2(-28,-24),p+new Vector2(0,-47),p+new Vector2(28,-24)},new Color(terrain=="snow"?"d2e2e4":"8e6051"));
         DrawRect(new Rect2(p-new Vector2(5,11),new Vector2(10,15)),new Color("35424c"));
         DrawRect(new Rect2(p+new Vector2(10,-19),new Vector2(6,7)),new Color("edca88"));
-    }
-    private void DrawVillageOrTravel()
-    {
-        var world=session!.World!;var r=config.Regions.Single(r=>r.Id==world.CurrentRegion);
-        bool village=world.Stage==CampaignStage.Village;
-        origin=new Vector2(530,475);zoom=32;
-        Text(village?world.Village.Name:"行旅 · "+r.Name,new Vector2(55,170),24,"e7d2a4");
-        Text(village?"自动前往交易 NPC · 售卖杂物 / 免费补给":"世界地图无怪物 · 小队沿道路自动前进",new Vector2(55,201),15,"91a6b7");
-        Quad(new V(-7,-6),new V(7,6),TerrainColor(r.Terrain).Darkened(.25f));
-        Quad(new V(-7,-.65f),new V(7,.65f),new Color("756a59"));
-        Quad(new V(-.55f,-6),new V(.55f,6),new Color("756a59"));
-        var rng=new Random(r.Id);
-        for(int i=0;i<52;i++)
-        {
-            float x=(float)rng.NextDouble()*13-6.5f,y=(float)rng.NextDouble()*11-5.5f;
-            if(Math.Abs(x)<1.2f||Math.Abs(y)<1.2f)continue;
-            if(village&&Math.Abs(x)<4.5f&&Math.Abs(y)<3)continue;
-            Decoration(Project(new V(x,y)),r.Terrain,0.7f+(float)rng.NextDouble()*.5f,i);
-        }
-        if(village)
-        {
-            House(Project(new V(-3,-2.8f)),r.Terrain);House(Project(new V(3,-2.8f)),r.Terrain);House(Project(new V(4,2.5f)),r.Terrain);
-            var npc=config.Npcs.Single(n=>n.Id==world.Village.NpcId);var p=Project(npc.Position);
-            DrawCircle(p,12,new Color("e7ba71"));Text(npc.Name+" / 交易",p+new Vector2(-32,-25),15,"f5dfa7");
-            foreach(var hero in session.Heroes.Select((h,i)=>(h,i)))
-            {
-                var point=Project(hero.h.Position)+new Vector2(hero.i*5,0);DrawCircle(point,7,heroColors[hero.i]);
-                DrawLine(point,point-new Vector2(0,16),heroColors[hero.i],5);
-            }
-            DrawRect(new Rect2(300,747,460,8),new Color("23323e"));
-            DrawRect(new Rect2(300,747,460*world.TradeElapsed/config.TradeSeconds,8),new Color("65d9cb"));
-            Text(world.Status,new Vector2(340,724),19,"71e4d0");
-        }
-        else
-        {
-            var offset=(world.Position-new V(r.X+.5f,r.Y+.5f))*5;
-            foreach(int i in new[]{0,1,2})
-            {
-                var p=Project(offset+new V(-i*.4f,i*.25f));DrawCircle(p,7,heroColors[i]);DrawLine(p,p-new Vector2(0,16),heroColors[i],5);
-            }
-            Text(world.Status,new Vector2(340,747),20,"71e4d0");
-        }
     }
 }

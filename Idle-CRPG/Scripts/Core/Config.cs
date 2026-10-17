@@ -11,6 +11,7 @@ public record UnitSpec(string Id, string Name, float Hp, float Attack, float Def
 public sealed partial class Config
 {
     public int FloorsMin, FloorsMax, RoomsMin, RoomsMax;
+    public int RoomWidthMin,RoomWidthMax,RoomHeightMin,RoomHeightMax;
     public float EventChance;
     public float ReviveSeconds, ReviveRange, ReviveHpRatio;
     public List<UnitSpec> Heroes = new(), Monsters = new();
@@ -23,17 +24,20 @@ public sealed partial class Config
         var c = new Config {
             FloorsMin = Integer(r, "floors_min"), FloorsMax = Integer(r, "floors_max"),
             RoomsMin = Integer(r, "rooms_min"), RoomsMax = Integer(r, "rooms_max"),
+            RoomWidthMin=Integer(r,"room_width_min"),RoomWidthMax=Integer(r,"room_width_max"),RoomHeightMin=Integer(r,"room_height_min"),RoomHeightMax=Integer(r,"room_height_max"),
             EventChance = Number(r, "event_chance"),
             ReviveSeconds = Number(r, "revive_seconds"), ReviveRange = Number(r, "revive_range"),
             ReviveHpRatio = Number(r, "revive_hp_ratio"),
             Heroes = Units(Path.Combine(directory, "hero/heroes.csv")), Monsters = Units(Path.Combine(directory, "monster/monsters.csv"))
         };
+        if(c.RoomWidthMin<4||c.RoomWidthMax>10||c.RoomWidthMax<c.RoomWidthMin||c.RoomHeightMin<4||c.RoomHeightMax>10||c.RoomHeightMax<c.RoomHeightMin)throw new InvalidDataException("房间尺寸必须在 4–10 之间");
         if (c.ReviveSeconds <= 0 || c.ReviveRange <= 0 || c.ReviveHpRatio <= 0 || c.ReviveHpRatio > 1)
             throw new InvalidDataException("复活时间和距离必须为正数，生命比例必须在 (0,1] 内");
         if (c.FloorsMin < 1 || c.FloorsMax < c.FloorsMin || c.FloorsMax > 20 || c.RoomsMin < 3 || c.RoomsMax < c.RoomsMin || c.RoomsMax > 20 || c.EventChance < 0 || c.EventChance > 1 || c.Heroes.Count < 3 || c.Monsters.Count == 0)
             throw new InvalidDataException("地牢配置范围非法");
         c.LoadWorld(directory);
         c.LoadClientConfig(directory);
+        c.LoadSceneConfig(directory);
         return c;
     }
 

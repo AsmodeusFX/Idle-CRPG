@@ -13,6 +13,7 @@
 | dungeon/dungeon.csv | id,name,region_id,kind | 地牢唯一 ID、名称、区域、normal/castle；每区至少一个普通地牢，至多一个城堡 |
 | dungeon/dungeon.csv | level_min,level_max,x,y | 临时等级区间，1≤下限≤上限；区域内入口坐标，均在 (0,1) |
 | dungeon/dungeon_rule.csv | floors_min,floors_max,rooms_min,rooms_max | 层数 1–20、每层房间数 3–20，包含安全起点；下限不大于上限 |
+| dungeon/dungeon_rule.csv | room_width_min,room_width_max,room_height_min,room_height_max | 结构生成时抽取的实际房间长宽，整数 4–10，下限不大于上限；默认宽 6–9、高 5–8 |
 | dungeon/dungeon_rule.csv | event_chance | 普通房间事件概率，0–1 |
 | dungeon/dungeon_rule.csv | revive_seconds,revive_range,revive_hp_ratio | 正复活秒数、正交互距离、恢复最大 HP 比例 (0,1]；当前 3、0.65、0.5 |
 | hero/heroes.csv | id,name,hp,attack,defense,speed,range,cooldown | 职业与基础属性；HP、攻击、移速、射程、攻击间隔为正，防御非负 |
@@ -29,6 +30,8 @@
 | audio/audio.csv | id,path,kind,volume_db,min_gap | 音频 ID、res://Assets/Audio/ 资源路径、music/sfx、单音增益 dB、非负限频秒数；恰好一个 music |
 | system/window.csv | width,height | 窗口尺寸预设，至少 800×500；等比缩放完整界面 |
 | system/client.csv | autosave_min_seconds,checkpoint_seconds | 关键变更保存最短间隔、周期检查点秒数，均为正且检查点不少于最短间隔；默认 0.5/5 |
+| system/camera.csv | follow_rate,transition_rate,dungeon_max_zoom,world_zoom,world_units | 跟随/入房指数响应、地牢缩放上限、世界缩放、每区场景单位，均为正，world_units≥12 |
+| world/obstacle.csv | id,kind,x,y,width,height | 唯一 ID、水面 water/岩石 rock、全局区域坐标及正矩形尺寸；边界不得越出世界，不能阻挡地牢/村庄入口导航格 |
 
 当前临时世界有 256 区、256 村庄、512 普通地牢、16 城堡，每个城堡统治一个 4×4 区域组。数量由关联行数决定，不在 region 重复维护。
 

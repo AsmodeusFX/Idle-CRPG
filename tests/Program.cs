@@ -35,7 +35,7 @@ for(int tick=0;tick<200000&&!s.Won;tick++)
     foreach(var r in s.Floors.SelectMany(f=>f.Rooms).Where(r=>r.Generated&&!snapshots.ContainsKey(r)&&r.Id!=0))
     {
         Check(r.Revealed,"刷怪未揭示");
-        Check(r.Neighbors.Any(n=>s.Heroes.Any(h=>h.Alive&&Vector2.Distance(h.Position,r.Center+Vector2.Normalize(s.Floor.Rooms[n].Center-r.Center)*3.5f)<=0.321f)),"未触门就生成内容");
+        Check(r.Neighbors.Any(n=>s.Heroes.Any(h=>h.Alive&&Vector2.Distance(h.Position,r.DoorTowards(s.Floor.Rooms[n]))<=0.321f)),"未触门就生成内容");
     }
     foreach(var kv in snapshots)Check(kv.Key.SnapshotLevel==kv.Value.SnapshotLevel&&kv.Key.Monsters.Count==kv.Value.Count,"回访刷新");
     if(s.FloorIndex!=previousFloor){Check(s.Floors[previousFloor].Clear,"未清层进入下一层");previousFloor=s.FloorIndex;}
@@ -117,15 +117,16 @@ var progress=new WorldProgress();progress.Explored.Add(1);
 Check(progress.Status(c,1)==RegionStatus.Sweeping&&progress.Status(c,2)==RegionStatus.Unexplored,"初始颜色错误");
 string ruler=c.Rulers[1];
 foreach(var d in c.Dungeons.Where(d=>d.RegionId==1&&!d.Castle))progress.Cleared.Add(d.Id);
-Check(progress.Status(c,1)==RegionStatus.WaitingCastle&&!progress.CastleUnlocked(c,ruler),"本区清空就解锁城堡");
+Check(progress.Status(c,1)==RegionStatus.Sweeping&&!progress.CastleUnlocked(c,ruler),"本区清空就变橙/解锁城堡");
 foreach(var d in c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]==ruler))progress.Cleared.Add(d.Id);
 Check(progress.CastleUnlocked(c,ruler),"统治范围清空未解锁城堡");
+Check(c.Rulers.Where(p=>p.Value==ruler).All(p=>progress.Status(c,p.Key)==RegionStatus.WaitingCastle),"统治区域未统一变橙");
 progress.Cleared.Add(ruler);
 Check(c.Rulers.Where(p=>p.Value==ruler).All(p=>progress.Status(c,p.Key)==RegionStatus.Occupied),"占领未辐射/绿色优先级错误");
 
 // 所有邻接区已橙而城堡未解锁时，必须选择橙区最高等级复刷。
 var blocked=new WorldProgress();
-foreach(var r in ExpeditionPlanner.Neighbors(c,1).Select(r=>r.Id).Append(1))
+foreach(var r in c.Rulers.Where(p=>p.Value==ruler).Select(p=>p.Key))
 {
     blocked.Explored.Add(r);foreach(var d in c.Dungeons.Where(d=>d.RegionId==r&&!d.Castle))blocked.Cleared.Add(d.Id);
 }
@@ -145,6 +146,11 @@ var team=campaign.Heroes.ToArray();bool sawVillage=false,sawLoot=false,sawTrade=
 var lastPosition=w.Position;int oldVisits=0;var lastStage=w.Stage;
 for(int tick=0;tick<1500000&&w.Progress.Cleared.Count<worldConfig.Dungeons.Count;tick++)
 {
+    if(tick%100==0&&w.PendingCastle==""&&!w.Target.Dungeon.Castle)
+    {
+        var ready=worldConfig.Dungeons.FirstOrDefault(d=>d.Castle&&!w.Progress.Cleared.Contains(d.Id)&&w.Progress.CastleUnlocked(worldConfig,d.Id));
+        if(ready!=null)Check(campaign.RequestCastleChallenge(ready.Id),"玩家无法安排已解锁城堡");
+    }
     long beforeGold=campaign.Gold;
     long pendingSale=campaign.Inventory.Sum(entry=>entry.Key.Price*entry.Value);
     if(w.Stage==CampaignStage.Village)
@@ -215,3 +221,4 @@ RejectConfig(config=>config.Drops[0]=config.Drops[0] with {Chance=1.5f},"非法�
 RejectConfig(config=>config.Items[0]=config.Items[0] with {TypeId="missing"},"无效物品类型没有拒绝");
 Console.WriteLine("PASS: dungeon regression, revival, 256-region world configuration, spawn snapshots/modifiers, loot, travel, automatic trade, castle dominion, occupation, farming, resource retention");
 SaveChecks.Run(root);
+SceneChecks.Run(root);

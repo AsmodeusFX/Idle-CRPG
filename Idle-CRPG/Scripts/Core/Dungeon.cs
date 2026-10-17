@@ -8,7 +8,13 @@ namespace IdleCrpg.Core;
 public sealed class Room
 {
     public int Id, X, Y, Depth;
+    public float HalfWidth=3.5f,HalfHeight=3.5f;
     public Vector2 Center => new(X * 12, Y * 12);
+    public Vector2 HalfSize => new(HalfWidth,HalfHeight);
+    public Vector2 DoorTowards(Room other)
+    {
+        var d=Vector2.Normalize(other.Center-Center);return Center+d*(Math.Abs(d.X)>.5f?HalfWidth:HalfHeight);
+    }
     public bool Boss, Revealed, Generated, EventUsed;
     public int SnapshotLevel;
     public string Event = "";
@@ -56,6 +62,11 @@ public static class Dungeon
                 floor.Rooms.Add(room);
             }
             floor.Rooms.OrderByDescending(r => r.Depth).ThenByDescending(r => r.Id).First().Boss = true;
+            foreach(var room in floor.Rooms)
+            {
+                room.HalfWidth=rng.Next(config.RoomWidthMin,config.RoomWidthMax+1)*.5f;
+                room.HalfHeight=rng.Next(config.RoomHeightMin,config.RoomHeightMax+1)*.5f;
+            }
             floors.Add(floor);
         }
         return floors;

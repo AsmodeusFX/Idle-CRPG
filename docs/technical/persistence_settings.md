@@ -31,3 +31,7 @@ Music/SFX 分总线，音量 0 静音，再调高立即恢复。音乐循环设�
 - Godot `-- --capture --capture-settings` / `--capture --capture-reset`：设置及确认框截图。
 
 自动检查与截图使用忽略的 `artifacts/qa/` 专用存档，不加载或覆盖玩家 `user://` 进度。
+
+## 镜头与寻路版本兼容
+
+存档新增房间 HalfWidth/HalfHeight、世界 PendingCastle 和 NavigationVersion。旧存档未包含尺寸时沿用旧版 3.5 半宽/半高；未包含导航版本（0）的赶路路径加载后按同一目标重建为细网格避障路径，新版本为 1。保留队伍、资源、房间内容及世界进度，不要求重置存档。排队的城堡挑战随快照恢复；颜色由统治区当前通关状态实时计算。

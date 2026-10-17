@@ -17,7 +17,7 @@ public sealed class WorldProgress
     public RegionStatus Status(Config c,int region)
     {
         if(Cleared.Contains(c.Rulers[region]))return RegionStatus.Occupied;
-        if(c.Dungeons.Where(d=>d.RegionId==region&&!d.Castle).All(d=>Cleared.Contains(d.Id)))return RegionStatus.WaitingCastle;
+        if(CastleUnlocked(c,c.Rulers[region]))return RegionStatus.WaitingCastle;
         return Explored.Contains(region)?RegionStatus.Sweeping:RegionStatus.Unexplored;
     }
     public bool CastleUnlocked(Config c,string castle) => c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]==castle).All(d=>Cleared.Contains(d.Id));
@@ -36,8 +36,6 @@ public static class ExpeditionPlanner
         var normal=c.Dungeons.Where(d=>!d.Castle).ToArray();
         var local=normal.Where(d=>d.RegionId==current&&!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
         if(local!=null)return new(local,false);
-        var castle=c.Dungeons.Where(d=>d.Castle&&!p.Cleared.Contains(d.Id)&&p.Explored.Contains(d.RegionId)&&p.CastleUnlocked(c,d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
-        if(castle!=null)return new(castle,false);
         var neighbors=Neighbors(c,current).ToArray();
         var next=normal.Where(d=>neighbors.Any(n=>n.Id==d.RegionId)&&!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
         if(next!=null)return new(next,false);
@@ -63,6 +61,7 @@ public sealed partial class WorldCampaign
     public float TradeElapsed { get; private set; }
     public int Trades { get; private set; }
     public int DungeonVisits { get; private set; }
+    public string PendingCastle { get; private set; }="";
     public string Status { get; private set; } = "初始村庄出发";
     public IReadOnlyCollection<Vector2> Route => route.ToArray();
     private readonly Queue<Vector2> route = new();
@@ -78,27 +77,25 @@ public sealed partial class WorldCampaign
     private Vector2 WorldPoint(int region,float x,float y) {var r=config.Regions.Single(r=>r.Id==region);return new Vector2(r.X+x,r.Y+y);}
     private void Plan(bool previousWasFarm)
     {
-        Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm);
+        if(PendingCastle!=""&&!Progress.Cleared.Contains(PendingCastle)&&Progress.CastleUnlocked(config,PendingCastle))
+            Target=new(config.Dungeons.Single(d=>d.Id==PendingCastle),false);
+        else Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm);
+        PendingCastle="";
         Stage=CampaignStage.TravelDungeon;
         BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));
         Status=(Target.Farming?"复刷 · ":"前往 · ")+Target.Dungeon.Name;
     }
     private void BuildRoute(int region,Vector2 target)
     {
-        route.Clear();
-        int from=CurrentRegion;
-        var parents=new Dictionary<int,int>{{from,-1}};var q=new Queue<int>();q.Enqueue(from);
-        while(q.Count>0)
-        {
-            int id=q.Dequeue();if(id==region)break;
-            foreach(var n in ExpeditionPlanner.Neighbors(config,id))
-                if((n.Id==region||Progress.Explored.Contains(n.Id))&&parents.TryAdd(n.Id,id))q.Enqueue(n.Id);
-        }
-        if(!parents.ContainsKey(region))throw new InvalidOperationException("目标没有经过探索边界的可达路线");
-        var path=new List<int>(); for(int id=region;id!=from;id=parents[id])path.Add(id);path.Reverse();
-        if(path.Count>0)route.Enqueue(WorldPoint(from,0.5f,0.5f));
-        foreach(int id in path)route.Enqueue(WorldPoint(id,0.5f,0.5f));
-        route.Enqueue(target);
+        route.Clear();foreach(var point in WorldNavigation.FindPath(config,Position,target,Progress.Explored))route.Enqueue(point);
+    }
+    /// <summary>玩家请求城堡；地牢/返村/交易中只排队，确保交易流程不会被跳过。</summary>
+    internal bool RequestCastle(string id)
+    {
+        if(!config.Dungeons.Any(d=>d.Id==id&&d.Castle)||Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id))return false;
+        PendingCastle=id;
+        if(Stage==CampaignStage.TravelDungeon)Plan(false);
+        return true;
     }
     /// <summary>世界与村庄没有战斗；交易完成后才产生下一次地牢选择。</summary>
     internal void Tick(GameSession game,float dt)
@@ -110,8 +107,15 @@ public sealed partial class WorldCampaign
             bool arrived=true;
             foreach(var h in game.Heroes)
             {
-                if(Vector2.Distance(h.Position,npc.Position)>config.TradeRange) {GameSession.Move(h,npc.Position,dt,config.VillageSpeed);arrived=false;}
+                if(Vector2.Distance(h.Position,npc.Position)>config.TradeRange)
+                {
+                    var anchor=WorldPoint(Village.RegionId,Village.X,Village.Y);
+                    var from=anchor+h.Position/config.WorldUnits;var target=anchor+npc.Position/config.WorldUnits;
+                    var waypoint=WorldNavigation.FindPath(config,from,target,Progress.Explored).FirstOrDefault(p=>Vector2.DistanceSquared(p,from)>.00000001f,target);
+                    GameSession.Move(h,(waypoint-anchor)*config.WorldUnits,dt,config.VillageSpeed);arrived=false;
+                }
             }
+            Position=WorldPoint(Village.RegionId,Village.X,Village.Y)+game.Heroes[0].Position/config.WorldUnits;
             if(!arrived) {Status="前往 "+npc.Name;return;}
             TradeElapsed=Math.Min(config.TradeSeconds,TradeElapsed+dt);
             Status=$"自动交易 {TradeElapsed:0.0}/{config.TradeSeconds:0.0}秒";
@@ -148,7 +152,7 @@ public sealed partial class WorldCampaign
     {
         game.MarkChanged();
         Stage=CampaignStage.Village;TradeElapsed=0;route.Clear();
-        for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(-4,-1+i*0.6f);
+        for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(0,i*.2f);
         Status=Village.Name+" · 前往交易 NPC";
     }
     /// <summary>全灭直接在当前区域村庄复活；不记地牢通关，必须完成正常交易后才选目标。</summary>
