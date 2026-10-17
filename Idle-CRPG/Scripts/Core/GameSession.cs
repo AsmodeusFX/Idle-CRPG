@@ -94,7 +94,10 @@ public sealed partial class GameSession
     {
         CurrentRoom = 0; destination = -1; phase = 0;
         var start = Floor.Rooms[0]; start.Revealed = true; start.Generated = true;
-        for (int i=0;i<Heroes.Count;i++) Heroes[i].Position = start.Center + new Vector2(0, (i-1)*0.5f);
+        var stairs=Floor.StairPosition(start);
+        var inward=Vector2.Normalize(start.Center-stairs);
+        var side=new Vector2(-inward.Y,inward.X);
+        for (int i=0;i<Heroes.Count;i++) Heroes[i].Position = stairs+inward*.4f+side*((i-1)*.35f);
         Note($"抵达第 {FloorIndex+1} 层 · {Floor.Rooms.Count} 个房间");
     }
 
@@ -123,6 +126,12 @@ public sealed partial class GameSession
         if (Rescue(dt)) return;
         if (room.Clear && !room.EventUsed)
         {
+            if(room.Event!="")
+            {
+                Status="前往"+room.Event;
+                var user=Heroes.Where(h=>h.Alive).OrderBy(h=>Vector2.DistanceSquared(h.Position,room.EventPosition)).First();
+                if(Vector2.Distance(user.Position,room.EventPosition)>.35f){Move(user,room.EventPosition,dt);return;}
+            }
             MarkChanged();
             room.EventUsed=true;
             if (room.Event == "营火") { foreach(var h in Heroes.Where(h=>h.Alive)) h.Hp=Math.Min(h.MaxHp,h.Hp+h.MaxHp*0.3f); Note("营火：存活队员恢复 30% 生命"); }
@@ -131,8 +140,9 @@ public sealed partial class GameSession
         if (Floor.Clear && CurrentRoom == Floor.BossRoom.Id && destination < 0)
         {
             Status="楼梯集合";
-            foreach(var h in Heroes.Where(h=>h.Alive)) Move(h,room.Center,dt);
-            if (Heroes.Where(h=>h.Alive).Any(h=>Vector2.Distance(h.Position,room.Center)>0.35f)) return;
+            var stairs=Floor.StairPosition(room);
+            foreach(var h in Heroes.Where(h=>h.Alive)) Move(h,stairs,dt);
+            if (Heroes.Where(h=>h.Alive).Any(h=>Vector2.Distance(h.Position,stairs)>0.35f)){regroup=0;return;}
             regroup += dt;
             if(regroup < 0.6f) return;
             regroup=0;

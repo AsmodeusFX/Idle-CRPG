@@ -24,14 +24,35 @@ for(int seed=0;seed<100;seed++)
 var s=new GameSession(c,42,new[]{"warrior","ranger","mage"});
 Check(s.Floor.Rooms.Count(r=>r.Revealed)==1,"提前揭示");
 Check(s.Floor.Rooms.Skip(1).All(r=>!r.Generated),"提前刷怪");
+Check(s.Heroes.All(h=>Vector2.Distance(h.Position,s.Floor.StairPosition(s.Floor.Rooms[0]))<.6f),"未从入口楼梯刷新");
+foreach(var f in s.Floors)foreach(var r in new[]{f.Rooms[0],f.BossRoom})
+{
+    var p=f.StairPosition(r)-r.Center;
+    Check(Math.Abs(Math.Abs(p.X)-r.HalfWidth)<.001f||Math.Abs(Math.Abs(p.Y)-r.HalfHeight)<.001f,"楼梯没有依墙");
+    Check(r.Neighbors.All(n=>Vector2.Distance(f.StairPosition(r),r.DoorTowards(f.Rooms[n]))>1),"楼梯与门重叠");
+}
+// 只剩出口交互时，不能在房间中央直接换层；读档必须保留走向楼梯的连续行动。
+var stairGame=new GameSession(c,42,new[]{"warrior","ranger","mage"});
+var stairSnapshot=stairGame.Capture();
+foreach(var r in stairSnapshot.Floors[0].Rooms){r.Generated=true;r.Revealed=true;r.EventUsed=true;}
+stairSnapshot.CurrentRoom=stairSnapshot.Floors[0].BossRoom.Id;
+foreach(var h in stairSnapshot.Heroes)h.Position=stairSnapshot.Floors[0].BossRoom.Center;
+stairGame=GameSession.Restore(c,stairSnapshot);
+stairGame.Tick(.05f);
+Check(stairGame.FloorIndex==0&&stairGame.Heroes.All(h=>Vector2.Distance(h.Position,stairGame.Floor.BossRoom.Center)>0),"未走向楼梯就换层");
+for(int i=0;i<2000&&stairGame.FloorIndex==0;i++)stairGame.Tick(.05f);
+Check(stairGame.FloorIndex==1&&stairGame.Heroes.All(h=>Vector2.Distance(h.Position,stairGame.Floor.StairPosition(stairGame.Floor.Rooms[0]))<.6f),"未从下一层入口刷新");
 // 用高生命验证完整探索与层间门禁，保留普通攻击和成长过程。
 foreach(var h in s.Heroes){h.Hp=h.MaxHp=100000;}
 var identities=s.Heroes.ToArray();
 int previousFloor=0; bool sawGrowth=false;
 for(int tick=0;tick<200000&&!s.Won;tick++)
 {
+    var beforeFloor=s.Floor;int beforeIndex=s.FloorIndex;
+    bool gathered=s.Heroes.Where(h=>h.Alive).All(h=>Vector2.Distance(h.Position,beforeFloor.StairPosition(beforeFloor.BossRoom))<=.35f);
     var snapshots=s.Floors.SelectMany(f=>f.Rooms).Where(r=>r.Generated).ToDictionary(r=>r,r=>(r.SnapshotLevel,r.Monsters.Count));
     s.Tick(0.05f);
+    if(s.Won||s.FloorIndex!=beforeIndex)Check(gathered,"未到楼梯就换层或通关");
     foreach(var r in s.Floors.SelectMany(f=>f.Rooms).Where(r=>r.Generated&&!snapshots.ContainsKey(r)&&r.Id!=0))
     {
         Check(r.Revealed,"刷怪未揭示");
@@ -63,7 +84,13 @@ Check(corpse.Alive&&Math.Abs(corpse.Hp-corpse.MaxHp*c.ReviveHpRatio)<0.001f,"复
 Check(!second.Alive&&rescue.Experience==0&&rescue.CurrentRoom==0,"救援期间结算事件或移动到下个房间");
 for(int i=0;i<1000&&!second.Alive;i++)rescue.Tick(0.05f);
 Check(second.Alive&&rescue.Experience==0,"第二位队友未获救");
-rescue.Tick(0.05f);Check(rescue.Experience==8,"救援后未恢复事件结算");
+for(int i=0;i<1000&&rescue.Experience==0;i++)
+{
+    bool near=rescue.Heroes.Any(h=>Vector2.Distance(h.Position,rescue.Floor.Rooms[0].EventPosition)<=.35f);
+    rescue.Tick(.05f);
+    if(rescue.Experience>0)Check(near,"远程触发房间事件");
+}
+Check(rescue.Experience==8,"救援后未走近并结算事件");
 rescue.Tick(0.05f);Check(rescue.Experience==8,"重复发放事件奖励");
 
 // 活怪存在时禁止复活，清怪之后才允许救援。

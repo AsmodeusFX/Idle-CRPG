@@ -91,6 +91,16 @@ public partial class Main : Node2D
                 for(int i=0;i<500000;i++){if(i%100==0&&config.Dungeons.Any(d=>d.Castle&&session!.World!.Progress.CastleUnlocked(config,d.Id)))break;session!.Tick(.05f);}
                 captureView="castle";viewMode=1;paused=true;
             }
+            if(OS.GetCmdlineUserArgs().Contains("--capture-stairs"))
+            {
+                foreach(var h in session!.Heroes)h.Hp=h.MaxHp=100000;
+                for(int i=0;i<100000;i++)
+                {
+                    session.Tick(.05f);
+                    if(session.World!.Stage==CampaignStage.Dungeon&&session.Status=="楼梯集合")break;
+                }
+                captureView="stairs";viewMode=2;paused=true;
+            }
             Refresh();ResetSoundBaseline();
         }
         if(OS.GetCmdlineUserArgs().Contains("--capture-settings")){captureView="settings";ToggleSettings();}
@@ -202,8 +212,18 @@ public partial class Main : Node2D
             }
             var label=Project(c-r.HalfSize+new V(.3f,.3f))-new Vector2(10,30);
             DrawString(font,label,$"{r.Id+1:D2}  {(r.Boss?"楼梯 / BOSS":r.Clear?"已清理":"交战区域")}",HorizontalAlignment.Left,-1,13,new Color("c1d0d8"));
-            if(r.Event!="") DrawString(font,Project(c+new V(1.7f,1.7f)),r.Event+(r.EventUsed?" ✓":""),HorizontalAlignment.Left,-1,13,new Color("e4bf7c"));
-            if(r.Boss) DrawString(font,Project(c+new V(1.5f,-2)),"≡",HorizontalAlignment.Left,-1,28,new Color("e4bf7c"));
+            if(r.Event!="") DrawString(font,Project(r.EventPosition),r.Event+(r.EventUsed?" ✓":""),HorizontalAlignment.Left,-1,13,new Color("e4bf7c"));
+            if(r.Id==0||r.Boss)
+            {
+                var p=Project(f.StairPosition(r));
+                var tint=r.Id==0?new Color("81cbd5"):new Color("e4bf7c");
+                // 墙上阶梯入口使用宽拱框和递进踏步，与矩形房门区分。
+                DrawColoredPolygon(new[]{p+new Vector2(-18,0),p+new Vector2(-18,-24),p+new Vector2(0,-38),p+new Vector2(18,-24),p+new Vector2(18,0)},new Color("101b25"));
+                DrawPolyline(new[]{p+new Vector2(-18,0),p+new Vector2(-18,-24),p+new Vector2(0,-38),p+new Vector2(18,-24),p+new Vector2(18,0)},tint,3,true);
+                for(int step=0;step<4;step++)DrawLine(p+new Vector2(-14+step*2,-3-step*6),p+new Vector2(14-step*2,-3-step*6),tint,2,true);
+                string text=r.Id==0?(session.FloorIndex==0?"入口 ↑":"上层 ↑"):(session.FloorIndex==session.Floors.Count-1?"出口 ↑":"下层 ↓");
+                DrawString(font,p+new Vector2(-25,-44),text,HorizontalAlignment.Left,-1,12,tint);
+            }
         }
         foreach(var a in visible.SelectMany(r=>r.Monsters).Concat(session.Heroes).Where(a=>a.Alive).OrderBy(a=>a.Position.X+a.Position.Y))
         {

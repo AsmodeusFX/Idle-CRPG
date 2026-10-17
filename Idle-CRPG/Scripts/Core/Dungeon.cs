@@ -11,6 +11,8 @@ public sealed class Room
     public float HalfWidth=3.5f,HalfHeight=3.5f;
     public Vector2 Center => new(X * 12, Y * 12);
     public Vector2 HalfSize => new(HalfWidth,HalfHeight);
+    /// <summary>事件显示和交互共用位置；适应小房间尺寸。</summary>
+    public Vector2 EventPosition => Center+Vector2.Min(new Vector2(1.7f),HalfSize-new Vector2(.6f));
     public Vector2 DoorTowards(Room other)
     {
         var d=Vector2.Normalize(other.Center-Center);return Center+d*(Math.Abs(d.X)>.5f?HalfWidth:HalfHeight);
@@ -35,6 +37,15 @@ public sealed class Floor
     public List<Passage> Passages = new();
     public bool Clear => Rooms.All(r => r.Clear);
     public Room BossRoom => Rooms.Single(r => r.Boss);
+    /// <summary>楼梯依附墙壁，优先使用无门的后墙；四边都有门时错开门中心。</summary>
+    public Vector2 StairPosition(Room room)
+    {
+        var directions=new[]{new Vector2(0,-1),new Vector2(-1,0),new Vector2(1,0),new Vector2(0,1)};
+        foreach(var d in directions)
+            if(!room.Neighbors.Any(n=>Vector2.Dot(Vector2.Normalize(Rooms[n].Center-room.Center),d)>.9f))
+                return room.Center+d*room.HalfSize;
+        return room.Center+new Vector2(-room.HalfWidth,1.3f);
+    }
 }
 
 public static class Dungeon
