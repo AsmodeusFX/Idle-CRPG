@@ -1,0 +1,11 @@
+id,path,kind,volume_db,min_gap
+bgm_battle,res://Assets/Audio/bgm_battle.wav,music,-8,0
+sfx_click,res://Assets/Audio/sfx_click.wav,sfx,-8,0.06
+sfx_panel,res://Assets/Audio/sfx_panel.wav,sfx,-6,0.1
+sfx_hit,res://Assets/Audio/sfx_hit.wav,sfx,-12,0.12
+sfx_kill,res://Assets/Audio/sfx_kill.wav,sfx,-8,0.15
+sfx_buy,res://Assets/Audio/sfx_buy.wav,sfx,-5,0.2
+sfx_reward,res://Assets/Audio/sfx_reward.wav,sfx,-5,0.3
+sfx_breakthrough,res://Assets/Audio/sfx_breakthrough.wav,sfx,-6,0.3
+sfx_cast_buff,res://Assets/Audio/sfx_cast_buff.wav,sfx,-6,0.3
+sfx_deny,res://Assets/Audio/sfx_deny.wav,sfx,-6,0.2

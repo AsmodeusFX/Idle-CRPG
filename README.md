@@ -9,4 +9,6 @@ dotnet build Idle-CRPG/Idle-CRPG.csproj
 dotnet run --project tests/IdleCrpg.Checks.csproj
 ```
 
-需要 .NET 8 或更高运行环境。CSV 按 world、dungeon、hero、monster、village、item 功能分目录。策划规则、首版默认值、配置字段及架构见 [docs/README.md](docs/README.md)。当前使用程序占位美术；尚无科技树界面、存档、离线收益和职业主动技能。
+进度自动保存，关闭后重开自动继续。右上角设置可调整窗口尺寸、全屏、音乐与音效；“重置进度”需要二次确认，保留显示和音量设置。音乐和基础音效授权复用自 Idle-Sword。
+
+需要 .NET 8 或更高运行环境。CSV 按 world、dungeon、hero、monster、village、item、audio、system 功能分目录。策划规则、首版默认值、配置字段及架构见 [docs/README.md](docs/README.md)。当前使用程序占位美术；尚无科技树界面、离线收益和职业主动技能。

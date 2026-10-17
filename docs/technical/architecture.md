@@ -10,4 +10,6 @@
 
 GameSession 在清房后优先执行救援状态机：前往尸体 → 范围内读条 → 恢复生命。全灭时丢弃当前地牢结构与内容，清零临时行动状态，保留原队员实例及所有会话累计资源，通过 WorldCampaign.RespawnInVillage 直接进入当前区域村庄；复活与正常返村复用 EnterVillage，必须完成交易后才再次选目标。失败地牢不记通关。世界远征通过 CreateWorld 进入；单地牢独立模拟若全灭则接入出生区域的村庄流程。Tick 根据世界阶段推进赶路、地牢或村庄。地牢通关不会终止世界 Tick，而是标记通关并安排返村。
 
-金币以 long 计数；杂物按 (item_id, 锁定售价) 堆叠，掉落按每只怪物的首次生成快照结算一次。BOSS 占数量上限中的一个名额。未来科技树通过 SetSpawnModifiers 命令输入独立增量，不追溯修改已经生成的怪物。没有存档或离线结算。
+金币以 long 计数；杂物按 (item_id, 锁定售价) 堆叠，掉落按每只怪物的首次生成快照结算一次。BOSS 占数量上限中的一个名额。未来科技树通过 SetSpawnModifiers 命令输入独立增量，不追溯修改已经生成的怪物。无离线结算。
+
+SessionSnapshot 捕获并校验完整会话与世界状态，PersistentRandom 保存掉落随机源。SaveStore 负责 user:// 进度的原子文件替换、备份恢复和清空重置；SettingsStore 独立持久化显示与音量。UI ClientSettings 处理自动保存调度、启动恢复、退出保存与二次确认，Audio 只观察状态播放声音，不写回 Core。细节见 persistence_settings.md。

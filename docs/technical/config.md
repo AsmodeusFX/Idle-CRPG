@@ -26,6 +26,9 @@
 | item/item.csv | id,name,type_id,sell_price | 唯一 ID、名称、类型引用、非负整数售价；唯一货币为 gold，金币不出售 |
 | village/village.csv | id,name,region_id,x,y,npc_id | 村庄、所属区域、区域内坐标、NPC 引用；每区恰好一个村庄 |
 | village/npc.csv | id,name,kind,x,y | NPC 模板、名称、trade、村庄局部坐标；当前 256 个村庄共用交易 NPC 模板 |
+| audio/audio.csv | id,path,kind,volume_db,min_gap | 音频 ID、res://Assets/Audio/ 资源路径、music/sfx、单音增益 dB、非负限频秒数；恰好一个 music |
+| system/window.csv | width,height | 窗口尺寸预设，至少 800×500；等比缩放完整界面 |
+| system/client.csv | autosave_min_seconds,checkpoint_seconds | 关键变更保存最短间隔、周期检查点秒数，均为正且检查点不少于最短间隔；默认 0.5/5 |
 
 当前临时世界有 256 区、256 村庄、512 普通地牢、16 城堡，每个城堡统治一个 4×4 区域组。数量由关联行数决定，不在 region 重复维护。
 

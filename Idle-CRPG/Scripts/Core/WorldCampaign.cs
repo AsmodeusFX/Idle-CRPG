@@ -51,7 +51,7 @@ public static class ExpeditionPlanner
     }
 }
 
-public sealed class WorldCampaign
+public sealed partial class WorldCampaign
 {
     private readonly Config config;
     public WorldProgress Progress { get; } = new();
@@ -130,7 +130,7 @@ public sealed class WorldCampaign
             var target=route.Peek();float distance=Vector2.Distance(Position,target);
             if(distance<=remaining){Position=target;route.Dequeue();remaining-=distance;}
             else {Position+=Vector2.Normalize(target-Position)*remaining;remaining=0;}
-            Progress.Explored.Add(CurrentRegion);
+            if(Progress.Explored.Add(CurrentRegion))game.MarkChanged();
         }
         if(route.Count>0)return;
         if(Stage==CampaignStage.TravelDungeon)
@@ -146,6 +146,7 @@ public sealed class WorldCampaign
     }
     private void EnterVillage(GameSession game)
     {
+        game.MarkChanged();
         Stage=CampaignStage.Village;TradeElapsed=0;route.Clear();
         for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(-4,-1+i*0.6f);
         Status=Village.Name+" · 前往交易 NPC";

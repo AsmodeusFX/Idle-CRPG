@@ -19,7 +19,7 @@ public sealed class Actor
     public static Actor From(UnitSpec s) => new() { SpecId=s.Id, Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
 }
 
-public sealed class GameSession
+public sealed partial class GameSession
 {
     public Config Config { get; }
     public int Seed { get; }
@@ -30,7 +30,11 @@ public sealed class GameSession
     private readonly Dictionary<(string ItemId,long Price),long> inventory=new();
     public IReadOnlyDictionary<(string ItemId,long Price),long> Inventory => inventory;
     public SpawnModifiers SpawnModifiers { get; private set; } = new();
-    private readonly Random lootRandom;
+    private readonly PersistentRandom lootRandom;
+    /// <summary>重要状态变更版本；表现层在完整逻辑步结束后保存，避免奖励和击杀被拆开。</summary>
+    public long Revision { get; private set; }
+    public long HitCount { get; private set; }
+    internal void MarkChanged() => Revision++;
     private int dungeonSeed;
     public List<Actor> Heroes { get; } = new();
     public List<string> Log { get; } = new();
@@ -53,7 +57,7 @@ public sealed class GameSession
     public GameSession(Config config, int seed, IEnumerable<string> ids)
     {
         Config = config; Seed = seed;
-        lootRandom=new Random(unchecked(seed^173831));dungeonSeed=seed;
+        lootRandom=new PersistentRandom(unchecked((uint)seed^173831u));dungeonSeed=seed;
         var chosen = ids.ToArray();
         if (chosen.Length != 3 || chosen.Distinct().Count() != 3) throw new ArgumentException("选择三个不同职业");
         Heroes.AddRange(chosen.Select(id => Actor.From(config.Heroes.Single(s => s.Id == id))));
@@ -69,7 +73,7 @@ public sealed class GameSession
         game.Note("从初始村庄出发，自动远征已开始");return game;
     }
     /// <summary>预留科技系统命令，只有后续首次生成的房间受影响。</summary>
-    public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);SpawnModifiers=modifiers;}
+    public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);SpawnModifiers=modifiers;MarkChanged();}
     internal void BeginDungeon(DungeonSpec dungeon,int visit)
     {
         ActiveDungeon=dungeon;Won=false;FloorIndex=0;regroup=0;ResetRescue();
@@ -111,6 +115,7 @@ public sealed class GameSession
         if (Rescue(dt)) return;
         if (room.Clear && !room.EventUsed)
         {
+            MarkChanged();
             room.EventUsed=true;
             if (room.Event == "营火") { foreach(var h in Heroes.Where(h=>h.Alive)) h.Hp=Math.Min(h.MaxHp,h.Hp+h.MaxHp*0.3f); Note("营火：存活队员恢复 30% 生命"); }
             if (room.Event == "宝箱") { GainExperience(8); Note("宝箱：全队获得 8 经验"); }
@@ -150,6 +155,7 @@ public sealed class GameSession
         {
             ResetRescue(); ReviveTarget = dead;
             Rescuer = Heroes.Where(h => h.Alive).OrderBy(h => Vector2.DistanceSquared(h.Position,dead.Position)).First();
+            MarkChanged();
         }
         if (Vector2.Distance(Rescuer!.Position,dead.Position) > Config.ReviveRange)
         {
@@ -209,7 +215,8 @@ public sealed class GameSession
         // 任意队员实际触门才揭示。先等全队到入口，避免队尾留在未激活房间。
         if(phase==0 && Heroes.Any(h=>h.Alive && Vector2.Distance(h.Position,exit)<=0.32f))
         {
-            Floor.Passages.Single(p=>(p.A==a.Id&&p.B==b.Id)||(p.A==b.Id&&p.B==a.Id)).Revealed=true;
+            var passage=Floor.Passages.Single(p=>(p.A==a.Id&&p.B==b.Id)||(p.A==b.Id&&p.B==a.Id));
+            if(!passage.Revealed){passage.Revealed=true;MarkChanged();}
             if(Heroes.Where(h=>h.Alive).All(h=>Vector2.Distance(h.Position,exit)<=0.32f)) phase=1;
         }
         else if(phase==1 && Heroes.Any(h=>h.Alive && Vector2.Distance(h.Position,entry)<=0.32f))
@@ -259,6 +266,7 @@ public sealed class GameSession
         }
         if(actor.Timer>0) return;
         actor.Timer=actor.Cooldown;
+        HitCount++;MarkChanged();
         target.Hp=Math.Max(0,target.Hp-Math.Max(1,actor.Attack-target.Defense));
         if(!target.Alive && room.Monsters.Contains(target)) { Kills++; GainExperience(target.RewardXp); RollDrops(target); if(target.Boss) Note("守门者已击败"); }
     }
@@ -303,5 +311,5 @@ public sealed class GameSession
             Note($"全队成长至等级 {Heroes[0].Level}");
         }
     }
-    internal void Note(string message) { Log.Add(message); if(Log.Count>40) Log.RemoveAt(0); }
+    internal void Note(string message) { MarkChanged();Log.Add(message); if(Log.Count>40) Log.RemoveAt(0); }
 }

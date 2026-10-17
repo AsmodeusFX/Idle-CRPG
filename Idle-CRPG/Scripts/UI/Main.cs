@@ -25,16 +25,20 @@ public partial class Main : Node2D
     public override void _Ready()
     {
         config = Config.Load(ProjectSettings.GlobalizePath("res://config"));
+        InitializeClient();
         font = ThemeDB.FallbackFont;
         RenderingServer.SetDefaultClearColor(new Color("0b1019"));
         var canvas = new CanvasLayer(); AddChild(canvas);
+        uiLayer=canvas;
+        var settingsButton=new Button {Text="设置",Position=new Vector2(992,32),Size=new Vector2(70,38)};
+        settingsButton.Pressed+=ToggleSettings;canvas.AddChild(settingsButton);
         var title = new Label { Text="深渊远征  /  IDLE CRPG", Position=new Vector2(30,20) }; title.AddThemeFontSizeOverride("font_size",26); canvas.AddChild(title);
         var subtitle = new Label { Text="世界远征 · 自动探索 / 战斗 / 交易", Position=new Vector2(32,60) }; subtitle.Modulate=new Color("91a6b7"); canvas.AddChild(subtitle);
         var tabs=new HBoxContainer {Position=new Vector2(32,103)};canvas.AddChild(tabs);
         foreach(var pair in new[]{("自动跟随",0),("世界地图",1),("当前场景",2)})
         {
             var button=new Button {Text=pair.Item1,CustomMinimumSize=new Vector2(116,34)};
-            int mode=pair.Item2;button.Pressed+=()=>viewMode=mode;tabs.AddChild(button);
+            int mode=pair.Item2;button.Pressed+=()=>{viewMode=mode;PlaySound("sfx_click");SaveNow();};tabs.AddChild(button);
         }
         var panel = new Panel { Position=new Vector2(1090,20), Size=new Vector2(325,850) }; canvas.AddChild(panel);
         var box = new VBoxContainer { Position=new Vector2(1110,38), Size=new Vector2(285,820) }; box.AddThemeConstantOverride("separation",9); canvas.AddChild(box);
@@ -42,11 +46,11 @@ public partial class Main : Node2D
         seed=new LineEdit { Text="20261017", PlaceholderText="整数 seed" }; box.AddChild(seed);
         box.AddChild(new Label { Text="选择 3 位成员，出发后阵容锁定" });
         choices=config.Heroes.Select(s=>new CheckBox { Text=$"{s.Name}   HP {s.Hp} / 攻击 {s.Attack}", ButtonPressed=s.Id!="priest" }).ToArray();
-        foreach(var c in choices) box.AddChild(c);
-        start=new Button { Text="生成地牢 / 开始远征", CustomMinimumSize=new Vector2(0,42) }; start.Pressed+=Start; box.AddChild(start);
+        foreach(var c in choices) {c.Toggled+=_=>PlaySound("sfx_click");box.AddChild(c);}
+        start=new Button { Text="开始世界远征", CustomMinimumSize=new Vector2(0,42) }; start.Pressed+=Start; box.AddChild(start);
         var buttons=new HBoxContainer(); box.AddChild(buttons);
-        pause=new Button { Text="暂停", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; pause.Pressed+=()=>{ paused=!paused; pause.Text=paused?"继续":"暂停"; }; buttons.AddChild(pause);
-        var rate=new Button { Text="速度 ×1", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; rate.Pressed+=()=>{speed=speed==4?1:speed*2;rate.Text=$"速度 ×{speed}";}; buttons.AddChild(rate);
+        pause=new Button { Text="暂停", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; pause.Pressed+=()=>{ paused=!paused; pause.Text=paused?"继续":"暂停";PlaySound("sfx_click");SaveNow(); }; buttons.AddChild(pause);
+        rateButton=new Button { Text="速度 ×1", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; rateButton.Pressed+=()=>{speed=speed==4?1:speed*2;rateButton.Text=$"速度 ×{speed}";PlaySound("sfx_click");SaveNow();}; buttons.AddChild(rateButton);
         summary=new Label { Text="选定小队后开始。", AutowrapMode=TextServer.AutowrapMode.WordSmart }; box.AddChild(summary);
         summary.AddThemeFontSizeOverride("font_size",15);
         roster=new Label { AutowrapMode=TextServer.AutowrapMode.WordSmart }; box.AddChild(roster);
@@ -58,7 +62,9 @@ public partial class Main : Node2D
         capture=OS.GetCmdlineUserArgs().Contains("--capture");
         if(OS.GetCmdlineUserArgs().Contains("--capture-local"))captureView="local";
         if(OS.GetCmdlineUserArgs().Contains("--capture-village"))captureView="village";
-        if(smoke) Start();
+        BuildSettings();
+        ResumeProgress();
+        if(smoke && session==null) Start();
         if(capture && session==null) Start();
         if(capture)
         {
@@ -67,7 +73,13 @@ public partial class Main : Node2D
             for(int i=0;i<ticks;i++)session!.Tick(0.05f);
             if(captureView=="village") for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Village;i++)session.Tick(0.05f);
             if(captureView=="local") for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Dungeon;i++)session.Tick(0.05f);
+            Refresh();ResetSoundBaseline();
         }
+        if(OS.GetCmdlineUserArgs().Contains("--capture-settings")){captureView="settings";ToggleSettings();}
+        if(OS.GetCmdlineUserArgs().Contains("--capture-reset")){captureView="reset";ToggleSettings();RequestReset();}
+        if(smoke)RunClientSmoke();
+        if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
+        if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
     }
 
     private void Start()
@@ -76,22 +88,24 @@ public partial class Main : Node2D
         var ids=config.Heroes.Where((_,i)=>choices[i].ButtonPressed).Select(h=>h.Id).ToArray();
         if(ids.Length!=3) {summary.Text="请选择恰好 3 位成员。";return;}
         session=GameSession.CreateWorld(config,value,ids); paused=false; accumulator=0; pause.Text="暂停";
-        foreach(var c in choices) c.Disabled=true;
-        start.Text="重新开始世界远征";
+        UpdatePartyControls();ResetSoundBaseline();SaveNow();PlaySound("sfx_reward");
         Refresh(); QueueRedraw();
     }
 
     public override void _Process(double delta)
     {
-        if(session!=null && !paused)
+        if(quitRequested)return;
+        TickClient(delta);
+        if(session!=null && !paused && !settingsRoot.Visible && !resetConfirmation.Visible)
         {
             accumulator+=Math.Min(delta,0.25)*speed;
             while(accumulator>=0.05) { session.Tick(0.05f); accumulator-=0.05; }
             Refresh();
         }
+        TrackSounds();AutoSave(delta);
         QueueRedraw();
         if(capture && ++smokeFrames==10) Capture();
-        if(smoke && ++smokeFrames>=120) { GD.Print("SMOKE_OK: "+session?.Status); GetTree().Quit(); }
+        if(smoke && ++smokeFrames>=120 && !quitRequested && !displaySmokeActive) { GD.Print("SMOKE_OK: "+session?.Status); QuitSafely(); }
     }
 
     private async void Capture()
@@ -100,7 +114,7 @@ public partial class Main : Node2D
         var path=ProjectSettings.GlobalizePath($"res://../artifacts/preview-{captureView}.png");
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         GetViewport().GetTexture().GetImage().SavePng(path);
-        GD.Print("CAPTURE_OK"); GetTree().Quit();
+        GD.Print("CAPTURE_OK"); QuitSafely();
     }
 
     private void Refresh()

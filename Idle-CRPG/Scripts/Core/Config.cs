@@ -33,6 +33,7 @@ public sealed partial class Config
         if (c.FloorsMin < 1 || c.FloorsMax < c.FloorsMin || c.FloorsMax > 20 || c.RoomsMin < 3 || c.RoomsMax < c.RoomsMin || c.RoomsMax > 20 || c.EventChance < 0 || c.EventChance > 1 || c.Heroes.Count < 3 || c.Monsters.Count == 0)
             throw new InvalidDataException("地牢配置范围非法");
         c.LoadWorld(directory);
+        c.LoadClientConfig(directory);
         return c;
     }
 
