@@ -7,20 +7,31 @@ namespace IdleCrpg.Core;
 
 public sealed class Actor
 {
+    public string SpecId = "";
     public string Name = "";
     public Vector2 Position;
     public float Hp, MaxHp, Attack, Defense, Speed, Range, Cooldown, Timer;
     public int Level = 1;
     public bool Boss;
+    public int RewardXp;
+    public float DropMultiplier=1, ValueMultiplier=1;
     public bool Alive => Hp > 0;
-    public static Actor From(UnitSpec s) => new() { Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
+    public static Actor From(UnitSpec s) => new() { SpecId=s.Id, Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
 }
 
 public sealed class GameSession
 {
     public Config Config { get; }
     public int Seed { get; }
-    public List<Floor> Floors { get; }
+    public List<Floor> Floors { get; private set; }
+    public WorldCampaign? World { get; private set; }
+    public DungeonSpec? ActiveDungeon { get; private set; }
+    public long Gold { get; private set; }
+    private readonly Dictionary<(string ItemId,long Price),long> inventory=new();
+    public IReadOnlyDictionary<(string ItemId,long Price),long> Inventory => inventory;
+    public SpawnModifiers SpawnModifiers { get; private set; } = new();
+    private readonly Random lootRandom;
+    private int dungeonSeed;
     public List<Actor> Heroes { get; } = new();
     public List<string> Log { get; } = new();
     public int FloorIndex { get; private set; }
@@ -38,16 +49,33 @@ public sealed class GameSession
     public string Status { get; private set; } = "探索";
     private int destination = -1, phase;
     private float regroup;
-    public float AverageLevel => (float)Heroes.Average(h => h.Level);
 
     public GameSession(Config config, int seed, IEnumerable<string> ids)
     {
         Config = config; Seed = seed;
+        lootRandom=new Random(unchecked(seed^173831));dungeonSeed=seed;
         var chosen = ids.ToArray();
         if (chosen.Length != 3 || chosen.Distinct().Count() != 3) throw new ArgumentException("选择三个不同职业");
         Heroes.AddRange(chosen.Select(id => Actor.From(config.Heroes.Single(s => s.Id == id))));
         Floors = Dungeon.Generate(seed,config);
         EnterFloor();
+    }
+
+    /// <summary>世界远征入口。保留单地牢构造供独立模拟和检查使用。</summary>
+    public static GameSession CreateWorld(Config config,int seed,IEnumerable<string> ids)
+    {
+        var game=new GameSession(config,seed,ids);game.Log.Clear();
+        game.Floors.Clear();game.World=new WorldCampaign(config);
+        game.Note("从初始村庄出发，自动远征已开始");return game;
+    }
+    /// <summary>预留科技系统命令，只有后续首次生成的房间受影响。</summary>
+    public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);SpawnModifiers=modifiers;}
+    internal void BeginDungeon(DungeonSpec dungeon,int visit)
+    {
+        ActiveDungeon=dungeon;Won=false;FloorIndex=0;regroup=0;ResetRescue();
+        dungeonSeed=unchecked(Seed*397^visit*104729^dungeon.RegionId*7919);
+        Floors=Dungeon.Generate(dungeonSeed,Config);EnterFloor();
+        Note($"进入{dungeon.Name} · 等级 {dungeon.LevelMin}–{dungeon.LevelMax}");
     }
 
     private void EnterFloor()
@@ -62,6 +90,12 @@ public sealed class GameSession
     public void Tick(float dt)
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
+        if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);return;}
+        TickDungeon(dt);
+        if(World!=null&&Won)World.CompleteDungeon(this);
+    }
+    private void TickDungeon(float dt)
+    {
         if (Won) return;
         if (!Heroes.Any(h=>h.Alive)) { RetryDungeon(); return; }
         var room = Floor.Rooms[CurrentRoom];
@@ -195,21 +229,20 @@ public sealed class GameSession
         room.Revealed=true;
         if(room.Generated) return;
         room.Generated=true;
-        room.SnapshotLevel=Math.Max(1,FloorIndex+(int)AverageLevel);
-        var rng=new Random(unchecked(Seed*397 ^ FloorIndex*7919 ^ room.Id*104729));
-        int count=rng.Next(Config.MonstersMin,Config.MonstersMax+1)+(int)(AverageLevel/3);
-        for(int i=0;i<count+(room.Boss?1:0);i++)
+        var rule=Config.Spawn;var modifiers=SpawnModifiers;
+        int levelMin=(ActiveDungeon?.LevelMin??1)+rule.Level-1+modifiers.LevelBonus;
+        int levelMax=(ActiveDungeon?.LevelMax??1)+rule.Level-1+modifiers.LevelBonus;
+        room.SnapshotLevel=levelMin;
+        var rng=new Random(unchecked(dungeonSeed*397 ^ FloorIndex*7919 ^ room.Id*104729));
+        int count=rng.Next(rule.Min+modifiers.MinBonus,rule.Max+modifiers.MaxBonus+1);
+        for(int i=0;i<count;i++)
         {
-            var m=Actor.From(Config.Monsters[rng.Next(Config.Monsters.Count)]);
-            m.Level=room.SnapshotLevel; m.Boss=room.Boss&&i==count;
-            m.MaxHp*= (1+0.18f*(m.Level-1))*(m.Boss?4:1); m.Hp=m.MaxHp;
-            m.Attack*= (1+0.12f*(m.Level-1))*(m.Boss?1.4f:1); m.Defense+=m.Level-1;
-            if(m.Boss) m.Name="守门者";
+            var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),room.Boss&&i==count-1,modifiers);
             m.Position=room.Center+new Vector2((float)rng.NextDouble()*4-2,(float)rng.NextDouble()*4-2);
             room.Monsters.Add(m);
         }
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
-        Note($"进入房间 {room.Id+1}：{room.Monsters.Count} 敌人 · 等级 {room.SnapshotLevel}"+(room.Boss?" · BOSS":""));
+        Note($"进入房间 {room.Id+1}：{room.Monsters.Count} 敌人 · 等级 {levelMin}–{levelMax}"+(room.Boss?" · BOSS":""));
     }
 
     private void Fight(Room room,float dt)
@@ -232,12 +265,38 @@ public sealed class GameSession
         if(actor.Timer>0) return;
         actor.Timer=actor.Cooldown;
         target.Hp=Math.Max(0,target.Hp-Math.Max(1,actor.Attack-target.Defense));
-        if(!target.Alive && room.Monsters.Contains(target)) { Kills++; GainExperience(target.Level*2*(target.Boss?4:1)); if(target.Boss) Note("守门者已击败"); }
+        if(!target.Alive && room.Monsters.Contains(target)) { Kills++; GainExperience(target.RewardXp); RollDrops(target); if(target.Boss) Note("守门者已击败"); }
     }
-    private static void Move(Actor a,Vector2 target,float dt)
+    internal static void Move(Actor a,Vector2 target,float dt,float? speed=null)
     {
         var delta=target-a.Position; float distance=delta.Length();
-        if(distance>0.001f) a.Position+=delta/distance*Math.Min(distance,a.Speed*dt);
+        if(distance>0.001f) a.Position+=delta/distance*Math.Min(distance,(speed??a.Speed)*dt);
+    }
+    private void RollDrops(Actor monster)
+    {
+        foreach(var drop in Config.Drops.Where(d=>d.MonsterId==monster.SpecId))
+        {
+            if(lootRandom.NextDouble()>=Math.Min(1,drop.Chance*monster.DropMultiplier))continue;
+            var item=Config.Items.Single(i=>i.Id==drop.ItemId);var type=Config.ItemTypes.Single(t=>t.Id==item.TypeId);
+            int count=lootRandom.Next(drop.Min,drop.Max+1);
+            if(type.Kind=="currency")Gold=checked(Gold+(long)Math.Ceiling(count*monster.ValueMultiplier));
+            else
+            {
+                long price=checked((long)Math.Ceiling(item.SellPrice*monster.ValueMultiplier));
+                var key=(item.Id,price);inventory[key]=checked(inventory.GetValueOrDefault(key)+count);
+            }
+        }
+    }
+    internal long SellJunk()
+    {
+        long total=0;
+        foreach(var entry in inventory.ToArray())
+        {
+            var item=Config.Items.Single(i=>i.Id==entry.Key.ItemId);
+            if(!Config.ItemTypes.Single(t=>t.Id==item.TypeId).AutoSell)continue;
+            total=checked(total+entry.Key.Price*entry.Value);inventory.Remove(entry.Key);
+        }
+        Gold=checked(Gold+total);return total;
     }
     private void GainExperience(int amount)
     {
@@ -249,5 +308,5 @@ public sealed class GameSession
             Note($"全队成长至等级 {Heroes[0].Level}");
         }
     }
-    private void Note(string message) { Log.Add(message); if(Log.Count>40) Log.RemoveAt(0); }
+    internal void Note(string message) { Log.Add(message); if(Log.Count>40) Log.RemoveAt(0); }
 }

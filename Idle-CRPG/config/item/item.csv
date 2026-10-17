@@ -1,0 +1,5 @@
+id,name,type_id,sell_price
+gold,金币,currency,0
+fang,碎裂獠牙,junk,2
+cloth,破旧布料,junk,3
+relic,古老碎片,junk,7

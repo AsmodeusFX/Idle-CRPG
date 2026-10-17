@@ -1,0 +1,3 @@
+id,name,kind,auto_sell
+currency,货币,currency,0
+junk,杂物,junk,1

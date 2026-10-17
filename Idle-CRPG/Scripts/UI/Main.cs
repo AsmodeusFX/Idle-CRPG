@@ -8,7 +8,9 @@ public partial class Main : Node2D
 {
     private Config config = null!;
     private GameSession? session;
-    private Label summary = null!, roster = null!, journal = null!;
+    private Label summary = null!, roster = null!, journal = null!, help = null!;
+    private int viewMode, selectedRegion=-1;
+    private string captureView="world";
     private LineEdit seed = null!;
     private CheckBox[] choices = Array.Empty<CheckBox>();
     private Button pause = null!, start = null!;
@@ -27,10 +29,16 @@ public partial class Main : Node2D
         RenderingServer.SetDefaultClearColor(new Color("0b1019"));
         var canvas = new CanvasLayer(); AddChild(canvas);
         var title = new Label { Text="深渊远征  /  IDLE CRPG", Position=new Vector2(30,20) }; title.AddThemeFontSizeOverride("font_size",26); canvas.AddChild(title);
-        var subtitle = new Label { Text="随机地牢 · 固定小队 · 自动探索", Position=new Vector2(32,60) }; subtitle.Modulate=new Color("91a6b7"); canvas.AddChild(subtitle);
+        var subtitle = new Label { Text="世界远征 · 自动探索 / 战斗 / 交易", Position=new Vector2(32,60) }; subtitle.Modulate=new Color("91a6b7"); canvas.AddChild(subtitle);
+        var tabs=new HBoxContainer {Position=new Vector2(32,103)};canvas.AddChild(tabs);
+        foreach(var pair in new[]{("自动跟随",0),("世界地图",1),("当前场景",2)})
+        {
+            var button=new Button {Text=pair.Item1,CustomMinimumSize=new Vector2(116,34)};
+            int mode=pair.Item2;button.Pressed+=()=>viewMode=mode;tabs.AddChild(button);
+        }
         var panel = new Panel { Position=new Vector2(1090,20), Size=new Vector2(325,850) }; canvas.AddChild(panel);
         var box = new VBoxContainer { Position=new Vector2(1110,38), Size=new Vector2(285,820) }; box.AddThemeConstantOverride("separation",9); canvas.AddChild(box);
-        box.AddChild(new Label { Text="远征准备" });
+        box.AddChild(new Label { Text="小队与远征" });
         seed=new LineEdit { Text="20261017", PlaceholderText="整数 seed" }; box.AddChild(seed);
         box.AddChild(new Label { Text="选择 3 位成员，出发后阵容锁定" });
         choices=config.Heroes.Select(s=>new CheckBox { Text=$"{s.Name}   HP {s.Hp} / 攻击 {s.Attack}", ButtonPressed=s.Id!="priest" }).ToArray();
@@ -40,15 +48,26 @@ public partial class Main : Node2D
         pause=new Button { Text="暂停", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; pause.Pressed+=()=>{ paused=!paused; pause.Text=paused?"继续":"暂停"; }; buttons.AddChild(pause);
         var rate=new Button { Text="速度 ×1", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; rate.Pressed+=()=>{speed=speed==4?1:speed*2;rate.Text=$"速度 ×{speed}";}; buttons.AddChild(rate);
         summary=new Label { Text="选定小队后开始。", AutowrapMode=TextServer.AutowrapMode.WordSmart }; box.AddChild(summary);
+        summary.AddThemeFontSizeOverride("font_size",15);
         roster=new Label { AutowrapMode=TextServer.AutowrapMode.WordSmart }; box.AddChild(roster);
+        roster.AddThemeFontSizeOverride("font_size",15);
         box.AddChild(new HSeparator());
         journal=new Label { AutowrapMode=TextServer.AutowrapMode.WordSmart }; journal.AddThemeFontSizeOverride("font_size",14); journal.AddThemeColorOverride("font_color",new Color("a4b8c9")); box.AddChild(journal);
-        var help=new Label { Position=new Vector2(32,842), Text="青 / 金 / 蓝：小队    红：敌人    金色：BOSS    门口触发探索，黑暗区域尚未揭示" }; help.Modulate=new Color("91a6b7"); canvas.AddChild(help);
+        help=new Label { Position=new Vector2(32,842), Text="世界无遭遇战 · 通关后必先回村交易 · 无新目标时自动复刷" }; help.Modulate=new Color("91a6b7"); canvas.AddChild(help);
         smoke=OS.GetCmdlineUserArgs().Contains("--smoke-test");
         capture=OS.GetCmdlineUserArgs().Contains("--capture");
+        if(OS.GetCmdlineUserArgs().Contains("--capture-local"))captureView="local";
+        if(OS.GetCmdlineUserArgs().Contains("--capture-village"))captureView="village";
         if(smoke) Start();
         if(capture && session==null) Start();
-        if(capture) for(int i=0;i<900;i++) session!.Tick(0.05f);
+        if(capture)
+        {
+            viewMode=captureView=="world"?1:2;
+            int ticks=captureView=="world"?24000:400;
+            for(int i=0;i<ticks;i++)session!.Tick(0.05f);
+            if(captureView=="village") for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Village;i++)session.Tick(0.05f);
+            if(captureView=="local") for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Dungeon;i++)session.Tick(0.05f);
+        }
     }
 
     private void Start()
@@ -56,9 +75,9 @@ public partial class Main : Node2D
         if(!int.TryParse(seed.Text,out int value)) { summary.Text="Seed 请输入有效整数。"; return; }
         var ids=config.Heroes.Where((_,i)=>choices[i].ButtonPressed).Select(h=>h.Id).ToArray();
         if(ids.Length!=3) {summary.Text="请选择恰好 3 位成员。";return;}
-        session=new GameSession(config,value,ids); paused=false; accumulator=0; pause.Text="暂停";
+        session=GameSession.CreateWorld(config,value,ids); paused=false; accumulator=0; pause.Text="暂停";
         foreach(var c in choices) c.Disabled=true;
-        start.Text="以此小队重新生成地牢";
+        start.Text="重新开始世界远征";
         Refresh(); QueueRedraw();
     }
 
@@ -78,7 +97,7 @@ public partial class Main : Node2D
     private async void Capture()
     {
         await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
-        var path=ProjectSettings.GlobalizePath("res://../artifacts/preview.png");
+        var path=ProjectSettings.GlobalizePath($"res://../artifacts/preview-{captureView}.png");
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         GetViewport().GetTexture().GetImage().SavePng(path);
         GD.Print("CAPTURE_OK"); GetTree().Quit();
@@ -88,7 +107,9 @@ public partial class Main : Node2D
     {
         if(session==null)return;
         var s=session;
-        summary.Text=$"第 {s.FloorIndex+1} / {s.Floors.Count} 层 · {s.Status}\n房间清理 {s.Floor.Rooms.Count(r=>r.Clear)} / {s.Floor.Rooms.Count}    击杀 {s.Kills}\n经验 {s.Experience} / {s.Heroes[0].Level*18} · 重挑战 {s.Retries}";
+        var w=s.World!;
+        string status=w.Stage==CampaignStage.Dungeon?$"{s.ActiveDungeon!.Name} · {s.Status}\n第 {s.FloorIndex+1}/{s.Floors.Count} 层 · 清理 {s.Floor.Rooms.Count(r=>r.Clear)}/{s.Floor.Rooms.Count}":w.Status;
+        summary.Text=$"区域 {w.CurrentRegion} · {status}\n金币 {s.Gold:N0} · 杂物 {s.Inventory.Values.Sum()} · 击杀 {s.Kills}\n经验 {s.Experience}/{s.Heroes[0].Level*18} · 重挑战 {s.Retries}";
         roster.Text=string.Join("\n\n",s.Heroes.Select(h=>$"{h.Name}  Lv.{h.Level}  {(h.Alive?"":"阵亡")}\nHP {Math.Ceiling(h.Hp)} / {h.MaxHp:0}   攻击 {h.Attack:0}"));
         journal.Text="远征记录\n\n"+string.Join("\n",s.Log.TakeLast(3));
     }
@@ -104,6 +125,15 @@ public partial class Main : Node2D
     {
         DrawRect(new Rect2(24,104,1040,716),new Color("080d15"));
         if(session==null) {DrawString(font,new Vector2(320,430),"选择小队，开启第一次远征",HorizontalAlignment.Left,-1,24,new Color("91a6b7"));return;}
+        var world=session.World!;
+        bool showWorld=viewMode==1||(viewMode==0&&world.Stage!=CampaignStage.Dungeon&&world.Stage!=CampaignStage.Village);
+        if(showWorld){DrawWorld();return;}
+        if(world.Stage!=CampaignStage.Dungeon){DrawVillageOrTravel();return;}
+        DrawDungeon();
+    }
+    private void DrawDungeon()
+    {
+        if(session==null)return;
         var f=session.Floor;
         var visible=f.Rooms.Where(r=>r.Revealed).ToArray();
         var bounds=visible.SelectMany(r=>new[]{r.Center-new V(4),r.Center+new V(4),r.Center+new V(4,-4),r.Center+new V(-4,4)}).ToList();

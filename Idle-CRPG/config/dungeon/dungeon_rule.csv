@@ -1,0 +1,2 @@
+floors_min,floors_max,rooms_min,rooms_max,event_chance,revive_seconds,revive_range,revive_hp_ratio
+2,3,6,9,0.5,3,0.65,0.5

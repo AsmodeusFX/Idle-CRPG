@@ -1,0 +1,7 @@
+monster_id,item_id,chance,quantity_min,quantity_max
+rat,gold,1,1,3
+rat,fang,0.5,1,2
+rat,relic,0.08,1,1
+guard,gold,1,2,5
+guard,cloth,0.6,1,2
+guard,relic,0.12,1,1
