@@ -8,6 +8,8 @@
 
 配置错误直接报错，不静默使用默认数值。模型不读 UI，不在绘制期间发奖励，不把房间渲染状态作为战斗状态。
 
+AreaParts 管理城堡统治区与多选 OR 前置配置、相邻引用和可达性校验。WorldProgress 按城堡通关历史推导已开放统治区，ExpeditionPlanner 只在开放范围选择开拓/复刷目标，WorldNavigation 的 allowedRegions 在路径层禁止越界，CastleUnlocked 同时检查统治区前置和辖区普通地牢完成度。UI 仅展示解锁与多选前置说明；旧存档门禁迁移仍经 GameSession 恢复处理。
+
 GameSession 在清房后优先执行救援状态机：前往尸体 → 范围内读条 → 恢复生命。全灭时丢弃当前地牢结构与内容，清零临时行动状态，保留原队员实例及所有会话累计资源，通过 WorldCampaign.RespawnInVillage 直接进入当前区域村庄；复活与正常返村复用 EnterVillage，必须完成交易后才再次选目标。失败地牢不记通关。世界远征通过 CreateWorld 进入；单地牢独立模拟若全灭则接入出生区域的村庄流程。Tick 根据世界阶段推进赶路、地牢或村庄。地牢通关不会终止世界 Tick，而是标记通关并安排返村。
 
 金币以 long 计数；杂物按 (item_id, 锁定售价) 堆叠，掉落按每只怪物的首次生成快照结算一次。BOSS 占数量上限中的一个名额。未来科技树通过 SetSpawnModifiers 命令输入独立增量，不追溯修改已经生成的怪物。无离线结算。

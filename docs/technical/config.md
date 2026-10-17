@@ -10,7 +10,9 @@
 | world/world.csv | travel_speed,village_speed,trade_seconds,trade_range | 世界坐标每秒区域距离、村庄移速、交易秒数、交互范围；均为正数 |
 | world/region.csv | id,x,y,name,terrain | 正区域 ID、网格坐标、名称、地貌；坐标不重复且覆盖整个矩形。地貌限 snow/tropical/desert/coast/grass |
 | world/castle_region.csv | region_id,castle_id | 每区恰好一行统治关联；城堡必须存在且包含其所在区域 |
-| dungeon/dungeon.csv | id,name,region_id,kind | 地牢唯一 ID、名称、区域、normal/castle；每区至少一个普通地牢，至多一个城堡 |
+| world/areapart.csv | id,castle_id,initially_unlocked | 统治区唯一 ID、城堡引用、默认开放 0/1；统治区和城堡一一对应，仅出生统治区为 1 |
+| world/areapart_prerequisite.csv | areapart_id,required_areapart_id | 每行一个可选前置，多个前置按 OR 判定：任一前置的城堡被攻克即可；必须共边接壤，无重复边/自引用/失效引用，所有统治区按 OR 从初始区可达 |
+| dungeon/dungeon.csv | id,name,region_id,kind | 地牢唯一 ID、名称、区域、normal/castle；每格可无普通地牢，至多一个城堡，每统治区至少一个普通地牢 |
 | dungeon/dungeon.csv | level_min,level_max,x,y | 临时等级区间，1≤下限≤上限；区域内入口坐标，均在 (0,1) |
 | dungeon/dungeon_rule.csv | floors_min,floors_max,rooms_min,rooms_max | 层数 1–20、每层房间数 3–20，包含安全起点；下限不大于上限 |
 | dungeon/dungeon_rule.csv | room_width_min,room_width_max,room_height_min,room_height_max | 结构生成时抽取的实际房间长宽，整数 4–10，下限不大于上限；默认宽 6–9、高 5–8 |
@@ -33,7 +35,9 @@
 | system/camera.csv | follow_rate,transition_rate,dungeon_max_zoom,world_zoom,world_units | 跟随/入房指数响应、地牢缩放上限、世界缩放、每区场景单位，均为正，world_units≥12 |
 | world/obstacle.csv | id,kind,x,y,width,height | 唯一 ID、水面 water/岩石 rock、全局区域坐标及正矩形尺寸；边界不得越出世界，不能阻挡地牢/村庄入口导航格 |
 
-当前临时世界有 256 区、256 村庄、512 普通地牢、16 城堡，每个城堡统治一个 4×4 区域组。数量由关联行数决定，不在 region 重复维护。
+当前临时世界有 256 区、256 村庄、251 普通地牢、35 城堡；城堡位置参考截图错位排列，统治区为连续的 2–12 格不规则区域，每个统治区有 3–10 个普通地牢，城堡另计。数量由关联行数决定，不在 region 重复维护。6 个边缘格不配置普通地牢，仍保留村庄。
+
+当前 areapart 为 ap1–ap35，与 c1–c35 一一关联；ap1 默认开放，通关后开放 ap2、ap3、ap4。前置表包含实际接壤关系（非初始区的所有邻区均为候选前置），同一统治区列出的任意一个前置城堡通关均可开放该区。没有列出的条件不会隐式补全。相邻关系的双向引用是合法的，按 OR 可达性检查避免无入口闭环。生成工具 tools/Generate-WorldLayout.ps1 使用固定锚点、seed 生长连续不规则区域并按邻接层次编号，支持复现 CSV；游戏不在运行时执行生成器。
 
 ## 首次进房刷怪快照
 

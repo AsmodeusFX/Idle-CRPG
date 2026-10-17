@@ -10,7 +10,7 @@ public enum CampaignStage { TravelDungeon, Dungeon, TravelVillage, Village }
 public record ExpeditionTarget(DungeonSpec Dungeon,bool Farming);
 
 /// <summary>世界永久进度，地牢全灭与复刷不重置。</summary>
-public sealed class WorldProgress
+public sealed partial class WorldProgress
 {
     public HashSet<int> Explored { get; } = new();
     public HashSet<string> Cleared { get; } = new();
@@ -20,7 +20,7 @@ public sealed class WorldProgress
         if(CastleUnlocked(c,c.Rulers[region]))return RegionStatus.WaitingCastle;
         return Explored.Contains(region)?RegionStatus.Sweeping:RegionStatus.Unexplored;
     }
-    public bool CastleUnlocked(Config c,string castle) => c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]==castle).All(d=>Cleared.Contains(d.Id));
+    public bool CastleUnlocked(Config c,string castle) => AreaPartUnlocked(c,c.AreaParts.Single(p=>p.CastleId==castle).Id)&&c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]==castle).All(d=>Cleared.Contains(d.Id));
 }
 
 public static class ExpeditionPlanner
@@ -30,20 +30,18 @@ public static class ExpeditionPlanner
         var a=c.Regions.Single(r=>r.Id==region);
         return c.Regions.Where(r=>Math.Abs(r.X-a.X)+Math.Abs(r.Y-a.Y)==1);
     }
-    /// <summary>等级优先、稳定 ID 决胜。边界全橙时复刷一次，然后允许回溯探索边界。</summary>
+    /// <summary>只在已解锁统治区开拓；全部扫荡完后持续复刷最高等级橙区，等待玩家主动攻城。</summary>
     public static ExpeditionTarget Select(Config c,WorldProgress p,int current,bool previousWasFarm)
     {
-        var normal=c.Dungeons.Where(d=>!d.Castle).ToArray();
+        var accessible=p.AccessibleRegions(c);
+        var normal=c.Dungeons.Where(d=>!d.Castle&&accessible.Contains(d.RegionId)).ToArray();
         var local=normal.Where(d=>d.RegionId==current&&!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
         if(local!=null)return new(local,false);
         var neighbors=Neighbors(c,current).ToArray();
         var next=normal.Where(d=>neighbors.Any(n=>n.Id==d.RegionId)&&!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
         if(next!=null)return new(next,false);
         var orange=normal.Where(d=>p.Status(c,d.RegionId)==RegionStatus.WaitingCastle).OrderByDescending(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
-        if(!previousWasFarm&&neighbors.All(r=>p.Status(c,r.Id)==RegionStatus.WaitingCastle)&&orange!=null)return new(orange,true);
-        // 可沿已探索路径回溯到任一边界，不把橙色区域当成不可通行墙。
-        var frontier=c.Regions.Where(r=>p.Explored.Contains(r.Id)||Neighbors(c,r.Id).Any(n=>p.Explored.Contains(n.Id))).Select(r=>r.Id).ToHashSet();
-        var pending=normal.Where(d=>frontier.Contains(d.RegionId)&&!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
+        var pending=normal.Where(d=>!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
         if(pending!=null)return new(pending,false);
         return new(orange??normal.OrderByDescending(d=>d.LevelMin).ThenBy(d=>d.Id).First(),true);
     }
@@ -88,7 +86,7 @@ public sealed partial class WorldCampaign
     }
     private void BuildRoute(int region,Vector2 target)
     {
-        route.Clear();foreach(var point in WorldNavigation.FindPath(config,Position,target,Progress.Explored))route.Enqueue(point);
+        route.Clear();foreach(var point in WorldNavigation.FindPath(config,Position,target,allowedRegions:Progress.AccessibleRegions(config)))route.Enqueue(point);
     }
     /// <summary>玩家请求城堡；地牢/返村/交易中只排队，确保交易流程不会被跳过。</summary>
     internal bool RequestCastle(string id)
@@ -145,6 +143,7 @@ public sealed partial class WorldCampaign
         if(route.Count>0)return;
         if(Stage==CampaignStage.TravelDungeon)
         {
+            if(!Progress.AreaPartUnlocked(config,config.AreaPart(Target.Dungeon.RegionId).Id))throw new InvalidOperationException("目标统治区尚未解锁");
             if(Target.Dungeon.Castle&&!Progress.CastleUnlocked(config,Target.Dungeon.Id))throw new InvalidOperationException("城堡仍未解锁");
             Stage=CampaignStage.Dungeon;DungeonVisits++;
             game.BeginDungeon(Target.Dungeon,DungeonVisits);
@@ -178,5 +177,18 @@ public sealed partial class WorldCampaign
         Stage=CampaignStage.TravelVillage;
         BuildRoute(Village.RegionId,WorldPoint(Village.RegionId,Village.X,Village.Y));
         Status="通关返村 · "+Village.Name;
+    }
+    /// <summary>旧档可能位于新规则锁定范围；保留资源，返初始村庄交易，再按已解锁范围出发。</summary>
+    internal bool ReconcileAreaPartAccess(GameSession game)
+    {
+        if(!Progress.AreaPartUnlocked(config,config.AreaPart(CurrentRegion).Id))
+        {RespawnInVillage(game,config.StartRegionId);return false;}
+        if(Stage==CampaignStage.TravelDungeon)
+        {
+            if(Progress.AreaPartUnlocked(config,config.AreaPart(Target.Dungeon.RegionId).Id))BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));
+            else Plan(Target.Farming);
+        }
+        else if(Stage==CampaignStage.TravelVillage)BuildRoute(Village.RegionId,WorldPoint(Village.RegionId,Village.X,Village.Y));
+        return true;
     }
 }

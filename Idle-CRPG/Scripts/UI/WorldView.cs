@@ -73,6 +73,17 @@ public partial class Main
             if(config.Dungeons.Any(d=>d.RegionId==r.Id&&d.Castle))CastleIcon(pos+new Vector2(tile*.65f,tile*.36f),0.65f);
             if(r.Id==selectedRegion)DrawRect(new Rect2(pos-new Vector2(1,1),new Vector2(tile,tile)),new Color("e7d2a4"),false,2);
         }
+        // 勾勒选中统治区的外边界，方便识别不规则辖区，不改变探索状态颜色。
+        string selectedCastle=config.Rulers[selectedRegion<0?world.CurrentRegion:selectedRegion];
+        var selectedCells=config.Regions.Where(r=>config.Rulers[r.Id]==selectedCastle).Select(r=>(r.X,r.Y)).ToHashSet();
+        foreach(var cell in selectedCells)
+        {
+            var p=MapPoint(new V(cell.X,cell.Y));var color=new Color("d4b77d");
+            if(!selectedCells.Contains((cell.X-1,cell.Y)))DrawLine(p,p+new Vector2(0,tile),color,2);
+            if(!selectedCells.Contains((cell.X+1,cell.Y)))DrawLine(p+new Vector2(tile,0),p+new Vector2(tile,tile),color,2);
+            if(!selectedCells.Contains((cell.X,cell.Y-1)))DrawLine(p,p+new Vector2(tile,0),color,2);
+            if(!selectedCells.Contains((cell.X,cell.Y+1)))DrawLine(p+new Vector2(0,tile),p+new Vector2(tile,tile),color,2);
+        }
         var route=new[]{world.Position}.Concat(world.Route).Select(MapPoint).ToArray();
         if(route.Length>1)DrawPolyline(route,new Color("71d9d0"),2,true);
         var marker=MapPoint(VisualWorldPosition);
@@ -83,11 +94,12 @@ public partial class Main
 
         int selected=selectedRegion<0?world.CurrentRegion:selectedRegion;
         var region=config.Regions.Single(r=>r.Id==selected);
+        var part=config.AreaPart(selected);bool partUnlocked=world.Progress.AreaPartUnlocked(config,part.Id);
         var origin=new Vector2(680,185);
         DrawRect(new Rect2(origin,new Vector2(352,573)),new Color("111c26"));
         Text(region.Name,origin+new Vector2(22,34),23,"e7d2a4");
         Text($"区域 {region.Id:D3}  /  {TerrainName(region.Terrain)}",origin+new Vector2(22,62),15,"91a6b7");
-        Text(StatusName(MapStatus(selected)),origin+new Vector2(22,96),19);
+        Text(partUnlocked?$"{part.Id} · {StatusName(MapStatus(selected))}":$"{part.Id} · 统治区未解锁",origin+new Vector2(22,96),19);
         var normals=config.Dungeons.Where(d=>d.RegionId==selected&&!d.Castle).OrderBy(d=>d.LevelMin).ToArray();
         Text($"地牢 {normals.Count(d=>world.Progress.Cleared.Contains(d.Id))}/{normals.Length} 已通关",origin+new Vector2(22,132));
         int line=0;
@@ -98,7 +110,8 @@ public partial class Main
         int complete=config.Dungeons.Count(d=>!d.Castle&&config.Rulers[d.RegionId]==ruler.Id&&world.Progress.Cleared.Contains(d.Id));
         Text("统治城堡 / "+ruler.Name,origin+new Vector2(22,244),15,"e7d2a4");
         Text($"统治区普通地牢 {complete}/{total}",origin+new Vector2(22,270),15);
-        Text(world.Progress.Cleared.Contains(ruler.Id)?"统治区域已占领":world.Progress.CastleUnlocked(config,ruler.Id)?"城堡已解锁":"尚未满足城堡挑战条件",origin+new Vector2(22,295),14,"91a6b7");
+        string prerequisites=string.Join(" / ",config.AreaPartPrerequisites.Where(e=>e.AreaPartId==part.Id).Select(e=>e.RequiredAreaPartId));
+        Text(!partUnlocked?"前置任一："+prerequisites:world.Progress.Cleared.Contains(ruler.Id)?"统治区域已占领":world.Progress.CastleUnlocked(config,ruler.Id)?"城堡已解锁":"尚未满足城堡挑战条件",origin+new Vector2(22,295),14,"91a6b7");
         DrawLine(origin+new Vector2(22,315),origin+new Vector2(330,315),new Color("344651"));
         Text(world.Target.Farming?"当前任务 · 自动复刷":"当前任务 · 开拓远征",origin+new Vector2(22,346),17,"71e4d0");
         Text(world.Target.Dungeon.Name,origin+new Vector2(22,374),17);

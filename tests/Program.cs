@@ -159,7 +159,7 @@ foreach(var r in c.Rulers.Where(p=>p.Value==ruler).Select(p=>p.Key))
 }
 var farm=ExpeditionPlanner.Select(c,blocked,1,false);
 Check(farm.Farming&&blocked.Status(c,farm.Dungeon.RegionId)==RegionStatus.WaitingCastle&&farm.Dungeon.LevelMin==c.Dungeons.Where(d=>!d.Castle&&blocked.Status(c,d.RegionId)==RegionStatus.WaitingCastle).Max(d=>d.LevelMin),"橙区最高等级复刷错误");
-Check(!ExpeditionPlanner.Select(c,blocked,1,true).Farming,"复刷后没有继续回溯开拓");
+Check(ExpeditionPlanner.Select(c,blocked,1,true).Farming,"等待攻城时擅自进入锁定统治区");
 var allCleared=new WorldProgress();foreach(var d in c.Dungeons)allCleared.Cleared.Add(d.Id);foreach(var r in c.Regions)allCleared.Explored.Add(r.Id);
 Check(ExpeditionPlanner.Select(c,allCleared,1,true).Farming,"世界完成后挂机停止");
 
@@ -185,6 +185,7 @@ for(int tick=0;tick<1500000&&w.Progress.Cleared.Count<worldConfig.Dungeons.Count
         sawVillage=true;Check(campaign.Inventory.Count>0||sawTrade,"怪物未掉落杂物");
     }
     campaign.Tick(.05f);
+    Check(w.Progress.AreaPartUnlocked(worldConfig,worldConfig.AreaPart(w.CurrentRegion).Id),"实际行进穿过锁定统治区");
     if(lastStage is CampaignStage.TravelDungeon or CampaignStage.TravelVillage)
         Check(Vector2.Distance(lastPosition,w.Position)<=worldConfig.TravelSpeed*.05f+.0001f,"世界移动瞬移");
     if(w.DungeonVisits>oldVisits)
@@ -250,3 +251,4 @@ Console.WriteLine("PASS: dungeon regression, revival, 256-region world configura
 SaveChecks.Run(root);
 SceneChecks.Run(root);
 ProgressChecks.Run(root);
+AreaPartChecks.Run(root);

@@ -18,17 +18,19 @@ public static class WorldNavigation
         return !c.Obstacles.Any(o=>left<o.X+o.Width-.00001f&&left+size>o.X+.00001f&&top<o.Y+o.Height-.00001f&&top+size>o.Y+.00001f);
     }
     public static bool Walkable(Config c,Vector2 p)=>Walkable(c,(int)(p.X*CellsPerRegion),(int)(p.Y*CellsPerRegion));
-    public static List<Vector2> FindPath(Config c,Vector2 from,Vector2 to,ISet<int>? explored=null)
+    public static List<Vector2> FindPath(Config c,Vector2 from,Vector2 to,ISet<int>? explored=null,ISet<int>? allowedRegions=null)
     {
         int width=c.WorldWidth*CellsPerRegion;
         int Id(Vector2 p)=>(int)(p.Y*CellsPerRegion)*width+(int)(p.X*CellsPerRegion);
         int start=Id(from),goal=Id(to);
         var regions=c.Regions.ToDictionary(r=>(r.X,r.Y),r=>r.Id);
+        if(allowedRegions!=null&&(!allowedRegions.Contains(regions[((int)from.X,(int)from.Y)])||!allowedRegions.Contains(regions[((int)to.X,(int)to.Y)])))throw new InvalidOperationException("路径端点属于未解锁统治区");
         if(!Walkable(c,from)||!Walkable(c,to))throw new InvalidDataException("世界路径端点被障碍阻挡");
         var open=new PriorityQueue<int,int>();var cost=new Dictionary<int,int>{{start,0}};var parent=new Dictionary<int,int>();open.Enqueue(start,0);
         bool Allowed(int x,int y)
         {
             if(!Walkable(c,x,y))return false;
+            if(allowedRegions!=null&&!allowedRegions.Contains(regions[(x/CellsPerRegion,y/CellsPerRegion)]))return false;
             int gx=(int)to.X,gy=(int)to.Y;
             return explored==null||explored.Contains(regions[(x/CellsPerRegion,y/CellsPerRegion)])||(x/CellsPerRegion==gx&&y/CellsPerRegion==gy);
         }

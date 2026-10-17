@@ -50,6 +50,7 @@ public sealed partial class Config
         var rulers=Table("world/castle_region.csv");
         if(rulers.Select(r=>Integer(r,"region_id")).Distinct().Count()!=rulers.Count) throw new InvalidDataException("区域统治重复");
         Rulers=rulers.ToDictionary(r=>Integer(r,"region_id"),r=>r["castle_id"]);
+        LoadAreaParts(directory);
         ValidateWorld();
     }
 
@@ -69,10 +70,11 @@ public sealed partial class Config
         foreach(var r in Regions)
         {
             Require(Villages.Count(v=>v.RegionId==r.Id)==1,"每区域必须一个村庄");
-            Require(Dungeons.Any(d=>d.RegionId==r.Id&&!d.Castle)&&Dungeons.Count(d=>d.RegionId==r.Id&&d.Castle)<=1,"区域地牢数量错误");
+            Require(Dungeons.Count(d=>d.RegionId==r.Id&&d.Castle)<=1,"区域城堡数量错误");
             Require(Rulers.TryGetValue(r.Id,out var castle)&&Dungeons.Any(d=>d.Id==castle&&d.Castle),"区域必须恰好归属一个有效城堡");
         }
         Require(Rulers.Count==Regions.Count&&Dungeons.Where(d=>d.Castle).All(d=>Rulers[d.RegionId]==d.Id),"统治范围必须包含城堡所在区且不得多余");
+        ValidateAreaParts();
         Require(Unique(ItemTypes.Select(t=>t.Id))&&ItemTypes.All(t=>t.Kind is "currency" or "junk"&&t.AutoSell==(t.Kind=="junk")),"物品类型非法");
         Require(Unique(Items.Select(i=>i.Id))&&Items.All(i=>i.SellPrice>=0&&ItemTypes.Any(t=>t.Id==i.TypeId))&&Items.Count(i=>ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency")==1&&Items.Any(i=>i.Id=="gold"&&ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency"),"物品引用/金币配置非法");
         Require(Drops.Count>0&&Drops.All(d=>Monsters.Any(m=>m.Id==d.MonsterId)&&Items.Any(i=>i.Id==d.ItemId)&&d.Chance>=0&&d.Chance<=1&&d.Min>=1&&d.Max>=d.Min),"掉落引用/概率/数量非法");

@@ -42,6 +42,8 @@ public sealed class WorldSnapshot
     public List<string> Cleared=new();
     public List<Vector2> Route=new();
     public Dictionary<string,List<Vector2>> VillagePaths=new();
+    public int AreaPartAccessVersion;
+    public int LayoutVersion;
 }
 
 public sealed partial class GameSession
@@ -87,6 +89,7 @@ public sealed partial class GameSession
     /// <summary>校验后恢复；正式检查点重建未清房战斗，保留到账成长和待拾取奖励，不结算离线时间。</summary>
     public static GameSession Restore(Config config,SessionSnapshot s)
     {
+        MigrateWorldLayout(config,s);
         if(s.RoomCheckpoint)
         {
             foreach(var floor in s.Floors)foreach(var r in floor.Rooms)
@@ -115,6 +118,12 @@ public sealed partial class GameSession
         game.roomEntryLootState=s.RoomEntryLootState;
         foreach(var i in s.Inventory)game.inventory.Add((i.ItemId,i.Price),i.Count);
         game.World=s.World==null?null:WorldCampaign.Restore(config,s.World);
+        if(game.World!=null&&s.World!.AreaPartAccessVersion==0&&!game.World.ReconcileAreaPartAccess(game))
+        {
+            game.Floors.Clear();game.ActiveDungeon=null;game.Won=false;game.destination=-1;game.phase=0;game.FloorIndex=game.CurrentRoom=0;game.regroup=0;game.ResetRescue();
+            foreach(var h in game.Heroes){h.Hp=h.MaxHp;h.Timer=0;}
+            game.Note("统治区前置规则更新：保留成长与资源，回初始村庄补给后继续冒险");
+        }
         return game;
     }
     private static void ValidateSnapshot(Config c,SessionSnapshot s)
@@ -172,7 +181,7 @@ public sealed partial class GameSession
 
 public sealed partial class WorldCampaign
 {
-    internal WorldSnapshot Capture() => new() {Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastle=PendingCastle,NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
+    internal WorldSnapshot Capture() => new() {LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastle=PendingCastle,NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
     internal static WorldCampaign Restore(Config c,WorldSnapshot s)
     {
         var w=new WorldCampaign(c) {Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
@@ -186,12 +195,21 @@ public sealed partial class WorldCampaign
     }
     internal static void Validate(Config c,WorldSnapshot s)
     {
+        if(s.LayoutVersion is not (0 or 1))throw new InvalidDataException("世界布局存档版本无效");
+        if(s.AreaPartAccessVersion is not (0 or 1))throw new InvalidDataException("统治区前置存档版本无效");
         if(s.NavigationVersion is not (0 or 1))throw new InvalidDataException("不支持的世界寻路版本");
         bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&p.X>=0&&p.Y>=0&&p.X<c.WorldWidth&&p.Y<c.WorldHeight;
         if(s.VillagePaths==null||s.VillagePaths.Count>3||s.VillagePaths.Any(p=>!c.Heroes.Any(h=>h.Id==p.Key)||p.Value.Count>20000||p.Value.Any(v=>!Point(v))))throw new InvalidDataException("村庄路径无效");
         if(!Enum.IsDefined(s.Stage)||!Point(s.Position)||!c.Dungeons.Any(d=>d.Id==s.TargetId)||!c.Villages.Any(v=>v.Id==s.VillageId)||s.Explored==null||s.Cleared==null||s.Route==null||s.Explored.Any(id=>!c.Regions.Any(r=>r.Id==id))||s.Cleared.Any(id=>!c.Dungeons.Any(d=>d.Id==id))||s.Route.Count>c.Regions.Count*WorldNavigation.CellsPerRegion*WorldNavigation.CellsPerRegion+2||s.Route.Any(p=>!Point(p))||s.Trades<0||s.DungeonVisits<0||!float.IsFinite(s.TradeElapsed)||s.TradeElapsed<0||s.TradeElapsed>c.TradeSeconds||s.PendingCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.PendingCastle&&d.Castle))
             throw new InvalidDataException("存档世界状态/引用无效");
         int current=c.Regions.Single(r=>r.X==(int)s.Position.X&&r.Y==(int)s.Position.Y).Id;
+        if(s.AreaPartAccessVersion==1)
+        {
+            var progress=new WorldProgress();progress.Cleared.UnionWith(s.Cleared);
+            var allowed=progress.AccessibleRegions(c);
+            int RegionAt(Vector2 point)=>c.Regions.Single(r=>r.X==(int)point.X&&r.Y==(int)point.Y).Id;
+            if(!allowed.Contains(current)||s.Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon&&!allowed.Contains(c.Dungeons.Single(d=>d.Id==s.TargetId).RegionId)||s.Route.Any(p=>!allowed.Contains(RegionAt(p))))throw new InvalidDataException("存档路线或目标进入未解锁统治区");
+        }
         if(!s.Explored.Contains(current)||((s.Stage==CampaignStage.TravelDungeon||s.Stage==CampaignStage.TravelVillage)&&s.Route.Count==0)||((s.Stage==CampaignStage.Dungeon||s.Stage==CampaignStage.Village)&&s.Route.Count!=0))throw new InvalidDataException("存档探索/路径状态无效");
     }
 }
