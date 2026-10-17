@@ -52,7 +52,18 @@ public partial class Main
     }
     private async void RunDisplaySmoke()
     {
-        if(DisplayServer.GetName()=="headless")return;
+        if(!NativeWindowAvailable)
+        {
+            int width=preferences.Width,height=preferences.Height;bool fullscreen=preferences.Fullscreen;
+            pendingWindowSize=new Vector2I(960,600);ApplyDisplay();WindowResized();TickClient(0);
+            RefreshDisplayControls();
+            resolutionBox.EmitSignal(OptionButton.SignalName.ItemSelected,0L);
+            fullscreenBox.EmitSignal(BaseButton.SignalName.Toggled,!fullscreen);
+            if(pendingWindowSize!=null||preferences.Width!=width||preferences.Height!=height||preferences.Fullscreen!=fullscreen||!resolutionBox.Disabled||!fullscreenBox.Disabled)
+            {GD.PushError("DISPLAY_MANAGED_SMOKE_FAILED");QuitSafely(1);return;}
+            GD.Print("DISPLAY_MANAGED_SMOKE_OK: native calls skipped, controls disabled, preferences preserved");
+            return;
+        }
         displaySmokeActive=true;
         try
         {

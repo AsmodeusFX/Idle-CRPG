@@ -23,6 +23,15 @@ public partial class Main
     private long savedRevision=-1;
     private bool settingsDirty;
     private Vector2I? pendingWindowSize;
+    // 编辑器内嵌窗口由编辑器管理，不能修改原生窗口的模式、尺寸和位置。
+    private bool NativeWindowAvailable => DisplayServer.GetName()!="headless"&&!Engine.IsEmbeddedInEditor();
+    private void RefreshDisplayControls()
+    {
+        resolutionBox.Disabled=!NativeWindowAvailable||preferences.Fullscreen;
+        fullscreenBox.Disabled=!NativeWindowAvailable;
+        string hint=Engine.IsEmbeddedInEditor()?"内嵌运行时请在编辑器调整尺寸，或独立运行游戏。":"";
+        resolutionBox.TooltipText=hint;fullscreenBox.TooltipText=hint;
+    }
 
     private void InitializeClient()
     {
@@ -107,8 +116,8 @@ public partial class Main
         var close=new Button {Text="关闭",CustomMinimumSize=new Vector2(80,36)};close.Pressed+=ToggleSettings;heading.AddChild(close);
         box.AddChild(new Label {Text="界面尺寸"});
         resolutionBox=new OptionButton();foreach(var size in config.Windows)resolutionBox.AddItem($"{size.Width} × {size.Height}");
-        resolutionBox.ItemSelected+=index=>{if(index>=config.Windows.Count)return;var p=config.Windows[(int)index];preferences.Width=p.Width;preferences.Height=p.Height;ApplyDisplay();PersistSettings();PlaySound("sfx_click");};box.AddChild(resolutionBox);
-        fullscreenBox=new CheckButton {Text="全屏显示（窗口尺寸在窗口模式生效）"};fullscreenBox.Toggled+=value=>{preferences.Fullscreen=value;ApplyDisplay();resolutionBox.Disabled=value;PersistSettings();};box.AddChild(fullscreenBox);
+        resolutionBox.ItemSelected+=index=>{if(!NativeWindowAvailable||index<0||index>=config.Windows.Count)return;var p=config.Windows[(int)index];preferences.Width=p.Width;preferences.Height=p.Height;ApplyDisplay();PersistSettings();PlaySound("sfx_click");};box.AddChild(resolutionBox);
+        fullscreenBox=new CheckButton {Text="全屏显示（窗口尺寸在窗口模式生效）"};fullscreenBox.Toggled+=value=>{if(!NativeWindowAvailable)return;preferences.Fullscreen=value;ApplyDisplay();RefreshDisplayControls();PersistSettings();};box.AddChild(fullscreenBox);RefreshDisplayControls(); if(Engine.IsEmbeddedInEditor())box.AddChild(new Label {Text="内嵌运行：尺寸由编辑器控制，请独立运行以调整窗口。"});
         var musicRow=new HBoxContainer();box.AddChild(musicRow);musicRow.AddChild(new Label {Text="音乐音量",SizeFlagsHorizontal=Control.SizeFlags.ExpandFill});musicValue=new Label();musicRow.AddChild(musicValue);
         musicSlider=new HSlider {MinValue=0,MaxValue=100,Step=1};musicSlider.ValueChanged+=value=>{preferences.MusicVolume=(float)value;ApplyAudio();RefreshVolumeText();QueueSettingsSave();};box.AddChild(musicSlider);
         var soundRow=new HBoxContainer();box.AddChild(soundRow);soundRow.AddChild(new Label {Text="音效音量",SizeFlagsHorizontal=Control.SizeFlags.ExpandFill});soundValue=new Label();soundRow.AddChild(soundValue);
@@ -127,7 +136,7 @@ public partial class Main
             while(resolutionBox.ItemCount>config.Windows.Count)resolutionBox.RemoveItem(resolutionBox.ItemCount-1);
             int selected=config.Windows.FindIndex(p=>p.Width==preferences.Width&&p.Height==preferences.Height);
             if(selected<0){resolutionBox.AddItem($"{preferences.Width} × {preferences.Height}（当前）");selected=resolutionBox.ItemCount-1;}
-            resolutionBox.Select(selected);resolutionBox.Disabled=preferences.Fullscreen;
+            resolutionBox.Select(selected);RefreshDisplayControls();
             fullscreenBox.SetPressedNoSignal(preferences.Fullscreen);musicSlider.SetValueNoSignal(preferences.MusicVolume);soundSlider.SetValueNoSignal(preferences.SoundVolume);RefreshVolumeText();
             SaveNow();settingsRoot.Show();
         }
@@ -152,12 +161,12 @@ public partial class Main
     }
     private void TickClient(double delta)
     {
-        if(pendingWindowSize is {} target){pendingWindowSize=null;DisplayServer.WindowSetSize(target);GetWindow().MoveToCenter();}
+        if(pendingWindowSize is {} target){pendingWindowSize=null;if(NativeWindowAvailable){DisplayServer.WindowSetSize(target);GetWindow().MoveToCenter();}}
         if(settingsDirty&&(settingsDelay-=delta)<=0)PersistSettings();
     }
     private void ApplyDisplay()
     {
-        if(DisplayServer.GetName()=="headless")return;
+        if(!NativeWindowAvailable){pendingWindowSize=null;return;}
         if(preferences.Fullscreen){pendingWindowSize=null;DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);return;}
         bool leaving=DisplayServer.WindowGetMode()!=DisplayServer.WindowMode.Windowed;
         DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
@@ -166,7 +175,7 @@ public partial class Main
     }
     private void WindowResized()
     {
-        if(DisplayServer.GetName()=="headless"||preferences.Fullscreen||DisplayServer.WindowGetMode()!=DisplayServer.WindowMode.Windowed||pendingWindowSize!=null)return;
+        if(!NativeWindowAvailable||preferences.Fullscreen||DisplayServer.WindowGetMode()!=DisplayServer.WindowMode.Windowed||pendingWindowSize!=null)return;
         var size=DisplayServer.WindowGetSize();preferences.Width=size.X;preferences.Height=size.Y;QueueSettingsSave();
     }
 }
