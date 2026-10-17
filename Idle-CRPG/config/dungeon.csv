@@ -1,0 +1,2 @@
+floors_min,floors_max,rooms_min,rooms_max,monsters_min,monsters_max,event_chance
+2,3,6,9,2,4,0.5

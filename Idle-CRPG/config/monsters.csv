@@ -1,0 +1,3 @@
+id,name,hp,attack,defense,speed,range,cooldown
+rat,洞穴鼠,35,6,0,2.1,0.7,1.1
+guard,地牢守卫,55,9,2,1.7,0.85,1.4
