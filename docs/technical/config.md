@@ -2,6 +2,8 @@
 
 所有 CSV 为 UTF-8，按功能放在 `Idle-CRPG/config/` 子目录。首行为英文表头，字段不含逗号，数字使用小数点。ID 唯一、跨表引用有效，缺字段直接报错。CSV 的 Godot importer 使用 keep，不作为翻译资源。
 
+`.translation` 是 Godot 的多语言翻译资源，不是游戏数值配置。早期配置 CSV 被默认 `csv_translation` 导入器误识别，生成的 18 个无引用翻译文件已移出工程，归档到根目录忽略的 `artifacts/legacy-csv-translations/`。config 仅保留配置 CSV 与其 `.csv.import` 文件；后者是必要的导入元数据，应随 CSV 提交，内容使用 `importer="keep"`，防止再次误导入。未来正式本地化资源统一放 `Idle-CRPG/Assets/Localization/`。
+
 | 表 | 字段 | 含义与约束 |
 |---|---|---|
 | world/world.csv | width,height,start_region_id | 矩形尺寸，各为 1–64，当前 16×16；出生区域引用 |

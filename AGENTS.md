@@ -4,6 +4,7 @@
 - Godot 工程仅在 `Idle-CRPG/`；归档文档在根目录 `docs/`。
 - 使用 C#。纯逻辑在 `Scripts/Core/`，不得引用 Godot；节点、绘制、输入在 `Scripts/UI/`。
 - 数值统一使用 `Idle-CRPG/config/` 下按 hero、monster、dungeon、world、village、item 等功能分目录的 CSV，UTF-8。字段改变同步更新字段字典和校验。
+- config 只存配置 CSV 和必要的 `.csv.import` 元数据，CSV 的 importer 统一为 keep，禁止当作翻译表导入。正式本地化资源放 `Idle-CRPG/Assets/Localization/`；误生成的翻译残留移到忽略的 `artifacts/legacy-csv-translations/`，不得混入配置或提交。
 - UI 只能通过 GameSession 命令改变游戏状态；伤害和奖励只有一份实现。
 - 结构在进入地牢前生成；内容在首次跨门进入时快照生成。回访禁止重复刷怪或奖励。
 - 不得预先揭示邻居。探索历史在本次挑战各层保留；走廊无怪。
