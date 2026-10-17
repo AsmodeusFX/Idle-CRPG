@@ -39,7 +39,7 @@ public sealed class GameSession
     public int Experience { get; private set; }
     public int Kills { get; private set; }
     public bool Won { get; private set; }
-    /// <summary>全灭重挑战次数；不影响累计成长和击杀资源。</summary>
+    /// <summary>全灭返村次数；不影响累计成长和击杀资源。</summary>
     public int Retries { get; private set; }
     public Actor? ReviveTarget { get; private set; }
     public Actor? Rescuer { get; private set; }
@@ -97,14 +97,14 @@ public sealed class GameSession
     private void TickDungeon(float dt)
     {
         if (Won) return;
-        if (!Heroes.Any(h=>h.Alive)) { RetryDungeon(); return; }
+        if (!Heroes.Any(h=>h.Alive)) { RespawnParty(); return; }
         var room = Floor.Rooms[CurrentRoom];
         if (!room.Clear && room.Generated)
         {
             Status = "交战中";
             ResetRescue();
             Fight(room,dt);
-            if (!Heroes.Any(h=>h.Alive)) RetryDungeon();
+            if (!Heroes.Any(h=>h.Alive)) RespawnParty();
             return;
         }
         // 清房后救援优先于事件、探索、换层和最终通关。
@@ -170,24 +170,19 @@ public sealed class GameSession
         return true;
     }
 
-    /// <summary>重置所有楼层的本轮内容，保留同一拓扑、队员实例和所有累计成长。</summary>
-    private void RetryDungeon()
+    /// <summary>放弃本轮地牢并在所在区域村庄满血复活，资源保留，交易完成后重新决策。</summary>
+    private void RespawnParty()
     {
         Retries++;
-        foreach (var floor in Floors)
-        {
-            foreach (var room in floor.Rooms)
-            {
-                room.Revealed=false; room.Generated=false; room.EventUsed=false;
-                room.SnapshotLevel=0; room.Event=""; room.Monsters.Clear();
-            }
-            foreach (var passage in floor.Passages) passage.Revealed=false;
-        }
-        FloorIndex=0; regroup=0; ResetRescue();
+        int region=World?.CurrentRegion??ActiveDungeon?.RegionId??Config.StartRegionId;
+        Floors.Clear();ActiveDungeon=null;Won=false;
+        FloorIndex=0; CurrentRoom=0; regroup=0; ResetRescue();
+        destination=-1;phase=0;
         foreach (var h in Heroes) { h.Hp=h.MaxHp; h.Timer=0; }
-        EnterFloor();
-        Status="全灭后重新挑战";
-        Note($"小队全灭，返回一层入口 · 第 {Retries+1} 次挑战，成长与资源保留");
+        World??=new WorldCampaign(Config);
+        World.RespawnInVillage(this,region);
+        Status="全灭后在村庄复活";
+        Note($"小队全灭，在{World.Village.Name}复活，交易后继续冒险；成长与资源保留");
     }
 
     private int FindTarget()

@@ -78,28 +78,29 @@ foreach(var m in combat.Floor.Rooms[combat.CurrentRoom].Monsters)m.Hp=0;
 for(int i=0;i<1000&&!combat.Heroes[0].Alive;i++)combat.Tick(0.05f);
 Check(combat.Heroes[0].Alive,"清怪后未救援");
 
-// 在后续楼层全灭：成长资源保留，所有层内容、事件、探索、移动与救援状态重置。
+// 在后续楼层全灭：返村满血复活，保留成长，清除地牢和救援状态，交易后才继续。
 var retry=new GameSession(c,42,new[]{"warrior","ranger","mage"});
 foreach(var h in retry.Heroes)h.Hp=h.MaxHp=100000;
 for(int i=0;i<100000&&retry.FloorIndex==0;i++)retry.Tick(0.05f);
 Check(retry.FloorIndex>0&&retry.Heroes[0].Level>1&&retry.Kills>0,"未构造跨层成长场景");
 var saved=retry.Heroes.Select(h=>(h,h.Level,h.MaxHp,h.Attack,h.Defense)).ToArray();
 int xp=retry.Experience,kills=retry.Kills;
-string layout=string.Join(';',retry.Floors.SelectMany(f=>f.Rooms).Select(r=>$"{r.Id}:{r.X}:{r.Y}:{r.Boss}"));
 retry.Heroes[0].Hp=0; retry.Tick(0.05f);Check(retry.ReviveTarget!=null,"没有进入救援");
 foreach(var h in retry.Heroes){h.Hp=0;h.Timer=9;}
 retry.Tick(0.05f);
-Check(retry.Retries==1&&retry.FloorIndex==0&&retry.CurrentRoom==0&&!retry.Won,"未返回一层入口");
+Check(retry.Retries==1&&retry.World?.Stage==CampaignStage.Village&&retry.World.CurrentRegion==c.StartRegionId&&!retry.Won,"未在当前区域村庄复活");
+var retryWorld=retry.World!;
+Check(retryWorld.Progress.Cleared.Count==0,"失败地牢被记为通关");
 Check(retry.Experience==xp&&retry.Kills==kills,"累计资源丢失");
 foreach(var h in saved)Check(retry.Heroes.Contains(h.h)&&h.h.Level==h.Level&&h.h.MaxHp==h.MaxHp&&h.h.Attack==h.Attack&&h.h.Defense==h.Defense&&h.h.Hp==h.MaxHp&&h.h.Timer==0,"成长或队员丢失/未恢复生命");
 Check(retry.ReviveTarget==null&&retry.Rescuer==null&&retry.ReviveElapsed==0,"旧救援状态泄露");
-Check(layout==string.Join(';',retry.Floors.SelectMany(f=>f.Rooms).Select(r=>$"{r.Id}:{r.X}:{r.Y}:{r.Boss}")),"全灭改变结构");
-Check(retry.Floors.SelectMany(f=>f.Rooms).Count(r=>r.Revealed)==1,"旧探索未重置");
-Check(retry.Floors.SelectMany(f=>f.Rooms).All(r=>r.Monsters.Count==0&&r.Event==""&&!r.EventUsed&&r.SnapshotLevel==0),"旧房间内容未重置");
-Check(retry.Floors.SelectMany(f=>f.Passages).All(p=>!p.Revealed),"旧走廊未重置");
-for(int i=0;i<2000&&retry.CurrentRoom==0;i++)retry.Tick(0.05f);
-Check(retry.CurrentRoom!=0&&retry.Floor.Rooms[retry.CurrentRoom].SnapshotLevel==1,"重挑战未使用独立刷怪配置");
-foreach(var h in retry.Heroes)h.Hp=0;retry.Tick(0.05f);Check(retry.Retries==2,"无法连续重挑战");
+Check(retry.Floors.Count==0&&retry.ActiveDungeon==null&&retry.World!.TradeElapsed==0&&retry.World.Route.Count==0,"旧地牢/交易/路线状态未清除");
+retry.Tick(.05f);Check(retryWorld.Stage==CampaignStage.Village&&retryWorld.TradeElapsed==0,"跳过前往 NPC 流程");
+for(int i=0;i<1000&&retryWorld.Stage==CampaignStage.Village;i++)retry.Tick(.05f);
+Check(retryWorld.Trades==1&&retryWorld.Stage==CampaignStage.TravelDungeon,"复活后未完成交易再出发");
+for(int i=0;i<2000&&retryWorld.Stage!=CampaignStage.Dungeon;i++)retry.Tick(.05f);
+Check(retryWorld.Stage==CampaignStage.Dungeon,"交易后未继续冒险");
+foreach(var h in retry.Heroes)h.Hp=0;retry.Tick(0.05f);Check(retry.Retries==2&&retryWorld.Stage==CampaignStage.Village,"再次全灭未返村");
 // 科技参数在首次进入时读取，不能追涨已生成怪物。
 var tech=new GameSession(c,9,new[]{"warrior","ranger","mage"});foreach(var h in tech.Heroes)h.Hp=h.MaxHp=100000;
 for(int i=0;i<2000&&tech.CurrentRoom==0;i++)tech.Tick(.05f);
@@ -175,9 +176,33 @@ for(int i=0;i<10000&&w.Stage!=CampaignStage.Dungeon;i++)campaign.Tick(.05f);
 for(int i=0;i<10000&&(w.Stage!=CampaignStage.Dungeon||campaign.Inventory.Count==0);i++)campaign.Tick(.05f);
 Check(w.Stage==CampaignStage.Dungeon&&campaign.Inventory.Count>0,"未构造有掉落的全灭场景");
 long keptGold=campaign.Gold;var keptItems=campaign.Inventory.ToArray();int keptProgress=w.Progress.Cleared.Count,keptRetries=campaign.Retries;
+int deathRegion=w.CurrentRegion,previousTrades=w.Trades,previousVisits=w.DungeonVisits;
+Check(deathRegion!=worldConfig.StartRegionId,"未构造非出生区域全灭场景");
+int keptExperience=campaign.Experience;
+var keptHeroes=campaign.Heroes.Select(h=>(h,h.Level,h.MaxHp,h.Attack)).ToArray();
 foreach(var h in campaign.Heroes)h.Hp=0;campaign.Tick(.05f);
-Check(campaign.Retries==keptRetries+1&&campaign.Gold==keptGold&&campaign.Inventory.SequenceEqual(keptItems)&&w.Progress.Cleared.Count==keptProgress&&w.Stage==CampaignStage.Dungeon,"全灭丢失金币/物品/世界进度");
+Check(campaign.Retries==keptRetries+1&&campaign.Gold==keptGold&&campaign.Inventory.SequenceEqual(keptItems)&&w.Progress.Cleared.Count==keptProgress&&w.Stage==CampaignStage.Village,"全灭丢失金币/物品/世界进度或没有在村庄复活");
+Check(w.CurrentRegion==deathRegion&&w.Village.RegionId==deathRegion&&w.TradeElapsed==0&&w.Route.Count==0,"复活村庄区域或临时状态错误");
+Check(campaign.Experience==keptExperience&&keptHeroes.All(h=>campaign.Heroes.Contains(h.h)&&h.h.Level==h.Level&&h.h.MaxHp==h.MaxHp&&h.h.Hp==h.MaxHp&&h.h.Attack==h.Attack&&h.h.Timer==0),"返村复活丢失成长或未满血");
+long sale=keptItems.Sum(e=>e.Key.Price*e.Value);
+for(int i=0;i<1000&&w.Stage==CampaignStage.Village;i++)
+{
+    campaign.Tick(.05f);
+    Check(w.DungeonVisits==previousVisits,"交易结束前已进入地牢");
+    if(w.Stage==CampaignStage.Village)Check(campaign.Gold==keptGold&&campaign.Inventory.SequenceEqual(keptItems),"提前售卖/重复交易");
+}
+Check(w.Trades==previousTrades+1&&w.Stage==CampaignStage.TravelDungeon&&campaign.Gold==keptGold+sale&&campaign.Inventory.Count==0,"全灭后未准确交易再出发");
+for(int i=0;i<10000&&w.Stage!=CampaignStage.Dungeon;i++)campaign.Tick(.05f);
+Check(w.Stage==CampaignStage.Dungeon&&w.DungeonVisits==previousVisits+1,"复活交易后冒险停滞");
 Check(w.Target.Farming,"世界全部完成后未持续复刷");
+// 实际由怪物击杀最后一人时也应在同一个逻辑步返村，而非只处理步开始时已全灭。
+var battleWipe=GameSession.CreateWorld(c,7,new[]{"warrior","ranger","mage"});
+for(int i=0;i<2000&&(battleWipe.World!.Stage!=CampaignStage.Dungeon||battleWipe.CurrentRoom==0);i++)battleWipe.Tick(.05f);
+Check(battleWipe.World!.Stage==CampaignStage.Dungeon&&battleWipe.CurrentRoom!=0,"未构造战斗全灭场景");
+foreach(var h in battleWipe.Heroes){h.Hp=1;h.Defense=0;h.Timer=999;}
+foreach(var m in battleWipe.Floor.Rooms[battleWipe.CurrentRoom].Monsters){m.Hp=100000;m.Attack=100000;m.Range=100;m.Cooldown=.05f;m.Timer=0;}
+for(int i=0;i<10&&battleWipe.World.Stage==CampaignStage.Dungeon;i++)battleWipe.Tick(.05f);
+Check(battleWipe.World.Stage==CampaignStage.Village&&battleWipe.Retries==1&&battleWipe.Heroes.All(h=>h.Alive&&h.Hp==h.MaxHp),"战斗击杀触发全灭后未立即返村满血复活");
 void RejectConfig(Action<Config> mutate,string message)
 {
     var invalid=Config.Load(Path.Combine(root,"Idle-CRPG/config"));mutate(invalid);bool failed=false;

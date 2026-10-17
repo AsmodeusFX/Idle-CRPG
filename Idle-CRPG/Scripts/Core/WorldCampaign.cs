@@ -141,10 +141,23 @@ public sealed class WorldCampaign
         }
         else
         {
-            Stage=CampaignStage.Village;TradeElapsed=0;
-            for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(-4,-1+i*0.6f);
-            Status=Village.Name+" · 前往交易 NPC";
+            EnterVillage(game);
         }
+    }
+    private void EnterVillage(GameSession game)
+    {
+        Stage=CampaignStage.Village;TradeElapsed=0;route.Clear();
+        for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(-4,-1+i*0.6f);
+        Status=Village.Name+" · 前往交易 NPC";
+    }
+    /// <summary>全灭直接在当前区域村庄复活；不记地牢通关，必须完成正常交易后才选目标。</summary>
+    internal void RespawnInVillage(GameSession game,int regionId)
+    {
+        Village=config.Villages.Single(v=>v.RegionId==regionId);
+        Position=WorldPoint(regionId,Village.X,Village.Y);
+        Progress.Explored.Add(regionId);
+        EnterVillage(game);
+        Status="全灭复活 · "+Village.Name+" · 前往交易 NPC";
     }
     internal void CompleteDungeon(GameSession game)
     {
