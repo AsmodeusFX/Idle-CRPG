@@ -16,6 +16,8 @@ public sealed class Actor
     public int RewardXp;
     public float DropMultiplier=1, ValueMultiplier=1;
     public bool Alive => Hp > 0;
+    /// <summary>角色字段均为值类型或不可变字符串，复制后可独立用于检查点，不共享可变战斗状态。</summary>
+    public Actor Copy()=>(Actor)MemberwiseClone();
     public static Actor From(UnitSpec s) => new() { SpecId=s.Id, Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
 }
 
@@ -56,6 +58,8 @@ public sealed partial class GameSession
     /// <summary>行进时取沿路径最接近下一道门的存活成员，战斗镜头不使用此位置追踪。</summary>
     public Actor Leader => Heroes.Where(h=>h.Alive).OrderBy(h=>destination<0?0:Vector2.DistanceSquared(h.Position,phase==0?Floor.Rooms[CurrentRoom].DoorTowards(Floor.Rooms[destination]):Floor.Rooms[destination].DoorTowards(Floor.Rooms[CurrentRoom]))).FirstOrDefault()??Heroes[0];
     private float regroup;
+    private List<PartyEntry> roomEntry=new();
+    private uint roomEntryLootState;
 
     public GameSession(Config config, int seed, IEnumerable<string> ids)
     {
@@ -98,6 +102,7 @@ public sealed partial class GameSession
         var inward=Vector2.Normalize(start.Center-stairs);
         var side=new Vector2(-inward.Y,inward.X);
         for (int i=0;i<Heroes.Count;i++) Heroes[i].Position = stairs+inward*.4f+side*((i-1)*.35f);
+        CaptureRoomEntry();
         Note($"抵达第 {FloorIndex+1} 层 · {Floor.Rooms.Count} 个房间");
     }
 
@@ -124,6 +129,7 @@ public sealed partial class GameSession
         }
         // 清房后救援优先于事件、探索、换层和最终通关。
         if (Rescue(dt)) return;
+        if(CollectLoot(room,dt))return;
         if (room.Clear && !room.EventUsed)
         {
             if(room.Event!="")
@@ -241,6 +247,7 @@ public sealed partial class GameSession
         {
             Reveal(b);
             CurrentRoom=b.Id; destination=-1;
+            CaptureRoomEntry();
         }
     }
 
@@ -260,6 +267,7 @@ public sealed partial class GameSession
             var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),room.Boss&&i==count-1,modifiers);
             m.Position=room.Center+new Vector2(((float)rng.NextDouble()*2-1)*(room.HalfWidth-.8f),((float)rng.NextDouble()*2-1)*(room.HalfHeight-.8f));
             room.Monsters.Add(m);
+            room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,modifiers));
         }
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
         Note($"进入房间 {room.Id+1}：{room.Monsters.Count} 敌人 · 等级 {levelMin}–{levelMax}"+(room.Boss?" · BOSS":""));
@@ -296,29 +304,57 @@ public sealed partial class GameSession
         }
         if(actor.Timer>0) return;
         actor.Timer=actor.Cooldown;
-        HitCount++;MarkChanged();
+        HitCount++;
         target.Hp=Math.Max(0,target.Hp-Math.Max(1,actor.Attack-target.Defense));
-        if(!target.Alive && room.Monsters.Contains(target)) { Kills++; GainExperience(target.RewardXp); RollDrops(target); if(target.Boss) Note("守门者已击败"); }
+        if(!target.Alive && room.Monsters.Contains(target))
+        {
+            // 击杀即得的经验立即结算并保存；实物掉落只生成待拾取对象。
+            Kills++;GainExperience(target.RewardXp);
+            var loot=RollDrops(target);
+            if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
+            if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}
+        }
     }
     internal static void Move(Actor a,Vector2 target,float dt,float? speed=null)
     {
         var delta=target-a.Position; float distance=delta.Length();
         if(distance>0.001f) a.Position+=delta/distance*Math.Min(distance,(speed??a.Speed)*dt);
     }
-    private void RollDrops(Actor monster)
+    private RoomLoot RollDrops(Actor monster)
     {
+        var loot=new RoomLoot {Position=monster.Position};
         foreach(var drop in Config.Drops.Where(d=>d.MonsterId==monster.SpecId))
         {
             if(lootRandom.NextDouble()>=Math.Min(1,drop.Chance*monster.DropMultiplier))continue;
             var item=Config.Items.Single(i=>i.Id==drop.ItemId);var type=Config.ItemTypes.Single(t=>t.Id==item.TypeId);
             int count=lootRandom.Next(drop.Min,drop.Max+1);
-            if(type.Kind=="currency")Gold=checked(Gold+(long)Math.Ceiling(count*monster.ValueMultiplier));
+            if(type.Kind=="currency")loot.Gold=checked(loot.Gold+(long)Math.Ceiling(count*monster.ValueMultiplier));
             else
             {
                 long price=checked((long)Math.Ceiling(item.SellPrice*monster.ValueMultiplier));
-                var key=(item.Id,price);inventory[key]=checked(inventory.GetValueOrDefault(key)+count);
+                loot.Items.Add(new InventoryEntry(item.Id,price,count));
             }
         }
+        return loot;
+    }
+    private void CaptureRoomEntry()
+    {
+        roomEntry=Heroes.Select(h=>new PartyEntry(h.Position,h.Hp)).ToList();roomEntryLootState=lootRandom.State;
+    }
+    /// <summary>清房后先救援，再逐份战利品走近领取，最后处理房间事件。掉落金币和物品在领取时入账。</summary>
+    private bool CollectLoot(Room room,float dt)
+    {
+        var loot=room.Loot.FirstOrDefault(l=>!l.Collected);
+        if(loot==null)return false;
+        Status="前往拾取战利品";
+        var user=Heroes.Where(h=>h.Alive).OrderBy(h=>Vector2.DistanceSquared(h.Position,loot.Position)).First();
+        if(Vector2.Distance(user.Position,loot.Position)>.35f){Move(user,loot.Position,dt);return true;}
+        loot.Collected=true;Gold=checked(Gold+loot.Gold);
+        foreach(var item in loot.Items)
+        {
+            var key=(item.ItemId,item.Price);inventory[key]=checked(inventory.GetValueOrDefault(key)+item.Count);
+        }
+        Note($"拾取 {loot.Gold} 金币 · {loot.Items.Sum(i=>i.Count)} 件物品，已入库");return true;
     }
     internal long SellJunk()
     {
@@ -333,6 +369,7 @@ public sealed partial class GameSession
     }
     private void GainExperience(int amount)
     {
+        MarkChanged();
         Experience+=amount;
         while(Experience>=Heroes[0].Level*18)
         {

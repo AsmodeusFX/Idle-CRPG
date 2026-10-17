@@ -22,7 +22,21 @@ public sealed class Room
     public string Event = "";
     public List<int> Neighbors = new();
     public List<Actor> Monsters = new();
-    public bool Clear => Generated && Monsters.All(m => !m.Alive);
+    public bool ContentCleared;
+    public List<MonsterOrigin> Origins=new();
+    public List<RoomLoot> Loot=new();
+    public bool Clear => Generated && (ContentCleared||Monsters.All(m => !m.Alive));
+}
+
+/// <summary>进房生成快照，只保存重建所需信息，不保存怪物交战中的生命、冷却和移动。</summary>
+public record MonsterOrigin(string SpecId,int Level,bool Boss,Vector2 Position,SpawnModifiers Modifiers);
+/// <summary>战利品在击杀时确定，清房且救援完成后走近拾取，领取标志与资源同事务保存。</summary>
+public sealed class RoomLoot
+{
+    public Vector2 Position;
+    public bool Collected;
+    public long Gold;
+    public List<InventoryEntry> Items=new();
 }
 
 public sealed class Passage

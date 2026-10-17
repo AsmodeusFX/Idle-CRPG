@@ -17,6 +17,8 @@ public partial class Main
     private float cameraZoom;
     private string cameraScene="";
     private bool cameraReady;
+    private V cameraVelocity;
+    private float zoomVelocity;
     private void BuildSceneCanvas()
     {
         var clip=new Control {Position=SceneRect.Position,Size=SceneRect.Size,ClipContents=true,MouseFilter=Control.MouseFilterEnum.Ignore};AddChild(clip);
@@ -29,23 +31,31 @@ public partial class Main
         if(w.Stage==IdleCrpg.Core.CampaignStage.Dungeon)
         {
             var room=session.Floor.Rooms[session.CurrentRoom];bool locked=!session.MovingBetweenRooms;
-            target=locked?room.Center:session.Leader.Position;
+            target=locked?room.Center:VisualPosition(session.Leader);
             targetZoom=Math.Min(config.CameraMaxZoom,Math.Min(930/(room.HalfWidth*2+room.HalfHeight*2),530/(room.HalfWidth+room.HalfHeight)));
             key="dungeon:"+w.DungeonVisits+":"+session.FloorIndex;
             rate=locked?config.CameraTransition:config.CameraFollow;
         }
-        else {target=w.Position*config.WorldUnits;targetZoom=config.WorldZoom;key="outdoors";rate=config.CameraFollow;}
-        if(!cameraReady||key!=cameraScene){cameraReady=true;cameraCenter=target;cameraZoom=targetZoom;cameraScene=key;}
+        else {target=VisualWorldPosition*config.WorldUnits;targetZoom=config.WorldZoom;key="outdoors";rate=config.CameraFollow;}
+        if(!cameraReady||key!=cameraScene){cameraReady=true;cameraCenter=target;cameraZoom=targetZoom;cameraScene=key;cameraVelocity=V.Zero;zoomVelocity=0;}
         else
         {
-            float blend=1-MathF.Exp(-rate*(float)Math.Min(dt,.1));cameraCenter=V.Lerp(cameraCenter,target,blend);cameraZoom=Mathf.Lerp(cameraZoom,targetZoom,blend);
+            // 临界阻尼保留进入房间瞬间的运动速度，使跟随→房间锚点的轨迹连续且不回弹。
+            float step=(float)Math.Min(dt,.1),omega=rate,decay=MathF.Exp(-omega*step);
+            var offset=cameraCenter-target;var impulse=cameraVelocity+omega*offset;
+            cameraCenter=target+(offset+impulse*step)*decay;
+            cameraVelocity=(cameraVelocity-omega*impulse*step)*decay;
+            float z=cameraZoom-targetZoom,j=zoomVelocity+omega*z;
+            cameraZoom=targetZoom+(z+j*step)*decay;zoomVelocity=(zoomVelocity-omega*j*step)*decay;
         }
         zoom=cameraZoom;origin=new Vector2(544,495)-new Vector2((cameraCenter.X-cameraCenter.Y)*zoom,(cameraCenter.X+cameraCenter.Y)*zoom*.5f);
     }
     public void RenderScene(CanvasItem context)
     {
+        long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
         painter=context;context.DrawSetTransform(-SceneRect.Position);
         PaintScene();
+        if(performanceRun)drawTimes.Add(Milliseconds(profileStart));
     }
     // 绘制转发保持所有几何/文字共用同一裁切坐标系。
     private new void DrawRect(Rect2 r,Color c,bool filled=true,float width=-1,bool antialias=false)=>painter.DrawRect(r,c,filled,width,antialias);

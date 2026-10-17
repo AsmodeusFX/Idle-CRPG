@@ -17,7 +17,8 @@ public static class SaveChecks
         string State(GameSession g)=>SaveStore.Encode(new SaveDocument {Session=g.Capture()});
         GameSession Roundtrip(GameSession g)
         {
-            store.Save(g,4,true,1,1);var loaded=store.Load(c);Check(loaded?.Session!=null,"存档没有读取");
+            // 原始模型快照仍供确定性回归使用；正式 Save 单独验证房间检查点语义。
+            store.WriteEncoded(SaveStore.Encode(new SaveDocument {Session=g.Capture(),Speed=4,Paused=true,ViewMode=1,SelectedRegion=1}));var loaded=store.Load(c);Check(loaded?.Session!=null,"存档没有读取");
             Check(loaded!.Speed==4&&loaded.Paused&&loaded.ViewMode==1&&loaded.SelectedRegion==1,"界面状态丢失");
             var resumed=GameSession.Restore(c,loaded.Session!);Check(State(g)==State(resumed),"完整状态没有恢复");return resumed;
         }

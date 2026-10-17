@@ -22,6 +22,11 @@ public partial class Main
             for(int i=0;i<4;i++){session.Tick(.05f);UpdateCamera(.1);}
             if(!session.MovingBetweenRooms&&(System.Numerics.Vector2.Distance(anchor,cameraCenter)>.001f||Math.Abs(scale-cameraZoom)>.001f))throw new Exception("战斗镜头随角色漂移");
             if((room.HalfWidth+room.HalfHeight)*2*scale>931)throw new Exception("完整房间未适配战斗视口");
+            cameraCenter=room.Center+new System.Numerics.Vector2(3,0);cameraVelocity=System.Numerics.Vector2.Zero;
+            var before=cameraCenter;UpdateCamera(1.0/60);
+            if(System.Numerics.Vector2.Distance(before,cameraCenter)>.05f)throw new Exception("进房镜头起步突跳");
+            for(int i=0;i<180;i++)UpdateCamera(1.0/60);
+            if(System.Numerics.Vector2.Distance(cameraCenter,room.Center)>.001f)throw new Exception("镜头未平滑收敛到房间");
             GD.Print("SCENE_SMOKE_OK: default party view, room lock, complete room framing, clipped renderer");
         }
         catch(Exception e){GD.PushError(e.ToString());QuitSafely(1);}
@@ -33,7 +38,7 @@ public partial class Main
             if(OS.GetCmdlineUserArgs().Contains("--persistence-write"))
             {
                 Start();for(int i=0;i<800;i++)session!.Tick(.05f);
-                speed=2;paused=true;viewMode=1;selectedRegion=1;SaveNow();
+                speed=2;paused=true;viewMode=1;selectedRegion=1;SaveNow(true);
                 preferences.MusicVolume=35;PersistSettings();
                 GD.Print("PERSISTENCE_WRITE_OK");
             }
@@ -41,8 +46,8 @@ public partial class Main
             {
                 var saved=saveStore.Load(config);
                 if(session==null||saved?.Session==null||!paused||speed!=2||start.Visible||seed.Editable||preferences.MusicVolume!=35)throw new Exception("重新启动未自动恢复界面/偏好");
-                string expected=SaveStore.Encode(new SaveDocument {Session=saved.Session});
-                string actual=SaveStore.Encode(new SaveDocument {Session=session.Capture()});
+                string expected=SaveStore.Encode(new SaveDocument {Session=GameSession.Restore(config,saved.Session).CaptureProgress()});
+                string actual=SaveStore.Encode(new SaveDocument {Session=session.CaptureProgress()});
                 if(expected!=actual)throw new Exception("重新启动恢复状态不一致");
                 GD.Print("PERSISTENCE_READ_OK: automatic startup restore matches saved snapshot");
             }
@@ -95,12 +100,16 @@ public partial class Main
             var read=settingsStore.Load();Check(read.MusicVolume==35&&read.SoundVolume==0,"音量持久化");
             Check(AudioServer.IsBusMute(AudioServer.GetBusIndex("SFX")),"静音总线");
             soundSlider.Value=60;Check(!AudioServer.IsBusMute(AudioServer.GetBusIndex("SFX")),"恢复音效");
-            SaveNow();var loaded=saveStore.Load(config);Check(loaded?.Session!=null,"自动保存");
+            SaveNow(true);var loaded=saveStore.Load(config);Check(loaded?.Session!=null,"自动保存");
+            session!.SetSpawnModifiers(session.SpawnModifiers);AutoSave(config.AutosaveMinSeconds+1);
+            Check(progressWrite!=null,"关键状态未安排后台存档");FinishProgressWrite();
+            AutoSave(config.CheckpointSeconds+1);Check(progressWrite==null,"无状态变化仍周期写盘");
             var original=session;RequestReset();resetConfirmation.Hide();Check(ReferenceEquals(session,original)&&saveStore.Load(config)?.Session!=null,"取消重置改变进度");
-            ResetProgress();Check(session==null&&saveStore.Load(config)?.Session==null&&start.Visible,"确认重置未清除进度");
+            session.SetSpawnModifiers(session.SpawnModifiers);AutoSave(config.AutosaveMinSeconds+1);
+            ResetProgress();Check(session==null&&saveStore.Load(config)?.Session==null&&start.Visible,"确认重置未清除进度/后台写盘复活旧档");
             Check(settingsStore.Load().MusicVolume==35,"重置清除了音量设置");
             Start();Check(session!=null&&!start.Visible,"重置后重新选队开局");
-            SaveNow();int plays=soundPlays;lastSound.Remove("sfx_click");PlaySound("sfx_click");Check(soundPlays==plays+1,"音效播放");
+            SaveNow(true);int plays=soundPlays;lastSound.Remove("sfx_click");PlaySound("sfx_click");Check(soundPlays==plays+1,"音效播放");
             GD.Print("CLIENT_SMOKE_OK: settings, audio, save/load, cancel/confirm reset, new expedition");
         }
         catch(Exception e) {GD.PushError(e.ToString());QuitSafely(1);}

@@ -249,3 +249,4 @@ RejectConfig(config=>config.Items[0]=config.Items[0] with {TypeId="missing"},"æ—
 Console.WriteLine("PASS: dungeon regression, revival, 256-region world configuration, spawn snapshots/modifiers, loot, travel, automatic trade, castle dominion, occupation, farming, resource retention");
 SaveChecks.Run(root);
 SceneChecks.Run(root);
+ProgressChecks.Run(root);

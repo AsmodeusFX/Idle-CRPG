@@ -17,6 +17,11 @@ public partial class Main : Node2D
     private bool paused, smoke, capture;
     private int speed = 1, smokeFrames;
     private double accumulator;
+    private double hudElapsed;
+    private readonly MotionPresentation motion=new();
+    private float motionAlpha=1;
+    private V VisualPosition(Actor actor)=>motion.Position(session!,actor,motionAlpha);
+    private V VisualWorldPosition=>motion.WorldPosition(session!,motionAlpha);
     private Vector2 origin;
     private float zoom = 17;
     private Font font = null!;
@@ -107,6 +112,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-reset")){captureView="reset";ToggleSettings();RequestReset();}
         if(smoke){RunClientSmoke();RunSceneSmoke();}
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
+        if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
     }
 
@@ -123,17 +129,21 @@ public partial class Main : Node2D
 
     public override void _Process(double delta)
     {
+        long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
         if(quitRequested)return;
         TickClient(delta);
         if(session!=null && !paused && !settingsRoot.Visible && !resetConfirmation.Visible)
         {
             accumulator+=Math.Min(delta,0.25)*speed;
-            while(accumulator>=0.05) { session.Tick(0.05f); accumulator-=0.05; }
-            Refresh();
+            while(accumulator>=0.05) { motion.BeforeTick(session);session.Tick(0.05f); accumulator-=0.05; }
+            motionAlpha=(float)(accumulator/.05);
+            hudElapsed+=delta;
+            if(hudElapsed>=.1){hudElapsed=0;Refresh();}
         }
+        else {motionAlpha=1;if(session!=null)motion.BeforeTick(session);}
         TrackSounds();AutoSave(delta);
         UpdateCamera(delta);sceneCanvas.QueueRedraw();
-        QueueRedraw();
+        if(performanceRun){processTimes.Add(Milliseconds(profileStart));frameTimes.Add(delta*1000);}
         if(capture && ++smokeFrames==10) Capture();
         if(smoke && ++smokeFrames>=120 && !quitRequested && !displaySmokeActive) { GD.Print("SMOKE_OK: "+session?.Status); QuitSafely(); }
     }
@@ -213,6 +223,11 @@ public partial class Main : Node2D
             var label=Project(c-r.HalfSize+new V(.3f,.3f))-new Vector2(10,30);
             DrawString(font,label,$"{r.Id+1:D2}  {(r.Boss?"楼梯 / BOSS":r.Clear?"已清理":"交战区域")}",HorizontalAlignment.Left,-1,13,new Color("c1d0d8"));
             if(r.Event!="") DrawString(font,Project(r.EventPosition),r.Event+(r.EventUsed?" ✓":""),HorizontalAlignment.Left,-1,13,new Color("e4bf7c"));
+            foreach(var loot in r.Loot.Where(l=>!l.Collected))
+            {
+                var p=Project(loot.Position);
+                DrawCircle(p,6,new Color("f0ca79"));DrawCircle(p,3,new Color("8c6335"));
+            }
             if(r.Id==0||r.Boss)
             {
                 var p=Project(f.StairPosition(r));
@@ -228,24 +243,24 @@ public partial class Main : Node2D
         foreach(var a in visible.SelectMany(r=>r.Monsters).Concat(session.Heroes).Where(a=>a.Alive).OrderBy(a=>a.Position.X+a.Position.Y))
         {
             int index=session.Heroes.IndexOf(a); var color=index>=0?heroColors[index]:a.Boss?new Color("ffc56b"):new Color("dc6b70");
-            DrawFighter(Project(a.Position),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
+            DrawFighter(Project(VisualPosition(a)),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
             if(index>=0&&a.Timer>a.Cooldown-.14f)
             {
                 var target=f.Rooms[session.CurrentRoom].Monsters.Where(m=>m.Alive).OrderBy(m=>V.DistanceSquared(a.Position,m.Position)).FirstOrDefault();
-                if(target!=null)DrawLine(Project(a.Position)-new Vector2(0,18),Project(target.Position)-new Vector2(0,15),new Color(color.R,color.G,color.B,.6f),2,true);
+                if(target!=null)DrawLine(Project(VisualPosition(a))-new Vector2(0,18),Project(VisualPosition(target))-new Vector2(0,15),new Color(color.R,color.G,color.B,.6f),2,true);
             }
         }
         foreach(var h in session.Heroes.Where(h=>!h.Alive))
         {
-            var p=Project(h.Position);
+            var p=Project(VisualPosition(h));
             DrawLine(p-new Vector2(6,6),p+new Vector2(6,6),new Color("a4b8c9"),3);
             DrawLine(p+new Vector2(-6,6),p+new Vector2(6,-6),new Color("a4b8c9"),3);
             DrawString(font,p+new Vector2(10,0),h.Name+" 待复活",HorizontalAlignment.Left,-1,13,new Color("c1d0d8"));
         }
         if(session.ReviveTarget!=null && session.Rescuer!=null)
         {
-            var p=Project(session.ReviveTarget.Position)+new Vector2(-20,12);
-            DrawLine(Project(session.Rescuer.Position),Project(session.ReviveTarget.Position),new Color("65d9cb"),1);
+            var p=Project(VisualPosition(session.ReviveTarget))+new Vector2(-20,12);
+            DrawLine(Project(VisualPosition(session.Rescuer)),Project(VisualPosition(session.ReviveTarget)),new Color("65d9cb"),1);
             DrawRect(new Rect2(p.X,p.Y,40,4),new Color("111820"));
             DrawRect(new Rect2(p.X,p.Y,40*session.ReviveElapsed/config.ReviveSeconds,4),new Color("65d9cb"));
         }

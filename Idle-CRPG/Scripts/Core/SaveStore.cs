@@ -8,7 +8,7 @@ namespace IdleCrpg.Core;
 
 public sealed class SaveDocument
 {
-    [JsonRequired] public int Version=1;
+    [JsonRequired] public int Version=2;
     [JsonRequired] public SessionSnapshot? Session;
     public int Speed=1,ViewMode,SelectedRegion=-1;
     public bool Paused;
@@ -25,7 +25,7 @@ public sealed class SaveStore(string path)
     public static SaveDocument Decode(Config c,string text)
     {
         var document=JsonSerializer.Deserialize<SaveDocument>(text,JsonOptions)??throw new InvalidDataException("空存档");
-        if(document.Version!=1)throw new InvalidDataException("不支持的存档版本 "+document.Version);
+        if(document.Version is not (1 or 2))throw new InvalidDataException("不支持的存档版本 "+document.Version);
         if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>2||(document.SelectedRegion!=-1&&!c.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
         if(document.Session!=null)GameSession.Restore(c,document.Session);
         return document;
@@ -49,7 +49,12 @@ public sealed class SaveStore(string path)
     }
     public void Save(GameSession game,int speed=1,bool paused=false,int viewMode=0,int selectedRegion=-1)
     {
-        AtomicWrite(path,Encode(new SaveDocument {Session=game.Capture(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion}),!protectBackup);
+        WriteEncoded(Encode(new SaveDocument {Session=game.CaptureProgress(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion}));
+    }
+    /// <summary>写入已在逻辑线程序列化的不可变内容；调用方必须串行写入，并在重置/退出前等待完成。</summary>
+    public void WriteEncoded(string content)
+    {
+        AtomicWrite(path,content,!protectBackup);
         protectBackup=false;
     }
 

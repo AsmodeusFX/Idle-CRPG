@@ -105,11 +105,11 @@ public partial class Main
                 Text(d.Name,dp+new Vector2(-40,-45),13,"e7d2a4");
             }
         }
-        V worldLeader=w.Position;
+        V worldLeader=VisualWorldPosition;
         foreach(int i in new[]{2,1,0})
         {
             V position=worldLeader+new V(-i*.04f,i*.04f);
-            if(w.Stage==CampaignStage.Village)position=WorldLocation(w.Village.RegionId,w.Village.X,w.Village.Y)+session.Heroes[i].Position/config.WorldUnits+new V(-i*.025f,i*.025f);
+            if(w.Stage==CampaignStage.Village)position=WorldLocation(w.Village.RegionId,w.Village.X,w.Village.Y)+VisualPosition(session.Heroes[i])/config.WorldUnits+new V(-i*.025f,i*.025f);
             DrawFighter(OutdoorPoint(position),heroColors[i],i,false,session.Heroes[i].Hp/session.Heroes[i].MaxHp,session.Heroes[i].Name);
         }
         Text(w.Stage==CampaignStage.Village?w.Village.Name:"行旅 · "+config.Regions.Single(r=>r.Id==w.CurrentRegion).Name,new Vector2(48,179),20,"f4e1b9");

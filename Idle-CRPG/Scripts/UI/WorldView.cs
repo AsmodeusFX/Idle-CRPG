@@ -2,10 +2,34 @@ using Godot;
 using IdleCrpg.Core;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using V = System.Numerics.Vector2;
 
 public partial class Main
 {
+    private WorldProgress? mapProgress;
+    private int mapCleared=-1,mapExplored=-1;
+    private readonly Dictionary<int,RegionStatus> mapStatuses=new();
+    private RegionStatus MapStatus(int region)
+    {
+        var progress=session!.World!.Progress;
+        if(!ReferenceEquals(mapProgress,progress)||mapCleared!=progress.Cleared.Count||mapExplored!=progress.Explored.Count)
+        {
+            mapProgress=progress;mapCleared=progress.Cleared.Count;mapExplored=progress.Explored.Count;mapStatuses.Clear();
+            var rulers=new Dictionary<string,RegionStatus>();
+            foreach(var r in config.Regions)
+            {
+                string castle=config.Rulers[r.Id];
+                if(!rulers.TryGetValue(castle,out var state))
+                {
+                    state=progress.Cleared.Contains(castle)?RegionStatus.Occupied:progress.CastleUnlocked(config,castle)?RegionStatus.WaitingCastle:RegionStatus.Unexplored;
+                    rulers[castle]=state;
+                }
+                mapStatuses[r.Id]=state==RegionStatus.Unexplored&&progress.Explored.Contains(r.Id)?RegionStatus.Sweeping:state;
+            }
+        }
+        return mapStatuses[region];
+    }
     private void Text(string value,Vector2 position,int size=16,string color="c1d0d8") => DrawString(font,position,value,HorizontalAlignment.Left,-1,size,new Color(color));
     private static string TerrainName(string terrain) => terrain switch {"snow"=>"北境雪原","desert"=>"西部沙海","tropical"=>"南方雨林","coast"=>"东岸湖湾","grass"=>"中央原野",_=>throw new ArgumentOutOfRangeException(nameof(terrain))};
     private static Color TerrainColor(string terrain) => new(terrain switch {"snow"=>"bbcdd0","desert"=>"9b8052","tropical"=>"315b44","coast"=>"47747e","grass"=>"526b52",_=>throw new ArgumentOutOfRangeException(nameof(terrain))});
@@ -33,7 +57,7 @@ public partial class Main
         float tile=MapTile;
         foreach(var r in config.Regions)
         {
-            var status=world.Progress.Status(config,r.Id);
+            var status=MapStatus(r.Id);
             var pos=MapPoint(new V(r.X,r.Y));
             DrawRect(new Rect2(pos,new Vector2(tile-2,tile-2)),StatusColor(status));
             if(status!=RegionStatus.Unexplored)
@@ -51,7 +75,7 @@ public partial class Main
         }
         var route=new[]{world.Position}.Concat(world.Route).Select(MapPoint).ToArray();
         if(route.Length>1)DrawPolyline(route,new Color("71d9d0"),2,true);
-        var marker=MapPoint(world.Position);
+        var marker=MapPoint(VisualWorldPosition);
         DrawCircle(marker,8,new Color("0b1019"));DrawCircle(marker,5,new Color("71e4d0"));
         DrawArc(marker,10,0,Mathf.Tau,24,new Color("71e4d0"),1,true);
         var current=config.Regions.Single(r=>r.Id==world.CurrentRegion);
@@ -63,7 +87,7 @@ public partial class Main
         DrawRect(new Rect2(origin,new Vector2(352,573)),new Color("111c26"));
         Text(region.Name,origin+new Vector2(22,34),23,"e7d2a4");
         Text($"区域 {region.Id:D3}  /  {TerrainName(region.Terrain)}",origin+new Vector2(22,62),15,"91a6b7");
-        Text(StatusName(world.Progress.Status(config,selected)),origin+new Vector2(22,96),19);
+        Text(StatusName(MapStatus(selected)),origin+new Vector2(22,96),19);
         var normals=config.Dungeons.Where(d=>d.RegionId==selected&&!d.Castle).OrderBy(d=>d.LevelMin).ToArray();
         Text($"地牢 {normals.Count(d=>world.Progress.Cleared.Contains(d.Id))}/{normals.Length} 已通关",origin+new Vector2(22,132));
         int line=0;
@@ -78,7 +102,7 @@ public partial class Main
         DrawLine(origin+new Vector2(22,315),origin+new Vector2(330,315),new Color("344651"));
         Text(world.Target.Farming?"当前任务 · 自动复刷":"当前任务 · 开拓远征",origin+new Vector2(22,346),17,"71e4d0");
         Text(world.Target.Dungeon.Name,origin+new Vector2(22,374),17);
-        Text($"已探索 {world.Progress.Explored.Count}/{config.Regions.Count}  ·  占领 {config.Regions.Count(r=>world.Progress.Status(config,r.Id)==RegionStatus.Occupied)}",origin+new Vector2(22,402),14,"91a6b7");
+        Text($"已探索 {world.Progress.Explored.Count}/{config.Regions.Count}  ·  占领 {mapStatuses.Values.Count(s=>s==RegionStatus.Occupied)}",origin+new Vector2(22,402),14,"91a6b7");
         for(int i=0;i<4;i++)
         {
             var state=(RegionStatus)i;var p=origin+new Vector2(22,435+i*29);

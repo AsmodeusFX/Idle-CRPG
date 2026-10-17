@@ -3,6 +3,7 @@ using IdleCrpg.Core;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 public partial class Main
 {
@@ -23,6 +24,9 @@ public partial class Main
     private long savedRevision=-1;
     private bool settingsDirty;
     private Vector2I? pendingWindowSize;
+    private Task? progressWrite;
+    private long writingRevision;
+    private bool forceProgressSave;
     // 编辑器内嵌窗口由编辑器管理，不能修改原生窗口的模式、尺寸和位置。
     private bool NativeWindowAvailable => DisplayServer.GetName()!="headless"&&!Engine.IsEmbeddedInEditor();
     private void RefreshDisplayControls()
@@ -36,7 +40,7 @@ public partial class Main
     private void InitializeClient()
     {
         var args=OS.GetCmdlineUserArgs();bool reopen=args.Contains("--persistence-write")||args.Contains("--persistence-read");
-        automation=args.Contains("--smoke-test")||args.Contains("--capture")||reopen;
+        automation=args.Contains("--smoke-test")||args.Contains("--capture")||args.Contains("--performance-test")||reopen;
         string directory=automation?ProjectSettings.GlobalizePath("res://../artifacts/qa/"+(reopen?"reopen":Guid.NewGuid().ToString("N"))):ProjectSettings.GlobalizePath("user://");
         saveStore=new SaveStore(Path.Combine(directory,"progress_v1.json"));settingsStore=new SettingsStore(Path.Combine(directory,"settings.json"));
         preferences=settingsStore.Load();
@@ -66,16 +70,37 @@ public partial class Main
         }
         pause.Text=paused?"继续":"暂停";rateButton.Text=$"速度 ×{speed}";
     }
-    /// <summary>按关键变更与周期检查点合并写盘；模拟暂停时同样保存设置和待保存进度。</summary>
+    /// <summary>只按持久状态变更保存；命中、走路和计时不产生保存请求，无周期战斗快照。</summary>
     private void AutoSave(double delta)
     {
+        if(progressWrite!=null)
+        {
+            if(!progressWrite.IsCompleted)return;
+            FinishProgressWrite();
+        }
         if(session==null)return;sinceSave+=delta;
-        if((session.Revision!=savedRevision&&sinceSave>=config.AutosaveMinSeconds)||sinceSave>=config.CheckpointSeconds)SaveNow();
+        if(forceProgressSave||(session.Revision!=savedRevision&&sinceSave>=config.AutosaveMinSeconds))
+        {
+            // 主线程只复制已分离引用的检查点，编码、Flush 和原子替换都在后台串行完成。
+            var document=new SaveDocument {Session=session.CaptureProgress(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion};
+            writingRevision=session.Revision;sinceSave=0;forceProgressSave=false;
+            progressWrite=Task.Run(()=>saveStore.WriteEncoded(SaveStore.Encode(document)));
+        }
     }
-    private void SaveNow()
+    private void FinishProgressWrite()
     {
+        if(progressWrite==null)return;
+        try {progressWrite.GetAwaiter().GetResult();savedRevision=writingRevision;if(saveStatus!=null)saveStatus.Text="进度已自动保存";}
+        catch(Exception e) when(e is IOException or UnauthorizedAccessException)
+        {if(help!=null)help.Text="保存失败，将重试："+e.Message;}
+        finally {progressWrite=null;}
+    }
+    private void SaveNow(bool wait=false)
+    {
+        if(!wait){forceProgressSave=true;AutoSave(0);return;}
+        FinishProgressWrite();
         if(session==null||saveStore==null)return;
-        try {saveStore.Save(session,speed,paused,viewMode,selectedRegion);savedRevision=session.Revision;sinceSave=0;if(saveStatus!=null)saveStatus.Text="进度已自动保存";}
+        try {saveStore.Save(session,speed,paused,viewMode,selectedRegion);savedRevision=session.Revision;sinceSave=0;forceProgressSave=false;if(saveStatus!=null)saveStatus.Text="进度已自动保存";}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException)
         {sinceSave=0;if(help!=null)help.Text="保存失败，将重试："+e.Message;}
     }
@@ -83,13 +108,13 @@ public partial class Main
     {
         if(what==NotificationWMCloseRequest)
         {
-            SaveNow();PersistSettings();closing=true;QuitSafely();
+            SaveNow(true);PersistSettings();closing=true;QuitSafely();
         }
         if(what==NotificationApplicationFocusOut)SaveNow();
     }
     public override void _ExitTree()
     {
-        if(!closing){SaveNow();if(settingsStore!=null)PersistSettings();}
+        if(!closing){SaveNow(true);if(settingsStore!=null)PersistSettings();}
         ReleaseAudio();
     }
     private async void QuitSafely(int code=0)
@@ -145,6 +170,8 @@ public partial class Main
     private void RequestReset() {PlaySound("sfx_deny");resetConfirmation.PopupCentered(new Vector2I(530,210));}
     private void ResetProgress()
     {
+        FinishProgressWrite();
+        forceProgressSave=false;
         try {saveStore.Reset();}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException) {help.Text="重置失败，原进度保留："+e.Message;return;}
         session=null;paused=false;speed=1;accumulator=0;sinceSave=0;savedRevision=-1;viewMode=0;selectedRegion=-1;

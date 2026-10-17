@@ -65,6 +65,7 @@ public sealed partial class WorldCampaign
     public string Status { get; private set; } = "初始村庄出发";
     public IReadOnlyCollection<Vector2> Route => route.ToArray();
     private readonly Queue<Vector2> route = new();
+    private readonly Dictionary<string,Queue<Vector2>> villagePaths=new();
 
     public WorldCampaign(Config config)
     {
@@ -111,12 +112,17 @@ public sealed partial class WorldCampaign
                 {
                     var anchor=WorldPoint(Village.RegionId,Village.X,Village.Y);
                     var from=anchor+h.Position/config.WorldUnits;var target=anchor+npc.Position/config.WorldUnits;
-                    var waypoint=WorldNavigation.FindPath(config,from,target,Progress.Explored).FirstOrDefault(p=>Vector2.DistanceSquared(p,from)>.00000001f,target);
+                    if(!villagePaths.TryGetValue(h.SpecId,out var path))
+                    {
+                        path=new Queue<Vector2>(WorldNavigation.FindPath(config,from,target,Progress.Explored));villagePaths[h.SpecId]=path;
+                    }
+                    while(path.Count>0&&Vector2.DistanceSquared(path.Peek(),from)<.00000001f)path.Dequeue();
+                    var waypoint=path.Count>0?path.Peek():target;
                     GameSession.Move(h,(waypoint-anchor)*config.WorldUnits,dt,config.VillageSpeed);arrived=false;
                 }
             }
             Position=WorldPoint(Village.RegionId,Village.X,Village.Y)+game.Heroes[0].Position/config.WorldUnits;
-            if(!arrived) {Status="前往 "+npc.Name;return;}
+            if(!arrived) {TradeElapsed=0;Status="前往 "+npc.Name;return;}
             TradeElapsed=Math.Min(config.TradeSeconds,TradeElapsed+dt);
             Status=$"自动交易 {TradeElapsed:0.0}/{config.TradeSeconds:0.0}秒";
             if(TradeElapsed+0.00001f>=config.TradeSeconds)
@@ -151,7 +157,7 @@ public sealed partial class WorldCampaign
     private void EnterVillage(GameSession game)
     {
         game.MarkChanged();
-        Stage=CampaignStage.Village;TradeElapsed=0;route.Clear();
+        Stage=CampaignStage.Village;TradeElapsed=0;route.Clear();villagePaths.Clear();
         for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(0,i*.2f);
         Status=Village.Name+" · 前往交易 NPC";
     }
