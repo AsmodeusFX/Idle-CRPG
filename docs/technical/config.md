@@ -2,6 +2,8 @@
 
 所有 CSV 为 UTF-8，按功能放在 `Idle-CRPG/config/` 子目录。首行为英文表头，字段不含逗号，数字使用小数点。ID 唯一、跨表引用有效，缺字段直接报错。CSV 的 Godot importer 使用 keep，不作为翻译资源。
 
+星图三表使用迁移自 Idle-Diablo 的严格 CSV 解析器，支持引号内逗号、多行文本和双引号转义；其余已有简表仍按上述限制。星图的多值字段使用分号。
+
 `.translation` 是 Godot 的多语言翻译资源，不是游戏数值配置。早期配置 CSV 被默认 `csv_translation` 导入器误识别，生成的 18 个无引用翻译文件已移出工程，归档到根目录忽略的 `artifacts/legacy-csv-translations/`。config 仅保留配置 CSV 与其 `.csv.import` 文件；后者是必要的导入元数据，应随 CSV 提交，内容使用 `importer="keep"`，防止再次误导入。未来正式本地化资源统一放 `Idle-CRPG/Assets/Localization/`。
 
 | 表 | 字段 | 含义与约束 |
@@ -34,6 +36,10 @@
 | system/client.csv | autosave_min_seconds,checkpoint_seconds | 关键变更保存最短间隔、周期检查点秒数，均为正且检查点不少于最短间隔；默认 0.5/5 |
 | system/camera.csv | follow_rate,transition_rate,dungeon_max_zoom,world_zoom,world_units | 跟随/入房指数响应、地牢缩放上限、世界缩放、每区场景单位，均为正，world_units≥12 |
 | world/obstacle.csv | id,kind,x,y,width,height | 唯一 ID、水面 water/岩石 rock、全局区域坐标及正矩形尺寸；边界不得越出世界，不能阻挡地牢/村庄入口导航格 |
+| star/star.csv | id,name,max_level,cost_currency,cost | 稳定 ID、玩家名、正最大等级、当前 gold、从 1 级到满级的分号整数价目；费用非负，数量等于 max_level |
+| star/star.csv | attr_id,operation,value_per_level,icon | 首版 attack/hp、flat、每级非负有限固定贡献、attack/defense/utility。占位属性/操作为空且数值为 0，不能购买；首批节点每级 +1 |
+| star/star_layout.csv | id,col,row,prereq,label | 与内容表一一对应；整数格子坐标可负、不重叠；分号前置 ID 任一点亮即可；唯一根、无环；label 仅编辑显示 |
+| star/star_plan.csv | id,intent | 编辑侧车，不参与启动运行；标准 CSV 可转义逗号/引号/换行。缺文件可按空意图编辑，存在但损坏拒绝保存 |
 
 当前临时世界有 256 区、256 村庄、251 普通地牢、35 城堡；城堡位置参考截图错位排列，统治区为连续的 2–12 格不规则区域，每个统治区有 3–10 个普通地牢，城堡另计。数量由关联行数决定，不在 region 重复维护。6 个边缘格不配置普通地牢，仍保留村庄。
 

@@ -38,13 +38,14 @@ public partial class Main : Node2D
         uiLayer=canvas;
         var settingsButton=new Button {Text="设置",Position=new Vector2(992,32),Size=new Vector2(70,38)};
         settingsButton.Pressed+=ToggleSettings;canvas.AddChild(settingsButton);
+        var gmButton=new Button {Name="GmMenuButton",Text="GM",Position=new Vector2(912,32),Size=new Vector2(70,38)};gmButton.Pressed+=ToggleGm;canvas.AddChild(gmButton);
         var title = new Label { Text="深渊远征  /  IDLE CRPG", Position=new Vector2(30,20) }; title.AddThemeFontSizeOverride("font_size",26); canvas.AddChild(title);
         var subtitle = new Label { Text="世界远征 · 自动探索 / 战斗 / 交易", Position=new Vector2(32,60) }; subtitle.Modulate=new Color("91a6b7"); canvas.AddChild(subtitle);
         var tabs=new HBoxContainer {Position=new Vector2(32,103)};canvas.AddChild(tabs);
-        foreach(var pair in new[]{("跟随小队",0),("进度地图",1)})
+        foreach(var pair in new[]{("跟随小队",0),("进度地图",1),("星图",3)})
         {
             var button=new Button {Text=pair.Item1,CustomMinimumSize=new Vector2(116,34)};
-            int mode=pair.Item2;button.Pressed+=()=>{viewMode=mode;PlaySound("sfx_click");SaveNow();};tabs.AddChild(button);
+            int mode=pair.Item2;button.Pressed+=()=>{SelectStarView(mode);PlaySound("sfx_click");};tabs.AddChild(button);
         }
         var panel = new Panel { Position=new Vector2(1090,20), Size=new Vector2(325,850) }; canvas.AddChild(panel);
         var box = new VBoxContainer { Position=new Vector2(1110,38), Size=new Vector2(285,820) }; box.AddThemeConstantOverride("separation",9); canvas.AddChild(box);
@@ -71,7 +72,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-combat"))captureView="combat";
         if(OS.GetCmdlineUserArgs().Contains("--capture-travel"))captureView="travel";
         if(OS.GetCmdlineUserArgs().Contains("--capture-village"))captureView="village";
-        BuildSettings();
+        BuildStarPanels();BuildSettings();
         ResumeProgress();
         if(smoke && session==null) Start();
         if(capture && session==null) Start();
@@ -110,7 +111,9 @@ public partial class Main : Node2D
         }
         if(OS.GetCmdlineUserArgs().Contains("--capture-settings")){captureView="settings";ToggleSettings();}
         if(OS.GetCmdlineUserArgs().Contains("--capture-reset")){captureView="reset";ToggleSettings();RequestReset();}
-        if(smoke){RunClientSmoke();RunSceneSmoke();}
+        if(OS.GetCmdlineUserArgs().Contains("--capture-stars")){captureView="stars";SelectStarView(3);BuyStarNode("s_root");BuyStarNode("s_hp");BuyStarNode("s_atk");}
+        if(OS.GetCmdlineUserArgs().Contains("--capture-star-editor")){captureView="star-editor";viewMode=3;ToggleStarEditor();EditorClickNode("s_root");}
+        if(smoke){RunClientSmoke();RunSceneSmoke();RunStarSmoke();}
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
@@ -132,7 +135,7 @@ public partial class Main : Node2D
         long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
         if(quitRequested)return;
         TickClient(delta);
-        if(session!=null && !paused && !settingsRoot.Visible && !resetConfirmation.Visible)
+        if(session!=null && !paused && !settingsRoot.Visible && !resetConfirmation.Visible && !gmRoot.Visible && !_editingStars)
         {
             accumulator+=Math.Min(delta,0.25)*speed;
             while(accumulator>=0.05) { motion.BeforeTick(session);session.Tick(0.05f); accumulator-=0.05; }
@@ -142,6 +145,7 @@ public partial class Main : Node2D
         }
         else {motionAlpha=1;if(session!=null)motion.BeforeTick(session);}
         TrackSounds();AutoSave(delta);
+        TickStarPanels();
         UpdateCamera(delta);sceneCanvas.QueueRedraw();
         if(performanceRun){processTimes.Add(Milliseconds(profileStart));frameTimes.Add(delta*1000);}
         if(capture && ++smokeFrames==10) Capture();

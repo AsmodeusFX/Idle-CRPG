@@ -1,0 +1,8 @@
+id,col,row,prereq,label
+s_root,0,2,,起点
+s_hp,1,0,s_root,生存分支
+s_atk,1,4,s_root,输出分支
+s_hp_01,2,0,s_hp,生命延伸
+s_atk_01,2,4,s_atk,攻击延伸
+s_hp_02,3,1,s_hp_01;s_atk_01,生命汇合
+s_atk_02,3,3,s_atk_01;s_hp_01,攻击汇合

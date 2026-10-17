@@ -148,13 +148,14 @@ public partial class Main
         var soundRow=new HBoxContainer();box.AddChild(soundRow);soundRow.AddChild(new Label {Text="音效音量",SizeFlagsHorizontal=Control.SizeFlags.ExpandFill});soundValue=new Label();soundRow.AddChild(soundValue);
         soundSlider=new HSlider {MinValue=0,MaxValue=100,Step=1};soundSlider.ValueChanged+=value=>{preferences.SoundVolume=(float)value;ApplyAudio();RefreshVolumeText();QueueSettingsSave();};soundSlider.DragEnded+=_=>PlaySound("sfx_click");box.AddChild(soundSlider);
         box.AddChild(new HSeparator());saveStatus=new Label {Text="进度自动保存 · 下次打开自动继续"};box.AddChild(saveStatus);
-        box.AddChild(new Label {Text="重置会清除队伍成长、金币、背包与世界进度。\n窗口和音量设置保留。",AutowrapMode=TextServer.AutowrapMode.WordSmart});
+        box.AddChild(new Label {Text="重置会清除队伍成长、星图、金币、背包与世界进度。\n窗口和音量设置保留。",AutowrapMode=TextServer.AutowrapMode.WordSmart});
         var reset=new Button {Text="重置进度",CustomMinimumSize=new Vector2(0,42)};reset.AddThemeColorOverride("font_color",new Color("e89a91"));reset.Pressed+=RequestReset;box.AddChild(reset);
-        resetConfirmation=new ConfirmationDialog {Title="确认重置进度",DialogText="确定清除全部游戏进度吗？\n角色成长、金币、背包、探索与占领进度都会清除。\n此操作无法撤销，画面和音量设置不受影响。",OkButtonText="确认重置",CancelButtonText="取消",Exclusive=true};AddChild(resetConfirmation);
+        resetConfirmation=new ConfirmationDialog {Title="确认重置进度",DialogText="确定清除全部游戏进度吗？\n角色成长、星图加点、金币、背包、探索与占领进度都会清除。\n此操作无法撤销，画面和音量设置不受影响。",OkButtonText="确认重置",CancelButtonText="取消",Exclusive=true};AddChild(resetConfirmation);
         resetConfirmation.Confirmed+=ResetProgress;
     }
     private void ToggleSettings()
     {
+        if(_editingStars){_starHint.Text="请先保存或丢弃草稿并退出节点编辑器，再打开设置。";return;}
         if(settingsRoot.Visible){settingsRoot.Hide();PersistSettings();}
         else
         {

@@ -252,3 +252,4 @@ SaveChecks.Run(root);
 SceneChecks.Run(root);
 ProgressChecks.Run(root);
 AreaPartChecks.Run(root);
+StarChecks.Run(root);

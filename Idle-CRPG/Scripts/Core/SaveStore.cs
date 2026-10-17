@@ -26,7 +26,7 @@ public sealed class SaveStore(string path)
     {
         var document=JsonSerializer.Deserialize<SaveDocument>(text,JsonOptions)??throw new InvalidDataException("空存档");
         if(document.Version is not (1 or 2))throw new InvalidDataException("不支持的存档版本 "+document.Version);
-        if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>2||(document.SelectedRegion!=-1&&!c.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
+        if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>3||(document.SelectedRegion!=-1&&!c.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
         if(document.Session!=null)GameSession.Restore(c,document.Session);
         return document;
     }

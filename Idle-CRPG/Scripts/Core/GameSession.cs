@@ -64,6 +64,7 @@ public sealed partial class GameSession
     public GameSession(Config config, int seed, IEnumerable<string> ids)
     {
         Config = config; Seed = seed;
+        Stars=new StarProgression(config.Stars);
         lootRandom=new PersistentRandom(unchecked((uint)seed^173831u));dungeonSeed=seed;
         var chosen = ids.ToArray();
         if (chosen.Length != 3 || chosen.Distinct().Count() != 3) throw new ArgumentException("选择三个不同职业");

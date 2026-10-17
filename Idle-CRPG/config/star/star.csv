@@ -1,0 +1,8 @@
+id,name,max_level,cost_currency,cost,attr_id,operation,value_per_level,icon
+s_root,启明星,3,gold,3;6;9,attack,flat,1,attack
+s_hp,生命之光,5,gold,4;8;12;16;20,hp,flat,1,defense
+s_atk,锋芒之星,5,gold,6;12;18;24;30,attack,flat,1,attack
+s_hp_01,坚韧之星,5,gold,4;8;12;16;20,hp,flat,1,defense
+s_atk_01,力量之星,3,gold,5;10;20,attack,flat,1,attack
+s_hp_02,守护星环,5,gold,4;8;12;16;20,hp,flat,1,defense
+s_atk_02,征途星环,5,gold,6;12;18;24;30,attack,flat,1,attack

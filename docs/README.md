@@ -6,5 +6,6 @@
 - [工程架构](technical/architecture.md)：职责、运行与验证。
 - [CSV 字段](technical/config.md)：字段与约束。
 - [存档、设置与音频](technical/persistence_settings.md)：自动保存、恢复、重置、设置界面和音频资源管理。
+- [星图与 GM 节点编辑器](design/star_map.md)：金币加点、全队属性、三表结构、可视化编辑与配置保存。
 
 参考：用户提供的《末日危机2》截图及 https://www.u77game.net/h5/100.html 。参考空间探索和自动战斗体验，不复制其资源或未确认数值。

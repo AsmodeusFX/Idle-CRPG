@@ -24,6 +24,8 @@ public sealed class SessionSnapshot
     public SpawnModifiers Modifiers=new();
     public bool RoomCheckpoint;
     public List<PartyEntry> RoomEntry=new();
+    public StarProgressSave Stars=new(Array.Empty<StarRankSave>());
+    public double StarAttack,StarHp;
     public WorldSnapshot? World;
 }
 public record InventoryEntry(string ItemId,long Price,long Count);
@@ -50,7 +52,7 @@ public sealed partial class GameSession
 {
     /// <summary>快照包含房间生成结果、尸体、计时与随机源。序列化必须紧随快照，期间不推进模拟。</summary>
     public SessionSnapshot Capture() => new() {
-        Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,
+        Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Floors=Floors,
@@ -116,6 +118,8 @@ public sealed partial class GameSession
         game.SpawnModifiers=s.Modifiers;game.Log.Clear();game.Log.AddRange(s.Log);
         game.roomEntry=s.RoomEntry.ToList();
         game.roomEntryLootState=s.RoomEntryLootState;
+        game.Stars=new StarProgression(config.Stars,s.Stars);game.starAttack=s.StarAttack;game.starHp=s.StarHp;
+        game.ValidateStarTotals(game.Stars.Totals());game.ApplyStarTotals(game.Stars.Totals());
         foreach(var i in s.Inventory)game.inventory.Add((i.ItemId,i.Price),i.Count);
         game.World=s.World==null?null:WorldCampaign.Restore(config,s.World);
         if(game.World!=null&&s.World!.AreaPartAccessVersion==0&&!game.World.ReconcileAreaPartAccess(game))
@@ -137,6 +141,8 @@ public sealed partial class GameSession
         Need(s.Log!.Count<=40&&s.ReviveTarget>=-1&&s.ReviveTarget<3&&s.Rescuer>=-1&&s.Rescuer<3&&Finite(s.ReviveElapsed)&&s.ReviveElapsed>=0&&s.ReviveElapsed<=c.ReviveSeconds&&Finite(s.Regroup)&&s.Regroup>=0,"行动计时");
         Need((s.ReviveTarget<0)==(s.Rescuer<0)&&(s.ReviveTarget<0||(!s.Heroes[s.ReviveTarget].Alive&&s.Heroes[s.Rescuer].Alive)),"救援引用");
         c.Spawn.Validate(s.Modifiers!);
+        Need(s.Stars!=null&&double.IsFinite(s.StarAttack)&&double.IsFinite(s.StarHp)&&s.StarAttack>=0&&s.StarHp>=0,"星图贡献");
+        _=new StarProgression(c.Stars,s.Stars);
         Need(s.Inventory!.All(i=>c.Items.Any(t=>t.Id==i.ItemId)&&i.Price>=0&&i.Count>0)&&s.Inventory.Select(i=>(i.ItemId,i.Price)).Distinct().Count()==s.Inventory.Count,"背包引用/数量");
         Need(s.RoomEntry.Count is 0 or 3&&s.RoomEntry.All(e=>Point(e.Position)&&Finite(e.Hp)&&e.Hp>=0),"进房节点");
         Need(s.ActiveDungeonId==""||c.Dungeons.Any(d=>d.Id==s.ActiveDungeonId),"地牢引用");
