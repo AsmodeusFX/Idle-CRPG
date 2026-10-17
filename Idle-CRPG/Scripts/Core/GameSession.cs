@@ -28,7 +28,12 @@ public sealed class GameSession
     public int Experience { get; private set; }
     public int Kills { get; private set; }
     public bool Won { get; private set; }
-    public bool Lost { get; private set; }
+    /// <summary>全灭重挑战次数；不影响累计成长和击杀资源。</summary>
+    public int Retries { get; private set; }
+    public Actor? ReviveTarget { get; private set; }
+    public Actor? Rescuer { get; private set; }
+    /// <summary>只在救援者进入交互距离后累积，单位为秒。</summary>
+    public float ReviveElapsed { get; private set; }
     public Floor Floor => Floors[FloorIndex];
     public string Status { get; private set; } = "探索";
     private int destination = -1, phase;
@@ -57,15 +62,19 @@ public sealed class GameSession
     public void Tick(float dt)
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
-        if (Won || Lost) return;
-        if (!Heroes.Any(h=>h.Alive)) { Lost=true; Status="挑战失败"; Note("小队全灭，本次挑战结束"); return; }
+        if (Won) return;
+        if (!Heroes.Any(h=>h.Alive)) { RetryDungeon(); return; }
         var room = Floor.Rooms[CurrentRoom];
         if (!room.Clear && room.Generated)
         {
             Status = "交战中";
+            ResetRescue();
             Fight(room,dt);
+            if (!Heroes.Any(h=>h.Alive)) RetryDungeon();
             return;
         }
+        // 清房后救援优先于事件、探索、换层和最终通关。
+        if (Rescue(dt)) return;
         if (room.Clear && !room.EventUsed)
         {
             room.EventUsed=true;
@@ -91,6 +100,60 @@ public sealed class GameSession
             destination=FirstStep(CurrentRoom,target); phase=0;
         }
         Travel(dt);
+    }
+
+    private void ResetRescue()
+    {
+        ReviveTarget = null; Rescuer = null; ReviveElapsed = 0;
+    }
+
+    /// <summary>单名存活队员就近救援，逐个复活；多人不会叠加读条速度。</summary>
+    private bool Rescue(float dt)
+    {
+        var dead = Heroes.FirstOrDefault(h => !h.Alive);
+        if (dead == null) { ResetRescue(); return false; }
+        if (ReviveTarget != dead || Rescuer == null || !Rescuer.Alive)
+        {
+            ResetRescue(); ReviveTarget = dead;
+            Rescuer = Heroes.Where(h => h.Alive).OrderBy(h => Vector2.DistanceSquared(h.Position,dead.Position)).First();
+        }
+        if (Vector2.Distance(Rescuer!.Position,dead.Position) > Config.ReviveRange)
+        {
+            Status = $"前往救援 {dead.Name}";
+            ReviveElapsed = 0;
+            Move(Rescuer,dead.Position,dt);
+            return true;
+        }
+        ReviveElapsed = Math.Min(Config.ReviveSeconds,ReviveElapsed + dt);
+        Status = $"复活 {dead.Name} {ReviveElapsed:0.0}/{Config.ReviveSeconds:0.0}秒";
+        if (ReviveElapsed + 0.00001f >= Config.ReviveSeconds)
+        {
+            dead.Hp = dead.MaxHp * Config.ReviveHpRatio;
+            dead.Timer = 0;
+            Note($"{Rescuer.Name} 复活了 {dead.Name}，恢复 {Config.ReviveHpRatio:P0} 生命");
+            ResetRescue();
+        }
+        return true;
+    }
+
+    /// <summary>重置所有楼层的本轮内容，保留同一拓扑、队员实例和所有累计成长。</summary>
+    private void RetryDungeon()
+    {
+        Retries++;
+        foreach (var floor in Floors)
+        {
+            foreach (var room in floor.Rooms)
+            {
+                room.Revealed=false; room.Generated=false; room.EventUsed=false;
+                room.SnapshotLevel=0; room.Event=""; room.Monsters.Clear();
+            }
+            foreach (var passage in floor.Passages) passage.Revealed=false;
+        }
+        FloorIndex=0; regroup=0; ResetRescue();
+        foreach (var h in Heroes) { h.Hp=h.MaxHp; h.Timer=0; }
+        EnterFloor();
+        Status="全灭后重新挑战";
+        Note($"小队全灭，返回一层入口 · 第 {Retries+1} 次挑战，成长与资源保留");
     }
 
     private int FindTarget()

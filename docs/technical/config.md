@@ -8,6 +8,9 @@
 | dungeon.csv | rooms_min / rooms_max | 每层房间数，包含安全起点，范围 3–20 |
 | dungeon.csv | monsters_min / monsters_max | 普通房间基础怪物数，正整数 |
 | dungeon.csv | event_chance | 普通房间事件概率，0–1 |
+| dungeon.csv | revive_seconds | 清房后复活交互所需秒数，正数；首版 3 秒 |
+| dungeon.csv | revive_range | 复活交互距离，正数；首版 0.65 世界单位 |
+| dungeon.csv | revive_hp_ratio | 复活恢复最大生命的比例，(0,1]；首版 0.5 |
 | heroes.csv | id / name | 唯一职业 ID / 显示名 |
 | heroes.csv | hp / attack / defense | 初始生命、攻击、防御；HP 与攻击正数、防御非负 |
 | heroes.csv | speed / range / cooldown | 移速、射程、攻击间隔（秒），均为正数 |

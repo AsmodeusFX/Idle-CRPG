@@ -88,7 +88,7 @@ public partial class Main : Node2D
     {
         if(session==null)return;
         var s=session;
-        summary.Text=$"第 {s.FloorIndex+1} / {s.Floors.Count} 层 · {s.Status}\n房间清理 {s.Floor.Rooms.Count(r=>r.Clear)} / {s.Floor.Rooms.Count}    击杀 {s.Kills}\n经验 {s.Experience} / {s.Heroes[0].Level*18}";
+        summary.Text=$"第 {s.FloorIndex+1} / {s.Floors.Count} 层 · {s.Status}\n房间清理 {s.Floor.Rooms.Count(r=>r.Clear)} / {s.Floor.Rooms.Count}    击杀 {s.Kills}\n经验 {s.Experience} / {s.Heroes[0].Level*18} · 重挑战 {s.Retries}";
         roster.Text=string.Join("\n\n",s.Heroes.Select(h=>$"{h.Name}  Lv.{h.Level}  {(h.Alive?"":"阵亡")}\nHP {Math.Ceiling(h.Hp)} / {h.MaxHp:0}   攻击 {h.Attack:0}"));
         journal.Text="远征记录\n\n"+string.Join("\n",s.Log.TakeLast(3));
     }
@@ -154,6 +154,20 @@ public partial class Main : Node2D
             DrawRect(new Rect2(pos.X-12,pos.Y-size*2-7,24,3),new Color("111820"));
             DrawRect(new Rect2(pos.X-12,pos.Y-size*2-7,24*a.Hp/a.MaxHp,3),color);
         }
-        if(session.Won||session.Lost) DrawString(font,new Vector2(420,155),session.Status,HorizontalAlignment.Left,-1,32,new Color("f0cf91"));
+        foreach(var h in session.Heroes.Where(h=>!h.Alive))
+        {
+            var p=Project(h.Position);
+            DrawLine(p-new Vector2(6,6),p+new Vector2(6,6),new Color("a4b8c9"),3);
+            DrawLine(p+new Vector2(-6,6),p+new Vector2(6,-6),new Color("a4b8c9"),3);
+            DrawString(font,p+new Vector2(10,0),h.Name+" 待复活",HorizontalAlignment.Left,-1,13,new Color("c1d0d8"));
+        }
+        if(session.ReviveTarget!=null && session.Rescuer!=null)
+        {
+            var p=Project(session.ReviveTarget.Position)+new Vector2(-20,12);
+            DrawLine(Project(session.Rescuer.Position),Project(session.ReviveTarget.Position),new Color("65d9cb"),1);
+            DrawRect(new Rect2(p.X,p.Y,40,4),new Color("111820"));
+            DrawRect(new Rect2(p.X,p.Y,40*session.ReviveElapsed/config.ReviveSeconds,4),new Color("65d9cb"));
+        }
+        if(session.Won) DrawString(font,new Vector2(420,155),session.Status,HorizontalAlignment.Left,-1,32,new Color("f0cf91"));
     }
 }
