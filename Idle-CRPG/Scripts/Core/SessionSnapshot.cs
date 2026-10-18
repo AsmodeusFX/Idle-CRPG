@@ -36,6 +36,7 @@ public sealed class WorldSnapshot
     public Vector2 Position;
     public string TargetId="",VillageId="",Status="";
     public string PendingCastle="";
+    public List<string> PendingCastles=new();
     public int NavigationVersion;
     public bool Farming;
     public float TradeElapsed;
@@ -187,11 +188,11 @@ public sealed partial class GameSession
 
 public sealed partial class WorldCampaign
 {
-    internal WorldSnapshot Capture() => new() {LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastle=PendingCastle,NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
+    internal WorldSnapshot Capture() => new() {LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
     internal static WorldCampaign Restore(Config c,WorldSnapshot s)
     {
         var w=new WorldCampaign(c) {Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
-        w.Progress.Explored.Clear();w.Progress.Explored.UnionWith(s.Explored);w.Progress.Cleared.UnionWith(s.Cleared);w.PendingCastle=s.PendingCastle;w.route.Clear();foreach(var p in s.Route)w.route.Enqueue(p);
+        w.Progress.Explored.Clear();w.Progress.Explored.UnionWith(s.Explored);w.Progress.Cleared.UnionWith(s.Cleared);w.pendingCastles.AddRange(s.PendingCastles.Count>0?s.PendingCastles:s.PendingCastle!=""?new[]{s.PendingCastle}:Array.Empty<string>());w.route.Clear();foreach(var p in s.Route)w.route.Enqueue(p);
         foreach(var p in s.VillagePaths)w.villagePaths[p.Key]=new Queue<Vector2>(p.Value);
         if(s.NavigationVersion==0&&s.Stage is CampaignStage.TravelDungeon or CampaignStage.TravelVillage)
         {
@@ -208,6 +209,7 @@ public sealed partial class WorldCampaign
         if(s.VillagePaths==null||s.VillagePaths.Count>3||s.VillagePaths.Any(p=>!c.Heroes.Any(h=>h.Id==p.Key)||p.Value.Count>20000||p.Value.Any(v=>!Point(v))))throw new InvalidDataException("村庄路径无效");
         if(!Enum.IsDefined(s.Stage)||!Point(s.Position)||!c.Dungeons.Any(d=>d.Id==s.TargetId)||!c.Villages.Any(v=>v.Id==s.VillageId)||s.Explored==null||s.Cleared==null||s.Route==null||s.Explored.Any(id=>!c.Regions.Any(r=>r.Id==id))||s.Cleared.Any(id=>!c.Dungeons.Any(d=>d.Id==id))||s.Route.Count>c.Regions.Count*WorldNavigation.CellsPerRegion*WorldNavigation.CellsPerRegion+2||s.Route.Any(p=>!Point(p))||s.Trades<0||s.DungeonVisits<0||!float.IsFinite(s.TradeElapsed)||s.TradeElapsed<0||s.TradeElapsed>c.TradeSeconds||s.PendingCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.PendingCastle&&d.Castle))
             throw new InvalidDataException("存档世界状态/引用无效");
+        if(s.PendingCastles==null||s.PendingCastles.Distinct().Count()!=s.PendingCastles.Count||s.PendingCastles.Any(id=>!c.Dungeons.Any(d=>d.Id==id&&d.Castle)))throw new InvalidDataException("城堡挑战队列无效");
         int current=c.Regions.Single(r=>r.X==(int)s.Position.X&&r.Y==(int)s.Position.Y).Id;
         if(s.AreaPartAccessVersion==1)
         {

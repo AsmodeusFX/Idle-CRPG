@@ -26,7 +26,7 @@ public sealed partial class GameSession
         int region=progress.AreaPartUnlocked(config,config.AreaPart(current.Id).Id)?current.Id:config.StartRegionId;
         var village=config.Villages.Single(v=>v.RegionId==region);var anchor=config.Regions.Single(r=>r.Id==region);
         w.Position=new Vector2(anchor.X+village.X,anchor.Y+village.Y);w.Stage=CampaignStage.Village;w.VillageId=village.Id;
-        w.TradeElapsed=0;w.Route.Clear();w.VillagePaths.Clear();w.PendingCastle="";
+        w.TradeElapsed=0;w.Route.Clear();w.VillagePaths.Clear();w.PendingCastle="";w.PendingCastles.Clear();
         var nextTarget=ExpeditionPlanner.Select(config,progress,region,false);w.TargetId=nextTarget.Dungeon.Id;w.Farming=nextTarget.Farming;
         if(!w.Explored.Contains(region))w.Explored.Add(region);
         w.LayoutVersion=1;w.AreaPartAccessVersion=1;w.NavigationVersion=1;w.Status="地图布局更新 · 前往交易 NPC";

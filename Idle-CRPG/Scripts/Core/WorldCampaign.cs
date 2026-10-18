@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace IdleCrpg.Core;
 
-public enum RegionStatus { Unexplored, Sweeping, WaitingCastle, Occupied }
+public enum RegionStatus { Unexplored, Sweeping, WaitingCastle, Occupied, PlannedAttack }
 public enum CampaignStage { TravelDungeon, Dungeon, TravelVillage, Village }
 public record ExpeditionTarget(DungeonSpec Dungeon,bool Farming);
 
@@ -59,7 +59,17 @@ public sealed partial class WorldCampaign
     public float TradeElapsed { get; private set; }
     public int Trades { get; private set; }
     public int DungeonVisits { get; private set; }
-    public string PendingCastle { get; private set; }="";
+    private readonly List<string> pendingCastles=new();
+    /// <summary>按玩家点击顺序保存待派遣城堡，重复请求不入队。</summary>
+    public IReadOnlyList<string> PendingCastles => pendingCastles.AsReadOnly();
+    public string PendingCastle => pendingCastles.FirstOrDefault()??"";
+    /// <summary>已占领优先；排队、前往及挑战中的统治区显示计划攻击。</summary>
+    public RegionStatus RegionState(int region)
+    {
+        string id=config.Rulers[region];
+        if(Progress.Cleared.Contains(id))return RegionStatus.Occupied;
+        return pendingCastles.Contains(id)||(Target.Dungeon.Id==id&&Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon)?RegionStatus.PlannedAttack:Progress.Status(config,region);
+    }
     public string Status { get; private set; } = "初始村庄出发";
     public IReadOnlyCollection<Vector2> Route => route.ToArray();
     private readonly Queue<Vector2> route = new();
@@ -76,10 +86,13 @@ public sealed partial class WorldCampaign
     private Vector2 WorldPoint(int region,float x,float y) {var r=config.Regions.Single(r=>r.Id==region);return new Vector2(r.X+x,r.Y+y);}
     private void Plan(bool previousWasFarm)
     {
-        if(PendingCastle!=""&&!Progress.Cleared.Contains(PendingCastle)&&Progress.CastleUnlocked(config,PendingCastle))
-            Target=new(config.Dungeons.Single(d=>d.Id==PendingCastle),false);
+        pendingCastles.RemoveAll(id=>Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id));
+        if(pendingCastles.Count>0)
+        {
+            Target=new(config.Dungeons.Single(d=>d.Id==pendingCastles[0]),false);
+            pendingCastles.RemoveAt(0);
+        }
         else Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm);
-        PendingCastle="";
         Stage=CampaignStage.TravelDungeon;
         BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));
         Status=(Target.Farming?"复刷 · ":"前往 · ")+Target.Dungeon.Name;
@@ -92,8 +105,9 @@ public sealed partial class WorldCampaign
     internal bool RequestCastle(string id)
     {
         if(!config.Dungeons.Any(d=>d.Id==id&&d.Castle)||Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id))return false;
-        PendingCastle=id;
-        if(Stage==CampaignStage.TravelDungeon)Plan(false);
+        if(pendingCastles.Contains(id)||(Target.Dungeon.Id==id&&Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon))return false;
+        pendingCastles.Add(id);
+        if(Stage==CampaignStage.TravelDungeon&&!Target.Dungeon.Castle)Plan(false);
         return true;
     }
     /// <summary>世界与村庄没有战斗；交易完成后才产生下一次地牢选择。</summary>

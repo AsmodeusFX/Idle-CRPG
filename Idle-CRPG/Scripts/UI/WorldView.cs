@@ -9,20 +9,23 @@ public partial class Main
 {
     private WorldProgress? mapProgress;
     private int mapCleared=-1,mapExplored=-1;
+    private string mapPlan="";
     private readonly Dictionary<int,RegionStatus> mapStatuses=new();
     private RegionStatus MapStatus(int region)
     {
-        var progress=session!.World!.Progress;
-        if(!ReferenceEquals(mapProgress,progress)||mapCleared!=progress.Cleared.Count||mapExplored!=progress.Explored.Count)
+        var world=session!.World!;var progress=world.Progress;
+        string plan=string.Join(",",world.PendingCastles)+"/"+world.Target.Dungeon.Id+"/"+world.Stage;
+        if(mapPlan!=plan||!ReferenceEquals(mapProgress,progress)||mapCleared!=progress.Cleared.Count||mapExplored!=progress.Explored.Count)
         {
-            mapProgress=progress;mapCleared=progress.Cleared.Count;mapExplored=progress.Explored.Count;mapStatuses.Clear();
+            mapPlan=plan;mapProgress=progress;mapCleared=progress.Cleared.Count;mapExplored=progress.Explored.Count;mapStatuses.Clear();
             var rulers=new Dictionary<string,RegionStatus>();
             foreach(var r in config.Regions)
             {
                 string castle=config.Rulers[r.Id];
                 if(!rulers.TryGetValue(castle,out var state))
                 {
-                    state=progress.Cleared.Contains(castle)?RegionStatus.Occupied:progress.CastleUnlocked(config,castle)?RegionStatus.WaitingCastle:RegionStatus.Unexplored;
+                    state=world.RegionState(r.Id);
+                    if(state==RegionStatus.Sweeping)state=RegionStatus.Unexplored;
                     rulers[castle]=state;
                 }
                 mapStatuses[r.Id]=state==RegionStatus.Unexplored&&progress.Explored.Contains(r.Id)?RegionStatus.Sweeping:state;
@@ -33,8 +36,8 @@ public partial class Main
     private void Text(string value,Vector2 position,int size=16,string color="c1d0d8") => DrawString(font,position,value,HorizontalAlignment.Left,-1,size,new Color(color));
     private static string TerrainName(string terrain) => terrain switch {"snow"=>"北境雪原","desert"=>"西部沙海","tropical"=>"南方雨林","coast"=>"东岸湖湾","grass"=>"中央原野",_=>throw new ArgumentOutOfRangeException(nameof(terrain))};
     private static Color TerrainColor(string terrain) => new(terrain switch {"snow"=>"bbcdd0","desert"=>"9b8052","tropical"=>"315b44","coast"=>"47747e","grass"=>"526b52",_=>throw new ArgumentOutOfRangeException(nameof(terrain))});
-    private static string StatusName(RegionStatus status) => status switch {RegionStatus.Unexplored=>"未展开探索",RegionStatus.Sweeping=>"地牢扫荡中",RegionStatus.WaitingCastle=>"等待攻略城堡",RegionStatus.Occupied=>"已占领",_=>throw new ArgumentOutOfRangeException(nameof(status))};
-    private static Color StatusColor(RegionStatus status) => new(status switch {RegionStatus.Unexplored=>"141e27",RegionStatus.Sweeping=>"747e85",RegionStatus.WaitingCastle=>"ad5828",RegionStatus.Occupied=>"39764e",_=>throw new ArgumentOutOfRangeException(nameof(status))});
+    private static string StatusName(RegionStatus status) => status switch {RegionStatus.Unexplored=>"未展开探索",RegionStatus.Sweeping=>"地牢扫荡中",RegionStatus.WaitingCastle=>"等待攻略城堡",RegionStatus.Occupied=>"已占领",RegionStatus.PlannedAttack=>"计划攻击",_=>throw new ArgumentOutOfRangeException(nameof(status))};
+    private static Color StatusColor(RegionStatus status) => new(status switch {RegionStatus.Unexplored=>"141e27",RegionStatus.Sweeping=>"747e85",RegionStatus.WaitingCastle=>"ad5828",RegionStatus.Occupied=>"39764e",RegionStatus.PlannedAttack=>"ffe600",_=>throw new ArgumentOutOfRangeException(nameof(status))});
     private float MapTile => Math.Min(36,Math.Min(604f/config.WorldWidth,610f/config.WorldHeight));
     private Vector2 MapPoint(V point) => new Vector2(55,184)+new Vector2(point.X,point.Y)*MapTile;
 
@@ -116,9 +119,9 @@ public partial class Main
         Text(world.Target.Farming?"当前任务 · 自动复刷":"当前任务 · 开拓远征",origin+new Vector2(22,346),17,"71e4d0");
         Text(world.Target.Dungeon.Name,origin+new Vector2(22,374),17);
         Text($"已探索 {world.Progress.Explored.Count}/{config.Regions.Count}  ·  占领 {mapStatuses.Values.Count(s=>s==RegionStatus.Occupied)}",origin+new Vector2(22,402),14,"91a6b7");
-        for(int i=0;i<4;i++)
+        for(int i=0;i<5;i++)
         {
-            var state=(RegionStatus)i;var p=origin+new Vector2(22,435+i*29);
+            var state=(RegionStatus)i;var p=origin+new Vector2(22,427+i*27);
             DrawRect(new Rect2(p,new Vector2(14,14)),StatusColor(state));Text(StatusName(state),p+new Vector2(25,13),14);
         }
         Text("点击格子查看区域 · 青色圆点标记小队",new Vector2(55,792),14,"91a6b7");
@@ -147,7 +150,7 @@ public partial class Main
         var green=new Color(terrain=="snow"?"54766e":terrain=="tropical"?"70a66e":"7d9a69");
         if(terrain=="tropical")
         {
-            for(int i=0;i<4;i++)DrawCircle(p+new Vector2((i%2*2-1)*7,-10-i/2*6)*scale,7*scale,green);
+            for(int i=0;i<5;i++)DrawCircle(p+new Vector2((i%2*2-1)*7,-10-i/2*6)*scale,7*scale,green);
         }
         else
         {

@@ -40,6 +40,27 @@ public static class SceneChecks
         Check(resumed.World.Trades==1&&resumed.World.Target.Dungeon.Id=="c1"&&resumed.World.Stage==CampaignStage.TravelDungeon,"交易后未执行排队城堡挑战");
         var migrated=SaveStore.Decode(c,json);migrated.Session!.World!.NavigationVersion=0;
         GameSession.Restore(c,migrated.Session);
+        var queued=GameSession.CreateWorld(c,78,new[]{"warrior","ranger","mage"});var qw=queued.World!;
+        qw.Progress.Cleared.Add("c1");
+        var castles=c.Dungeons.Where(d=>d.Castle&&d.Id!="c1"&&qw.Progress.AreaPartUnlocked(c,c.AreaPart(d.RegionId).Id)).Take(3).Reverse().ToArray();
+        Check(castles.Length==3,"queue sample");
+        foreach(var d in c.Dungeons.Where(d=>!d.Castle))qw.Progress.Cleared.Add(d.Id);
+        foreach(var castle in castles)Check(queued.RequestCastleChallenge(castle.Id),"enqueue failed");
+        Check(qw.Target.Dungeon.Id==castles[0].Id&&qw.PendingCastles.SequenceEqual(castles.Skip(1).Select(d=>d.Id)),"queue overwritten");
+        Check(!queued.RequestCastleChallenge(castles[0].Id)&&!queued.RequestCastleChallenge(castles[1].Id),"duplicate accepted");
+        Check(castles.All(d=>c.Rulers.Where(r=>r.Value==d.Id).All(r=>qw.RegionState(r.Key)==RegionStatus.PlannedAttack)),"planned dominion color");
+        queued=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new SaveDocument {Session=queued.CaptureProgress()})).Session!);qw=queued.World!;
+        Check(qw.PendingCastles.SequenceEqual(castles.Skip(1).Select(d=>d.Id)),"queue persistence");
+        foreach(var h in queued.Heroes){h.Hp=h.MaxHp=100000;h.Attack=100000;}
+        for(int n=0;n<castles.Length;n++)
+        {
+            Check(qw.Target.Dungeon.Id==castles[n].Id,"dispatch order");int trades=qw.Trades;
+            for(int i=0;i<60000&&qw.Trades==trades;i++)queued.Tick(.05f);
+            Check(qw.Trades==trades+1&&qw.Progress.Cleared.Contains(castles[n].Id),"trade before next castle");
+            Check(qw.RegionState(castles[n].RegionId)==RegionStatus.Occupied,"occupation priority");
+        }
+        var legacy=SaveStore.Decode(c,json).Session!;legacy.World!.PendingCastles.Clear();legacy.World.PendingCastle="c1";
+        Check(GameSession.Restore(c,legacy).World!.PendingCastles.SequenceEqual(new[]{"c1"}),"legacy pending castle");
         Console.WriteLine("PASS: variable room geometry, door positions, obstacle routing, manual castle gate, queued challenge persistence and post-trade dispatch");
     }
 }

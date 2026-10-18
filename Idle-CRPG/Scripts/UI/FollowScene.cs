@@ -14,13 +14,13 @@ public partial class Main
     {
         if(session?.World is not {} w)return;
         string ruler=config.Rulers[selectedRegion>0?selectedRegion:w.CurrentRegion];
-        var available=config.Dungeons.Where(d=>d.Castle&&!w.Progress.Cleared.Contains(d.Id)&&w.Progress.CastleUnlocked(config,d.Id)).OrderBy(d=>d.Id==ruler?0:1).ThenBy(d=>d.LevelMin).FirstOrDefault();
+        var available=config.Dungeons.Where(d=>d.Castle&&!w.Progress.Cleared.Contains(d.Id)&&w.Progress.CastleUnlocked(config,d.Id)).OrderBy(d=>d.Id==ruler?0:1).ThenBy(d=>w.PendingCastles.Contains(d.Id)||w.Target.Dungeon.Id==d.Id?1:0).ThenBy(d=>d.LevelMin).FirstOrDefault();
         offeredCastle=available?.Id??"";castleButton.Visible=available!=null;
         if(available!=null)
         {
             bool active=w.Target.Dungeon.Id==available.Id&&w.Stage is CampaignStage.Dungeon or CampaignStage.TravelDungeon;
-            castleButton.Text=w.PendingCastle==available.Id?"已安排："+available.Name:active?(w.Stage==CampaignStage.Dungeon?"挑战中：":"前往：")+available.Name:"挑战"+available.Name;
-            castleButton.Disabled=w.PendingCastle==available.Id||active;
+            castleButton.Text=w.PendingCastles.Contains(available.Id)?"计划攻击 #"+(w.PendingCastles.ToList().IndexOf(available.Id)+1)+"："+available.Name:active?(w.Stage==CampaignStage.Dungeon?"挑战中：":"前往：")+available.Name:"挑战"+available.Name;
+            castleButton.Disabled=w.PendingCastles.Contains(available.Id)||active;
         }
     }
     private void ChallengeCastle()
