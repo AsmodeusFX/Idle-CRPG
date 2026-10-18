@@ -50,7 +50,7 @@ public partial class Main
         if(!map)return;
         var p=(mouse.Position-MapOrigin)/MapTile;
         if(p.X>=0&&p.Y>=0&&p.X<config.WorldWidth&&p.Y<config.WorldHeight)
-        {selectedRegion=config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id;RefreshWorldPage();SaveNow();}
+        {SelectMapTile(config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id);}
     }
 
     private void DrawWorld()
@@ -73,14 +73,13 @@ public partial class Main
                 DrawRect(new Rect2(pos+new Vector2(village.X,village.Y)*tile-new Vector2(2,2),new Vector2(4,4)),new Color("d6c7a4"));
             }
             if(config.Dungeons.Any(d=>d.RegionId==r.Id&&d.Castle))CastleIcon(pos+new Vector2(tile*.65f,tile*.36f),0.65f);
-            if(r.Id==selectedRegion)DrawRect(new Rect2(pos-new Vector2(1,1),new Vector2(tile,tile)),new Color("e7d2a4"),false,2);
         }
         // 勾勒选中统治区的外边界，方便识别不规则辖区，不改变探索状态颜色。
         string selectedCastle=config.Rulers[selectedRegion<0?world.CurrentRegion:selectedRegion];
         var selectedCells=config.Regions.Where(r=>config.Rulers[r.Id]==selectedCastle).Select(r=>(r.X,r.Y)).ToHashSet();
         foreach(var cell in selectedCells)
         {
-            var p=MapPoint(new V(cell.X,cell.Y));var color=new Color("d4b77d");
+            var p=MapPoint(new V(cell.X,cell.Y));var color=SelectedDominionColor;
             if(!selectedCells.Contains((cell.X-1,cell.Y)))DrawLine(p,p+new Vector2(0,tile),color,2);
             if(!selectedCells.Contains((cell.X+1,cell.Y)))DrawLine(p+new Vector2(tile,0),p+new Vector2(tile,tile),color,2);
             if(!selectedCells.Contains((cell.X,cell.Y-1)))DrawLine(p,p+new Vector2(tile,0),color,2);
@@ -93,6 +92,9 @@ public partial class Main
         DrawArc(marker,10,0,Mathf.Tau,24,new Color("71e4d0"),1,true);
         var current=config.Regions.Single(r=>r.Id==world.CurrentRegion);
         DrawRect(new Rect2(MapPoint(new V(current.X,current.Y)),new Vector2(tile-2,tile-2)),new Color("71e4d0"),false,2);
+        // 选中格内缩绘制并置顶，和金色辖区外轮廓、青色玩家位置分别辨识。
+        var selected=config.Regions.Single(r=>r.Id==(selectedRegion<0?world.CurrentRegion:selectedRegion));
+        DrawRect(new Rect2(MapPoint(new V(selected.X,selected.Y))+new Vector2(3,3),new Vector2(tile-8,tile-8)),SelectedTileColor,false,3);
 
         for(int i=0;i<5;i++)
         {

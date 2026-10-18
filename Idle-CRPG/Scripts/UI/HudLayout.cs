@@ -179,6 +179,7 @@ public partial class Main
             if(buttons.Any(b=>!b.Disabled)||!order.SequenceEqual(castleCards.Keys.OrderBy(id=>interactionArrival[id])))throw new Exception("刷新改变了同类型按钮顺序或允许重复点击");
             if(SceneRect.End.Y>=662)throw new Exception("战斗视口覆盖底部状态区");
             SelectStarView(1);
+            if(selectedRegion!=world.CurrentRegion||detailRegion!=selectedRegion||!selectedTileTitle.Text.Contains(config.Regions.Single(r=>r.Id==selectedRegion).Name))throw new Exception("打开城堡页未默认选中玩家所在格或缺少详情");
             if(gameHud.Visible||sceneCanvas.Visible||rateButton.IsVisibleInTree()||!castlePage.Visible||castleRows.Count!=config.Dungeons.Count(d=>d.Castle))throw new Exception("城堡页没有占满全局内容区或遗漏城堡");
             if(castleStates["c1"].Text!="已占领"||castleStates[order[0]].Text!="计划攻击")throw new Exception("城堡列表攻略状态不同步");
             var last=config.Dungeons.Last(d=>d.Castle);castleRows[last.Id].EmitSignal(Button.SignalName.Pressed);
@@ -186,6 +187,10 @@ public partial class Main
             var region=config.Regions[5];
             _UnhandledInput(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=true,Position=MapPoint(new System.Numerics.Vector2(region.X+.5f,region.Y+.5f))});
             if(selectedRegion!=region.Id||castlePage.MouseFilter!=Control.MouseFilterEnum.Ignore)throw new Exception("全局地图点击坐标或输入透传不正确");
+            if(detailRegion!=region.Id||!castleRows[config.Rulers[region.Id]].HasThemeStyleboxOverride("normal")||selectedDungeonLabels.Count!=config.Dungeons.Count(d=>d.RegionId==region.Id)||SelectedTileColor==SelectedDominionColor)throw new Exception("格子详情、清单高亮或两级边框颜色不同步");
+            SelectStarView(0);
+            SelectStarView(1);
+            if(selectedRegion!=world.CurrentRegion)throw new Exception("再次打开城堡页未重置到当前格");
             SelectStarView(0);
             if(!rateButton.IsVisibleInTree()||!SceneRect.HasPoint(rateButton.Position)||!SceneRect.HasPoint(rateButton.Position+rateButton.Size))throw new Exception("倍速未限定在游戏视口内");
             if(pause.Size!=uiLayer.GetNode<Button>("SettingsButton").Size||pause.Size!=uiLayer.GetNode<Button>("GmMenuButton").Size)throw new Exception("右上角按钮尺寸不一致");
