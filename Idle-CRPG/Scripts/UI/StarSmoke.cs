@@ -16,6 +16,7 @@ public partial class Main
             FinishProgressWrite();
             var snapshot=SaveStore.Decode(config,SaveStore.Encode(new SaveDocument {Session=session!.Capture()})).Session!;
             snapshot.Gold=100;session=GameSession.Restore(config,snapshot);SelectStarView(3);
+            Check(!gameHud.Visible&&!castlePage.Visible&&!rateButton.IsVisibleInTree()&&starPage.Size.X>1300&&starPage.Size.Y>750,"玩家星图没有使用全局内容区");
             float attack=session.Heroes[0].Attack;var point=_starCanvas.Pan+StarCanvas.Center(session.Stars.Configuration.Layout["s_root"])*_starCanvas.Zoom;
             _starCanvas._GuiInput(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=true,Position=point});
             _starCanvas._GuiInput(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=false,Position=point});
@@ -26,6 +27,7 @@ public partial class Main
             foreach(var file in new[]{"star.csv","star_layout.csv","star_plan.csv"})File.Copy(Path.Combine(source,file),Path.Combine(starEditorConfigRoot,"star",file),true);
             uiLayer.GetNode<Button>("GmMenuButton").EmitSignal(BaseButton.SignalName.Pressed);Check(gmRoot.Visible,"GM 入口未打开");
             gmRoot.FindChild("StarEditorEntry",true,false).EmitSignal(BaseButton.SignalName.Pressed);Check(_editingStars&&!gmRoot.Visible,"编辑器入口未打开");
+            TickStarPanels();Check(!gameHud.Visible&&starPage.Visible&&starPage.Size==GlobalPageRect.Size-new Vector2(16,8),"星图编辑器没有全屏显示");
             EditorClickCell(4,2);string id=_starSelected;Check(_starDraft.Dirty,"创建未进入草稿");
             SelectStarView(0);Check(viewMode==3,"未保存草稿被静默丢弃");
             _tnName.Text="UI 验证星辰";_tnMax.Text="1";_tnCost.Text="1";_tnValue.Text="1";_tnParents.Text="s_root";_tnAttribute.Select(2);_tnIntent.Text="验证编辑器保存功能";

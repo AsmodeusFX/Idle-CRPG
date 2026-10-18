@@ -54,13 +54,7 @@ public partial class Main
     {
         long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
         painter=context;context.DrawSetTransform(-SceneRect.Position);
-        if(viewMode==1&&session!=null)
-        {
-            DrawRect(SceneRect,new Color("080d15"));
-            context.DrawSetTransform(new Vector2(104,0)-new Vector2(24,148)*.8f,0,new Vector2(.8f,.8f));
-            DrawWorld();
-        }
-        else PaintScene();
+        PaintScene();
         if(performanceRun)drawTimes.Add(Milliseconds(profileStart));
     }
     // 绘制转发保持所有几何/文字共用同一裁切坐标系。

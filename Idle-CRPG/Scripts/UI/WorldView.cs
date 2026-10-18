@@ -38,8 +38,9 @@ public partial class Main
     private static Color TerrainColor(string terrain) => new(terrain switch {"snow"=>"bbcdd0","desert"=>"9b8052","tropical"=>"315b44","coast"=>"47747e","grass"=>"526b52",_=>throw new ArgumentOutOfRangeException(nameof(terrain))});
     private static string StatusName(RegionStatus status) => status switch {RegionStatus.Unexplored=>"未展开探索",RegionStatus.Sweeping=>"地牢扫荡中",RegionStatus.WaitingCastle=>"等待攻略城堡",RegionStatus.Occupied=>"已占领",RegionStatus.PlannedAttack=>"计划攻击",_=>throw new ArgumentOutOfRangeException(nameof(status))};
     private static Color StatusColor(RegionStatus status) => new(status switch {RegionStatus.Unexplored=>"141e27",RegionStatus.Sweeping=>"747e85",RegionStatus.WaitingCastle=>"ad5828",RegionStatus.Occupied=>"39764e",RegionStatus.PlannedAttack=>"ffe600",_=>throw new ArgumentOutOfRangeException(nameof(status))});
-    private float MapTile => Math.Min(36,Math.Min(604f/config.WorldWidth,610f/config.WorldHeight));
-    private Vector2 MapPoint(V point) => new Vector2(55,184)+new Vector2(point.X,point.Y)*MapTile;
+    private float MapTile => Math.Min(46,Math.Min(920f/config.WorldWidth,736f/config.WorldHeight));
+    private Vector2 MapOrigin => new(464+(952-config.WorldWidth*MapTile)/2,108);
+    private Vector2 MapPoint(V point) => MapOrigin+new Vector2(point.X,point.Y)*MapTile;
 
     public override void _UnhandledInput(InputEvent input)
     {
@@ -47,18 +48,14 @@ public partial class Main
         var w=session.World!;
         bool map=viewMode==1;
         if(!map)return;
-        // 城堡页按缩小后的视口绘制，点击使用同一逆变换。
-        var mapMouse=(mouse.Position-SceneRect.Position-new Vector2(104,0))/.8f+new Vector2(24,148);
-        var p=(mapMouse-new Vector2(55,184))/MapTile;
+        var p=(mouse.Position-MapOrigin)/MapTile;
         if(p.X>=0&&p.Y>=0&&p.X<config.WorldWidth&&p.Y<config.WorldHeight)
-        {selectedRegion=config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id;RefreshCastleButton();SaveNow();}
+        {selectedRegion=config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id;RefreshWorldPage();SaveNow();}
     }
 
     private void DrawWorld()
     {
         var world=session!.World!;
-        Text("世界疆域",new Vector2(55,165),20,"e7d2a4");
-        Text($"{config.WorldWidth} × {config.WorldHeight}  /  北境霜雪 · 南方雨林 · 西部沙海 · 东岸湖湾",new Vector2(193,163),13,"91a6b7");
         float tile=MapTile;
         foreach(var r in config.Regions)
         {
@@ -97,36 +94,11 @@ public partial class Main
         var current=config.Regions.Single(r=>r.Id==world.CurrentRegion);
         DrawRect(new Rect2(MapPoint(new V(current.X,current.Y)),new Vector2(tile-2,tile-2)),new Color("71e4d0"),false,2);
 
-        int selected=selectedRegion<0?world.CurrentRegion:selectedRegion;
-        var region=config.Regions.Single(r=>r.Id==selected);
-        var part=config.AreaPart(selected);bool partUnlocked=world.Progress.AreaPartUnlocked(config,part.Id);
-        var origin=new Vector2(680,185);
-        DrawRect(new Rect2(origin,new Vector2(352,573)),new Color("111c26"));
-        Text(region.Name,origin+new Vector2(22,34),23,"e7d2a4");
-        Text($"区域 {region.Id:D3}  /  {TerrainName(region.Terrain)}",origin+new Vector2(22,62),15,"91a6b7");
-        Text(partUnlocked?$"{part.Id} · {StatusName(MapStatus(selected))}":$"{part.Id} · 统治区未解锁",origin+new Vector2(22,96),19);
-        var normals=config.Dungeons.Where(d=>d.RegionId==selected&&!d.Castle).OrderBy(d=>d.LevelMin).ToArray();
-        Text($"地牢 {normals.Count(d=>world.Progress.Cleared.Contains(d.Id))}/{normals.Length} 已通关",origin+new Vector2(22,132));
-        int line=0;
-        foreach(var d in normals.Take(3))
-            Text($"{(world.Progress.Cleared.Contains(d.Id)?"✓":"·")} {d.Name}  Lv.{d.LevelMin}",origin+new Vector2(22,160+line++*25),14);
-        var ruler=config.Dungeons.Single(d=>d.Id==config.Rulers[selected]);
-        int total=config.Dungeons.Count(d=>!d.Castle&&config.Rulers[d.RegionId]==ruler.Id);
-        int complete=config.Dungeons.Count(d=>!d.Castle&&config.Rulers[d.RegionId]==ruler.Id&&world.Progress.Cleared.Contains(d.Id));
-        Text("统治城堡 / "+ruler.Name,origin+new Vector2(22,244),15,"e7d2a4");
-        Text($"统治区普通地牢 {complete}/{total}",origin+new Vector2(22,270),15);
-        string prerequisites=string.Join(" / ",config.AreaPartPrerequisites.Where(e=>e.AreaPartId==part.Id).Select(e=>e.RequiredAreaPartId));
-        Text(!partUnlocked?"前置任一："+prerequisites:world.Progress.Cleared.Contains(ruler.Id)?"统治区域已占领":world.Progress.CastleUnlocked(config,ruler.Id)?"城堡已解锁":"尚未满足城堡挑战条件",origin+new Vector2(22,295),14,"91a6b7");
-        DrawLine(origin+new Vector2(22,315),origin+new Vector2(330,315),new Color("344651"));
-        Text(world.Target.Farming?"当前任务 · 自动复刷":"当前任务 · 开拓远征",origin+new Vector2(22,346),17,"71e4d0");
-        Text(world.Target.Dungeon.Name,origin+new Vector2(22,374),17);
-        Text($"已探索 {world.Progress.Explored.Count}/{config.Regions.Count}  ·  占领 {mapStatuses.Values.Count(s=>s==RegionStatus.Occupied)}",origin+new Vector2(22,402),14,"91a6b7");
         for(int i=0;i<5;i++)
         {
-            var state=(RegionStatus)i;var p=origin+new Vector2(22,427+i*27);
-            DrawRect(new Rect2(p,new Vector2(14,14)),StatusColor(state));Text(StatusName(state),p+new Vector2(25,13),14);
+            var state=(RegionStatus)i;var p=new Vector2(478+i*181,860);
+            DrawRect(new Rect2(p,new Vector2(12,12)),StatusColor(state));Text(StatusName(state),p+new Vector2(20,12),13);
         }
-        Text("点击格子查看区域 · 青色圆点标记小队",new Vector2(55,792),14,"91a6b7");
     }
 
     private void CastleIcon(Vector2 p,float scale)

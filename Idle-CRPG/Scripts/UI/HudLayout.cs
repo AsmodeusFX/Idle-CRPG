@@ -6,7 +6,7 @@ using System.Linq;
 
 public partial class Main
 {
-    private Control partySetup=null!;
+    private Control partySetup=null!,gameHud=null!;
     private VBoxContainer interactionList=null!;
     private Label interactionEmpty=null!;
     private readonly Label[] currencies=new Label[4];
@@ -37,32 +37,33 @@ public partial class Main
             var button=new Button {Text=pair.Item1,CustomMinimumSize=new Vector2(104,36)};
             int mode=pair.Item2;button.Pressed+=()=>{SelectStarView(mode);PlaySound("sfx_click");};tabs.AddChild(button);
         }
-        HudText(canvas,"深渊远征 / IDLE CRPG",new Vector2(400,37),20);
-        var gmButton=new Button {Name="GmMenuButton",Text="GM",Position=new Vector2(1000,32),Size=new Vector2(62,36)};
+        HudText(canvas,"深渊远征 / IDLE CRPG",new Vector2(840,37),20);
+        var gmButton=new Button {Name="GmMenuButton",Text="GM",Position=new Vector2(1136,32),Size=new Vector2(80,36)};
         gmButton.Pressed+=ToggleGm;canvas.AddChild(gmButton);
-        var settingsButton=new Button {Text="设置",Position=new Vector2(1070,32),Size=new Vector2(70,36)};
+        var settingsButton=new Button {Name="SettingsButton",Text="设置",Position=new Vector2(1224,32),Size=new Vector2(80,36)};
         settingsButton.Pressed+=ToggleSettings;canvas.AddChild(settingsButton);
-        pause=new Button {Text="暂停",Position=new Vector2(1148,32),Size=new Vector2(112,36)};
+        pause=new Button {Text="暂停",Position=new Vector2(1312,32),Size=new Vector2(80,36)};
         pause.Pressed+=()=>{paused=!paused;pause.Text=paused?"继续":"暂停";PlaySound("sfx_click");SaveNow();};canvas.AddChild(pause);
-        rateButton=new Button {Text="速度 ×1",Position=new Vector2(1268,32),Size=new Vector2(132,36)};
-        rateButton.Pressed+=()=>{speed=speed==4?1:speed*2;rateButton.Text=$"速度 ×{speed}";PlaySound("sfx_click");SaveNow();};canvas.AddChild(rateButton);
+        gameHud=new Control {Size=new Vector2(1440,900),MouseFilter=Control.MouseFilterEnum.Ignore};canvas.AddChild(gameHud);
+        rateButton=new Button {Text="速度 ×1",Position=new Vector2(38,602),Size=new Vector2(116,36)};
+        rateButton.Pressed+=()=>{speed=speed==4?1:speed*2;rateButton.Text=$"速度 ×{speed}";PlaySound("sfx_click");SaveNow();};gameHud.AddChild(rateButton);
 
-        HudPanel(canvas,new Vector2(1080,92),new Vector2(336,558));
+        HudPanel(gameHud,new Vector2(1080,92),new Vector2(336,558));
         for(int i=0;i<4;i++)
         {
             float x=i<3?1092+i*106:1092,y=i<3?104:143;
-            canvas.AddChild(new HudIcon {Kind=i==0?"coin":i==1?"junk":i==2?"xp":"point",Position=new Vector2(x,y),Size=new Vector2(24,24)});
-            currencies[i]=HudText(canvas,i==3?"成长点 —":"0",new Vector2(x+28,y+1),i==3?14:16);
+            gameHud.AddChild(new HudIcon {Kind=i==0?"coin":i==1?"junk":i==2?"xp":"point",Position=new Vector2(x,y),Size=new Vector2(24,24)});
+            currencies[i]=HudText(gameHud,i==3?"成长点 —":"0",new Vector2(x+28,y+1),i==3?14:16);
             currencies[i].TooltipText=new[]{"金币","杂物数量","当前经验","成长点：后续开放"}[i];
         }
-        var separator=new HSeparator {Position=new Vector2(1092,177),Size=new Vector2(312,2)};canvas.AddChild(separator);
-        HudText(canvas,"远征交互",new Vector2(1092,187),17);
-        var scroll=new ScrollContainer {Position=new Vector2(1092,220),Size=new Vector2(312,417),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};canvas.AddChild(scroll);
+        var separator=new HSeparator {Position=new Vector2(1092,177),Size=new Vector2(312,2)};gameHud.AddChild(separator);
+        HudText(gameHud,"远征交互",new Vector2(1092,187),17);
+        var scroll=new ScrollContainer {Position=new Vector2(1092,220),Size=new Vector2(312,417),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};gameHud.AddChild(scroll);
         interactionList=new VBoxContainer {SizeFlagsHorizontal=Control.SizeFlags.ExpandFill};interactionList.AddThemeConstantOverride("separation",7);scroll.AddChild(interactionList);
         interactionEmpty=UiLabel("暂无可用交互\n\n城堡满足挑战条件后在此显示。",14);interactionEmpty.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(interactionEmpty);
 
         // 开局选择占用交互区，进入远征后隐藏，避免永久占据战斗构图。
-        partySetup=new Panel {Position=new Vector2(1092,220),Size=new Vector2(312,417)};canvas.AddChild(partySetup);
+        partySetup=new Panel {Position=new Vector2(1092,220),Size=new Vector2(312,417)};gameHud.AddChild(partySetup);
         var setup=new VBoxContainer {Position=new Vector2(10,10),Size=new Vector2(292,397)};partySetup.AddChild(setup);
         setup.AddChild(UiLabel("组建远征小队",19));
         seed=new LineEdit {Text="20261017",PlaceholderText="整数 seed"};setup.AddChild(seed);
@@ -71,30 +72,30 @@ public partial class Main
         foreach(var choice in choices){choice.Toggled+=_=>PlaySound("sfx_click");setup.AddChild(choice);}
         start=new Button {Text="开始世界远征",CustomMinimumSize=new Vector2(0,42)};start.Pressed+=Start;setup.AddChild(start);
 
-        summary=HudText(canvas,"选定小队后开始。",new Vector2(38,100),14);summary.Size=new Vector2(1008,40);summary.AutowrapMode=TextServer.AutowrapMode.WordSmart;summary.MouseFilter=Control.MouseFilterEnum.Ignore;
-        HudPanel(canvas,new Vector2(24,662),new Vector2(840,214));
-        HudText(canvas,"小队状态",new Vector2(38,669),16);
-        HudText(canvas,"上阵席位  /  5",new Vector2(715,671),13);
+        summary=HudText(gameHud,"选定小队后开始。",new Vector2(38,100),14);summary.Size=new Vector2(1008,40);summary.AutowrapMode=TextServer.AutowrapMode.WordSmart;summary.MouseFilter=Control.MouseFilterEnum.Ignore;
+        HudPanel(gameHud,new Vector2(24,662),new Vector2(840,214));
+        HudText(gameHud,"小队状态",new Vector2(38,669),16);
+        HudText(gameHud,"上阵席位  /  5",new Vector2(715,671),13);
         for(int i=0;i<5;i++)
         {
             float y=696+i*34;
-            heroIcons[i]=new HudIcon {Kind="hero",Position=new Vector2(38,y),Size=new Vector2(28,28),Accent=heroColors[i%heroColors.Length]};canvas.AddChild(heroIcons[i]);
-            heroNames[i]=HudText(canvas,"空缺席位",new Vector2(78,y+4),14);
+            heroIcons[i]=new HudIcon {Kind="hero",Position=new Vector2(38,y),Size=new Vector2(28,28),Accent=heroColors[i%heroColors.Length]};gameHud.AddChild(heroIcons[i]);
+            heroNames[i]=HudText(gameHud,"空缺席位",new Vector2(78,y+4),14);
             heroHealth[i]=new ProgressBar {Position=new Vector2(260,y+5),Size=new Vector2(210,20),ShowPercentage=false,MouseFilter=Control.MouseFilterEnum.Ignore};
-            heroHealth[i].AddThemeStyleboxOverride("fill",new StyleBoxFlat {BgColor=new Color("397b70")});canvas.AddChild(heroHealth[i]);
-            heroStats[i]=HudText(canvas,"—",new Vector2(486,y+4),14);
+            heroHealth[i].AddThemeStyleboxOverride("fill",new StyleBoxFlat {BgColor=new Color("397b70")});gameHud.AddChild(heroHealth[i]);
+            heroStats[i]=HudText(gameHud,"—",new Vector2(486,y+4),14);
         }
-        HudPanel(canvas,new Vector2(880,662),new Vector2(536,214));
-        HudText(canvas,"药剂",new Vector2(896,669),16);
-        HudText(canvas,"后续开放",new Vector2(1300,671),13);
+        HudPanel(gameHud,new Vector2(880,662),new Vector2(536,214));
+        HudText(gameHud,"药剂",new Vector2(896,669),16);
+        HudText(gameHud,"后续开放",new Vector2(1300,671),13);
         for(int i=0;i<4;i++)
         {
-            var slot=HudPanel(canvas,new Vector2(896+i%2*252,704+i/2*76),new Vector2(240,64));
+            var slot=HudPanel(gameHud,new Vector2(896+i%2*252,704+i/2*76),new Vector2(240,64));
             slot.AddChild(new HudIcon {Kind="potion",Position=new Vector2(12,15),Size=new Vector2(32,32),Accent=new Color("536575")});
             HudText(slot,"药剂槽位",new Vector2(58,10),14);HudText(slot,"尚未开放",new Vector2(58,34),12);
         }
-        roster=new Label();journal=new Label();canvas.AddChild(roster);canvas.AddChild(journal);roster.Hide();journal.Hide();
-        help=HudText(canvas,"",new Vector2(32,879),12);help.Modulate=new Color("91a6b7");
+        roster=new Label();journal=new Label();gameHud.AddChild(roster);gameHud.AddChild(journal);roster.Hide();journal.Hide();
+        help=HudText(gameHud,"",new Vector2(32,879),12);help.Modulate=new Color("91a6b7");
     }
 
     private static string CompactAmount(long value)=>value>=1000000?$"{value/1000000d:0.#}M":value>=10000?$"{value/1000d:0.#}K":value.ToString("N0");
@@ -160,7 +161,7 @@ public partial class Main
     /// <summary>验证真实交互卡的独立按钮、刷新顺序与排队行为；仅由 QA 冒烟入口调用。</summary>
     private void RunHudSmoke()
     {
-        var original=session;
+        var original=session;int originalView=viewMode,originalSelected=selectedRegion;
         try
         {
             session=GameSession.CreateWorld(config,123,new[]{"warrior","ranger","mage"});
@@ -177,10 +178,21 @@ public partial class Main
             Refresh();
             if(buttons.Any(b=>!b.Disabled)||!order.SequenceEqual(castleCards.Keys.OrderBy(id=>interactionArrival[id])))throw new Exception("刷新改变了同类型按钮顺序或允许重复点击");
             if(SceneRect.End.Y>=662)throw new Exception("战斗视口覆盖底部状态区");
-            GD.Print("HUD_SMOKE_OK: five regions, four currencies, five hero slots, independent castle cards, arrival order and click queue");
+            SelectStarView(1);
+            if(gameHud.Visible||sceneCanvas.Visible||rateButton.IsVisibleInTree()||!castlePage.Visible||castleRows.Count!=config.Dungeons.Count(d=>d.Castle))throw new Exception("城堡页没有占满全局内容区或遗漏城堡");
+            if(castleStates["c1"].Text!="已占领"||castleStates[order[0]].Text!="计划攻击")throw new Exception("城堡列表攻略状态不同步");
+            var last=config.Dungeons.Last(d=>d.Castle);castleRows[last.Id].EmitSignal(Button.SignalName.Pressed);
+            if(selectedRegion!=last.RegionId)throw new Exception("城堡列表无法定位地图");
+            var region=config.Regions[5];
+            _UnhandledInput(new InputEventMouseButton {ButtonIndex=MouseButton.Left,Pressed=true,Position=MapPoint(new System.Numerics.Vector2(region.X+.5f,region.Y+.5f))});
+            if(selectedRegion!=region.Id||castlePage.MouseFilter!=Control.MouseFilterEnum.Ignore)throw new Exception("全局地图点击坐标或输入透传不正确");
+            SelectStarView(0);
+            if(!rateButton.IsVisibleInTree()||!SceneRect.HasPoint(rateButton.Position)||!SceneRect.HasPoint(rateButton.Position+rateButton.Size))throw new Exception("倍速未限定在游戏视口内");
+            if(pause.Size!=uiLayer.GetNode<Button>("SettingsButton").Size||pause.Size!=uiLayer.GetNode<Button>("GmMenuButton").Size)throw new Exception("右上角按钮尺寸不一致");
+            GD.Print("HUD_SMOKE_OK: independent castle cards, queue, full-page castle list/map, linked selection, game-only speed and equal header buttons");
         }
         catch(Exception error){GD.PushError(error.ToString());QuitSafely(1);}
-        finally{session=original;Refresh();}
+        finally{session=original;viewMode=originalView;selectedRegion=originalSelected;Refresh();TickStarPanels();}
     }
 }
 

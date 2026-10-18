@@ -135,6 +135,7 @@ public partial class Main : Node2D
     private void Refresh()
     {
         RefreshHud();RefreshCastleInteractions();
+        if(viewMode==1)RefreshWorldPage();
         if(session==null)return;
         var s=session;
         var w=s.World!;

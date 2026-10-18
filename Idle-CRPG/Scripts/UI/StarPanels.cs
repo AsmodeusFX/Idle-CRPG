@@ -16,7 +16,8 @@ public partial class Main
     private string GoldText()=>(_editingStars?"星图节点编辑器 · 金币 ":"星图 · 金币 ")+(session?.Gold.ToString("N0")??"0");
     private void BuildStarPanels()
     {
-        starPage=new VBoxContainer {Position=SceneRect.Position+new Vector2(8,4),Size=SceneRect.Size-new Vector2(16,8),Visible=false};
+        BuildWorldPage();
+        starPage=new VBoxContainer {Position=GlobalPageRect.Position+new Vector2(8,4),Size=GlobalPageRect.Size-new Vector2(16,8),Visible=false};
         starPage.AddThemeConstantOverride("separation",8);uiLayer.AddChild(starPage);
         gmRoot=new Control {Size=new Vector2(1440,900),Visible=false,MouseFilter=Control.MouseFilterEnum.Stop};uiLayer.AddChild(gmRoot);
         gmRoot.AddChild(new ColorRect {Size=new Vector2(1440,900),Color=new Color(0,0,0,.8f)});
@@ -41,14 +42,20 @@ public partial class Main
     private void RefreshStarPage()
     {
         foreach(var child in starPage.GetChildren()){starPage.RemoveChild(child);child.QueueFree();}
-        starUiSession=session;_starDisplayedGold=-1;BuildStarUi();starPage.Visible=viewMode==3;sceneCanvas.Visible=viewMode!=3;
+        starUiSession=session;_starDisplayedGold=-1;BuildStarUi();starPage.Visible=viewMode==3;sceneCanvas.Visible=viewMode is not (1 or 3);
     }
     private void TickStarPanels()
     {
         bool show=viewMode==3;
-        summary.Visible=viewMode!=1&&!show;
+        bool global=viewMode==1||show;
+        bool openCastle=viewMode==1&&!castlePage.Visible;
+        gameHud.Visible=!global;castlePage.Visible=viewMode==1;
+        rateButton.Visible=!global&&session!=null;
+        summary.Visible=!global;
+        if(openCastle)RefreshWorldPage();
+        if(viewMode==1)castleMap.QueueRedraw();
         if(show&&(!starPage.Visible||!ReferenceEquals(starUiSession,session)))RefreshStarPage();
-        starPage.Visible=show;sceneCanvas.Visible=!show;
+        starPage.Visible=show;sceneCanvas.Visible=!global;
         if(show)UpdateStarUi();
     }
 }

@@ -2,6 +2,8 @@
 
 ## 来源与首版规则
 
+玩家星图及 GM 星图编辑器都占满顶部功能栏以下的全局内容区，隐藏游戏页货币、交互、小队和药剂 HUD；编辑器的画布与字段面板共享全屏内容区，保留滚动及草稿保护。
+
 根据用户授权只读参考 E:/Git/Idle-Diablo 的 config/talent/README.md、docs/reviews/2026-10-17/talent_migration.md、docs/systems/ui/settings_gm_audio.md，以及 TalentConfiguration、TalentProgression、TalentEditorDocument、TalentEditorStore、TalentCanvas、BattleDemoTalentUi。迁移保留三表合同、稳定 ID、任一前置、唯一根、无环、网格布局、画布交互与编辑草稿/保存保护；未修改参考工程。
 
 玩家入口为顶部“星图”。消耗金币单击节点升一级，不自动加点。首批 7 节点仅每级全队攻击 +1 或生命上限 +1，金币价目和最大等级均为临时 CSV 配置。生命上限增加不治疗，阵亡队员不会因此复活；三名队员统一获得加成，伤害继续使用既有实现。节点任意一条前置点亮一级即可开放，不要求满级；玩家只显示已点亮和前置已满足的节点。占位节点不能购买。
