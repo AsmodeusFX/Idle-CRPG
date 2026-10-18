@@ -21,6 +21,7 @@ public partial class Main
             var rulers=new Dictionary<string,RegionStatus>();
             foreach(var r in MapConfig.Regions)
             {
+                if(!r.Enterable){mapStatuses[r.Id]=RegionStatus.Unexplored;continue;}
                 string castle=MapConfig.Rulers[r.Id];
                 if(!rulers.TryGetValue(castle,out var state))
                 {
@@ -34,8 +35,8 @@ public partial class Main
         return mapStatuses[region];
     }
     private void Text(string value,Vector2 position,int size=16,string color="c1d0d8") => DrawString(font,position,value,HorizontalAlignment.Left,-1,size,new Color(color));
-    private static string TerrainName(string terrain) => terrain switch {"snow"=>"北境雪原","desert"=>"西部沙海","tropical"=>"南方雨林","coast"=>"东岸湖湾","grass"=>"中央原野","hell"=>"地狱荒原",_=>throw new ArgumentOutOfRangeException(nameof(terrain))};
-    private static Color TerrainColor(string terrain) => new(terrain switch {"snow"=>"bbcdd0","desert"=>"9b8052","tropical"=>"315b44","coast"=>"47747e","grass"=>"526b52","hell"=>"784538",_=>throw new ArgumentOutOfRangeException(nameof(terrain))});
+    private static string TerrainName(string terrain) => terrain switch {"snow"=>"北境雪原","desert"=>"西部沙海","tropical"=>"南方雨林","coast"=>"东岸湖湾","grass"=>"中央原野","hell"=>"地狱荒原","mountain"=>"山脉","ocean"=>"海洋",_=>throw new ArgumentOutOfRangeException(nameof(terrain))};
+    private static Color TerrainColor(string terrain) => new(terrain switch {"snow"=>"bbcdd0","desert"=>"9b8052","tropical"=>"315b44","coast"=>"47747e","grass"=>"526b52","hell"=>"784538","mountain"=>"65727d","ocean"=>"234d69",_=>throw new ArgumentOutOfRangeException(nameof(terrain))});
     private static string StatusName(RegionStatus status) => status switch {RegionStatus.Unexplored=>"未展开探索",RegionStatus.Sweeping=>"地牢扫荡中",RegionStatus.WaitingCastle=>"等待攻略城堡",RegionStatus.Occupied=>"已占领",RegionStatus.PlannedAttack=>"计划攻击",_=>throw new ArgumentOutOfRangeException(nameof(status))};
     private static Color StatusColor(RegionStatus status) => new(status switch {RegionStatus.Unexplored=>"141e27",RegionStatus.Sweeping=>"747e85",RegionStatus.WaitingCastle=>"ad5828",RegionStatus.Occupied=>"39764e",RegionStatus.PlannedAttack=>"ffe600",_=>throw new ArgumentOutOfRangeException(nameof(status))});
     private float MapTile => Math.Min(46,Math.Min(920f/MapConfig.WorldWidth,680f/MapConfig.WorldHeight));
@@ -59,8 +60,14 @@ public partial class Main
         float tile=MapTile;
         foreach(var r in MapConfig.Regions)
         {
-            var status=MapStatus(r.Id);
             var pos=MapPoint(new V(r.X,r.Y));
+            if(!r.Enterable)
+            {
+                DrawRect(new Rect2(pos,new Vector2(tile-2,tile-2)),TerrainColor(r.Terrain).Darkened(.4f));
+                Decoration(pos+new Vector2(tile*.5f,tile*.65f),r.Terrain,tile/40,r.Id);
+                DrawLine(pos+new Vector2(4,4),pos+new Vector2(tile-6,tile-6),new Color("6b7f8b"),1);continue;
+            }
+            var status=MapStatus(r.Id);
             DrawRect(new Rect2(pos,new Vector2(tile-2,tile-2)),StatusColor(status));
             if(status!=RegionStatus.Unexplored)
             {
@@ -75,8 +82,8 @@ public partial class Main
             if(MapConfig.Dungeons.Any(d=>d.RegionId==r.Id&&d.Castle))CastleIcon(pos+new Vector2(tile*.65f,tile*.36f),0.65f);
         }
         // 勾勒选中统治区的外边界，方便识别不规则辖区，不改变探索状态颜色。
-        string selectedCastle=MapConfig.Rulers[selectedRegion<0?world.CurrentRegion:selectedRegion];
-        var selectedCells=MapConfig.Regions.Where(r=>MapConfig.Rulers[r.Id]==selectedCastle).Select(r=>(r.X,r.Y)).ToHashSet();
+        MapConfig.Rulers.TryGetValue(selectedRegion<0?world.CurrentRegion:selectedRegion,out string? selectedCastle);
+        var selectedCells=MapConfig.Regions.Where(r=>r.Enterable&&MapConfig.Rulers[r.Id]==selectedCastle).Select(r=>(r.X,r.Y)).ToHashSet();
         foreach(var cell in selectedCells)
         {
             var p=MapPoint(new V(cell.X,cell.Y));var color=SelectedDominionColor;
@@ -115,6 +122,8 @@ public partial class Main
     }
     private void Decoration(Vector2 p,string terrain,float scale,int seedValue)
     {
+        if(terrain=="ocean"){DrawArc(p,12*scale,0,Mathf.Pi,12,new Color("72b3d1"),2*scale,true);DrawArc(p+new Vector2(4,-7)*scale,10*scale,0,Mathf.Pi,12,new Color("4e87ad"),2*scale,true);return;}
+        if(terrain=="mountain"){DrawColoredPolygon(new[]{p+new Vector2(-15,4)*scale,p+new Vector2(0,-21)*scale,p+new Vector2(15,4)*scale},new Color("8d969b"));DrawLine(p,p+new Vector2(0,-15)*scale,new Color("c4ced2"),2*scale);return;}
         if(terrain=="hell")
         {
             DrawColoredPolygon(new[]{p+new Vector2(-11,0)*scale,p+new Vector2(-3,-19)*scale,p+new Vector2(4,-8)*scale,p+new Vector2(10,0)*scale},new Color("3e3031"));

@@ -14,6 +14,7 @@ public static class WorldNavigation
     public static bool Walkable(Config c,int x,int y)
     {
         if(x<0||y<0||x>=c.WorldWidth*CellsPerRegion||y>=c.WorldHeight*CellsPerRegion)return false;
+        if(!c.Regions.Any(r=>r.X==x/CellsPerRegion&&r.Y==y/CellsPerRegion&&r.Enterable))return false;
         float left=x/(float)CellsPerRegion,top=y/(float)CellsPerRegion,size=1f/CellsPerRegion;
         return !c.Obstacles.Any(o=>left<o.X+o.Width-.00001f&&left+size>o.X+.00001f&&top<o.Y+o.Height-.00001f&&top+size>o.Y+.00001f);
     }
@@ -62,7 +63,7 @@ public sealed partial class Config
         var rows=Read(Path.Combine(sharedDirectory??directory,"system/camera.csv"));if(rows.Count!=1)throw new InvalidDataException("camera.csv 必须一行");var s=rows[0];
         CameraFollow=Number(s,"follow_rate");CameraTransition=Number(s,"transition_rate");CameraMaxZoom=Number(s,"dungeon_max_zoom");WorldZoom=Number(s,"world_zoom");WorldUnits=Number(s,"world_units");
         if(CameraFollow<=0||CameraTransition<=0||CameraMaxZoom<=0||WorldZoom<=0||WorldUnits<12||Obstacles.Select(o=>o.Id).Distinct().Count()!=Obstacles.Count||Obstacles.Any(o=>o.Kind is not ("water" or "rock")||o.X<0||o.Y<0||o.Width<=0||o.Height<=0||o.X+o.Width>WorldWidth||o.Y+o.Height>WorldHeight))throw new InvalidDataException("场景/障碍配置非法");
-        foreach(var r in Regions)
+        foreach(var r in Regions.Where(r=>r.Enterable))
         {
             foreach(var p in Dungeons.Where(d=>d.RegionId==r.Id).Select(d=>new Vector2(r.X+d.X,r.Y+d.Y)).Concat(Villages.Where(v=>v.RegionId==r.Id).Select(v=>new Vector2(r.X+v.X,r.Y+v.Y))))
                 if(!WorldNavigation.Walkable(this,p))throw new InvalidDataException("地牢或村庄入口被障碍阻挡");

@@ -30,7 +30,7 @@ public partial class Main
         selectedTileTitle=HudText(sidebar,"选中地块",new Vector2(12,9),19);
         selectedTileTitle.AddThemeColorOverride("font_color",SelectedTileColor);
         selectedTileInfo=HudText(sidebar,"请先开启世界远征。",new Vector2(12,43),14);
-        var detailScroll=new ScrollContainer {Position=new Vector2(12,146),Size=new Vector2(404,94),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};sidebar.AddChild(detailScroll);
+        var detailScroll=new ScrollContainer {Position=new Vector2(12,170),Size=new Vector2(404,70),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};sidebar.AddChild(detailScroll);
         selectedTileDungeons=new VBoxContainer {SizeFlagsHorizontal=Control.SizeFlags.ExpandFill};detailScroll.AddChild(selectedTileDungeons);
         HudPanel(sidebar,new Vector2(0,262),new Vector2(428,474));
         HudText(sidebar,"城堡名称",new Vector2(12,271),17);HudText(sidebar,"攻略状态",new Vector2(250,271),17);
@@ -72,12 +72,12 @@ public partial class Main
             state.Text=status==RegionStatus.Occupied?"已占领":status==RegionStatus.PlannedAttack?"计划攻击":!unlocked?"未解锁":status==RegionStatus.WaitingCastle?"等待攻略":$"地牢 {cleared} / {normal.Length}";
             state.AddThemeStyleboxOverride("normal",new StyleBoxFlat {BgColor=StatusColor(status)});
             state.AddThemeColorOverride("font_color",status==RegionStatus.PlannedAttack?new Color("242000"):Colors.White);
-            bool selected=MapConfig.Rulers[selectedRegion]==castle.Id;
+            bool selected=MapConfig.Rulers.GetValueOrDefault(selectedRegion)==castle.Id;
             row.Modulate=Colors.White;
             var selectedStyle=new StyleBoxFlat {BgColor=new Color("20364b"),BorderColor=SelectedTileColor,BorderWidthLeft=3,BorderWidthRight=1,BorderWidthTop=1,BorderWidthBottom=1};
             if(selected){row.AddThemeStyleboxOverride("normal",selectedStyle);row.AddThemeStyleboxOverride("hover",selectedStyle);}
             else {row.RemoveThemeStyleboxOverride("normal");row.RemoveThemeStyleboxOverride("hover");}
-            row.TooltipText=$"{castle.Name} · Lv.{castle.LevelMin}\n{state.Text} · 统治区普通地牢 {cleared}/{normal.Length}\n点击定位统治区；挑战请返回游戏交互区安排。";
+            row.TooltipText=$"{castle.Name} · Lv.{castle.LevelMin}\n{state.Text} · 统治区普通地牢 {cleared}/{normal.Length}\n{DescribeRegionGate(castle.RegionId)}\n点击定位统治区；挑战请返回游戏交互区安排。";
         }
         castleMap.QueueRedraw();
     }
@@ -86,7 +86,7 @@ public partial class Main
     private void SelectMapTile(int region)
     {
         selectedRegion=region;RefreshWorldPage();
-        if(castleRows.TryGetValue(MapConfig.Rulers[region],out var row))castleListScroll.EnsureControlVisible(row);
+        if(MapConfig.Rulers.TryGetValue(region,out var ruler)&&castleRows.TryGetValue(ruler,out var row))castleListScroll.EnsureControlVisible(row);
         SaveNow();
     }
 
@@ -95,12 +95,22 @@ public partial class Main
         var world=MapWorld;
         if(world==null){selectedTileTitle.Text="选中地块";selectedTileInfo.Text="请先开启世界远征。";return;}
         var region=MapConfig.Regions.Single(r=>r.Id==selectedRegion);
+        if(!region.Enterable)
+        {
+            selectedTileInfo.TooltipText="";
+            selectedTileTitle.Text=$"{region.Name} · 地块 {region.Id:000}";
+            selectedTileInfo.Text=$"{TerrainName(region.Terrain)} · 坐标 ({region.X+1}, {region.Y+1})\n不可进入 · 地形阻断\n不属于统治区域，不参与探索或通关";
+            foreach(var child in selectedTileDungeons.GetChildren()){selectedTileDungeons.RemoveChild(child);child.QueueFree();}
+            selectedDungeonLabels.Clear();detailRegion=-1;return;
+        }
         var castle=MapConfig.Dungeons.Single(d=>d.Id==MapConfig.Rulers[region.Id]);
         var dungeons=MapConfig.Dungeons.Where(d=>d.RegionId==region.Id).ToArray();
         int cleared=dungeons.Count(d=>world.Progress.Cleared.Contains(d.Id));
         bool unlocked=world.Progress.AreaPartUnlocked(MapConfig,MapConfig.AreaPart(region.Id).Id);
         selectedTileTitle.Text=$"{region.Name} · 地块 {region.Id:000}";
         selectedTileInfo.Text=$"{TerrainName(region.Terrain)} · 坐标 ({region.X+1}, {region.Y+1})\n所属城堡：{castle.Name}\n{(unlocked?StatusName(world.RegionState(region.Id)):"统治区域未解锁")} · 本格地牢 {cleared}/{dungeons.Length}\n蓝色框：选中地块  金色线：所属统治区域";
+        string gate=DescribeRegionGate(region.Id);selectedTileInfo.TooltipText=gate;
+        selectedTileInfo.Text+="\n"+(gate.Length>27?gate[..27]+"…":gate);
         if(detailRegion!=region.Id)
         {
             detailRegion=region.Id;selectedDungeonLabels.Clear();
@@ -112,6 +122,18 @@ public partial class Main
             }
         }
         foreach(var dungeon in dungeons)selectedDungeonLabels[dungeon.Id].Text=$"{(world.Progress.Cleared.Contains(dungeon.Id)?"✓":"·")} {dungeon.Name}  Lv.{dungeon.LevelMin}  {(world.Progress.Cleared.Contains(dungeon.Id)?"已通关":"未通关")}";
+    }
+
+    private string DescribeRegionGate(int region)
+    {
+        var part=MapConfig.AreaPart(region);
+        var ids=MapConfig.RegionPrerequisites.Where(p=>MapConfig.Rulers[p.RegionId]==part.CastleId).Select(p=>p.RequiredDungeonId).Distinct().ToArray();
+        if(ids.Length==0)
+        {
+            if(part.InitiallyUnlocked)return "初始区域：默认开放";
+            ids=MapConfig.AreaPartPrerequisites.Where(p=>p.AreaPartId==part.Id).Select(p=>MapConfig.AreaParts.Single(a=>a.Id==p.RequiredAreaPartId).CastleId).ToArray();
+        }
+        return "前置（任一）："+string.Join(" / ",ids.Select(id=>(MapWorld!.Progress.Cleared.Contains(id)?"✓":"·")+MapConfig.Dungeons.Single(d=>d.Id==id).Name));
     }
 
     /// <summary>全局地图使用设计坐标绘制，鼠标直接按相同原点和格宽命中。</summary>

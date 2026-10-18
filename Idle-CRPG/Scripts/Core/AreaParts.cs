@@ -17,7 +17,8 @@ public sealed partial class Config
     private void LoadAreaParts(string directory)
     {
         AreaParts=Read(Path.Combine(directory,"world/areapart.csv")).Select(r=>new AreaPartSpec(r["id"],r["castle_id"],Boolean(r,"initially_unlocked"))).ToList();
-        AreaPartPrerequisites=Read(Path.Combine(directory,"world/areapart_prerequisite.csv")).Select(r=>new AreaPartPrerequisite(r["areapart_id"],r["required_areapart_id"])).ToList();
+        AreaPartPrerequisites=Read(Path.Combine(directory,"world/areapart_prerequisite.csv"),true).Select(r=>new AreaPartPrerequisite(r["areapart_id"],r["required_areapart_id"])).ToList();
+        LoadRegionPrerequisites(directory);
     }
     private void ValidateAreaParts()
     {
@@ -26,7 +27,7 @@ public sealed partial class Config
         Need(AreaParts.All(p=>!string.IsNullOrWhiteSpace(p.Id)&&Dungeons.Any(d=>d.Castle&&d.Id==p.CastleId)),"ID/城堡引用错误");
         foreach(var part in AreaParts)
         {
-            var cells=Regions.Where(r=>Rulers[r.Id]==part.CastleId).ToList();
+            var cells=Regions.Where(r=>r.Enterable&&Rulers[r.Id]==part.CastleId).ToList();
             var reached=new HashSet<int>{cells[0].Id};var pending=new Queue<RegionSpec>();pending.Enqueue(cells[0]);
             while(pending.Count>0)
             {
@@ -41,12 +42,13 @@ public sealed partial class Config
         {
             var part=AreaParts.SingleOrDefault(p=>p.Id==edge.AreaPartId);var required=AreaParts.SingleOrDefault(p=>p.Id==edge.RequiredAreaPartId);
             Need(part!=null&&required!=null&&part!=required,"前置引用或自引用错误");
-            Need(Regions.Where(r=>Rulers[r.Id]==part!.CastleId).Any(r=>Regions.Any(n=>Rulers[n.Id]==required!.CastleId&&Math.Abs(n.X-r.X)+Math.Abs(n.Y-r.Y)==1)),"前置统治区必须实际接壤（共边）");
+            Need(Regions.Where(r=>r.Enterable&&Rulers[r.Id]==part!.CastleId).Any(r=>Regions.Any(n=>n.Enterable&&Rulers[n.Id]==required!.CastleId&&Math.Abs(n.X-r.X)+Math.Abs(n.Y-r.Y)==1)),"前置统治区必须实际接壤（共边）");
         }
         var reachable=AreaParts.Where(p=>p.InitiallyUnlocked).Select(p=>p.Id).ToHashSet();
         bool changed;
         do{changed=false;foreach(var edge in AreaPartPrerequisites)if(reachable.Contains(edge.RequiredAreaPartId))changed|=reachable.Add(edge.AreaPartId);}while(changed);
-        Need(reachable.Count==AreaParts.Count,"存在无法从初始统治区解锁的孤立前置链");
+        Need(RegionPrerequisites.Count>0||reachable.Count==AreaParts.Count,"存在无法从初始统治区解锁的孤立前置链");
+        ValidateRegionPrerequisites();
     }
 }
 
@@ -56,11 +58,13 @@ public sealed partial class WorldProgress
     public bool AreaPartUnlocked(Config c,string id)
     {
         var part=c.AreaParts.Single(p=>p.Id==id);
-        return part.InitiallyUnlocked||Cleared.Contains(part.CastleId)||c.AreaPartPrerequisites.Any(e=>e.AreaPartId==id&&Cleared.Contains(c.AreaParts.Single(p=>p.Id==e.RequiredAreaPartId).CastleId));
+        var configured=c.RegionPrerequisites.Where(p=>c.Rulers[p.RegionId]==part.CastleId).ToArray();
+        if(configured.Length>0)return configured.Any(p=>Cleared.Contains(p.RequiredDungeonId));
+        return part.InitiallyUnlocked||c.AreaPartPrerequisites.Any(e=>e.AreaPartId==id&&Cleared.Contains(c.AreaParts.Single(p=>p.Id==e.RequiredAreaPartId).CastleId));
     }
     public HashSet<int> AccessibleRegions(Config c)
     {
         var castles=c.AreaParts.Where(p=>AreaPartUnlocked(c,p.Id)).Select(p=>p.CastleId).ToHashSet();
-        return c.Regions.Where(r=>castles.Contains(c.Rulers[r.Id])).Select(r=>r.Id).ToHashSet();
+        return c.Regions.Where(r=>r.Enterable&&castles.Contains(c.Rulers[r.Id])).Select(r=>r.Id).ToHashSet();
     }
 }

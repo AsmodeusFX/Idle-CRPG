@@ -53,10 +53,10 @@ public sealed partial class Config
         return result;
     }
 
-    private static List<Dictionary<string,string>> Read(string path)
+    private static List<Dictionary<string,string>> Read(string path,bool allowEmpty=false)
     {
         var lines = File.ReadAllLines(path);
-        if (lines.Length < 2) throw new InvalidDataException(path + " 空表");
+        if (lines.Length < (allowEmpty?1:2)) throw new InvalidDataException(path + " 空表");
         var headers = lines[0].TrimStart('\uFEFF').Split(',');
         var result = new List<Dictionary<string,string>>();
         foreach (var line in lines.Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)))

@@ -3,6 +3,9 @@ $ErrorActionPreference='Stop'
 $repoRoot=Split-Path $PSScriptRoot -Parent
 $configRoot=Join-Path $repoRoot 'Idle-CRPG/config'
 $regions=Import-Csv (Join-Path $configRoot 'world/region.csv')
+if(@($regions | Where-Object {$_.enterable -eq '0'}).Count -gt 0){throw '此工具只复现旧版完整16×16布局；含阻断格的地图须独立配置，禁止覆盖其统治关系。'}
+$gateRows=Import-Csv (Join-Path $configRoot 'world/region_prerequisite.csv')
+if(@($gateRows).Count -gt 0){throw '地图已有显式地牢前置配置，禁止用旧版邻接布局生成器覆盖。'}
 # 参照用户截图的 35 个错位城堡锚点；初始城堡固定在 (0,0)。
 $anchors=@('0,0','7,0','14,0','6,1','12,1','14,1','4,2','5,2','7,2','0,3','5,4','9,4','0,5','10,5','13,5','1,6','12,6','0,7','6,7','15,7','15,8','2,9','4,9','5,9','8,10','6,11','9,12','0,14','2,14','8,14','9,14','1,15','2,15','6,15','14,15')
 $points=@($anchors | ForEach-Object { $xy=$_.Split(','); [pscustomobject]@{X=[int]$xy[0];Y=[int]$xy[1]} })

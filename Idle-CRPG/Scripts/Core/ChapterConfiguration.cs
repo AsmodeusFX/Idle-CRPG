@@ -38,7 +38,7 @@ public sealed partial class Config
         for(int i=0;i<maps.Count;i++)
         {
             var map=maps[i];var def=Chapters[i];
-            if(map.WorldWidth!=def.Width||map.WorldHeight!=def.Height||def.Terrain!="mixed"&&map.Regions.Any(r=>r.Terrain!=def.Terrain))throw new InvalidDataException("章节地图尺寸/地形与章节配置不一致");
+            if(map.WorldWidth!=def.Width||map.WorldHeight!=def.Height||def.Terrain!="mixed"&&map.Regions.Any(r=>r.Enterable&&r.Terrain!=def.Terrain))throw new InvalidDataException("章节地图尺寸/地形与章节配置不一致");
             map.ChapterMaps=maps;
         }
     }

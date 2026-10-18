@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace IdleCrpg.Core;
 
-public record RegionSpec(int Id, int X, int Y, string Name, string Terrain);
+public record RegionSpec(int Id, int X, int Y, string Name, string Terrain,bool Enterable=true);
 public record DungeonSpec(string Id, string Name, int RegionId, string Kind, int LevelMin, int LevelMax, float X, float Y)
 {
     public bool Castle => Kind == "castle";
@@ -40,7 +40,7 @@ public sealed partial class Config
         TravelSpeed=Number(w,"travel_speed"); VillageSpeed=Number(w,"village_speed"); TradeSeconds=Number(w,"trade_seconds"); TradeRange=Number(w,"trade_range");
         var s=One("monster/spawn_rule.csv");
         Spawn=new SpawnRule(Integer(s,"count_min"),Integer(s,"count_max"),Integer(s,"level"),Number(s,"boss_hp"),Number(s,"boss_attack"),Integer(s,"xp_base"),Integer(s,"boss_reward"),Number(s,"drop_chance_multiplier"),Number(s,"value_per_level"));
-        Regions=Table("world/region.csv").Select(r=>new RegionSpec(Integer(r,"id"),Integer(r,"x"),Integer(r,"y"),r["name"],r["terrain"])).ToList();
+        Regions=Table("world/region.csv").Select(r=>new RegionSpec(Integer(r,"id"),Integer(r,"x"),Integer(r,"y"),r["name"],r["terrain"],Boolean(r,"enterable"))).ToList();
         Dungeons=Table("dungeon/dungeon.csv").Select(r=>new DungeonSpec(r["id"],r["name"],Integer(r,"region_id"),r["kind"],Integer(r,"level_min"),Integer(r,"level_max"),Number(r,"x"),Number(r,"y"))).ToList();
         Villages=Table("village/village.csv").Select(r=>new VillageSpec(r["id"],r["name"],Integer(r,"region_id"),Number(r,"x"),Number(r,"y"),r["npc_id"])).ToList();
         Npcs=Table("village/npc.csv").Select(r=>new NpcSpec(r["id"],r["name"],r["kind"],new Vector2(Number(r,"x"),Number(r,"y")))).ToList();
@@ -62,18 +62,19 @@ public sealed partial class Config
         static bool Unique<T>(IEnumerable<T> values) => values.Distinct().Count()==values.Count();
         Require(WorldWidth>0&&WorldWidth<=64&&WorldHeight>0&&WorldHeight<=64&&Regions.Count==WorldWidth*WorldHeight,"世界尺寸/区域数量错误");
         Require(TravelSpeed>0&&VillageSpeed>0&&TradeSeconds>0&&TradeRange>0,"世界移动/交互参数非法");
-        Require(Unique(Regions.Select(r=>r.Id))&&Unique(Regions.Select(r=>(r.X,r.Y)))&&Regions.All(r=>r.Id>0&&r.X>=0&&r.X<WorldWidth&&r.Y>=0&&r.Y<WorldHeight&&new[]{"snow","tropical","desert","coast","grass","hell"}.Contains(r.Terrain)),"区域 ID/坐标/地形非法");
-        Require(Regions.Any(r=>r.Id==StartRegionId),"出生区域不存在");
-        bool Region(int id)=>Regions.Any(r=>r.Id==id);
+        Require(Unique(Regions.Select(r=>r.Id))&&Unique(Regions.Select(r=>(r.X,r.Y)))&&Regions.All(r=>r.Id>0&&r.X>=0&&r.X<WorldWidth&&r.Y>=0&&r.Y<WorldHeight&&new[]{"snow","tropical","desert","coast","grass","hell","mountain","ocean"}.Contains(r.Terrain)&&(!(r.Terrain is "mountain" or "ocean")||!r.Enterable)),"区域 ID/坐标/地形非法");
+        Require(Regions.Any(r=>r.Id==StartRegionId&&r.Enterable),"出生区域不存在或不可进入");
+        bool Region(int id)=>Regions.Any(r=>r.Id==id&&r.Enterable);
         Require(Unique(Dungeons.Select(d=>d.Id))&&Dungeons.All(d=>!string.IsNullOrWhiteSpace(d.Id)&&Region(d.RegionId)&&new[]{"normal","castle"}.Contains(d.Kind)&&d.LevelMin>=1&&d.LevelMax>=d.LevelMin&&d.X>0&&d.X<1&&d.Y>0&&d.Y<1),"地牢 ID/引用/等级/位置非法");
         Require(Unique(Villages.Select(v=>v.Id))&&Unique(Npcs.Select(n=>n.Id))&&Npcs.All(n=>n.Kind=="trade")&&Villages.All(v=>Region(v.RegionId)&&Npcs.Any(n=>n.Id==v.NpcId)&&v.X>0&&v.X<1&&v.Y>0&&v.Y<1),"村庄/NPC 配置非法");
         foreach(var r in Regions)
         {
+            if(!r.Enterable){Require(!Villages.Any(v=>v.RegionId==r.Id)&&!Dungeons.Any(d=>d.RegionId==r.Id)&&!Rulers.ContainsKey(r.Id),"不可进入地块不得配置村庄、地牢或统治归属");continue;}
             Require(Villages.Count(v=>v.RegionId==r.Id)==1,"每区域必须一个村庄");
             Require(Dungeons.Count(d=>d.RegionId==r.Id&&d.Castle)<=1,"区域城堡数量错误");
             Require(Rulers.TryGetValue(r.Id,out var castle)&&Dungeons.Any(d=>d.Id==castle&&d.Castle),"区域必须恰好归属一个有效城堡");
         }
-        Require(Rulers.Count==Regions.Count&&Dungeons.Where(d=>d.Castle).All(d=>Rulers[d.RegionId]==d.Id),"统治范围必须包含城堡所在区且不得多余");
+        Require(Rulers.Count==Regions.Count(r=>r.Enterable)&&Dungeons.Where(d=>d.Castle).All(d=>Rulers[d.RegionId]==d.Id),"统治范围必须包含城堡所在区且不得多余");
         ValidateAreaParts();
         Require(Unique(ItemTypes.Select(t=>t.Id))&&ItemTypes.All(t=>t.Kind is "currency" or "junk"&&t.AutoSell==(t.Kind=="junk")),"物品类型非法");
         Require(Unique(Items.Select(i=>i.Id))&&Items.All(i=>i.SellPrice>=0&&ItemTypes.Any(t=>t.Id==i.TypeId))&&Items.Count(i=>ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency")==1&&Items.Any(i=>i.Id=="gold"&&ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency"),"物品引用/金币配置非法");

@@ -259,3 +259,4 @@ GmChecks.Run(root);
 CombatSkillChecks.Run(root);
 AttributeLevelChecks.Run(root);
 ChapterChecks.Run(root);
+TerrainGateChecks.Run(root);

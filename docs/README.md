@@ -1,5 +1,7 @@
 # 文档索引
 
+- [地形阻断与区域前置](design/map_access.md)：不可进入格、普通地牢/要塞OR前置及旧档迁移。
+
 - [难度、章节与独立地图](design/world_chapters.md)：3档难度、5章地图、顺序解锁、自动推进及旧档兼容。
 
 - [三阶段战斗公式](design/combat_formula.md)：DMG1/2/3、事件瀑布、五类乘区及手算验收。

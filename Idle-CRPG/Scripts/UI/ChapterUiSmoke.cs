@@ -26,6 +26,11 @@ public partial class Main
                 Check(ViewingCurrentMap&&MapConfig==session.Config&&castleRows.Count==config.Dungeons.Count(d=>d.Castle),"自动换章后的地图/清单");
                 var last=config.Regions.Last();SelectMapTile(last.Id);
                 Check(detailRegion==last.Id,"新尺寸地图格子详情");
+                foreach(var blocked in config.Regions.Where(r=>!r.Enterable))
+                {
+                    SelectMapTile(blocked.Id);
+                    Check(selectedTileInfo.Text.Contains("不可进入")&&selectedDungeonLabels.Count==0,"阻断格详情或空清单");
+                }
             }
             Check(session.DifficultyIndex==1&&!difficultyPicker.IsItemDisabled(1)&&difficultyPicker.IsItemDisabled(2),"难度解锁控件");
             var target=session.World!.Target;BrowseChapter(0,4);

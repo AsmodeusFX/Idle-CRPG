@@ -47,13 +47,14 @@ public partial class Main
             var r=config.Regions.Single(r=>r.X==x/cells&&r.Y==y/cells);uint noise=unchecked((uint)(x*73856093^y*19349663));
             var color=TerrainColor(r.Terrain).Lightened((noise%13)/400f);
             var corners=new[]{OutdoorPoint(a),OutdoorPoint(new V(b.X,a.Y)),OutdoorPoint(b),OutdoorPoint(new V(a.X,b.Y))};DrawColoredPolygon(corners,color);
+            if(!r.Enterable){Decoration(p,r.Terrain,.45f,(int)noise);continue;}
             for(int k=0;k<3;k++){var q=p+new Vector2((int)(noise>>(k*3))%25-12,(int)(noise>>(k*4))%13-6);DrawLine(q,q+new Vector2(3,-1),color.Darkened(.15f));}
             float fx=(x+.5f)/cells,fy=(y+.5f)/cells;
             bool nearRoad=Math.Abs(fx-MathF.Floor(fx)-.5f)<.09f||Math.Abs(fy-MathF.Floor(fy)-.5f)<.09f;
             if(!nearRoad&&noise%5<=1&&WorldNavigation.Walkable(config,x,y))
                 for(int i=0;i<4;i++)decorations.Add(((a+b)*.5f+new V((i%2-.5f)*.035f,(i/2-.5f)*.035f),r.Terrain,(int)noise+i));
         }
-        var nearby=config.Regions.Where(r=>Math.Abs(r.X+.5f-center.X)<1.7f&&Math.Abs(r.Y+.5f-center.Y)<1.7f).ToArray();
+        var nearby=config.Regions.Where(r=>r.Enterable&&Math.Abs(r.X+.5f-center.X)<1.7f&&Math.Abs(r.Y+.5f-center.Y)<1.7f).ToArray();
         foreach(var r in nearby)
         {
             V c=new(r.X+.5f,r.Y+.5f);

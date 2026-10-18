@@ -23,7 +23,7 @@ public sealed partial class GameSession
             }
         var progress=new WorldProgress();progress.Cleared.UnionWith(w.Cleared);
         var current=config.Regions.Single(r=>r.X==(int)w.Position.X&&r.Y==(int)w.Position.Y);
-        int region=progress.AreaPartUnlocked(config,config.AreaPart(current.Id).Id)?current.Id:config.StartRegionId;
+        int region=current.Enterable&&progress.AreaPartUnlocked(config,config.AreaPart(current.Id).Id)?current.Id:config.StartRegionId;
         var village=config.Villages.Single(v=>v.RegionId==region);var anchor=config.Regions.Single(r=>r.Id==region);
         w.Position=new Vector2(anchor.X+village.X,anchor.Y+village.Y);w.Stage=CampaignStage.Village;w.VillageId=village.Id;
         w.TradeElapsed=0;w.Route.Clear();w.VillagePaths.Clear();w.PendingCastle="";w.PendingCastles.Clear();

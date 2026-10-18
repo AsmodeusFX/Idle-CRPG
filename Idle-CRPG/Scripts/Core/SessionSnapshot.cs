@@ -37,6 +37,7 @@ public record InventoryEntry(string ItemId,long Price,long Count);
 public record PartyEntry(Vector2 Position,float Hp);
 public sealed class WorldSnapshot
 {
+    public int TerrainVersion;
     public CampaignStage Stage;
     public Vector2 Position;
     public string TargetId="",VillageId="",Status="";
@@ -104,6 +105,7 @@ public sealed partial class GameSession
         if(s.DifficultyIndex<0||s.DifficultyIndex>2||s.ChapterIndex<0||s.ChapterIndex>4)throw new InvalidDataException("难度/章节越界");
         config=config.ChapterMaps[s.ChapterIndex];
         MigrateWorldLayout(config,s);
+        MigrateTerrainRules(config,s);
         if(s.RoomCheckpoint)
         {
             foreach(var floor in s.Floors)foreach(var r in floor.Rooms)
@@ -217,7 +219,7 @@ public sealed partial class GameSession
 
 public sealed partial class WorldCampaign
 {
-    internal WorldSnapshot Capture() => new() {LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
+    internal WorldSnapshot Capture() => new() {TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
     internal static WorldCampaign Restore(Config c,WorldSnapshot s)
     {
         var w=new WorldCampaign(c) {Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
@@ -240,6 +242,7 @@ public sealed partial class WorldCampaign
             throw new InvalidDataException("存档世界状态/引用无效");
         if(s.PendingCastles==null||s.PendingCastles.Distinct().Count()!=s.PendingCastles.Count||s.PendingCastles.Any(id=>!c.Dungeons.Any(d=>d.Id==id&&d.Castle)))throw new InvalidDataException("城堡挑战队列无效");
         int current=c.Regions.Single(r=>r.X==(int)s.Position.X&&r.Y==(int)s.Position.Y).Id;
+        if(!WorldNavigation.Walkable(c,s.Position)||s.Route.Any(p=>!WorldNavigation.Walkable(c,p)))throw new InvalidDataException("存档位置或路线进入不可通行地块");
         if(s.AreaPartAccessVersion==1)
         {
             var progress=new WorldProgress();progress.Cleared.UnionWith(s.Cleared);

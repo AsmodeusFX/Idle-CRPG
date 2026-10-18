@@ -53,6 +53,8 @@ Music/SFX 分总线，音量 0 静音，再调高立即恢复。音乐循环设�
 存档新增房间 HalfWidth/HalfHeight、世界 PendingCastle 和 NavigationVersion。旧存档未包含尺寸时沿用旧版 3.5 半宽/半高；未包含导航版本（0）的赶路路径加载后按同一目标重建为细网格避障路径，新版本为 1。保留队伍、资源、房间内容及世界进度，不要求重置存档。排队的城堡挑战随快照恢复；颜色由统治区当前通关状态实时计算。
 # 战斗迁移补充（2026-10-18）
 
+地形补充：WorldSnapshot.TerrainVersion=1，旧档缺字段时执行阻断地块迁移，保留累计成长/资源及有效地图记录，非法现场返回初始村庄交易；新版本非法位置/路线直接拒绝。详细边界见 [地形与前置](../design/map_access.md)。
+
 章节补充：正式SaveDocument现写版本3并兼容读取1/2。SessionSnapshot新增DifficultyIndex、ChapterIndex和CompletedMaps；旧字段缺省为普通第一章，保留原世界与成长。恢复先解析本章配置再校验地牢、路径、怪物及选择格，完成历史须连续且各图全部地牢完成。章节切换仅发生在交易完成后，旧图只保留探索/完成记录，当前图继续采用房间检查点。地图页跨章浏览不写入当前远征格子选择。详见 [难度与章节](../design/world_chapters.md)。
 
 SessionSnapshot新增CombatVersion、独立CombatRandomState、RoomEntryCombatState和SkillState。内部Capture记录动作CD、Buff实例、在途物、效果积压及原因快照，用于确定性检查；恢复验证全部引用、有限值、数量和生命周期。它不是正式进度协议的战斗续接方式。

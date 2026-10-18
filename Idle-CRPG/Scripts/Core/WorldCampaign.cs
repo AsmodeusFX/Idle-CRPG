@@ -16,6 +16,7 @@ public sealed partial class WorldProgress
     public HashSet<string> Cleared { get; } = new();
     public RegionStatus Status(Config c,int region)
     {
+        if(!c.Regions.Single(r=>r.Id==region).Enterable)return RegionStatus.Unexplored;
         if(Cleared.Contains(c.Rulers[region]))return RegionStatus.Occupied;
         if(CastleUnlocked(c,c.Rulers[region]))return RegionStatus.WaitingCastle;
         return Explored.Contains(region)?RegionStatus.Sweeping:RegionStatus.Unexplored;
@@ -28,7 +29,7 @@ public static class ExpeditionPlanner
     public static IEnumerable<RegionSpec> Neighbors(Config c,int region)
     {
         var a=c.Regions.Single(r=>r.Id==region);
-        return c.Regions.Where(r=>Math.Abs(r.X-a.X)+Math.Abs(r.Y-a.Y)==1);
+        return c.Regions.Where(r=>r.Enterable&&Math.Abs(r.X-a.X)+Math.Abs(r.Y-a.Y)==1);
     }
     /// <summary>只在已解锁统治区开拓；全部扫荡完后持续复刷最高等级橙区，等待玩家主动攻城。</summary>
     public static ExpeditionTarget Select(Config c,WorldProgress p,int current,bool previousWasFarm)
@@ -66,6 +67,7 @@ public sealed partial class WorldCampaign
     /// <summary>已占领优先；排队、前往及挑战中的统治区显示计划攻击。</summary>
     public RegionStatus RegionState(int region)
     {
+        if(!config.Regions.Single(r=>r.Id==region).Enterable)return RegionStatus.Unexplored;
         string id=config.Rulers[region];
         if(Progress.Cleared.Contains(id))return RegionStatus.Occupied;
         return pendingCastles.Contains(id)||(Target.Dungeon.Id==id&&Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon)?RegionStatus.PlannedAttack:Progress.Status(config,region);
