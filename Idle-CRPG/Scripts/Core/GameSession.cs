@@ -102,6 +102,7 @@ public sealed partial class GameSession
         dungeonSeed=unchecked(Seed*397^visit*104729^dungeon.RegionId*7919);
         Floors=Dungeon.Generate(dungeonSeed,Config,Config.PoiProfiles.TryGetValue(dungeon.Id,out var profile)?profile.Floors:null);EnterFloor();
         Note($"进入{dungeon.Name} · 等级 {dungeon.LevelMin}–{dungeon.LevelMax}");
+        ApplyGmEntryClear();
     }
 
     private void EnterFloor()

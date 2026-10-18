@@ -46,8 +46,10 @@ public partial class Main : Node2D
         BuildStarPanels();BuildSettings();
         ResumeProgress();
         if(smoke && session==null) Start();
-        if(capture && session==null) Start();
-        if(capture)
+        bool captureSetup=OS.GetCmdlineUserArgs().Contains("--capture-setup");
+        if(captureSetup){session=null;captureView="setup";viewMode=0;}
+        if(capture && session==null&&!captureSetup) Start();
+        if(capture&&!captureSetup)
         {
             viewMode=captureView=="world"?1:2;
             int ticks=captureView=="world"?24000:captureView=="travel"?0:400;

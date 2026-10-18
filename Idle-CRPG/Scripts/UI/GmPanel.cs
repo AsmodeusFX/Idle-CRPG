@@ -7,7 +7,7 @@ using System.Linq;
 public partial class Main
 {
     private Label gmHpValue=null!,gmAttackValue=null!,gmCountValue=null!,gmStatus=null!;
-    private Button gmInvincible=null!;
+    private Button gmInvincible=null!,gmInstantClear=null!;
     private readonly List<Button> gmSessionButtons=new();
     private readonly Dictionary<string,Button> gmButtons=new();
 
@@ -47,11 +47,11 @@ public partial class Main
         theme.SetColor("font_color","Button",new Color("e3e5d6"));theme.SetColor("font_disabled_color","Button",new Color("677d87"));
         theme.SetColor("font_color","Label",new Color("96acae"));theme.SetFontSize("font_size","Button",16);gmRoot.Theme=theme;
         gmRoot.AddChild(new ColorRect {Size=new Vector2(1440,900),Color=new Color(0,0,0,.62f)});
-        var panel=GmPanelBox(gmRoot,new Vector2(420,140),new Vector2(600,620),"172b3b");
+        var panel=GmPanelBox(gmRoot,new Vector2(420,108),new Vector2(600,684),"172b3b");
         var title=HudText(panel,"GM · 调试",new Vector2(26,18),24);title.AddThemeColorOverride("font_color",new Color("d9bc82"));
         GmButton(panel,"GmClose","关闭",new Vector2(496,18),new Vector2(78,34),()=>gmRoot.Hide(),false);
 
-        var commands=GmPanelBox(panel,new Vector2(18,68),new Vector2(564,320),"101f2d");
+        var commands=GmPanelBox(panel,new Vector2(18,68),new Vector2(564,384),"101f2d");
         var heading=HudText(commands,"GM 指令 · 当局状态",new Vector2(16,10),17);heading.AddThemeColorOverride("font_color",new Color("8cc4b1"));
         HudText(commands,"资源",new Vector2(16,52),15);
         GmButton(commands,"GmGold",$"金币 +{config.GmGoldGrant}",new Vector2(112,44),new Vector2(200,36),()=>session!.GrantGmResources(gold:config.GmGoldGrant));
@@ -76,12 +76,15 @@ public partial class Main
         gmCountValue=HudText(commands,"+0 只",new Vector2(230,259),18);
         GmButton(commands,"GmCountPlus","数量 +",new Vector2(448,252),new Vector2(100,36),()=>session!.SetGmBattle(session.Gm with {RoomCountBonus=Math.Min(config.GmCountLimit,session.Gm.RoomCountBonus+config.GmCountStep)}));
 
-        var tools=GmPanelBox(panel,new Vector2(18,402),new Vector2(564,112),"101f2d");
+        HudText(commands,"关卡测试",new Vector2(16,312),15);
+        gmInstantClear=GmButton(commands,"GmInstantClear","进入地牢瞬间通关：关",new Vector2(112,304),new Vector2(436,36),()=>session!.SetGmBattle(session.Gm with {InstantDungeonClear=!session.Gm.InstantDungeonClear}));
+        gmInstantClear.TooltipText="仅对下一次及后续进入生效；普通地牢和已授权要塞均适用。写入真实通关进度，无击杀、经验或掉落奖励；仍需返村交易，不绕过要塞手动授权。读档关闭。";
+        var tools=GmPanelBox(panel,new Vector2(18,466),new Vector2(564,112),"101f2d");
         var toolsTitle=HudText(tools,"编辑器入口",new Vector2(16,10),17);toolsTitle.AddThemeColorOverride("font_color",new Color("8cc4b1"));
         HudText(tools,"配置工具",new Vector2(16,58),15);
         GmButton(tools,"StarEditorEntry","星图节点编辑器",new Vector2(112,48),new Vector2(200,38),()=>{gmRoot.Hide();viewMode=3;if(!_editingStars)ToggleStarEditor();else RefreshStarPage();TickStarPanels();},false);
         var future=new Button {Text="关卡编辑器 · 待实现",Position=new Vector2(324,48),Size=new Vector2(224,38),Disabled=true};tools.AddChild(future);
-        gmStatus=HudText(panel,"",new Vector2(28,532),13);gmStatus.Size=new Vector2(544,70);gmStatus.AutowrapMode=TextServer.AutowrapMode.WordSmart;
+        gmStatus=HudText(panel,"",new Vector2(28,596),13);gmStatus.Size=new Vector2(544,78);gmStatus.AutowrapMode=TextServer.AutowrapMode.WordSmart;
         gmButtons["GmHpPlus"].TooltipText=gmButtons["GmHpMinus"].TooltipText="有效血量倍率：承伤除以倍率，保持当前生命比例，立即影响场上及后续怪物。";
         gmButtons["GmAttackPlus"].TooltipText=gmButtons["GmAttackMinus"].TooltipText="怪物攻击在扣除队员防御前乘以倍率，立即生效。";
         gmButtons["GmCountPlus"].TooltipText=gmButtons["GmCountMinus"].TooltipText="在正常随机数量上增减，最终限制为 1–1000 只；仅影响后续首次生成的房间。";
@@ -93,13 +96,14 @@ public partial class Main
         var settings=session?.Gm??new GmBattleSettings();
         gmHpValue.Text=$"×{settings.MonsterHp:0.#}";gmAttackValue.Text=$"×{settings.MonsterAttack:0.#}";
         gmCountValue.Text=$"{settings.RoomCountBonus:+0;-0;+0} 只";gmInvincible.Text="全队无敌："+(settings.Invincible?"开":"关");
+        gmInstantClear.Text="进入地牢瞬间通关："+(settings.InstantDungeonClear?"开":"关");
         if(session!=null)
         {
             gmButtons["GmHpMinus"].Disabled=settings.MonsterHp<=config.GmScaleSteps[0];gmButtons["GmHpPlus"].Disabled=settings.MonsterHp>=config.GmScaleSteps[^1];
             gmButtons["GmAttackMinus"].Disabled=settings.MonsterAttack<=config.GmScaleSteps[0];gmButtons["GmAttackPlus"].Disabled=settings.MonsterAttack>=config.GmScaleSteps[^1];
             gmButtons["GmCountMinus"].Disabled=settings.RoomCountBonus<=-config.GmCountLimit;gmButtons["GmCountPlus"].Disabled=settings.RoomCountBonus>=config.GmCountLimit;
         }
-        gmStatus.Text=(session==null?"请先在游戏页开始远征，再使用当局指令。\n":"倍率和无敌立即影响当前战斗；数量只影响后续首次进入的房间。\n")+"战斗调试不存盘，读档恢复默认；已获得的资源和成长正常保存。";
+        gmStatus.Text=(session==null?"请先在游戏页开始远征，再使用当局指令。\n":"瞬间通关从下次进入生效，无战斗奖励；通关进度正常保存。\n")+"所有调试开关读档恢复默认；资源和成长正常保存。";
     }
 
     /// <summary>真实 GM 按钮只在 QA 会话中执行，验证命令生效及当局/工具两区分离。</summary>
@@ -116,13 +120,17 @@ public partial class Main
             gmButtons["GmHpPlus"].EmitSignal(Button.SignalName.Pressed);
             gmButtons["GmAttackMinus"].EmitSignal(Button.SignalName.Pressed);
             gmButtons["GmCountPlus"].EmitSignal(Button.SignalName.Pressed);
+            gmButtons["GmInstantClear"].EmitSignal(Button.SignalName.Pressed);
+            if(!session.Gm.InstantDungeonClear||!gmInstantClear.Text.EndsWith("开"))throw new Exception("进入瞬间通关按钮状态不同步");
             if(!gmRoot.Visible||session.Gold!=before+10000||session.Heroes[0].Level<=1||!session.Gm.Invincible||session.Gm.MonsterHp!=2||session.Gm.MonsterAttack!=.5f||session.Gm.RoomCountBonus!=1)throw new Exception("GM 按钮未生效或意外关闭面板");
             if(gmButtons["GmGold"].GetParent()==gmButtons["StarEditorEntry"].GetParent())throw new Exception("GM 指令与编辑器没有分区");
             gmButtons["GmResetBattle"].EmitSignal(Button.SignalName.Pressed);
             if(session.Gm!=new GmBattleSettings()||session.Gold!=before+10000)throw new Exception("重置战斗调试清除了资源或没有重置开关");
             session=null;RefreshGm();
+            RefreshHud();
+            if(!partySetup.Visible||interactionHeading.Visible||interactionScroll.Visible)throw new Exception("创角仍与远征交互重叠");
             if(gmSessionButtons.Any(b=>!b.Disabled)||gmButtons["StarEditorEntry"].Disabled)throw new Exception("未开局时 GM 命令/编辑器可用性错误");
-            GD.Print("GM_SMOKE_OK: two sections, actual resource/scale/count/invincibility buttons, battle reset and pre-game editor access");
+            GD.Print("GM_SMOKE_OK: actual command buttons, entry-clear toggle/reset, exclusive party setup, two sections and pre-game editor access");
         }
         catch(Exception error){GD.PushError(error.ToString());QuitSafely(1);}
         finally{session=original;gmRoot.Hide();RefreshGm();Refresh();}

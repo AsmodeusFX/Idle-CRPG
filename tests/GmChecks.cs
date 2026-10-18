@@ -51,6 +51,30 @@ public static class GmChecks
         var goldGame=GameSession.CreateWorld(c,2,new[]{"warrior","ranger","mage"});goldGame.GrantGmResources(long.MaxValue);
         rejected=false;try{goldGame.GrantGmResources(1,10000);}catch(OverflowException){rejected=true;}
         Check(rejected&&goldGame.Gold==long.MaxValue&&goldGame.Heroes[0].Level==1,"resource overflow partially applied experience");
+        // 使用正式地图验证进入边界通关，不以直接写进度代替真实命令和世界推进。
+        var production=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        var skip=GameSession.CreateWorld(production,27,new[]{"warrior","ranger","mage"});
+        skip.SetGmBattle(new(InstantDungeonClear:true));
+        for(int i=0;i<30000&&skip.World!.Progress.Cleared.Count==0;i++)skip.Tick(.05f);
+        string first=skip.World!.Target.Dungeon.Id;
+        Check(skip.World.Progress.Cleared.Contains(first)&&skip.Won&&skip.World.Stage==CampaignStage.TravelVillage,"entry clear did not complete and return to village");
+        Check(skip.Kills==0&&skip.Experience==0&&skip.Gold==0&&skip.Inventory.Count==0,"entry clear forged battle rewards");
+        var skipRestored=GameSession.Restore(production,SaveStore.Decode(production,SaveStore.Encode(new(){Session=skip.CaptureProgress()})).Session!);
+        Check(!skipRestored.Gm.InstantDungeonClear&&skipRestored.World!.Progress.Cleared.Contains(first),"clear switch persisted or progress lost");
+        // 开关关闭后下一次进入必须正常战斗；不能因此前Won残留自动清下一关。
+        skip.SetGmBattle(new());
+        for(int i=0;i<30000&&skip.World.Stage!=CampaignStage.Dungeon;i++)skip.Tick(.05f);
+        Check(skip.World.Stage==CampaignStage.Dungeon&&!skip.Won&&skip.World.Progress.Cleared.Count==1,"disabled switch still cleared next entry");
+        skip.SetGmBattle(new(InstantDungeonClear:true));skip.Tick(.05f);
+        Check(!skip.Won&&skip.World.Progress.Cleared.Count==1,"switch retroactively cleared current dungeon");
+        var progression=GameSession.CreateWorld(production,28,new[]{"warrior","ranger","mage"});progression.SetGmBattle(new(InstantDungeonClear:true));
+        var normals=production.Dungeons.Where(d=>!d.Castle&&production.Rulers[d.RegionId]=="A01-C01").Select(d=>d.Id).ToArray();
+        for(int i=0;i<60000&&!normals.All(id=>progression.World!.Progress.Cleared.Contains(id));i++)progression.Tick(.05f);
+        Check(normals.All(id=>progression.World!.Progress.Cleared.Contains(id))&&!progression.World!.Progress.Cleared.Contains("A01-C01"),"instant mode bypassed manual castle gate");
+        Check(progression.World!.Progress.CastleUnlocked(production,"A01-C01")&&progression.RequestCastleChallenge("A01-C01"),"castle not unlocked/requestable after normal clears");
+        int tradesBefore=progression.World.Trades;
+        for(int i=0;i<60000&&!progression.World.Progress.Cleared.Contains("A01-C01");i++)progression.Tick(.05f);
+        Check(progression.World.Progress.Cleared.Contains("A01-C01")&&progression.World.Progress.AreaPartUnlocked(production,"ap2")&&progression.World.Trades>tradesBefore,"authorized castle clear did not unlock region or skipped trade");
         string qa=Path.Combine(root,"artifacts/qa/gm-config-"+Guid.NewGuid().ToString("N"));
         string source=Path.Combine(root,"Idle-CRPG/config");
         foreach(var file in Directory.EnumerateFiles(source,"*",SearchOption.AllDirectories))

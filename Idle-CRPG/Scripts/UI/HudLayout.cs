@@ -9,6 +9,8 @@ public partial class Main
     private Control partySetup=null!,gameHud=null!;
     private VBoxContainer interactionList=null!;
     private Label interactionEmpty=null!;
+    private Label interactionHeading=null!;
+    private ScrollContainer interactionScroll=null!;
     private Label teamChallengeLabel=null!;
     private readonly Label[] currencies=new Label[4];
     private readonly Label[] heroNames=new Label[5],heroStats=new Label[5];
@@ -58,13 +60,15 @@ public partial class Main
             currencies[i].TooltipText=new[]{"金币","杂物数量","当前经验","成长点：后续开放"}[i];
         }
         var separator=new HSeparator {Position=new Vector2(1092,177),Size=new Vector2(312,2)};gameHud.AddChild(separator);
-        HudText(gameHud,"远征交互",new Vector2(1092,187),17);
+        interactionHeading=HudText(gameHud,"远征交互",new Vector2(1092,187),17);
         var scroll=new ScrollContainer {Position=new Vector2(1092,220),Size=new Vector2(312,417),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};gameHud.AddChild(scroll);
+        interactionScroll=scroll;
         interactionList=new VBoxContainer {SizeFlagsHorizontal=Control.SizeFlags.ExpandFill};interactionList.AddThemeConstantOverride("separation",7);scroll.AddChild(interactionList);
         interactionEmpty=UiLabel("暂无可用交互\n\n城堡满足挑战条件后在此显示。",14);interactionEmpty.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(interactionEmpty);
 
         // 开局选择占用交互区，进入远征后隐藏，避免永久占据战斗构图。
-        partySetup=new Panel {Position=new Vector2(1092,220),Size=new Vector2(312,417)};gameHud.AddChild(partySetup);
+        partySetup=new Panel {Position=new Vector2(1092,187),Size=new Vector2(312,450)};gameHud.AddChild(partySetup);
+        partySetup.AddThemeStyleboxOverride("panel",new StyleBoxFlat {BgColor=new Color("101923")});
         var setup=new VBoxContainer {Position=new Vector2(10,10),Size=new Vector2(292,397)};partySetup.AddChild(setup);
         setup.AddChild(UiLabel("组建远征小队",19));
         seed=new LineEdit {Text="20261017",PlaceholderText="整数 seed"};setup.AddChild(seed);
@@ -105,6 +109,7 @@ public partial class Main
     {
         teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel}";
         partySetup.Visible=session==null;
+        interactionHeading.Visible=session!=null;interactionScroll.Visible=session!=null;
         for(int i=0;i<5;i++)
         {
             var hero=session?.Heroes.ElementAtOrDefault(i);
