@@ -7,27 +7,8 @@ using V=System.Numerics.Vector2;
 
 public partial class Main
 {
-    private Button castleButton=null!;
-    private string offeredCastle="";
     private readonly Dictionary<string,List<V>> roads=new();
-    private void RefreshCastleButton()
-    {
-        if(session?.World is not {} w)return;
-        string ruler=config.Rulers[selectedRegion>0?selectedRegion:w.CurrentRegion];
-        var available=config.Dungeons.Where(d=>d.Castle&&!w.Progress.Cleared.Contains(d.Id)&&w.Progress.CastleUnlocked(config,d.Id)).OrderBy(d=>d.Id==ruler?0:1).ThenBy(d=>w.PendingCastles.Contains(d.Id)||w.Target.Dungeon.Id==d.Id?1:0).ThenBy(d=>d.LevelMin).FirstOrDefault();
-        offeredCastle=available?.Id??"";castleButton.Visible=available!=null;
-        if(available!=null)
-        {
-            bool active=w.Target.Dungeon.Id==available.Id&&w.Stage is CampaignStage.Dungeon or CampaignStage.TravelDungeon;
-            castleButton.Text=w.PendingCastles.Contains(available.Id)?"计划攻击 #"+(w.PendingCastles.ToList().IndexOf(available.Id)+1)+"："+available.Name:active?(w.Stage==CampaignStage.Dungeon?"挑战中：":"前往：")+available.Name:"挑战"+available.Name;
-            castleButton.Disabled=w.PendingCastles.Contains(available.Id)||active;
-        }
-    }
-    private void ChallengeCastle()
-    {
-        if(session?.RequestCastleChallenge(offeredCastle)==true){PlaySound("sfx_reward");Refresh();SaveNow();}
-        else PlaySound("sfx_deny");
-    }
+    private void RefreshCastleButton()=>RefreshCastleInteractions();
     private void DrawFighter(Vector2 p,Color color,int role,bool boss,float hp,string name)
     {
         float scale=Math.Clamp(zoom/50,.8f,1.25f)*(boss?1.3f:1);
@@ -112,8 +93,8 @@ public partial class Main
             if(w.Stage==CampaignStage.Village)position=WorldLocation(w.Village.RegionId,w.Village.X,w.Village.Y)+VisualPosition(session.Heroes[i])/config.WorldUnits+new V(-i*.025f,i*.025f);
             DrawFighter(OutdoorPoint(position),heroColors[i],i,false,session.Heroes[i].Hp/session.Heroes[i].MaxHp,session.Heroes[i].Name);
         }
-        Text(w.Stage==CampaignStage.Village?w.Village.Name:"行旅 · "+config.Regions.Single(r=>r.Id==w.CurrentRegion).Name,new Vector2(48,179),20,"f4e1b9");
-        Text(w.Status,new Vector2(48,205),14,"e0e8e7");
-        if(w.Stage==CampaignStage.Village){DrawRect(new Rect2(360,785,370,7),new Color("23323e"));DrawRect(new Rect2(360,785,370*w.TradeElapsed/config.TradeSeconds,7),new Color("65d9cb"));}
+        Text(w.Stage==CampaignStage.Village?w.Village.Name:"行旅 · "+config.Regions.Single(r=>r.Id==w.CurrentRegion).Name,new Vector2(48,165),20,"f4e1b9");
+        Text(w.Status,new Vector2(48,190),14,"e0e8e7");
+        if(w.Stage==CampaignStage.Village){DrawRect(new Rect2(360,620,370,7),new Color("23323e"));DrawRect(new Rect2(360,620,370*w.TradeElapsed/config.TradeSeconds,7),new Color("65d9cb"));}
     }
 }

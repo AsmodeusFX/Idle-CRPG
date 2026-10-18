@@ -36,36 +36,7 @@ public partial class Main : Node2D
         RenderingServer.SetDefaultClearColor(new Color("0b1019"));
         var canvas = new CanvasLayer(); AddChild(canvas);
         uiLayer=canvas;
-        var settingsButton=new Button {Text="设置",Position=new Vector2(992,32),Size=new Vector2(70,38)};
-        settingsButton.Pressed+=ToggleSettings;canvas.AddChild(settingsButton);
-        var gmButton=new Button {Name="GmMenuButton",Text="GM",Position=new Vector2(912,32),Size=new Vector2(70,38)};gmButton.Pressed+=ToggleGm;canvas.AddChild(gmButton);
-        var title = new Label { Text="深渊远征  /  IDLE CRPG", Position=new Vector2(30,20) }; title.AddThemeFontSizeOverride("font_size",26); canvas.AddChild(title);
-        var subtitle = new Label { Text="世界远征 · 自动探索 / 战斗 / 交易", Position=new Vector2(32,60) }; subtitle.Modulate=new Color("91a6b7"); canvas.AddChild(subtitle);
-        var tabs=new HBoxContainer {Position=new Vector2(32,103)};canvas.AddChild(tabs);
-        foreach(var pair in new[]{("跟随小队",0),("进度地图",1),("星图",3)})
-        {
-            var button=new Button {Text=pair.Item1,CustomMinimumSize=new Vector2(116,34)};
-            int mode=pair.Item2;button.Pressed+=()=>{SelectStarView(mode);PlaySound("sfx_click");};tabs.AddChild(button);
-        }
-        var panel = new Panel { Position=new Vector2(1090,20), Size=new Vector2(325,850) }; canvas.AddChild(panel);
-        var box = new VBoxContainer { Position=new Vector2(1110,38), Size=new Vector2(285,820) }; box.AddThemeConstantOverride("separation",9); canvas.AddChild(box);
-        box.AddChild(new Label { Text="小队与远征" });
-        seed=new LineEdit { Text="20261017", PlaceholderText="整数 seed" }; box.AddChild(seed);
-        box.AddChild(new Label { Text="选择 3 位成员，出发后阵容锁定" });
-        choices=config.Heroes.Select(s=>new CheckBox { Text=$"{s.Name}   HP {s.Hp} / 攻击 {s.Attack}", ButtonPressed=s.Id!="priest" }).ToArray();
-        foreach(var c in choices) {c.Toggled+=_=>PlaySound("sfx_click");box.AddChild(c);}
-        start=new Button { Text="开始世界远征", CustomMinimumSize=new Vector2(0,42) }; start.Pressed+=Start; box.AddChild(start);
-        var buttons=new HBoxContainer(); box.AddChild(buttons);
-        pause=new Button { Text="暂停", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; pause.Pressed+=()=>{ paused=!paused; pause.Text=paused?"继续":"暂停";PlaySound("sfx_click");SaveNow(); }; buttons.AddChild(pause);
-        rateButton=new Button { Text="速度 ×1", SizeFlagsHorizontal=Control.SizeFlags.ExpandFill }; rateButton.Pressed+=()=>{speed=speed==4?1:speed*2;rateButton.Text=$"速度 ×{speed}";PlaySound("sfx_click");SaveNow();}; buttons.AddChild(rateButton);
-        summary=new Label { Text="选定小队后开始。", AutowrapMode=TextServer.AutowrapMode.WordSmart }; box.AddChild(summary);
-        summary.AddThemeFontSizeOverride("font_size",15);
-        castleButton=new Button {Visible=false,CustomMinimumSize=new Vector2(0,38)};castleButton.Pressed+=ChallengeCastle;box.AddChild(castleButton);
-        roster=new Label { AutowrapMode=TextServer.AutowrapMode.WordSmart }; box.AddChild(roster);
-        roster.AddThemeFontSizeOverride("font_size",15);
-        box.AddChild(new HSeparator());
-        journal=new Label { AutowrapMode=TextServer.AutowrapMode.WordSmart }; journal.AddThemeFontSizeOverride("font_size",14); journal.AddThemeColorOverride("font_color",new Color("a4b8c9")); box.AddChild(journal);
-        help=new Label { Position=new Vector2(32,842), Text="世界无遭遇战 · 通关后必先回村交易 · 无新目标时自动复刷" }; help.Modulate=new Color("91a6b7"); canvas.AddChild(help);
+        BuildHud(canvas);
         smoke=OS.GetCmdlineUserArgs().Contains("--smoke-test");
         capture=OS.GetCmdlineUserArgs().Contains("--capture");
         if(OS.GetCmdlineUserArgs().Contains("--capture-local"))captureView="local";
@@ -113,7 +84,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-reset")){captureView="reset";ToggleSettings();RequestReset();}
         if(OS.GetCmdlineUserArgs().Contains("--capture-stars")){captureView="stars";SelectStarView(3);BuyStarNode("s_root");BuyStarNode("s_hp");BuyStarNode("s_atk");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-star-editor")){captureView="star-editor";viewMode=3;ToggleStarEditor();EditorClickNode("s_root");}
-        if(smoke){RunClientSmoke();RunSceneSmoke();RunStarSmoke();}
+        if(smoke){RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunStarSmoke();}
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
@@ -163,14 +134,14 @@ public partial class Main : Node2D
 
     private void Refresh()
     {
+        RefreshHud();RefreshCastleInteractions();
         if(session==null)return;
         var s=session;
         var w=s.World!;
         string status=w.Stage==CampaignStage.Dungeon?$"{s.ActiveDungeon!.Name} · {s.Status}\n第 {s.FloorIndex+1}/{s.Floors.Count} 层 · 清理 {s.Floor.Rooms.Count(r=>r.Clear)}/{s.Floor.Rooms.Count}":w.Status;
-        summary.Text=$"区域 {w.CurrentRegion} · {status}\n金币 {s.Gold:N0} · 杂物 {s.Inventory.Values.Sum()} · 击杀 {s.Kills}\n经验 {s.Experience}/{s.Heroes[0].Level*18} · 重挑战 {s.Retries}";
+        summary.Text=$"{status}  |  击杀 {s.Kills:N0}";
         roster.Text=string.Join("\n\n",s.Heroes.Select(h=>$"{h.Name}  Lv.{h.Level}  {(h.Alive?"":"阵亡")}\nHP {Math.Ceiling(h.Hp)} / {h.MaxHp:0}   攻击 {h.Attack:0}"));
         journal.Text="远征记录\n\n"+string.Join("\n",s.Log.TakeLast(3));
-        RefreshCastleButton();
     }
 
     private Vector2 Project(V v) => origin+new Vector2((v.X-v.Y)*zoom,(v.X+v.Y)*zoom*0.5f);

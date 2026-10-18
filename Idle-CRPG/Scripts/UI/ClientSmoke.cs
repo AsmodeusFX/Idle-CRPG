@@ -10,7 +10,7 @@ public partial class Main
     {
         try
         {
-            if(session==null||viewMode==1||!castleButton.IsInsideTree())throw new Exception("默认视图或城堡控件不正确");
+            if(session==null||viewMode==1||!interactionList.IsInsideTree())throw new Exception("默认视图或城堡控件不正确");
             for(int i=0;i<5000;i++)
             {
                 if(session.World!.Stage==CampaignStage.Dungeon&&!session.MovingBetweenRooms&&session.Floor.Rooms[session.CurrentRoom].Monsters.Exists(m=>m.Alive))break;

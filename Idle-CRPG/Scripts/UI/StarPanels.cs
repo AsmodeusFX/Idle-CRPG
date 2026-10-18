@@ -46,6 +46,7 @@ public partial class Main
     private void TickStarPanels()
     {
         bool show=viewMode==3;
+        summary.Visible=viewMode!=1&&!show;
         if(show&&(!starPage.Visible||!ReferenceEquals(starUiSession,session)))RefreshStarPage();
         starPage.Visible=show;sceneCanvas.Visible=!show;
         if(show)UpdateStarUi();

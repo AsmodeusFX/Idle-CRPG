@@ -47,7 +47,9 @@ public partial class Main
         var w=session.World!;
         bool map=viewMode==1;
         if(!map)return;
-        var p=(mouse.Position-new Vector2(55,184))/MapTile;
+        // 城堡页按缩小后的视口绘制，点击使用同一逆变换。
+        var mapMouse=(mouse.Position-SceneRect.Position-new Vector2(104,0))/.8f+new Vector2(24,148);
+        var p=(mapMouse-new Vector2(55,184))/MapTile;
         if(p.X>=0&&p.Y>=0&&p.X<config.WorldWidth&&p.Y<config.WorldHeight)
         {selectedRegion=config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id;RefreshCastleButton();SaveNow();}
     }

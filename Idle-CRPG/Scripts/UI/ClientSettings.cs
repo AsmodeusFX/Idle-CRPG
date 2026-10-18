@@ -62,6 +62,7 @@ public partial class Main
     }
     private void UpdatePartyControls()
     {
+        partySetup.Visible=session==null;RefreshHud();RefreshCastleInteractions();
         start.Visible=session==null;seed.Editable=session==null;
         for(int i=0;i<choices.Length;i++)
         {

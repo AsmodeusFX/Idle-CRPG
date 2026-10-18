@@ -10,7 +10,7 @@ public partial class SceneCanvas : Node2D
 }
 public partial class Main
 {
-    private static readonly Rect2 SceneRect=new(24,148,1040,672);
+    private static readonly Rect2 SceneRect=new(24,92,1040,558);
     private SceneCanvas sceneCanvas=null!;
     private CanvasItem painter=null!;
     private V cameraCenter;
@@ -32,7 +32,7 @@ public partial class Main
         {
             var room=session.Floor.Rooms[session.CurrentRoom];bool locked=!session.MovingBetweenRooms;
             target=locked?room.Center:VisualPosition(session.Leader);
-            targetZoom=Math.Min(config.CameraMaxZoom,Math.Min(930/(room.HalfWidth*2+room.HalfHeight*2),530/(room.HalfWidth+room.HalfHeight)));
+            targetZoom=Math.Min(config.CameraMaxZoom,Math.Min(930/(room.HalfWidth*2+room.HalfHeight*2),(SceneRect.Size.Y-150)/(room.HalfWidth+room.HalfHeight)));
             key="dungeon:"+w.DungeonVisits+":"+session.FloorIndex;
             rate=locked?config.CameraTransition:config.CameraFollow;
         }
@@ -48,13 +48,19 @@ public partial class Main
             float z=cameraZoom-targetZoom,j=zoomVelocity+omega*z;
             cameraZoom=targetZoom+(z+j*step)*decay;zoomVelocity=(zoomVelocity-omega*j*step)*decay;
         }
-        zoom=cameraZoom;origin=new Vector2(544,495)-new Vector2((cameraCenter.X-cameraCenter.Y)*zoom,(cameraCenter.X+cameraCenter.Y)*zoom*.5f);
+        zoom=cameraZoom;origin=SceneRect.GetCenter()+new Vector2(0,28)-new Vector2((cameraCenter.X-cameraCenter.Y)*zoom,(cameraCenter.X+cameraCenter.Y)*zoom*.5f);
     }
     public void RenderScene(CanvasItem context)
     {
         long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
         painter=context;context.DrawSetTransform(-SceneRect.Position);
-        PaintScene();
+        if(viewMode==1&&session!=null)
+        {
+            DrawRect(SceneRect,new Color("080d15"));
+            context.DrawSetTransform(new Vector2(104,0)-new Vector2(24,148)*.8f,0,new Vector2(.8f,.8f));
+            DrawWorld();
+        }
+        else PaintScene();
         if(performanceRun)drawTimes.Add(Milliseconds(profileStart));
     }
     // 绘制转发保持所有几何/文字共用同一裁切坐标系。

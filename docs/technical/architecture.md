@@ -4,6 +4,8 @@
 
 `Scripts/UI/Main.cs` / `WorldView.cs` / `FollowScene.cs` 处理 Godot 控件、地图选择和场景绘制，每固定 0.05 秒推进逻辑。SceneCanvas 位于裁切容器中，镜头独立于角色 AI：赶路跟随排头，战斗锁定房间中心和完整尺寸。默认显示连续室外或地牢，只手动打开进度网格 UI。WorldNavigation 使用统一坐标和共享障碍定义生成细网格 A* 路径；村庄交易位置在同一世界坐标平面内推进，不另换一张地图。
 
+`HudLayout.cs` 管理五区界面构图、货币与角色状态占位、独立城堡交互卡及首次刷新次序；挑战仍只调用 GameSession 命令。SceneCanvas 按缩短后的战斗视口适配镜头，城堡页绘制和鼠标命中使用同一缩放坐标变换。详见 design/ui_layout.md。
+
 用 Godot 4.7 .NET 打开 `Idle-CRPG/project.godot` 并运行。命令行 `dotnet build Idle-CRPG/Idle-CRPG.csproj`；核心检查 `dotnet run --project tests/IdleCrpg.Checks.csproj`。Godot 可通过 `--headless --path Idle-CRPG -- --smoke-test` 自动推进并退出。
 
 配置错误直接报错，不静默使用默认数值。模型不读 UI，不在绘制期间发奖励，不把房间渲染状态作为战斗状态。
