@@ -39,6 +39,7 @@ public sealed partial class Config
         c.LoadClientConfig(directory);
         c.LoadSceneConfig(directory);
         c.LoadStars(directory);
+        c.LoadGm(directory);
         return c;
     }
 

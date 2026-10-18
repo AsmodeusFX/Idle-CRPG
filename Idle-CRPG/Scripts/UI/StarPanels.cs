@@ -19,17 +19,10 @@ public partial class Main
         BuildWorldPage();
         starPage=new VBoxContainer {Position=GlobalPageRect.Position+new Vector2(8,4),Size=GlobalPageRect.Size-new Vector2(16,8),Visible=false};
         starPage.AddThemeConstantOverride("separation",8);uiLayer.AddChild(starPage);
-        gmRoot=new Control {Size=new Vector2(1440,900),Visible=false,MouseFilter=Control.MouseFilterEnum.Stop};uiLayer.AddChild(gmRoot);
-        gmRoot.AddChild(new ColorRect {Size=new Vector2(1440,900),Color=new Color(0,0,0,.8f)});
-        gmRoot.AddChild(new Panel {Position=new Vector2(420,225),Size=new Vector2(600,350)});
-        var box=new VBoxContainer {Position=new Vector2(448,250),Size=new Vector2(544,290)};box.AddThemeConstantOverride("separation",18);gmRoot.AddChild(box);
-        box.AddChild(UiLabel("GM · 调试与开发工具",24));
-        box.AddChild(UiLabel("游戏调试功能统一从此处进入。\n当前提供星图节点编辑器。",16));
-        UiButton(box,"星图节点编辑器",()=>{gmRoot.Hide();viewMode=3;if(!_editingStars)ToggleStarEditor();else RefreshStarPage();}).Name="StarEditorEntry";
-        UiButton(box,"关闭 GM",()=>gmRoot.Hide());
+        BuildGmMenu();
     }
     private void ToggleGm()
-    {gmRoot.Visible=!gmRoot.Visible;PlaySound("sfx_panel");}
+    {RefreshGm();gmRoot.Visible=!gmRoot.Visible;PlaySound("sfx_panel");}
     private void SelectStarView(int mode)
     {
         if(_editingStars&&mode!=3)

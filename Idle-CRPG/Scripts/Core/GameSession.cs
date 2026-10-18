@@ -263,6 +263,8 @@ public sealed partial class GameSession
         room.SnapshotLevel=levelMin;
         var rng=new Random(unchecked(dungeonSeed*397 ^ FloorIndex*7919 ^ room.Id*104729));
         int count=rng.Next(rule.Min+modifiers.MinBonus,rule.Max+modifiers.MaxBonus+1);
+        // GM 数量是临时输入；已生成房间仍沿用原快照，BOSS 占总数中的一个名额。
+        count=Math.Clamp(count+Gm.RoomCountBonus,1,1000);
         for(int i=0;i<count;i++)
         {
             var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),room.Boss&&i==count-1,modifiers);
@@ -306,7 +308,7 @@ public sealed partial class GameSession
         if(actor.Timer>0) return;
         actor.Timer=actor.Cooldown;
         HitCount++;
-        target.Hp=Math.Max(0,target.Hp-Math.Max(1,actor.Attack-target.Defense));
+        target.Hp=Math.Max(0,target.Hp-AttackDamage(actor,target));
         if(!target.Alive && room.Monsters.Contains(target))
         {
             // 击杀即得的经验立即结算并保存；实物掉落只生成待拾取对象。

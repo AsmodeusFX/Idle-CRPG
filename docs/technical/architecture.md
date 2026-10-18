@@ -10,6 +10,8 @@
 
 配置错误直接报错，不静默使用默认数值。模型不读 UI，不在绘制期间发奖励，不把房间渲染状态作为战斗状态。
 
+GmPanel 参考 Idle-Sword 的双区菜单布局，上区当局指令、下区编辑器入口。GmCommands 作为 GameSession 的命令扩展，管理临时无敌/怪物倍率/房间数量参数及资源发放；正常战斗与 GM 共用唯一伤害及经验实现。GmConfig 从 gm/gm.csv 校验发放量、倍率档位和数量步长。临时参数不进入快照，到账资源和已生成房间仍走正常保存，详见 design/gm.md。
+
 AreaParts 管理城堡统治区与多选 OR 前置配置、相邻引用和可达性校验。WorldProgress 按城堡通关历史推导已开放统治区，ExpeditionPlanner 只在开放范围选择开拓/复刷目标，WorldNavigation 的 allowedRegions 在路径层禁止越界，CastleUnlocked 同时检查统治区前置和辖区普通地牢完成度。UI 仅展示解锁与多选前置说明；旧存档门禁迁移仍经 GameSession 恢复处理。
 
 StarConfiguration/StarProgression 管理内容布局合同与已购等级，GameSession.BuyStar 是玩家购买命令，先校验再扣费并调整全队属性。贡献差量独立记账，恢复/热更新不会重复叠加，HP 上限变化保留当前 HP。StarEditorDocument/StarEditorStore 为纯逻辑编辑和文件事务层，StarCsv 支持标准 CSV 转义；StarCanvas 与 StarUi 迁移参考工程的画布和交互，GM 菜单统一承载开发工具。编辑器只写配置副本/源表，不直接修改玩家等级；会话刷新仍走 GameSession 命令。详见 design/star_map.md。

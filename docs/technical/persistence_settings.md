@@ -2,6 +2,8 @@
 
 ## 自动保存与恢复
 
+GM 发放的金币、共享经验和对应成长按普通关键进度保存。无敌、怪物有效血量/攻击倍率、每房额外怪物数量属于临时会话参数，不进入 SessionSnapshot；读档恢复默认。已生成房间的数量仍按既有出生快照保存，参数重置不回滚已生成内容或资源。具体边界见 design/gm.md。
+
 城堡挑战队列使用有序 `PendingCastles` 保存，按点击顺序恢复；兼容旧档的单目标 `PendingCastle`。当前已派遣城堡仍由世界目标与阶段保存，后续排队不会覆盖该目标。
 
 正式运行使用 Godot `user://` 用户数据目录，Windows 通常为 `%APPDATA%/Godot/app_userdata/Idle-CRPG/`。`progress_v1.json` 是游戏进度，`settings.json` 是显示/音频偏好；不放在 config，不提交 Git。

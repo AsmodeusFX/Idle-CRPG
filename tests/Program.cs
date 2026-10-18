@@ -253,3 +253,4 @@ SceneChecks.Run(root);
 ProgressChecks.Run(root);
 AreaPartChecks.Run(root);
 StarChecks.Run(root);
+GmChecks.Run(root);
