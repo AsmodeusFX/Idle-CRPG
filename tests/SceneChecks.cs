@@ -9,7 +9,7 @@ public static class SceneChecks
     public static void Run(string root)
     {
         void Check(bool value,string message){if(!value)throw new Exception("SCENE_CHECK: "+message);}
-        var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         var floor=Dungeon.Generate(42,c)[0];
         Check(floor.Rooms.Select(r=>(r.HalfWidth,r.HalfHeight)).Distinct().Count()>1,"房间大小没有变化");
         foreach(var room in floor.Rooms)foreach(int n in room.Neighbors)

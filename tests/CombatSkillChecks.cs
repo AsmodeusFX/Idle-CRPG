@@ -11,7 +11,7 @@ public static class CombatSkillChecks
     {
         void Check(bool ok,string reason){if(!ok)throw new Exception("COMBAT_SKILL_CHECK: "+reason);}
         void Near(double actual,double expected,string reason)=>Check(Math.Abs(actual-expected)<.00001,reason+$" ({actual} != {expected})");
-        var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         Check(c.Skills.Abilities.Count==15&&c.Skills.Buffs.Count==7&&c.Skills.Triggers.Count==2&&c.Skills.Skills.Count==17,"迁移定义数量");
         Check(c.Skills.Skills["skill_01"].Cooldown==25&&c.Skills.Buffs["buff_haste"].Duration==120,"8Hz→20Hz 换算");
         var attack=new BattleAttributes {CriticalChance=1,CriticalDamage=.5};

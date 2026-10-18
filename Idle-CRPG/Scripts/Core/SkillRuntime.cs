@@ -87,7 +87,7 @@ public sealed partial class GameSession
         float before=target.Hp;target.Hp=(float)Math.Max(0,target.Hp-amount);bool killed=!target.Alive;
         if(killed&&Floor.Rooms[CurrentRoom].Monsters.Contains(target))
         {
-            var room=Floor.Rooms[CurrentRoom];Kills++;GainExperience(target.RewardXp);var loot=RollDrops(target);
+            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainExperience(target.RewardXp);var loot=RollDrops(target);
             if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}
         }

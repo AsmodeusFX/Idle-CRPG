@@ -40,7 +40,7 @@ public static class WorldNavigation
             int id=open.Dequeue();if(id==goal)break;int x=id%width,y=id/width;
             foreach(var (dx,dy) in new[]{(1,0),(0,1),(-1,0),(0,-1)})
             {
-                int nx=x+dx,ny=y+dy;if(!Allowed(nx,ny))continue;int next=ny*width+nx,newCost=cost[id]+1;
+                int nx=x+dx,ny=y+dy;if(!Allowed(nx,ny)||!c.CanCross(regions[(x/CellsPerRegion,y/CellsPerRegion)],regions[(nx/CellsPerRegion,ny/CellsPerRegion)]))continue;int next=ny*width+nx,newCost=cost[id]+1;
                 if(cost.TryGetValue(next,out int old)&&old<=newCost)continue;
                 cost[next]=newCost;parent[next]=id;open.Enqueue(next,newCost+Math.Abs(nx-goal%width)+Math.Abs(ny-goal/width));
             }
@@ -67,7 +67,7 @@ public sealed partial class Config
         {
             foreach(var p in Dungeons.Where(d=>d.RegionId==r.Id).Select(d=>new Vector2(r.X+d.X,r.Y+d.Y)).Concat(Villages.Where(v=>v.RegionId==r.Id).Select(v=>new Vector2(r.X+v.X,r.Y+v.Y))))
                 if(!WorldNavigation.Walkable(this,p))throw new InvalidDataException("地牢或村庄入口被障碍阻挡");
-            var village=Villages.Single(v=>v.RegionId==r.Id);var npc=Npcs.Single(n=>n.Id==village.NpcId);
+            var village=Villages.FirstOrDefault(v=>v.RegionId==r.Id);if(village==null)continue;var npc=Npcs.Single(n=>n.Id==village.NpcId);
             var npcPosition=new Vector2(r.X+village.X,r.Y+village.Y)+npc.Position/WorldUnits;
             if((int)npcPosition.X!=r.X||(int)npcPosition.Y!=r.Y||!WorldNavigation.Walkable(this,npcPosition))throw new InvalidDataException("NPC 必须位于村庄所属区域可行走位置");
         }

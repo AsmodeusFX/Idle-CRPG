@@ -1,5 +1,7 @@
 # 配置字段字典
 
+最新扩展：areapart.csv新增unlock_mode（any/all，缺列默认any），显式地牢及旧统治区前置均按此聚合；不再限定OR。正式第一章目录chapters/act1（8×8、独立营地），根旧世界表仅保留回归用途。POI、逐层计划、门禁与失败阈值字段见 [第一章配置](act1_config.md)，覆盖下文旧目录/尺寸描述。
+
 地形扩展：`world/region.csv` 新增必填enterable（0/1），terrain新增mountain/ocean且二者必须不可进入；阻断格仍覆盖矩形，但不得关联村庄、地牢或统治城堡。新增 `world/region_prerequisite.csv` 字段id,region_id,required_dungeon_id，唯一行ID、可进入格引用、本章地牢引用；同区域所有行OR合并并覆盖旧areapart前置，可只有表头。规则、校验和迁移见 [地形与前置](../design/map_access.md)。
 
 章节扩展：`world/difficulty.csv`字段id,name，必须按normal/nightmare/hell三行排列；`world/chapter.csv`字段id,name,terrain,width,height,directory，必须按act1～act5五行排列。地形为mixed或grass/desert/tropical/coast/snow/hell；尺寸1～64且须与本章world.csv和region覆盖一致。目录`.`保留第一章，其他目录须在config内。各章地图表的字段沿用下表，物品、NPC模板、刷怪和战斗数值共享根配置，详见 [章节地图配置](../design/world_chapters.md)。

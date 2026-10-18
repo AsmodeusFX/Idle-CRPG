@@ -50,6 +50,7 @@ public sealed partial class Config
         var rulers=Table("world/castle_region.csv");
         if(rulers.Select(r=>Integer(r,"region_id")).Distinct().Count()!=rulers.Count) throw new InvalidDataException("区域统治重复");
         Rulers=rulers.ToDictionary(r=>Integer(r,"region_id"),r=>r["castle_id"]);
+        LoadPoiConfiguration(directory);
         LoadAreaParts(directory);
         ValidateWorld();
     }
@@ -70,11 +71,14 @@ public sealed partial class Config
         foreach(var r in Regions)
         {
             if(!r.Enterable){Require(!Villages.Any(v=>v.RegionId==r.Id)&&!Dungeons.Any(d=>d.RegionId==r.Id)&&!Rulers.ContainsKey(r.Id),"不可进入地块不得配置村庄、地牢或统治归属");continue;}
-            Require(Villages.Count(v=>v.RegionId==r.Id)==1,"每区域必须一个村庄");
+            if(IsTown(r.Id)){Require(!Rulers.ContainsKey(r.Id)&&!Dungeons.Any(d=>d.RegionId==r.Id),"营地不得关联统治归属或地牢");continue;}
+            Require(TownRegionId>0||Villages.Count(v=>v.RegionId==r.Id)==1,"每区域必须一个村庄");
             Require(Dungeons.Count(d=>d.RegionId==r.Id&&d.Castle)<=1,"区域城堡数量错误");
             Require(Rulers.TryGetValue(r.Id,out var castle)&&Dungeons.Any(d=>d.Id==castle&&d.Castle),"区域必须恰好归属一个有效城堡");
         }
-        Require(Rulers.Count==Regions.Count(r=>r.Enterable)&&Dungeons.Where(d=>d.Castle).All(d=>Rulers[d.RegionId]==d.Id),"统治范围必须包含城堡所在区且不得多余");
+        Require(Rulers.Count==Regions.Count(r=>r.Enterable&&!IsTown(r.Id))&&Dungeons.Where(d=>d.Castle).All(d=>Rulers[d.RegionId]==d.Id),"统治范围必须包含城堡所在区且不得多余");
+        Require(TownRegionId==0||Villages.Count==1&&Villages[0].RegionId==TownRegionId,"独立营地地图必须且仅在营地配置一个村庄");
+        ValidatePoiConfiguration();
         ValidateAreaParts();
         Require(Unique(ItemTypes.Select(t=>t.Id))&&ItemTypes.All(t=>t.Kind is "currency" or "junk"&&t.AutoSell==(t.Kind=="junk")),"物品类型非法");
         Require(Unique(Items.Select(i=>i.Id))&&Items.All(i=>i.SellPrice>=0&&ItemTypes.Any(t=>t.Id==i.TypeId))&&Items.Count(i=>ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency")==1&&Items.Any(i=>i.Id=="gold"&&ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency"),"物品引用/金币配置非法");

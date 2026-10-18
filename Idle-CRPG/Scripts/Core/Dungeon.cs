@@ -47,6 +47,8 @@ public sealed class Passage
 
 public sealed class Floor
 {
+    public int Seed,ActualSpawned,ActualKillFacts;
+    public long ElapsedTicks;
     public List<Room> Rooms = new();
     public List<Passage> Passages = new();
     public bool Clear => Rooms.All(r => r.Clear);
@@ -65,14 +67,15 @@ public sealed class Floor
 public static class Dungeon
 {
     /// <summary>只生成拓扑。坐标网格保证房间与走廊互不重叠。</summary>
-    public static List<Floor> Generate(int seed, Config config)
+    public static List<Floor> Generate(int seed, Config config,int? floorCount=null)
     {
         var rng = new Random(seed);
         var floors = new List<Floor>();
-        int count = rng.Next(config.FloorsMin, config.FloorsMax + 1);
+        int count = floorCount??rng.Next(config.FloorsMin, config.FloorsMax + 1);
+        if(count<1||count>20)throw new ArgumentOutOfRangeException(nameof(floorCount));
         for (int f = 0; f < count; f++)
         {
-            var floor = new Floor();
+            var floor = new Floor {Seed=seed};
             floor.Rooms.Add(new Room { Id = 0 });
             int rooms = rng.Next(config.RoomsMin, config.RoomsMax + 1);
             while (floor.Rooms.Count < rooms)

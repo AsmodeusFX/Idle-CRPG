@@ -9,7 +9,7 @@ public static class SaveChecks
     public static void Run(string root)
     {
         void Check(bool ok,string message){if(!ok)throw new Exception("SAVE_CHECK: "+message);}
-        var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));c.FloorsMin=c.FloorsMax=1;c.RoomsMin=c.RoomsMax=3;
+        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));c.FloorsMin=c.FloorsMax=1;c.RoomsMin=c.RoomsMax=3;
         string directory=Path.Combine(root,"artifacts","save-checks",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
         var store=new SaveStore(Path.Combine(directory,"progress.json"));
         var game=GameSession.CreateWorld(c,777,new[]{"warrior","ranger","mage"});

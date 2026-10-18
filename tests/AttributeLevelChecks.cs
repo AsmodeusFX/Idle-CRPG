@@ -8,7 +8,7 @@ public static class AttributeLevelChecks
     public static void Run(string root)
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("ATTRIBUTE_LEVEL_CHECK: "+why);}
-        var config=Config.Load(Path.Combine(root,"Idle-CRPG/config"));var attrs=config.Attributes;
+        var config=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));var attrs=config.Attributes;
         Check(attrs.Definitions.Count==attrs.Rules.Count&&attrs.Definitions.ContainsKey("dodge_rate")&&attrs.Definitions.ContainsKey("damage_multiplier"),"属性与规则没有一一注册");
         Check(attrs.Aggregate("atk",100,new[]{new BuffAttributeSpec("atk","flat",20),new("atk","pct",.5)})==180,"基础/固定/百分比聚合");
         Check(attrs.Aggregate("crit_rate",.8,new[]{new BuffAttributeSpec("crit_rate","add",.5)})==1,"概率规则上限");
@@ -35,14 +35,14 @@ public static class AttributeLevelChecks
         foreach(var file in Directory.EnumerateFiles(source,"*",SearchOption.AllDirectories))
         {string target=Path.Combine(qa,Path.GetRelativePath(source,file));Directory.CreateDirectory(Path.GetDirectoryName(target)!);File.Copy(file,target);}
         string heroFile=Path.Combine(qa,"hero/herolevel.csv");var heroLines=File.ReadAllLines(heroFile);File.WriteAllLines(heroFile,heroLines.Take(4));
-        var capped=Config.Load(qa);var cappedGame=GameSession.CreateWorld(capped,1,new[]{"warrior","ranger","mage"});cappedGame.GrantGmResources(experience:10000);
+        var capped=Config.LoadLegacy(qa);var cappedGame=GameSession.CreateWorld(capped,1,new[]{"warrior","ranger","mage"});cappedGame.GrantGmResources(experience:10000);
         Check(capped.MaxHeroLevel==3&&cappedGame.Heroes.All(h=>h.Level==3)&&cappedGame.Heroes[0].Attack==capped.Heroes[0].Attack+8,"英雄表尾没有作为上限");
         File.WriteAllLines(heroFile,new[]{heroLines[0],heroLines[1],heroLines[3]});
-        rejected=false;try{Config.Load(qa);}catch(CsvConfigurationException){rejected=true;}Check(rejected,"等级缺行未拒绝");File.WriteAllLines(heroFile,heroLines);
+        rejected=false;try{Config.LoadLegacy(qa);}catch(CsvConfigurationException){rejected=true;}Check(rejected,"等级缺行未拒绝");File.WriteAllLines(heroFile,heroLines);
         string buffFile=Path.Combine(qa,"skill/buff.csv");var buffText=File.ReadAllText(buffFile);File.WriteAllText(buffFile,buffText.Replace("attack_speed_pct","missing_attribute"));
-        rejected=false;try{Config.Load(qa);}catch(InvalidDataException){rejected=true;}Check(rejected,"Buff 绕过属性注册表");File.WriteAllText(buffFile,buffText);
+        rejected=false;try{Config.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}Check(rejected,"Buff 绕过属性注册表");File.WriteAllText(buffFile,buffText);
         string rulesFile=Path.Combine(qa,"combat/fightattr_rules.csv");var rulesText=File.ReadAllText(rulesFile);File.WriteAllText(rulesFile,rulesText.Replace("crit_rate,0,0,1","crit_rate,2,0,1"));
-        rejected=false;try{Config.Load(qa);}catch(CsvConfigurationException){rejected=true;}Check(rejected,"非法属性基线没有拒绝");
+        rejected=false;try{Config.LoadLegacy(qa);}catch(CsvConfigurationException){rejected=true;}Check(rejected,"非法属性基线没有拒绝");
         Console.WriteLine("PASS: fightattr registry/operations/bounds, hero cumulative growth, monster ATK/HP-only scaling, level caps, save retention and malformed CSV rejection");
     }
 }

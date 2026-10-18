@@ -9,7 +9,7 @@ public static class AreaPartChecks
     public static void Run(string root)
     {
         void Check(bool ok,string message){if(!ok)throw new Exception("AREAPART_CHECK: "+message);}
-        Config Load()=>Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        Config Load()=>Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         var c=Load();var initial=c.AreaPart(c.StartRegionId);var p=new WorldProgress();
         Check(c.AreaParts.Count==35&&c.Dungeons.Single(d=>d.Id==initial.CastleId).RegionId==c.StartRegionId,"自然城堡布局数量或初始城堡错误");
         Check(c.AreaParts.All(a=>c.Dungeons.Count(d=>!d.Castle&&c.Rulers[d.RegionId]==a.CastleId) is >=3 and <=10),"每统治区普通地牢数量不在 3–10");

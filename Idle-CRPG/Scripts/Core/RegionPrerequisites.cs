@@ -14,10 +14,10 @@ public sealed partial class Config
         string path=Path.Combine(directory,"world/region_prerequisite.csv");
         RegionPrerequisites=CsvTable.Load(path,File.ReadAllText(path),"id","region_id","required_dungeon_id").Rows.Select(r=>new RegionPrerequisite(r.Integer("region_id"),r.Required("required_dungeon_id"))).ToList();
     }
-    /// <summary>格子前置提升为整个统治区域的OR门禁；显式配置覆盖旧areapart门禁，不由相邻/探索/已占领推导开放。</summary>
+    /// <summary>格子前置按所属区域的 unlock_mode 聚合；显式配置覆盖旧门禁，不由相邻、探索或已占领推导开放。</summary>
     private void ValidateRegionPrerequisites()
     {
-        if(RegionPrerequisites.Distinct().Count()!=RegionPrerequisites.Count||RegionPrerequisites.Any(p=>!Regions.Any(r=>r.Id==p.RegionId&&r.Enterable)||!Dungeons.Any(d=>d.Id==p.RequiredDungeonId)))throw new InvalidDataException("地块前置重复或引用无效");
+        if(RegionPrerequisites.Distinct().Count()!=RegionPrerequisites.Count||RegionPrerequisites.Any(p=>!Regions.Any(r=>r.Id==p.RegionId&&r.Enterable&&!IsTown(r.Id))||!Dungeons.Any(d=>d.Id==p.RequiredDungeonId)))throw new InvalidDataException("地块前置重复或引用无效");
         if(RegionPrerequisites.Any(p=>AreaPart(p.RegionId).InitiallyUnlocked||Rulers[p.RegionId]==Rulers[Dungeons.Single(d=>d.Id==p.RequiredDungeonId).RegionId]))throw new InvalidDataException("初始区域不得设置门禁，前置地牢不得属于自身统治区域");
         var progress=new WorldProgress();var reached=new HashSet<int>();
         bool changed;

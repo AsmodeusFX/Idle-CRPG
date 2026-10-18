@@ -11,6 +11,7 @@ public partial class Main
     private Config? listMap;
     private WorldCampaign? archivedMap;
     private GameSession? mapSession;
+    private WorldCampaign? uiCampaignWorld;
     private Config MapConfig=>(session?.Config??config).ChapterMaps[mapChapter];
     private bool ViewingCurrentMap=>session!=null&&mapDifficulty==session.DifficultyIndex&&mapChapter==session.ChapterIndex;
     private int SavedSelectedRegion=>ViewingCurrentMap?selectedRegion:session?.World?.CurrentRegion??-1;
@@ -74,7 +75,8 @@ public partial class Main
     }
     private void SyncCampaignConfig()
     {
-        if(session==null||ReferenceEquals(config,session.Config))return;
+        if(session==null||ReferenceEquals(config,session.Config)&&ReferenceEquals(uiCampaignWorld,session.World))return;
+        uiCampaignWorld=session.World;
         config=session.Config;interactionSession=null;OpenCurrentChapter();cameraReady=false;Refresh();
     }
 }

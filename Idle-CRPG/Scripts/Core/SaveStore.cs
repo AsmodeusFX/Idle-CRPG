@@ -8,7 +8,7 @@ namespace IdleCrpg.Core;
 
 public sealed class SaveDocument
 {
-    [JsonRequired] public int Version=3;
+    [JsonRequired] public int Version=4;
     [JsonRequired] public SessionSnapshot? Session;
     public int Speed=1,ViewMode,SelectedRegion=-1;
     public bool Paused;
@@ -21,11 +21,12 @@ public sealed class SaveStore(string path)
     public static readonly JsonSerializerOptions JsonOptions=new() {IncludeFields=true,IgnoreReadOnlyProperties=true,WriteIndented=false};
     public string PathName=>path;
     public string? LastWarning { get; private set; }
+    public bool RecoveryReset {get;private set;}
     public static string Encode(SaveDocument document)=>JsonSerializer.Serialize(document,JsonOptions);
     public static SaveDocument Decode(Config c,string text)
     {
         var document=JsonSerializer.Deserialize<SaveDocument>(text,JsonOptions)??throw new InvalidDataException("空存档");
-        if(document.Version is not (1 or 2 or 3))throw new InvalidDataException("不支持的存档版本 "+document.Version);
+        if(document.Version is not (1 or 2 or 3 or 4))throw new InvalidDataException("不支持的存档版本 "+document.Version);
         int chapter=document.Session?.ChapterIndex??0;
         if(chapter<0||chapter>=c.ChapterMaps.Count)throw new InvalidDataException("存档章节参数错误");
         var map=c.ChapterMaps[chapter];
@@ -35,7 +36,7 @@ public sealed class SaveStore(string path)
     }
     public SaveDocument? Load(Config c)
     {
-        LastWarning=null;
+        LastWarning=null;RecoveryReset=false;bool existed=File.Exists(path)||File.Exists(path+".bak");
         foreach(var candidate in new[]{path,path+".bak"})
         {
             if(!File.Exists(candidate))continue;
@@ -47,6 +48,16 @@ public sealed class SaveStore(string path)
             }
             catch(Exception e) when(e is IOException or UnauthorizedAccessException or JsonException or ArgumentException or InvalidOperationException or NullReferenceException or OverflowException)
             {LastWarning="存档读取失败，原文件保留："+e.Message;}
+        }
+        if(existed)
+        {
+            try
+            {
+                string suffix=".unreadable-"+DateTime.UtcNow.ToString("yyyyMMddHHmmssfffffff");
+                foreach(string original in new[]{path,path+".bak"})if(File.Exists(original))File.Copy(original,original+suffix,false);
+                Reset();RecoveryReset=true;LastWarning="存档与备份无法恢复，已保留旧文件并自动重置进度。地图结构或存档格式可能已更新。";return new SaveDocument();
+            }
+            catch(Exception e) when(e is IOException or UnauthorizedAccessException){LastWarning="存档无法恢复，保留或重置失败："+e.Message;}
         }
         return null;
     }

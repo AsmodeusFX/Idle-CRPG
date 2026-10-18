@@ -60,7 +60,7 @@ public partial class Main
             V c=new(r.X+.5f,r.Y+.5f);
             if(r.X+1<config.WorldWidth)DrawLine(OutdoorPoint(c),OutdoorPoint(c+new V(1,0)),new Color("847a66"),18,true);
             if(r.Y+1<config.WorldHeight)DrawLine(OutdoorPoint(c),OutdoorPoint(c+new V(0,1)),new Color("847a66"),18,true);
-            var village=config.Villages.Single(v=>v.RegionId==r.Id);V v=WorldLocation(r.Id,village.X,village.Y);
+            var village=config.Villages.FirstOrDefault(v=>v.RegionId==r.Id);if(village==null)continue;V v=WorldLocation(r.Id,village.X,village.Y);
             DrawPolyline(Road(village.Id,v,c).Select(OutdoorPoint).ToArray(),new Color("928773"),15,true);
             foreach(var d in config.Dungeons.Where(d=>d.RegionId==r.Id))DrawPolyline(Road(d.Id,v,WorldLocation(r.Id,d.X,d.Y)).Select(OutdoorPoint).ToArray(),new Color("928773"),11,true);
         }
@@ -75,7 +75,7 @@ public partial class Main
         foreach(var item in decorations.OrderBy(d=>d.Position.X+d.Position.Y))Decoration(OutdoorPoint(item.Position),item.Terrain,.9f,item.Seed);
         foreach(var r in nearby)
         {
-            var village=config.Villages.Single(v=>v.RegionId==r.Id);V anchor=WorldLocation(r.Id,village.X,village.Y);var p=OutdoorPoint(anchor);
+            var village=config.Villages.FirstOrDefault(v=>v.RegionId==r.Id);if(village==null)continue;V anchor=WorldLocation(r.Id,village.X,village.Y);var p=OutdoorPoint(anchor);
             House(p-new Vector2(10,35),r.Terrain);Text(village.Name,p+new Vector2(-35,-88),14,"f4e1b9");
             var npc=config.Npcs.Single(n=>n.Id==village.NpcId);var n=OutdoorPoint(anchor+npc.Position/config.WorldUnits);
             DrawFighter(n,new Color("b89761"),-1,false,1,npc.Name);

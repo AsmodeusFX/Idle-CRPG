@@ -16,7 +16,7 @@ public sealed partial class Config
     public float ReviveSeconds, ReviveRange, ReviveHpRatio;
     public List<UnitSpec> Heroes = new(), Monsters = new();
 
-    public static Config Load(string directory)
+    public static Config Load(string directory,bool legacyFixture=false)
     {
         var rows = Read(Path.Combine(directory, "dungeon/dungeon_rule.csv"));
         if (rows.Count != 1) throw new InvalidDataException("dungeon.csv 必须恰有一行数据");
@@ -42,9 +42,13 @@ public sealed partial class Config
         c.LoadGm(directory);
         c.LoadLevels(directory);
         c.LoadCombat(directory);
-        c.LoadChapters(directory);
-        return c;
+        c.LoadRecovery(directory);
+        c.LoadChapters(directory,legacyFixture);
+        return c.ChapterMaps[0];
     }
+
+    /// <summary>仅用于保留旧地图回归样本；正式运行必须使用Load。</summary>
+    public static Config LoadLegacy(string directory)=>Load(directory,true);
 
     private static List<UnitSpec> Units(string path)
     {

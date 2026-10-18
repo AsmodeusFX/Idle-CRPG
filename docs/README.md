@@ -1,5 +1,9 @@
 # 文档索引
 
+- [第一章正式规则](design/act1.md)：V0.5地图、单营地、手动要塞与跨章支线、失败回刷及待补充开发。
+- [第一章配置字典](technical/act1_config.md)：POI/逐层数据、any/all门禁及存档版本4。
+- [第一章实施验收](reviews/2026-10-18/act1_implementation_audit.md)：来源归档、实测结果和未投放范围。
+
 - [地形阻断与区域前置](design/map_access.md)：不可进入格、普通地牢/要塞OR前置及旧档迁移。
 
 - [难度、章节与独立地图](design/world_chapters.md)：3档难度、5章地图、顺序解锁、自动推进及旧档兼容。

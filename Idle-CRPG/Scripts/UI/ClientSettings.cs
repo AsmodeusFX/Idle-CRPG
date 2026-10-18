@@ -59,6 +59,10 @@ public partial class Main
             savedRevision=session.Revision;
         }
         if(saveStore.LastWarning!=null)help.Text=saveStore.LastWarning;
+        if(saveStore.RecoveryReset)
+        {
+            var notice=new AcceptDialog {Title="存档已自动重置",DialogText=saveStore.LastWarning};AddChild(notice);notice.PopupCentered(new Vector2I(560,180));
+        }
     }
     private void UpdatePartyControls()
     {

@@ -10,7 +10,7 @@ public static class ProgressChecks
     public static void Run(string root)
     {
         void Check(bool ok,string message){if(!ok)throw new Exception("PROGRESS_CHECK: "+message);}
-        var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         var g=new GameSession(c,42,new[]{"warrior","ranger","mage"});
         foreach(var h in g.Heroes){h.Hp=h.MaxHp=100000;h.Attack=100000;h.Range=100;}
         for(int i=0;i<10000;i++)
@@ -33,7 +33,7 @@ public static class ProgressChecks
         string directory=Path.Combine(root,"artifacts","progress-checks",Guid.NewGuid().ToString("N"));
         var store=new SaveStore(Path.Combine(directory,"progress.json"));store.Save(g);
         var raw=JsonSerializer.Deserialize<SaveDocument>(File.ReadAllText(store.PathName),SaveStore.JsonOptions)!;
-        Check(raw.Version==3&&raw.Session!.RoomCheckpoint&&raw.Session.Floors.All(f=>f.Rooms.All(r=>r.Monsters.Count==0)),"磁盘版本错误或仍保存怪物现场");
+        Check(raw.Version==4&&raw.Session!.RoomCheckpoint&&raw.Session.Floors.All(f=>f.Rooms.All(r=>r.Monsters.Count==0)),"磁盘版本错误或仍保存怪物现场");
         var resumed=GameSession.Restore(c,store.Load(c)!.Session!);room=resumed.Floor.Rooms[resumed.CurrentRoom];
         Check(room.Monsters.Count==count&&room.Monsters.All(m=>m.Hp==m.MaxHp&&m.Timer==0)&&room.Loot.Count==0,"没有从进房重开");
         Check(resumed.Gold==gold&&resumed.Experience==xp&&resumed.Kills==kills&&resumed.Heroes.All(h=>h.Timer==0),"重开丢失累计成长或保留攻击冷却");

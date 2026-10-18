@@ -13,6 +13,7 @@ public partial class Main
     private readonly Dictionary<string,Label> castleStates=new();
     private Label selectedTileTitle=null!,selectedTileInfo=null!;
     private VBoxContainer selectedTileDungeons=null!;
+    private Label? gateConditions;
     private readonly Dictionary<string,Label> selectedDungeonLabels=new();
     private int detailRegion=-1;
     private ScrollContainer castleListScroll=null!;
@@ -95,12 +96,13 @@ public partial class Main
         var world=MapWorld;
         if(world==null){selectedTileTitle.Text="选中地块";selectedTileInfo.Text="请先开启世界远征。";return;}
         var region=MapConfig.Regions.Single(r=>r.Id==selectedRegion);
-        if(!region.Enterable)
+        if(!region.Enterable||MapConfig.IsTown(region.Id))
         {
             selectedTileInfo.TooltipText="";
             selectedTileTitle.Text=$"{region.Name} · 地块 {region.Id:000}";
             selectedTileInfo.Text=$"{TerrainName(region.Terrain)} · 坐标 ({region.X+1}, {region.Y+1})\n不可进入 · 地形阻断\n不属于统治区域，不参与探索或通关";
             foreach(var child in selectedTileDungeons.GetChildren()){selectedTileDungeons.RemoveChild(child);child.QueueFree();}
+            if(MapConfig.IsTown(region.Id))selectedTileInfo.Text="罗格营地 · 安全村庄\n每次地牢结束后返回交易补给\n营地不属于统治要塞，不计入地牢完成数";
             selectedDungeonLabels.Clear();detailRegion=-1;return;
         }
         var castle=MapConfig.Dungeons.Single(d=>d.Id==MapConfig.Rulers[region.Id]);
@@ -110,18 +112,20 @@ public partial class Main
         selectedTileTitle.Text=$"{region.Name} · 地块 {region.Id:000}";
         selectedTileInfo.Text=$"{TerrainName(region.Terrain)} · 坐标 ({region.X+1}, {region.Y+1})\n所属城堡：{castle.Name}\n{(unlocked?StatusName(world.RegionState(region.Id)):"统治区域未解锁")} · 本格地牢 {cleared}/{dungeons.Length}\n蓝色框：选中地块  金色线：所属统治区域";
         string gate=DescribeRegionGate(region.Id);selectedTileInfo.TooltipText=gate;
-        selectedTileInfo.Text+="\n"+(gate.Length>27?gate[..27]+"…":gate);
+        selectedTileInfo.Text+="\n"+(MapConfig.AreaPart(region.Id).UnlockMode=="all"?"解锁：须满足全部前置":"解锁：满足任一前置即可");
         if(detailRegion!=region.Id)
         {
             detailRegion=region.Id;selectedDungeonLabels.Clear();
             foreach(var child in selectedTileDungeons.GetChildren()){selectedTileDungeons.RemoveChild(child);child.QueueFree();}
+            gateConditions=UiLabel("",13);gateConditions.CustomMinimumSize=new Vector2(380,0);gateConditions.AutowrapMode=TextServer.AutowrapMode.WordSmart;selectedTileDungeons.AddChild(gateConditions);
             if(dungeons.Length==0)selectedTileDungeons.AddChild(UiLabel("本格没有地牢",14));
             foreach(var dungeon in dungeons)
             {
                 var label=UiLabel("",14);selectedTileDungeons.AddChild(label);selectedDungeonLabels[dungeon.Id]=label;
             }
         }
-        foreach(var dungeon in dungeons)selectedDungeonLabels[dungeon.Id].Text=$"{(world.Progress.Cleared.Contains(dungeon.Id)?"✓":"·")} {dungeon.Name}  Lv.{dungeon.LevelMin}  {(world.Progress.Cleared.Contains(dungeon.Id)?"已通关":"未通关")}";
+        if(gateConditions!=null)gateConditions.Text=gate.Replace(" / ","\n");
+        foreach(var dungeon in dungeons)selectedDungeonLabels[dungeon.Id].Text=$"{(world.Progress.Cleared.Contains(dungeon.Id)?"✓":"·")} {dungeon.Name}  挑战{MapConfig.Challenge(dungeon.Id,mapDifficulty).Challenge}  {(world.Progress.Cleared.Contains(dungeon.Id)?"已通关":"未通关")}"+(MapConfig.PoiProfiles.ContainsKey(dungeon.Id)?" · 原型":"");
     }
 
     private string DescribeRegionGate(int region)
@@ -133,7 +137,7 @@ public partial class Main
             if(part.InitiallyUnlocked)return "初始区域：默认开放";
             ids=MapConfig.AreaPartPrerequisites.Where(p=>p.AreaPartId==part.Id).Select(p=>MapConfig.AreaParts.Single(a=>a.Id==p.RequiredAreaPartId).CastleId).ToArray();
         }
-        return "前置（任一）："+string.Join(" / ",ids.Select(id=>(MapWorld!.Progress.Cleared.Contains(id)?"✓":"·")+MapConfig.Dungeons.Single(d=>d.Id==id).Name));
+        return (part.UnlockMode=="all"?"满足以下全部条件：":"满足以下任一条件：")+string.Join(" / ",ids.Select(id=>(MapWorld!.Progress.Cleared.Contains(id)?"✓":"·")+MapConfig.Dungeons.Single(d=>d.Id==id).Name));
     }
 
     /// <summary>全局地图使用设计坐标绘制，鼠标直接按相同原点和格宽命中。</summary>

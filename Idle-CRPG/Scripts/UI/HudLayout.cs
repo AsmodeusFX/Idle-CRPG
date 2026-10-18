@@ -9,6 +9,7 @@ public partial class Main
     private Control partySetup=null!,gameHud=null!;
     private VBoxContainer interactionList=null!;
     private Label interactionEmpty=null!;
+    private Label teamChallengeLabel=null!;
     private readonly Label[] currencies=new Label[4];
     private readonly Label[] heroNames=new Label[5],heroStats=new Label[5];
     private readonly ProgressBar[] heroHealth=new ProgressBar[5];
@@ -75,6 +76,7 @@ public partial class Main
         summary=HudText(gameHud,"选定小队后开始。",new Vector2(38,100),14);summary.Size=new Vector2(1008,40);summary.AutowrapMode=TextServer.AutowrapMode.WordSmart;summary.MouseFilter=Control.MouseFilterEnum.Ignore;
         HudPanel(gameHud,new Vector2(24,662),new Vector2(840,214));
         HudText(gameHud,"小队状态",new Vector2(38,669),16);
+        teamChallengeLabel=HudText(gameHud,"",new Vector2(260,671),13);
         HudText(gameHud,"上阵席位  /  5",new Vector2(715,671),13);
         for(int i=0;i<5;i++)
         {
@@ -101,6 +103,7 @@ public partial class Main
     private static string CompactAmount(long value)=>value>=1000000?$"{value/1000000d:0.#}M":value>=10000?$"{value/1000d:0.#}K":value.ToString("N0");
     private void RefreshHud()
     {
+        teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel}";
         partySetup.Visible=session==null;
         for(int i=0;i<5;i++)
         {
@@ -123,7 +126,7 @@ public partial class Main
             castleCards.Clear();interactionArrival.Clear();nextInteractionArrival=0;interactionSession=session;
         }
         var world=session?.World;
-        var available=world==null?Array.Empty<DungeonSpec>():config.Dungeons.Where(d=>d.Castle&&!world.Progress.Cleared.Contains(d.Id)&&world.Progress.CastleUnlocked(config,d.Id)).ToArray();
+        var available=world==null?Array.Empty<DungeonSpec>():config.Dungeons.Where(d=>d.Castle&&(!config.Optional(d.Id)||session!.ActiveBranch?.Castle==d.Id)&&!world.Progress.Cleared.Contains(d.Id)&&world.Progress.CastleUnlocked(config,d.Id)).ToArray();
         var ids=available.Select(d=>d.Id).ToHashSet();
         foreach(var id in castleCards.Keys.Where(id=>!ids.Contains(id)).ToArray())
         {var card=castleCards[id];interactionList.RemoveChild(card);card.QueueFree();castleCards.Remove(id);interactionArrival.Remove(id);}
@@ -140,6 +143,7 @@ public partial class Main
                 var words=new VBoxContainer {Name="Words",SizeFlagsHorizontal=Control.SizeFlags.ExpandFill,MouseFilter=Control.MouseFilterEnum.Ignore};content.AddChild(words);
                 var title=UiLabel("挑战"+castle.Name,16);title.Name="Title";title.TextOverrunBehavior=TextServer.OverrunBehavior.TrimEllipsis;words.AddChild(title);
                 var description=UiLabel("",13);description.Name="Description";description.AutowrapMode=TextServer.AutowrapMode.WordSmart;words.AddChild(description);
+                var retry=UiLabel("（再次挑战）",14);retry.Name="Retry";retry.AddThemeColorOverride("font_color",new Color("ff6262"));retry.Visible=false;words.AddChild(retry);
                 foreach(var word in words.GetChildren().OfType<Control>())word.MouseFilter=Control.MouseFilterEnum.Ignore;
                 card.Pressed+=()=>{if(session?.RequestCastleChallenge(id)==true){PlaySound("sfx_reward");Refresh();SaveNow();}else PlaySound("sfx_deny");};
                 interactionList.AddChild(card);castleCards[id]=card;
@@ -149,22 +153,26 @@ public partial class Main
             int queue=world.PendingCastles.ToList().IndexOf(castle.Id);
             button.Disabled=active||queue>=0;
             string state=active?(world.Stage==CampaignStage.Dungeon?"挑战中":"正在前往"):queue>=0?$"计划攻击 · 队列第 {queue+1} 位":"攻略城堡，占领整个统治区";
-            button.GetNode<Label>("Content/Words/Description").Text=$"Lv.{castle.LevelMin} · {state}";
+            var level=config.Challenge(castle.Id,session!.DifficultyIndex);
+            button.GetNode<Label>("Content/Words/Description").Text=$"挑战等级 {level.Challenge} · 推荐小队等级 {level.Recommended}\n{state}"+(config.PoiProfiles.ContainsKey(castle.Id)?" · 原型内容":"");
             button.TooltipText=castle.Name+"\n"+state;
+            button.GetNode<Label>("Content/Words/Retry").Visible=world.IsCastleRetry(castle.Id);
         }
         // 当前只有第四类功能；未来前三类依次排在城堡之前，同类沿用首次刷新序号。
         int index=1;
         foreach(var id in castleCards.Keys.OrderBy(id=>interactionArrival[id]))interactionList.MoveChild(castleCards[id],index++);
         interactionEmpty.Visible=castleCards.Count==0;
+        RefreshBranchInteractions();
     }
 
     /// <summary>验证真实交互卡的独立按钮、刷新顺序与排队行为；仅由 QA 冒烟入口调用。</summary>
     private void RunHudSmoke()
     {
-        var original=session;int originalView=viewMode,originalSelected=selectedRegion;
+        var original=session;var originalConfig=config;int originalView=viewMode,originalSelected=selectedRegion;
         try
         {
-            session=GameSession.CreateWorld(config,123,new[]{"warrior","ranger","mage"});
+            // 保留旧35城堡排队回归样本；正式第一章与支线由独立冒烟覆盖。
+            config=Config.LoadLegacy(ProjectSettings.GlobalizePath("res://config"));session=GameSession.CreateWorld(config,123,new[]{"warrior","ranger","mage"});
             var world=session.World!;world.Progress.Cleared.Add("c1");
             foreach(var dungeon in config.Dungeons.Where(d=>!d.Castle))world.Progress.Cleared.Add(dungeon.Id);
             Refresh();
@@ -197,7 +205,7 @@ public partial class Main
             GD.Print("HUD_SMOKE_OK: independent castle cards, queue, full-page castle list/map, linked selection, game-only speed and equal header buttons");
         }
         catch(Exception error){GD.PushError(error.ToString());QuitSafely(1);}
-        finally{session=original;viewMode=originalView;selectedRegion=originalSelected;Refresh();TickStarPanels();}
+        finally{session=original;config=originalConfig;viewMode=originalView;selectedRegion=originalSelected;Refresh();TickStarPanels();}
     }
 }
 

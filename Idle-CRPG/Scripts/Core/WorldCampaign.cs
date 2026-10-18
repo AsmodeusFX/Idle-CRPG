@@ -16,12 +16,12 @@ public sealed partial class WorldProgress
     public HashSet<string> Cleared { get; } = new();
     public RegionStatus Status(Config c,int region)
     {
-        if(!c.Regions.Single(r=>r.Id==region).Enterable)return RegionStatus.Unexplored;
+        if(c.IsTown(region)||!c.Regions.Single(r=>r.Id==region).Enterable)return RegionStatus.Unexplored;
         if(Cleared.Contains(c.Rulers[region]))return RegionStatus.Occupied;
         if(CastleUnlocked(c,c.Rulers[region]))return RegionStatus.WaitingCastle;
         return Explored.Contains(region)?RegionStatus.Sweeping:RegionStatus.Unexplored;
     }
-    public bool CastleUnlocked(Config c,string castle) => AreaPartUnlocked(c,c.AreaParts.Single(p=>p.CastleId==castle).Id)&&c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]==castle).All(d=>Cleared.Contains(d.Id));
+    public bool CastleUnlocked(Config c,string castle) => AreaPartUnlocked(c,c.AreaParts.Single(p=>p.CastleId==castle).Id)&&c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]==castle&&(!c.PoiProfiles.TryGetValue(d.Id,out var profile)||profile.RequiredForCastle)).All(d=>Cleared.Contains(d.Id));
 }
 
 public static class ExpeditionPlanner
@@ -29,11 +29,12 @@ public static class ExpeditionPlanner
     public static IEnumerable<RegionSpec> Neighbors(Config c,int region)
     {
         var a=c.Regions.Single(r=>r.Id==region);
-        return c.Regions.Where(r=>r.Enterable&&Math.Abs(r.X-a.X)+Math.Abs(r.Y-a.Y)==1);
+        return c.Regions.Where(r=>r.Enterable&&Math.Abs(r.X-a.X)+Math.Abs(r.Y-a.Y)==1&&c.CanCross(region,r.Id));
     }
     /// <summary>只在已解锁统治区开拓；全部扫荡完后持续复刷最高等级橙区，等待玩家主动攻城。</summary>
-    public static ExpeditionTarget Select(Config c,WorldProgress p,int current,bool previousWasFarm)
+    public static ExpeditionTarget Select(Config c,WorldProgress p,int current,bool previousWasFarm,int difficulty=0)
     {
+        if(c.PoiProfiles.Count>0)return SelectConfigured(c,p,current,difficulty);
         var accessible=p.AccessibleRegions(c);
         var normal=c.Dungeons.Where(d=>!d.Castle&&accessible.Contains(d.RegionId)).ToArray();
         var local=normal.Where(d=>d.RegionId==current&&!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
@@ -46,11 +47,28 @@ public static class ExpeditionPlanner
         if(pending!=null)return new(pending,false);
         return new(orange??normal.OrderByDescending(d=>d.LevelMin).ThenBy(d=>d.Id).First(),true);
     }
+    /// <summary>主线普通地牢全局稳定排序；要塞及未授权支线绝不自动进入候选。</summary>
+    private static ExpeditionTarget SelectConfigured(Config c,WorldProgress p,int current,int difficulty)
+    {
+        var accessible=p.AccessibleRegions(c);
+        var normal=c.Dungeons.Where(d=>!d.Castle&&!c.Optional(d.Id)&&accessible.Contains(d.RegionId)&&c.PoiProfiles[d.Id].Status!="blocked").OrderBy(d=>c.Challenge(d.Id,difficulty).Challenge).ThenBy(d=>c.PoiProfiles[d.Id].Order).ThenBy(d=>d.Id).ToArray();
+        bool Reachable(DungeonSpec d)
+        {
+            var a=c.Regions.Single(r=>r.Id==current);var b=c.Regions.Single(r=>r.Id==d.RegionId);
+            try{WorldNavigation.FindPath(c,new(a.X+.5f,a.Y+.5f),new(b.X+d.X,b.Y+d.Y),allowedRegions:accessible);return true;}catch(InvalidOperationException){return false;}
+        }
+        var pending=normal.FirstOrDefault(d=>!p.Cleared.Contains(d.Id)&&Reachable(d));
+        if(pending!=null)return new(pending,false);
+        var farming=normal.OrderByDescending(d=>c.Challenge(d.Id,difficulty).Challenge).FirstOrDefault(Reachable)??throw new InvalidOperationException("没有合法可达的普通地牢，配置阻塞");
+        return new(farming,true);
+    }
 }
 
 public sealed partial class WorldCampaign
 {
     private readonly Config config;
+    private readonly int difficulty;
+    public string BranchCastle {get;private set;}="";
     public WorldProgress Progress { get; } = new();
     public CampaignStage Stage { get; private set; }
     public Vector2 Position { get; private set; }
@@ -67,7 +85,7 @@ public sealed partial class WorldCampaign
     /// <summary>已占领优先；排队、前往及挑战中的统治区显示计划攻击。</summary>
     public RegionStatus RegionState(int region)
     {
-        if(!config.Regions.Single(r=>r.Id==region).Enterable)return RegionStatus.Unexplored;
+        if(config.IsTown(region)||!config.Regions.Single(r=>r.Id==region).Enterable)return RegionStatus.Unexplored;
         string id=config.Rulers[region];
         if(Progress.Cleared.Contains(id))return RegionStatus.Occupied;
         return pendingCastles.Contains(id)||(Target.Dungeon.Id==id&&Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon)?RegionStatus.PlannedAttack:Progress.Status(config,region);
@@ -77,9 +95,9 @@ public sealed partial class WorldCampaign
     private readonly Queue<Vector2> route = new();
     private readonly Dictionary<string,Queue<Vector2>> villagePaths=new();
 
-    public WorldCampaign(Config config)
+    public WorldCampaign(Config config,int difficulty=0,WorldProgress? progress=null,string branchCastle="")
     {
-        this.config=config;
+        this.config=config;this.difficulty=difficulty;Progress=progress??new();BranchCastle=branchCastle;
         Village=config.Villages.Single(v=>v.RegionId==config.StartRegionId);
         Position=WorldPoint(Village.RegionId,Village.X,Village.Y);
         Progress.Explored.Add(CurrentRegion);
@@ -88,17 +106,28 @@ public sealed partial class WorldCampaign
     private Vector2 WorldPoint(int region,float x,float y) {var r=config.Regions.Single(r=>r.Id==region);return new Vector2(r.X+x,r.Y+y);}
     private void Plan(bool previousWasFarm)
     {
+        if(pendingCastles.Count==0&&TryRecovery(out var recovery))
+        {
+            Target=recovery;Stage=CampaignStage.TravelDungeon;BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));Status="失败回刷 · "+Target.Dungeon.Name;return;
+        }
+        if(BranchCastle!="")
+        {
+            var next=config.Dungeons.Where(d=>config.Rulers[d.RegionId]==BranchCastle&&!d.Castle&&!Progress.Cleared.Contains(d.Id)).OrderBy(d=>config.Challenge(d.Id,difficulty).Challenge).ThenBy(d=>config.PoiProfiles[d.Id].Order).ThenBy(d=>d.Id).FirstOrDefault();
+            Target=new(next??config.Dungeons.Single(d=>d.Id==BranchCastle),false);
+            Stage=CampaignStage.TravelDungeon;BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));Status="支线计划 · "+Target.Dungeon.Name;return;
+        }
         pendingCastles.RemoveAll(id=>Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id));
         if(pendingCastles.Count>0)
         {
             Target=new(config.Dungeons.Single(d=>d.Id==pendingCastles[0]),false);
             pendingCastles.RemoveAt(0);
         }
-        else Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm);
+        else Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm,difficulty);
         Stage=CampaignStage.TravelDungeon;
         BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));
         Status=(Target.Farming?"复刷 · ":"前往 · ")+Target.Dungeon.Name;
     }
+    internal void PrepareResume()=>Plan(Target.Farming);
     private void BuildRoute(int region,Vector2 target)
     {
         route.Clear();foreach(var point in WorldNavigation.FindPath(config,Position,target,allowedRegions:Progress.AccessibleRegions(config)))route.Enqueue(point);
@@ -109,12 +138,14 @@ public sealed partial class WorldCampaign
         if(!config.Dungeons.Any(d=>d.Id==id&&d.Castle)||Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id))return false;
         if(pendingCastles.Contains(id)||(Target.Dungeon.Id==id&&Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon))return false;
         pendingCastles.Add(id);
+        ClearFailure(id);
         if(Stage==CampaignStage.TravelDungeon&&!Target.Dungeon.Castle)Plan(false);
         return true;
     }
     /// <summary>世界与村庄没有战斗；交易完成后才产生下一次地牢选择。</summary>
     internal void Tick(GameSession game,float dt)
     {
+        teamLevel=game.TeamChallengeLevel;
         if(Stage==CampaignStage.Dungeon)return;
         if(Stage==CampaignStage.Village)
         {
@@ -144,7 +175,7 @@ public sealed partial class WorldCampaign
                 long sold=game.SellJunk();Trades++;
                 foreach(var h in game.Heroes){h.Hp=h.MaxHp;h.Timer=0;}
                 game.Note($"{Village.Name}：杂物售出 {sold} 金币，补给完成");
-                if(!game.AdvanceChapter())Plan(Target.Farming);
+                if(!game.AfterVillageTrade())Plan(Target.Farming);
             }
             return;
         }
@@ -179,17 +210,18 @@ public sealed partial class WorldCampaign
     /// <summary>全灭直接在当前区域村庄复活；不记地牢通关，必须完成正常交易后才选目标。</summary>
     internal void RespawnInVillage(GameSession game,int regionId)
     {
-        Village=config.Villages.Single(v=>v.RegionId==regionId);
-        Position=WorldPoint(regionId,Village.X,Village.Y);
-        Progress.Explored.Add(regionId);
+        Village=config.ReturnVillage(regionId);
+        Position=WorldPoint(Village.RegionId,Village.X,Village.Y);
+        Progress.Explored.Add(Village.RegionId);
         EnterVillage(game);
         Status="全灭复活 · "+Village.Name+" · 前往交易 NPC";
     }
     internal void CompleteDungeon(GameSession game)
     {
+        ClearFailure(Target.Dungeon.Id);
         Progress.Cleared.Add(Target.Dungeon.Id);
         game.Note(Target.Dungeon.Name+" 已通关"+(Target.Dungeon.Castle?"，统治区域已占领":""));
-        Village=config.Villages.Single(v=>v.RegionId==Target.Dungeon.RegionId);
+        Village=config.ReturnVillage(Target.Dungeon.RegionId);
         Stage=CampaignStage.TravelVillage;
         BuildRoute(Village.RegionId,WorldPoint(Village.RegionId,Village.X,Village.Y));
         Status="通关返村 · "+Village.Name;
@@ -197,7 +229,7 @@ public sealed partial class WorldCampaign
     /// <summary>旧档可能位于新规则锁定范围；保留资源，返初始村庄交易，再按已解锁范围出发。</summary>
     internal bool ReconcileAreaPartAccess(GameSession game)
     {
-        if(!Progress.AreaPartUnlocked(config,config.AreaPart(CurrentRegion).Id))
+        if(!Progress.AccessibleRegions(config).Contains(CurrentRegion))
         {RespawnInVillage(game,config.StartRegionId);return false;}
         if(Stage==CampaignStage.TravelDungeon)
         {

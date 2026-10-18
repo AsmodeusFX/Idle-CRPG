@@ -56,6 +56,7 @@ public sealed partial class GameSession
     /// <summary>只在救援者进入交互距离后累积，单位为秒。</summary>
     public float ReviveElapsed { get; private set; }
     public Floor Floor => Floors[FloorIndex];
+    public string CurrentFloorDisplayName=>ActiveDungeon==null?"":Config.FloorPlans.FirstOrDefault(p=>p.Poi==ActiveDungeon.Id&&p.Difficulty==DifficultyIndex&&p.Index==FloorIndex+1)?.Name??ActiveDungeon.Name;
     public string Status { get; private set; } = "探索";
     private int destination = -1, phase;
     public bool MovingBetweenRooms => destination>=0;
@@ -91,6 +92,7 @@ public sealed partial class GameSession
     public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);if(Config.Dungeons.Any(d=>d.LevelMax+(long)Config.Spawn.Level-1+modifiers.LevelBonus>Config.MaxMonsterLevel))throw new ArgumentOutOfRangeException(nameof(modifiers));SpawnModifiers=modifiers;MarkChanged();}
     public bool RequestCastleChallenge(string castleId)
     {
+        if(Config.Optional(castleId)&&ActiveBranch?.Castle!=castleId)return false;
         if(World?.RequestCastle(castleId)!=true)return false;
         Note("已安排城堡挑战，完成当前地牢及返村交易后出发");return true;
     }
@@ -98,7 +100,7 @@ public sealed partial class GameSession
     {
         ActiveDungeon=dungeon;Won=false;FloorIndex=0;regroup=0;ResetRescue();
         dungeonSeed=unchecked(Seed*397^visit*104729^dungeon.RegionId*7919);
-        Floors=Dungeon.Generate(dungeonSeed,Config);EnterFloor();
+        Floors=Dungeon.Generate(dungeonSeed,Config,Config.PoiProfiles.TryGetValue(dungeon.Id,out var profile)?profile.Floors:null);EnterFloor();
         Note($"进入{dungeon.Name} · 等级 {dungeon.LevelMin}–{dungeon.LevelMax}");
     }
 
@@ -125,6 +127,7 @@ public sealed partial class GameSession
     private void TickDungeon(float dt)
     {
         if (Won) return;
+        Floor.ElapsedTicks++;
         if (!Heroes.Any(h=>h.Alive)) { RespawnParty(); return; }
         var room = Floor.Rooms[CurrentRoom];
         if (!room.Clear && room.Generated)
@@ -211,6 +214,7 @@ public sealed partial class GameSession
     /// <summary>放弃本轮地牢并在所在区域村庄满血复活，资源保留，交易完成后重新决策。</summary>
     private void RespawnParty()
     {
+        World?.RecordFailure(this);
         ResetSkillRoom();
         Retries++;
         int region=World?.CurrentRegion??ActiveDungeon?.RegionId??Config.StartRegionId;
@@ -268,6 +272,9 @@ public sealed partial class GameSession
         var rule=Config.Spawn;var modifiers=SpawnModifiers;
         int levelMin=(ActiveDungeon?.LevelMin??1)+rule.Level-1+modifiers.LevelBonus;
         int levelMax=(ActiveDungeon?.LevelMax??1)+rule.Level-1+modifiers.LevelBonus;
+        if(ActiveDungeon!=null&&Config.PoiProfiles.ContainsKey(ActiveDungeon.Id))levelMin=levelMax=Config.Challenge(ActiveDungeon.Id,DifficultyIndex).Challenge+rule.Level-1+modifiers.LevelBonus;
+        var plan=ActiveDungeon==null?null:Config.FloorPlans.SingleOrDefault(p=>p.Poi==ActiveDungeon.Id&&p.Difficulty==DifficultyIndex&&p.Index==FloorIndex+1);
+        if(plan!=null)levelMin=levelMax=plan.MonsterLevel+rule.Level-1+modifiers.LevelBonus;
         room.SnapshotLevel=levelMin;
         var rng=new Random(unchecked(dungeonSeed*397 ^ FloorIndex*7919 ^ room.Id*104729));
         int count=rng.Next(rule.Min+modifiers.MinBonus,rule.Max+modifiers.MaxBonus+1);
@@ -275,13 +282,16 @@ public sealed partial class GameSession
         count=Math.Clamp(count+Gm.RoomCountBonus,1,1000);
         for(int i=0;i<count;i++)
         {
-            var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),room.Boss&&i==count-1,modifiers);
+            bool boss=room.Boss&&i==count-1&&(plan==null||plan.BossActors==1);
+            var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),boss,modifiers);
             m.Position=room.Center+new Vector2(((float)rng.NextDouble()*2-1)*(room.HalfWidth-.8f),((float)rng.NextDouble()*2-1)*(room.HalfHeight-.8f));
             Config.ApplyCombatProfile(m);
+            if(m.Boss&&ActiveDungeon!=null&&Config.PoiProfiles.TryGetValue(ActiveDungeon.Id,out var poi)&&poi.Boss!="")m.Name=poi.Boss+"（原型）";
             room.Monsters.Add(m);
             room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,modifiers));
         }
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
+        Floor.ActualSpawned+=room.Monsters.Count;
         Note($"进入房间 {room.Id+1}：{room.Monsters.Count} 敌人 · 等级 {levelMin}–{levelMax}"+(room.Boss?" · BOSS":""));
     }
 

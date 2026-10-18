@@ -6,7 +6,7 @@ using IdleCrpg.Core;
 
 static void Check(bool value,string message) {if(!value)throw new Exception(message);}
 var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"));
-var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
 string Shape(int seed)=>string.Join(";",Dungeon.Generate(seed,c).SelectMany(f=>f.Rooms.Select(r=>$"{r.Id}:{r.X},{r.Y}:{string.Join(',',r.Neighbors)}")));
 Check(Shape(42)==Shape(42),"种子不可重现");
 Check(Shape(42)!=Shape(43),"种子没有差异");
@@ -164,7 +164,7 @@ var allCleared=new WorldProgress();foreach(var d in c.Dungeons)allCleared.Cleare
 Check(ExpeditionPlanner.Select(c,allCleared,1,true).Farming,"世界完成后挂机停止");
 
 // 使用小地牢、高战力完整验证世界→地牢→返村→NPC读条→售卖→再出发及城堡解锁。
-var worldConfig=Config.Load(Path.Combine(root,"Idle-CRPG/config"));worldConfig.FloorsMin=worldConfig.FloorsMax=1;worldConfig.RoomsMin=worldConfig.RoomsMax=3;
+var worldConfig=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));worldConfig.FloorsMin=worldConfig.FloorsMax=1;worldConfig.RoomsMin=worldConfig.RoomsMax=3;
 var campaign=GameSession.CreateWorld(worldConfig,25,new[]{"warrior","ranger","mage"});
 var w=campaign.World!;
 Check(w.CurrentRegion==1&&w.Stage==CampaignStage.TravelDungeon&&w.Target.Dungeon.Id=="d1_1"&&campaign.Floors.Count==0,"未从初始村庄最低等级地牢出发");
@@ -241,7 +241,7 @@ for(int i=0;i<10&&battleWipe.World.Stage==CampaignStage.Dungeon;i++)battleWipe.T
 Check(battleWipe.World.Stage==CampaignStage.Village&&battleWipe.Retries==1&&battleWipe.Heroes.All(h=>h.Alive&&h.Hp==h.MaxHp),"战斗击杀触发全灭后未立即返村满血复活");
 void RejectConfig(Action<Config> mutate,string message)
 {
-    var invalid=Config.Load(Path.Combine(root,"Idle-CRPG/config"));mutate(invalid);bool failed=false;
+    var invalid=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));mutate(invalid);bool failed=false;
     try{invalid.ValidateWorld();}catch(InvalidDataException){failed=true;}Check(failed,message);
 }
 RejectConfig(config=>config.Villages.RemoveAt(0),"缺村庄没有拒绝");
@@ -260,3 +260,4 @@ CombatSkillChecks.Run(root);
 AttributeLevelChecks.Run(root);
 ChapterChecks.Run(root);
 TerrainGateChecks.Run(root);
+Act1Checks.Run(root);

@@ -45,7 +45,7 @@ public partial class Main
         gameHud.Visible=!global;castlePage.Visible=viewMode==1;
         rateButton.Visible=!global&&session!=null;
         summary.Visible=!global;
-        if(openCastle){OpenCurrentChapter();RefreshWorldPage();if(selectedRegion>=0)castleListScroll.EnsureControlVisible(castleRows[MapConfig.Rulers[selectedRegion]]);}
+        if(openCastle){OpenCurrentChapter();RefreshWorldPage();if(selectedRegion>=0&&MapConfig.Rulers.TryGetValue(selectedRegion,out var ruler))castleListScroll.EnsureControlVisible(castleRows[ruler]);}
         if(viewMode==1)castleMap.QueueRedraw();
         if(show&&(!starPage.Visible||!ReferenceEquals(starUiSession,session)))RefreshStarPage();
         starPage.Visible=show;sceneCanvas.Visible=!global;

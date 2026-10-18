@@ -9,7 +9,7 @@ public static class TerrainGateChecks
     public static void Run(string root)
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("TERRAIN_GATE_CHECK: "+why);}
-        Config Map()=>Config.Load(Path.Combine(root,"Idle-CRPG/config")).ChapterMaps[3];
+        Config Map()=>Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).ChapterMaps[3];
         var c=Map();var blocked=c.Regions.Where(r=>!r.Enterable).ToArray();
         Check(blocked.Length>0&&blocked.Any(r=>r.Terrain=="mountain")&&blocked.Any(r=>r.Terrain=="ocean"),"缺少阻断地形实例");
         foreach(var r in blocked)
@@ -32,7 +32,7 @@ public static class TerrainGateChecks
         c=Map();var wall=c.Regions.Where(r=>r.Y==2).Select(r=>r.Id).ToHashSet();
         c.Regions=c.Regions.Select(r=>wall.Contains(r.Id)?r with {Enterable=false,Terrain="mountain"}:r).ToList();c.Dungeons.RemoveAll(d=>wall.Contains(d.RegionId));c.Villages.RemoveAll(v=>wall.Contains(v.RegionId));foreach(int id in wall)c.Rulers.Remove(id);
         rejected=false;try{c.ValidateWorld();}catch(InvalidDataException){rejected=true;}Check(rejected,"山脉隔断导致不可推进仍允许配置");
-        c=Map();var old=GameSession.CreateWorld(c,887,new[]{"warrior","ranger","mage"}).CaptureProgress();old.ChapterIndex=3;old.Gold=987;
+        c=Map();var old=GameSession.CreateWorld(c,887,new[]{"warrior","ranger","mage"}).CaptureProgress();old.ChapterIndex=3;old.CampaignVersion=0;old.Gold=987;
         old.CompletedMaps=c.ChapterMaps.Take(3).Select((map,index)=>new ChapterProgressSave{Chapter=index,Explored=map.Regions.Where(r=>r.Enterable).Select(r=>r.Id).ToList(),Cleared=map.Dungeons.Select(d=>d.Id).ToList()}).ToList();
         old.World!.TerrainVersion=0;old.World.Position=new Vector2(7.5f,.5f);old.World.Explored.Add(8);
         var migrated=GameSession.Restore(c,old);

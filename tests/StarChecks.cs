@@ -8,7 +8,7 @@ public static class StarChecks
     public static void Run(string root)
     {
         void Check(bool ok,string message){if(!ok)throw new Exception("STAR_CHECK: "+message);}
-        var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         GameSession Funded()
         {
             var s=GameSession.CreateWorld(c,42,new[]{"warrior","ranger","mage"}).Capture();s.Gold=1000;foreach(var h in s.Heroes)h.Hp=40;
