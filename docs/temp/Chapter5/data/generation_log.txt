@@ -1,0 +1,12 @@
+SUCCESS 11x11 regions 11 dungeons 53 castles 11 independent floors 191 floor records 573 kills {'NORMAL': {'main': 8160, 'side': 1381}, 'NIGHTMARE': {'main': 11431, 'side': 2013}, 'HELL': {'main': 14702, 'side': 2645}}
+01  xxxxxAAxxxx
+02  xxxxxAAAxxx
+03  xxxxx44455x
+04  xxx33444555
+05  xxx33344556
+06  xxx2233x666
+07  xxx2223x666
+08  xx11222x777
+09  BT111x88777
+10  BB11x988879
+11  BBxxx999999
