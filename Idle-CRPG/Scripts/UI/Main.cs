@@ -43,6 +43,8 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-combat"))captureView="combat";
         if(OS.GetCmdlineUserArgs().Contains("--capture-travel"))captureView="travel";
         if(OS.GetCmdlineUserArgs().Contains("--capture-village"))captureView="village";
+        if(OS.GetCmdlineUserArgs().Contains("--capture-town-return"))captureView="town-return";
+        if(OS.GetCmdlineUserArgs().Contains("--capture-town-out"))captureView="town-out";
         BuildStarPanels();BuildSettings();
         ResumeProgress();
         if(smoke && session==null) Start();
@@ -52,9 +54,21 @@ public partial class Main : Node2D
         if(capture&&!captureSetup)
         {
             viewMode=captureView=="world"?1:2;
-            int ticks=captureView=="world"?24000:captureView=="travel"?0:400;
+            int ticks=captureView=="world"?24000:captureView is "travel" or "village" or "town-return" or "town-out"?0:400;
             for(int i=0;i<ticks;i++)session!.Tick(0.05f);
-            if(captureView=="village") for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Village;i++)session.Tick(0.05f);
+            if(captureView=="village"){for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Village;i++)session.Tick(0.05f);paused=true;}
+            if(captureView=="town-return")
+            {
+                session!.SetGmBattle(new(InstantDungeonClear:true));
+                for(int i=0;i<50000&&!(session.World!.TownReturnPortalVisible&&session.World.PortalPhase==PortalPhase.None);i++)session.Tick(.05f);
+                paused=true;
+            }
+            if(captureView=="town-out")
+            {
+                session!.World!.Progress.Cleared.UnionWith(config.Dungeons.Where(d=>!d.Castle&&config.Rulers[d.RegionId]=="A01-C01").Select(d=>d.Id));
+                for(int i=0;i<50000&&session.World.PortalPhase!=PortalPhase.Using;i++)session.Tick(.05f);
+                paused=true;
+            }
             if(captureView=="local") for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Dungeon;i++)session.Tick(0.05f);
             if(captureView=="combat")
             {
@@ -167,8 +181,8 @@ public partial class Main : Node2D
         var world=session.World!;
         bool showWorld=viewMode==1;
         if(showWorld){DrawWorld();return;}
-        if(world.Stage!=CampaignStage.Dungeon){DrawVillageOrTravel();return;}
-        DrawDungeon();
+        if(!world.InDungeonScene)DrawVillageOrTravel();else DrawDungeon();
+        DrawPortalPerformance();
     }
     private void DrawDungeon()
     {
@@ -208,7 +222,7 @@ public partial class Main : Node2D
                 var p=Project(loot.Position);
                 DrawCircle(p,6,new Color("f0ca79"));DrawCircle(p,3,new Color("8c6335"));
             }
-            if(r.Id==0||r.Boss)
+            if(r.Id==0||r.Boss&&(config.Town==null||session.FloorIndex<session.Floors.Count-1))
             {
                 var p=Project(f.StairPosition(r));
                 var tint=r.Id==0?new Color("81cbd5"):new Color("e4bf7c");

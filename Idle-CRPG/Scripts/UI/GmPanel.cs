@@ -77,8 +77,10 @@ public partial class Main
         GmButton(commands,"GmCountPlus","数量 +",new Vector2(448,252),new Vector2(100,36),()=>session!.SetGmBattle(session.Gm with {RoomCountBonus=Math.Min(config.GmCountLimit,session.Gm.RoomCountBonus+config.GmCountStep)}));
 
         HudText(commands,"关卡测试",new Vector2(16,312),15);
-        gmInstantClear=GmButton(commands,"GmInstantClear","进入地牢瞬间通关：关",new Vector2(112,304),new Vector2(436,36),()=>session!.SetGmBattle(session.Gm with {InstantDungeonClear=!session.Gm.InstantDungeonClear}));
+        gmInstantClear=GmButton(commands,"GmInstantClear","瞬间通关：关",new Vector2(112,304),new Vector2(200,36),()=>session!.SetGmBattle(session.Gm with {InstantDungeonClear=!session.Gm.InstantDungeonClear}));
+        GmButton(commands,"GmClearChapter","通关本章",new Vector2(324,304),new Vector2(224,36),()=>session!.CompleteGmChapter());
         gmInstantClear.TooltipText="仅对下一次及后续进入生效；普通地牢和已授权要塞均适用。写入真实通关进度，无击杀、经验或掉落奖励；仍需返村交易，不绕过要塞手动授权。读档关闭。";
+        gmButtons["GmClearChapter"].TooltipText="GM测试例外：解锁并通关当前执行章节全部主支线内容，放弃当前地牢，回城补给后进入下一章；不发战斗奖励，通关进度会保存。";
         var tools=GmPanelBox(panel,new Vector2(18,466),new Vector2(564,112),"101f2d");
         var toolsTitle=HudText(tools,"编辑器入口",new Vector2(16,10),17);toolsTitle.AddThemeColorOverride("font_color",new Color("8cc4b1"));
         HudText(tools,"配置工具",new Vector2(16,58),15);
@@ -96,7 +98,7 @@ public partial class Main
         var settings=session?.Gm??new GmBattleSettings();
         gmHpValue.Text=$"×{settings.MonsterHp:0.#}";gmAttackValue.Text=$"×{settings.MonsterAttack:0.#}";
         gmCountValue.Text=$"{settings.RoomCountBonus:+0;-0;+0} 只";gmInvincible.Text="全队无敌："+(settings.Invincible?"开":"关");
-        gmInstantClear.Text="进入地牢瞬间通关："+(settings.InstantDungeonClear?"开":"关");
+        gmInstantClear.Text="瞬间通关："+(settings.InstantDungeonClear?"开":"关");
         if(session!=null)
         {
             gmButtons["GmHpMinus"].Disabled=settings.MonsterHp<=config.GmScaleSteps[0];gmButtons["GmHpPlus"].Disabled=settings.MonsterHp>=config.GmScaleSteps[^1];
@@ -126,6 +128,8 @@ public partial class Main
             if(gmButtons["GmGold"].GetParent()==gmButtons["StarEditorEntry"].GetParent())throw new Exception("GM 指令与编辑器没有分区");
             gmButtons["GmResetBattle"].EmitSignal(Button.SignalName.Pressed);
             if(session.Gm!=new GmBattleSettings()||session.Gold!=before+10000)throw new Exception("重置战斗调试清除了资源或没有重置开关");
+            gmButtons["GmClearChapter"].EmitSignal(Button.SignalName.Pressed);
+            if(session.World!.Progress.Cleared.Count!=session.Config.Dungeons.Count||session.World.Stage!=CampaignStage.Village)throw new Exception("通关本章按钮未清空当前章节或未返回城镇");
             session=null;RefreshGm();
             RefreshHud();
             if(!partySetup.Visible||interactionHeading.Visible||interactionScroll.Visible)throw new Exception("创角仍与远征交互重叠");

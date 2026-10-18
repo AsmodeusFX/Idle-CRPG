@@ -19,9 +19,9 @@ public partial class Main
             for(int i=0;i<5;i++)
             {
                 var s=session.CaptureProgress();var w=s.World!;var village=config.Villages.Single(v=>v.RegionId==config.StartRegionId);var region=config.Regions.Single(r=>r.Id==village.RegionId);var npc=config.Npcs.Single(n=>n.Id==village.NpcId);
-                w.Stage=CampaignStage.Village;w.Position=new System.Numerics.Vector2(region.X+village.X,region.Y+village.Y)+npc.Position/config.WorldUnits;w.VillageId=village.Id;w.Route.Clear();w.VillagePaths.Clear();w.TradeElapsed=config.TradeSeconds-.025f;
+                w.Stage=CampaignStage.Village;w.PortalPhase=PortalPhase.None;w.PortalElapsed=0;w.Position=new System.Numerics.Vector2(region.X+village.X,region.Y+village.Y);w.VillageId=village.Id;w.Route.Clear();w.VillagePaths.Clear();w.TownPhase=TownVisitPhase.Exit;w.TradeElapsed=0;
                 w.Explored=config.Regions.Select(r=>r.Id).ToList();w.Cleared=config.Dungeons.Select(d=>d.Id).ToList();w.PendingCastles.Clear();s.Floors.Clear();s.ActiveDungeonId="";
-                foreach(var hero in s.Heroes)hero.Position=npc.Position;
+                foreach(var hero in s.Heroes)hero.Position=config.Town!=null?config.TownWaypoint:npc.Position;
                 session=GameSession.Restore(config,s);session.Tick(.05f);SyncCampaignConfig();RefreshWorldPage();
                 Check(ViewingCurrentMap&&MapConfig==session.Config&&castleRows.Count==config.Dungeons.Count(d=>d.Castle),"自动换章后的地图/清单");
                 var last=config.Regions.Last();SelectMapTile(last.Id);

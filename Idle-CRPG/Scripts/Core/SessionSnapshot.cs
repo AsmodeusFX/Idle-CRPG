@@ -41,6 +41,14 @@ public record InventoryEntry(string ItemId,long Price,long Count);
 public record PartyEntry(Vector2 Position,float Hp);
 public sealed class WorldSnapshot
 {
+    public int TownVersion;
+    public TownVisitPhase TownPhase;
+    public PortalPhase PortalPhase;
+    public bool PortalReturning;
+    public bool ReturnPortalVisible;
+    public float PortalElapsed;
+    public string PortalWaypoint="";
+    public Vector2 PortalOrigin;
     public int MapVersion;
     public Dictionary<string,int> Failures=new(),PausedAtLevel=new();
     public List<string> RetryCastles=new();
@@ -154,6 +162,11 @@ public sealed partial class GameSession
         game.ValidateStarTotals(game.Stars.Totals());game.ApplyStarTotals(game.Stars.Totals());
         foreach(var i in s.Inventory)game.inventory.Add((i.ItemId,i.Price),i.Count);
         game.World=s.World==null?null:WorldCampaign.Restore(config,s.World,s.DifficultyIndex);
+        if(config.Town!=null&&game.World?.Stage==CampaignStage.Village)
+        {
+            if(s.World!.TownVersion==0){game.World.SpawnTown(game,TownVisitPhase.Heal);game.Note("营地场景更新：保留进度，重新完成治疗与售卖");}
+            else if(game.Heroes.Any(h=>!config.Town.Walkable(h.Position)))throw new InvalidDataException("营地角色位于不可走位置");
+        }
         game.RestoreBranchState(s);
         if(game.World!=null&&s.World!.AreaPartAccessVersion==0&&!game.World.ReconcileAreaPartAccess(game))
         {
@@ -234,11 +247,11 @@ public sealed partial class GameSession
 
 public sealed partial class WorldCampaign
 {
-    internal WorldSnapshot Capture() => new() {MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
+    internal WorldSnapshot Capture() => new() {PortalOrigin=PortalOrigin,ReturnPortalVisible=Progress.ReturnPortalVisible,PortalPhase=PortalPhase,PortalReturning=PortalReturning,PortalElapsed=PortalElapsed,PortalWaypoint=PortalWaypoint,TownVersion=1,TownPhase=TownPhase,MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
     internal static WorldCampaign Restore(Config c,WorldSnapshot s,int difficulty=0)
     {
-        var restoredProgress=new WorldProgress();restoredProgress.Explored.UnionWith(s.Explored);restoredProgress.Cleared.UnionWith(s.Cleared);
-        var w=new WorldCampaign(c,difficulty,restoredProgress,s.BranchCastle) {Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
+        var restoredProgress=new WorldProgress {ReturnPortalVisible=s.ReturnPortalVisible};restoredProgress.Explored.UnionWith(s.Explored);restoredProgress.Cleared.UnionWith(s.Cleared);
+        var w=new WorldCampaign(c,difficulty,restoredProgress,s.BranchCastle) {PortalOrigin=s.PortalOrigin,PortalPhase=s.PortalPhase,PortalReturning=s.PortalReturning,PortalElapsed=s.PortalElapsed,PortalWaypoint=s.PortalWaypoint,TownPhase=s.TownPhase,Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
         foreach(var p in s.Failures)w.failures.Add(p.Key,p.Value);foreach(var p in s.PausedAtLevel)w.pausedAtLevel.Add(p.Key,p.Value);w.retryCastles.UnionWith(s.RetryCastles);w.teamLevel=s.TeamLevel;if(s.RecoveryRandomState!=0)w.recoveryRandom.State=s.RecoveryRandomState;
         w.Progress.Explored.Clear();w.Progress.Explored.UnionWith(s.Explored);w.Progress.Cleared.UnionWith(s.Cleared);w.pendingCastles.AddRange(s.PendingCastles.Count>0?s.PendingCastles:s.PendingCastle!=""?new[]{s.PendingCastle}:Array.Empty<string>());w.route.Clear();foreach(var p in s.Route)w.route.Enqueue(p);
         foreach(var p in s.VillagePaths)w.villagePaths[p.Key]=new Queue<Vector2>(p.Value);
@@ -250,13 +263,21 @@ public sealed partial class WorldCampaign
     }
     internal static void Validate(Config c,WorldSnapshot s)
     {
+        if(!Enum.IsDefined(s.PortalPhase)||!float.IsFinite(s.PortalElapsed)||s.PortalElapsed<0||s.PortalElapsed>c.PortalSeconds)throw new InvalidDataException("传送表演状态无效");
+        if(s.PortalPhase!=PortalPhase.None)
+        {
+            if(!float.IsFinite(s.PortalOrigin.X)||!float.IsFinite(s.PortalOrigin.Y))throw new InvalidDataException("传送门施放位置无效");
+            if(c.Town==null||(s.PortalReturning?s.Stage is not (CampaignStage.TravelVillage or CampaignStage.Village):s.Stage!=CampaignStage.TravelDungeon||!c.Waypoints.Any(w=>w.Id==s.PortalWaypoint)))throw new InvalidDataException("传送场景或目标无效");
+            if(!s.PortalReturning){var p=new WorldProgress();p.Cleared.UnionWith(s.Cleared);if(!p.WaypointUnlocked(c,c.Waypoints.Single(w=>w.Id==s.PortalWaypoint)))throw new InvalidDataException("传送目标未解锁");}
+        }
+        if(s.TownVersion is not (0 or 1)||!Enum.IsDefined(s.TownPhase))throw new InvalidDataException("营地流程版本或阶段无效");
         if(s.Failures==null||s.PausedAtLevel==null||s.RetryCastles==null||s.TeamLevel<1||s.TeamLevel>c.MaxHeroLevel||s.Failures.Any(p=>!c.Dungeons.Any(d=>d.Id==p.Key)||p.Value<1||p.Value>100000)||s.PausedAtLevel.Any(p=>!c.Dungeons.Any(d=>d.Id==p.Key)||p.Value<1||p.Value>c.MaxHeroLevel)||s.RetryCastles.Distinct().Count()!=s.RetryCastles.Count||s.RetryCastles.Any(id=>!c.Dungeons.Any(d=>d.Id==id&&d.Castle))||s.BranchCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.BranchCastle&&d.Castle&&c.Optional(id:d.Id)))throw new InvalidDataException("失败回刷或支线状态引用非法");
         if(s.LayoutVersion is not (0 or 1))throw new InvalidDataException("世界布局存档版本无效");
         if(s.AreaPartAccessVersion is not (0 or 1))throw new InvalidDataException("统治区前置存档版本无效");
         if(s.NavigationVersion is not (0 or 1))throw new InvalidDataException("不支持的世界寻路版本");
         bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&p.X>=0&&p.Y>=0&&p.X<c.WorldWidth&&p.Y<c.WorldHeight;
-        if(s.VillagePaths==null||s.VillagePaths.Count>3||s.VillagePaths.Any(p=>!c.Heroes.Any(h=>h.Id==p.Key)||p.Value.Count>20000||p.Value.Any(v=>!Point(v))))throw new InvalidDataException("村庄路径无效");
-        if(!Enum.IsDefined(s.Stage)||!Point(s.Position)||!c.Dungeons.Any(d=>d.Id==s.TargetId)||!c.Villages.Any(v=>v.Id==s.VillageId)||s.Explored==null||s.Cleared==null||s.Route==null||s.Explored.Any(id=>!c.Regions.Any(r=>r.Id==id))||s.Cleared.Any(id=>!c.Dungeons.Any(d=>d.Id==id))||s.Route.Count>c.Regions.Count*WorldNavigation.CellsPerRegion*WorldNavigation.CellsPerRegion+2||s.Route.Any(p=>!Point(p))||s.Trades<0||s.DungeonVisits<0||!float.IsFinite(s.TradeElapsed)||s.TradeElapsed<0||s.TradeElapsed>c.TradeSeconds||s.PendingCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.PendingCastle&&d.Castle))
+        if(s.VillagePaths==null||s.VillagePaths.Count>3||s.VillagePaths.Any(p=>!c.Heroes.Any(h=>h.Id==p.Key)||p.Value.Count>20000||p.Value.Any(v=>s.TownVersion==1&&c.Town!=null?!c.Town.Walkable(v):!Point(v))))throw new InvalidDataException("村庄路径无效");
+        if(!Enum.IsDefined(s.Stage)||!Point(s.Position)||!c.Dungeons.Any(d=>d.Id==s.TargetId)||!c.Villages.Any(v=>v.Id==s.VillageId)||s.Explored==null||s.Cleared==null||s.Route==null||s.Explored.Any(id=>!c.Regions.Any(r=>r.Id==id))||s.Cleared.Any(id=>!c.Dungeons.Any(d=>d.Id==id))||s.Route.Count>c.Regions.Count*WorldNavigation.CellsPerRegion*WorldNavigation.CellsPerRegion+2||s.Route.Any(p=>!Point(p))||s.Trades<0||s.DungeonVisits<0||!float.IsFinite(s.TradeElapsed)||s.TradeElapsed<0||s.TradeElapsed>(s.TownVersion==0?c.TradeSeconds:c.Town?.ServiceSeconds??c.TradeSeconds)||s.PendingCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.PendingCastle&&d.Castle))
             throw new InvalidDataException("存档世界状态/引用无效");
         if(s.PendingCastles==null||s.PendingCastles.Distinct().Count()!=s.PendingCastles.Count||s.PendingCastles.Any(id=>!c.Dungeons.Any(d=>d.Id==id&&d.Castle)))throw new InvalidDataException("城堡挑战队列无效");
         int current=c.Regions.Single(r=>r.X==(int)s.Position.X&&r.Y==(int)s.Position.Y).Id;

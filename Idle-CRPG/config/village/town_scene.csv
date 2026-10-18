@@ -1,0 +1,6 @@
+id,chapter_id,name,width,height,entry_x,entry_y,exit_x,exit_y,interaction_range,service_seconds
+rogue,act1,罗格营地,28,24,23,10,24,10,0.4,1
+lut,act2,鲁·高因（场景原型）,28,24,23,10,24,10,0.4,1
+kurast,act3,库拉斯特（场景原型）,28,24,23,10,24,10,0.4,1
+pandemonium,act4,群魔堡垒（场景原型）,28,24,23,10,24,10,0.4,1
+harrogath,act5,哈洛加斯（场景原型）,28,24,23,10,24,10,0.4,1

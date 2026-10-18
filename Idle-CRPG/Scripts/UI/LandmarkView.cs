@@ -41,8 +41,8 @@ public partial class Main
     {
         if(session?.World is not {} world||world.PortalPhase==PortalPhase.None)return;
         Vector2 p;
-        if(world.InTownScene)p=Project(config.TownPortal);
-        else if(world.InDungeonScene)p=Project(VisualPosition(session.Heroes[0]));
+        if(world.InTownScene)p=Project(world.PortalReturning?config.TownPortal:config.TownWaypoint);
+        else if(world.InDungeonScene)p=Project(world.PortalOrigin);
         else p=OutdoorPoint(VisualWorldPosition);
         float t=world.PortalElapsed/world.PortalDuration;
         DrawPortalRing(p,world.PortalPhase==PortalPhase.Using?1-t:Math.Max(.1f,t));

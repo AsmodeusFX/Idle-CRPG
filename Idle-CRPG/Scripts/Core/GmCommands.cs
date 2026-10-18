@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace IdleCrpg.Core;
 
@@ -7,6 +8,16 @@ public record GmBattleSettings(bool Invincible=false,float MonsterHp=1,float Mon
 
 public sealed partial class GameSession
 {
+    /// <summary>明确GM例外：当前执行章节全部通关，不发奖励；放弃当前现场，回城治疗售卖后按正常规则推进。</summary>
+    public void CompleteGmChapter()
+    {
+        if(World==null)return;
+        World.Progress.Cleared.UnionWith(Config.Dungeons.Select(d=>d.Id));
+        World.Progress.Explored.UnionWith(Config.Regions.Where(r=>r.Enterable).Select(r=>r.Id));
+        ClearMapScene();World.RespawnInVillage(this,Config.StartRegionId);
+        foreach(var hero in Heroes){hero.Hp=hero.MaxHp;hero.Timer=0;}
+        Note("GM测试：当前章节全部内容已解锁并通关，无战斗奖励；完成城镇补给后继续推进");
+    }
     /// <summary>只读调试状态；UI 必须通过 SetGmBattle 命令修改。</summary>
     public GmBattleSettings Gm { get; private set; }=new();
 

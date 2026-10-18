@@ -131,7 +131,7 @@ public partial class Main
             castleCards.Clear();interactionArrival.Clear();nextInteractionArrival=0;interactionSession=session;
         }
         var world=session?.World;
-        var available=world==null?Array.Empty<DungeonSpec>():config.Dungeons.Where(d=>d.Castle&&(!config.Optional(d.Id)||session!.ActiveBranch?.Castle==d.Id)&&!world.Progress.Cleared.Contains(d.Id)&&world.Progress.CastleUnlocked(config,d.Id)).ToArray();
+        var available=world==null?Array.Empty<DungeonSpec>():config.Dungeons.Where(d=>d.Castle&&!world.Progress.Cleared.Contains(d.Id)&&world.Progress.CastleUnlocked(config,d.Id)).ToArray();
         var ids=available.Select(d=>d.Id).ToHashSet();
         foreach(var id in castleCards.Keys.Where(id=>!ids.Contains(id)).ToArray())
         {var card=castleCards[id];interactionList.RemoveChild(card);card.QueueFree();castleCards.Remove(id);interactionArrival.Remove(id);}

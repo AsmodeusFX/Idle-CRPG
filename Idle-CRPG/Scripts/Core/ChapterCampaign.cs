@@ -7,6 +7,7 @@ namespace IdleCrpg.Core;
 
 public sealed class ChapterProgressSave
 {
+    public bool ReturnPortalVisible;
     public int Difficulty,Chapter;
     public List<int> Explored=new();
     public List<string> Cleared=new();
@@ -41,10 +42,11 @@ public sealed partial class GameSession
         int next=current+1;LatestMapIndex=next;DifficultyIndex=next/5;Config=Config.ChapterMaps[next%5];
         ResetSkillRoom();Floors.Clear();FloorIndex=CurrentRoom=0;ActiveDungeon=null;Won=false;destination=-1;phase=0;regroup=0;ResetRescue();roomEntry.Clear();
         World=new WorldCampaign(Config,DifficultyIndex);
+        World.StartTownDeparture(this);
         Note($"已进入{Config.Difficulties[DifficultyIndex].Name} · {Config.Chapters[ChapterIndex].Name}");
         return true;
     }
-    private List<ChapterProgressSave> CaptureChapters()=>completedMaps.OrderBy(p=>p.Key).Select(p=>new ChapterProgressSave{Difficulty=p.Key/5,Chapter=p.Key%5,Explored=p.Value.Explored.OrderBy(id=>id).ToList(),Cleared=p.Value.Cleared.OrderBy(id=>id).ToList()}).ToList();
+    private List<ChapterProgressSave> CaptureChapters()=>completedMaps.OrderBy(p=>p.Key).Select(p=>new ChapterProgressSave{ReturnPortalVisible=p.Value.ReturnPortalVisible,Difficulty=p.Key/5,Chapter=p.Key%5,Explored=p.Value.Explored.OrderBy(id=>id).ToList(),Cleared=p.Value.Cleared.OrderBy(id=>id).ToList()}).ToList();
     private void RestoreChapters(SessionSnapshot s)
     {
         DifficultyIndex=s.DifficultyIndex;LatestMapIndex=s.CampaignVersion==0?s.DifficultyIndex*5+s.ChapterIndex:s.LatestMapIndex;
@@ -56,7 +58,7 @@ public sealed partial class GameSession
             if(entry.Difficulty<0||entry.Difficulty>2||entry.Chapter<0||entry.Chapter>4||key>=LatestMapIndex||completedMaps.ContainsKey(key))throw new InvalidDataException("章节历史重复或越界");
             var map=Config.ChapterMaps[entry.Chapter];
             if(entry.Cleared==null||entry.Explored==null||entry.Cleared.Distinct().Count()!=entry.Cleared.Count||entry.Explored.Distinct().Count()!=entry.Explored.Count||entry.Cleared.Any(id=>!map.Dungeons.Any(d=>d.Id==id))||entry.Explored.Any(id=>!map.Regions.Any(r=>r.Id==id)))throw new InvalidDataException("已完成章节引用或完成度非法");
-            var progress=new WorldProgress();progress.Explored.UnionWith(entry.Explored);progress.Cleared.UnionWith(entry.Cleared);if(!map.MainCleared(progress))throw new InvalidDataException("Historical chapter main objective is incomplete");completedMaps.Add(key,progress);
+            var progress=new WorldProgress {ReturnPortalVisible=entry.ReturnPortalVisible};progress.Explored.UnionWith(entry.Explored);progress.Cleared.UnionWith(entry.Cleared);if(!map.MainCleared(progress))throw new InvalidDataException("Historical chapter main objective is incomplete");completedMaps.Add(key,progress);
         }
     }
 }

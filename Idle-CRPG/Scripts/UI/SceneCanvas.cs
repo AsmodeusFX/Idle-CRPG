@@ -28,13 +28,18 @@ public partial class Main
     {
         if(session==null)return;
         var w=session.World!;V target;float targetZoom;string key;float rate;
-        if(w.Stage==IdleCrpg.Core.CampaignStage.Dungeon)
+        if(w.InDungeonScene)
         {
             var room=session.Floor.Rooms[session.CurrentRoom];bool locked=!session.MovingBetweenRooms;
             target=locked?room.Center:VisualPosition(session.Leader);
             targetZoom=Math.Min(config.CameraMaxZoom,Math.Min(930/(room.HalfWidth*2+room.HalfHeight*2),(SceneRect.Size.Y-150)/(room.HalfWidth+room.HalfHeight)));
             key="dungeon:"+w.DungeonVisits+":"+session.FloorIndex;
             rate=locked?config.CameraTransition:config.CameraFollow;
+        }
+        else if(w.InTownScene&&config.Town is {} town)
+        {
+            target=new V(town.Width*.5f,town.Height*.5f);targetZoom=Math.Min(930/(town.Width+town.Height),(SceneRect.Size.Y-100)/((town.Width+town.Height)*.5f));
+            key="town:"+town.Id;rate=config.CameraTransition;
         }
         else {target=VisualWorldPosition*config.WorldUnits;targetZoom=config.WorldZoom;key="outdoors";rate=config.CameraFollow;}
         if(!cameraReady||key!=cameraScene){cameraReady=true;cameraCenter=target;cameraZoom=targetZoom;cameraScene=key;cameraVelocity=V.Zero;zoomVelocity=0;}

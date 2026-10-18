@@ -12,7 +12,8 @@ public sealed partial class GameSession
     {
         if(!MapUnlocked(difficulty,chapter))return false;
         var map=Config.ChapterMaps[chapter];var progress=MapProgress(difficulty,chapter);var request=new BranchRequest(difficulty,chapter,castle);
-        if(!map.Dungeons.Any(d=>d.Id==castle&&d.Castle&&map.Optional(d.Id))||!progress.AreaPartUnlocked(map,map.AreaParts.Single(a=>a.CastleId==castle).Id)||progress.Cleared.Contains(castle)||ActiveBranch==request||branchQueue.Contains(request))return false;
+            if(!map.Dungeons.Any(d=>d.Id==castle&&d.Castle&&map.Optional(d.Id))||!progress.AreaPartUnlocked(map,map.AreaParts.Single(a=>a.CastleId==castle).Id)||progress.Cleared.Contains(castle)||ActiveBranch==request||branchQueue.Contains(request))return false;
+            if(difficulty==DifficultyIndex&&chapter==ChapterIndex)return RequestCastleChallenge(castle);
         branchQueue.Add(request);Note("已安排支线："+map.Dungeons.Single(d=>d.Id==castle).Name);return true;
     }
     /// <summary>交易后才跨图；支线传送是玩家授权的跨章节例外，章内仍遵循关口与步行。</summary>
@@ -25,7 +26,7 @@ public sealed partial class GameSession
             if(key<LatestMapIndex)completedMaps[key]=progress;
             DifficultyIndex=LatestMapIndex/5;Config=Config.ChapterMaps[LatestMapIndex%5];World=suspendedWorld??throw new InvalidOperationException("支线缺少返回进程");
             if(key==LatestMapIndex){World.Progress.Cleared.UnionWith(progress.Cleared);World.Progress.Explored.UnionWith(progress.Explored);}
-            ActiveBranch=null;suspendedWorld=null;ClearMapScene();Note("支线完成，返回最新章节继续远征");return true;
+            ActiveBranch=null;suspendedWorld=null;ClearMapScene();World.StartTownDeparture(this);Note("支线完成，返回最新章节继续远征");return true;
         }
         bool advanced=AdvanceChapter();
         while(branchQueue.Count>0)
@@ -34,7 +35,7 @@ public sealed partial class GameSession
             if(progress.Cleared.Contains(request.Castle))continue;
             World!.PrepareResume();suspendedWorld=World;
             Config=Config.ChapterMaps[request.Chapter];DifficultyIndex=request.Difficulty;ActiveBranch=request;
-            World=new WorldCampaign(Config,DifficultyIndex,progress,request.Castle);ClearMapScene();Note("传送至支线章节村庄，开始已授权支线计划");return true;
+            World=new WorldCampaign(Config,DifficultyIndex,progress,request.Castle);ClearMapScene();World.StartTownDeparture(this);Note("传送至支线章节村庄，开始已授权支线计划");return true;
         }
         return advanced;
     }

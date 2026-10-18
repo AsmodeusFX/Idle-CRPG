@@ -23,7 +23,7 @@ public sealed partial class Config
     public bool Optional(string id)=>PoiProfiles.TryGetValue(id,out var profile)&&profile.Optional;
     public bool MainCleared(WorldProgress p)=>MainClearPoi==""?Dungeons.All(d=>p.Cleared.Contains(d.Id)):p.Cleared.Contains(MainClearPoi);
     public PoiChallenge Challenge(string id,int difficulty)=>PoiChallenges.SingleOrDefault(p=>p.Poi==id&&p.Difficulty==difficulty)??new(id,difficulty,Dungeons.Single(d=>d.Id==id).LevelMin,Dungeons.Single(d=>d.Id==id).LevelMin);
-    public VillageSpec ReturnVillage(int region)=>Villages.FirstOrDefault(v=>v.RegionId==region)??Villages.Single(v=>v.RegionId==StartRegionId);
+    public VillageSpec ReturnVillage(int region)=>Town!=null?Villages.Single(v=>v.RegionId==StartRegionId):Villages.FirstOrDefault(v=>v.RegionId==region)??Villages.Single(v=>v.RegionId==StartRegionId);
     /// <summary>同区四邻接直接通行，跨区只能经过显式关口；无Gate表的旧地图维持原导航。</summary>
     public bool CanCross(int from,int to)
     {

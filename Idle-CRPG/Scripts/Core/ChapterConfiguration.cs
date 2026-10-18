@@ -32,6 +32,7 @@ public sealed partial class Config
             string mapRoot=Path.GetFullPath(Path.Combine(directory,def.Directory));
             if(!mapRoot.StartsWith(Path.GetFullPath(directory)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("章节目录不得离开config");
             var map=(Config)MemberwiseClone();map.ChapterIndex=i;map.LoadWorld(mapRoot,directory);map.LoadSceneConfig(mapRoot,directory);
+            if(!legacyFixture){map.LoadTown(directory,i);map.LoadWaypoints(mapRoot);}
             map.Spawn=map.Spawn with {Levels=MonsterLevels};
             if(map.Dungeons.Any(d=>d.LevelMax+(long)Spawn.Level-1>MaxMonsterLevel))throw new InvalidDataException("章节怪物等级超过等级表");
             maps.Add(map);

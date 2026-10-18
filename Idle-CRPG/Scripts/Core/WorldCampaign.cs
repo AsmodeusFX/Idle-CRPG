@@ -12,6 +12,7 @@ public record ExpeditionTarget(DungeonSpec Dungeon,bool Farming);
 /// <summary>世界永久进度，地牢全灭与复刷不重置。</summary>
 public sealed partial class WorldProgress
 {
+    public bool ReturnPortalVisible {get;set;}
     public HashSet<int> Explored { get; } = new();
     public HashSet<string> Cleared { get; } = new();
     public RegionStatus Status(Config c,int region)
@@ -32,9 +33,9 @@ public static class ExpeditionPlanner
         return c.Regions.Where(r=>r.Enterable&&Math.Abs(r.X-a.X)+Math.Abs(r.Y-a.Y)==1&&c.CanCross(region,r.Id));
     }
     /// <summary>只在已解锁统治区开拓；全部扫荡完后持续复刷最高等级橙区，等待玩家主动攻城。</summary>
-    public static ExpeditionTarget Select(Config c,WorldProgress p,int current,bool previousWasFarm,int difficulty=0)
+    public static ExpeditionTarget Select(Config c,WorldProgress p,int current,bool previousWasFarm,int difficulty=0,PersistentRandom? random=null)
     {
-        if(c.PoiProfiles.Count>0)return SelectConfigured(c,p,current,difficulty);
+        if(c.PoiProfiles.Count>0||c.Town!=null)return SelectConfigured(c,p,current,difficulty,random);
         var accessible=p.AccessibleRegions(c);
         var normal=c.Dungeons.Where(d=>!d.Castle&&accessible.Contains(d.RegionId)).ToArray();
         var local=normal.Where(d=>d.RegionId==current&&!p.Cleared.Contains(d.Id)).OrderBy(d=>d.LevelMin).ThenBy(d=>d.Id).FirstOrDefault();
@@ -48,17 +49,17 @@ public static class ExpeditionPlanner
         return new(orange??normal.OrderByDescending(d=>d.LevelMin).ThenBy(d=>d.Id).First(),true);
     }
     /// <summary>主线普通地牢全局稳定排序；要塞及未授权支线绝不自动进入候选。</summary>
-    private static ExpeditionTarget SelectConfigured(Config c,WorldProgress p,int current,int difficulty)
+    private static ExpeditionTarget SelectConfigured(Config c,WorldProgress p,int current,int difficulty,PersistentRandom? random)
     {
         var accessible=p.AccessibleRegions(c);
-        var normal=c.Dungeons.Where(d=>!d.Castle&&!c.Optional(d.Id)&&accessible.Contains(d.RegionId)&&c.PoiProfiles[d.Id].Status!="blocked").OrderBy(d=>c.Challenge(d.Id,difficulty).Challenge).ThenBy(d=>c.PoiProfiles[d.Id].Order).ThenBy(d=>d.Id).ToArray();
+        var normal=c.Dungeons.Where(d=>!d.Castle&&accessible.Contains(d.RegionId)&&(!c.PoiProfiles.TryGetValue(d.Id,out var profile)||profile.Status!="blocked")).OrderBy(d=>c.Challenge(d.Id,difficulty).Challenge).ThenBy(d=>d.Id).ToArray();
         bool Reachable(DungeonSpec d)
         {
             var a=c.Regions.Single(r=>r.Id==current);var b=c.Regions.Single(r=>r.Id==d.RegionId);
             try{WorldNavigation.FindPath(c,new(a.X+.5f,a.Y+.5f),new(b.X+d.X,b.Y+d.Y),allowedRegions:accessible);return true;}catch(InvalidOperationException){return false;}
         }
-        var pending=normal.FirstOrDefault(d=>!p.Cleared.Contains(d.Id)&&Reachable(d));
-        if(pending!=null)return new(pending,false);
+        var pending=normal.Where(d=>!p.Cleared.Contains(d.Id)&&Reachable(d)).ToArray();
+        if(pending.Length>0){int lowest=c.Challenge(pending[0].Id,difficulty).Challenge;var same=pending.Where(d=>c.Challenge(d.Id,difficulty).Challenge==lowest).ToArray();return new(same[(random??new PersistentRandom(731913u)).Next(0,same.Length)],false);}
         var farming=normal.OrderByDescending(d=>c.Challenge(d.Id,difficulty).Challenge).FirstOrDefault(Reachable)??throw new InvalidOperationException("没有合法可达的普通地牢，配置阻塞");
         return new(farming,true);
     }
@@ -112,7 +113,9 @@ public sealed partial class WorldCampaign
         }
         if(BranchCastle!="")
         {
-            var next=config.Dungeons.Where(d=>config.Rulers[d.RegionId]==BranchCastle&&!d.Castle&&!Progress.Cleared.Contains(d.Id)).OrderBy(d=>config.Challenge(d.Id,difficulty).Challenge).ThenBy(d=>config.PoiProfiles[d.Id].Order).ThenBy(d=>d.Id).FirstOrDefault();
+            var candidates=config.Dungeons.Where(d=>config.Rulers[d.RegionId]==BranchCastle&&!d.Castle&&!Progress.Cleared.Contains(d.Id)).OrderBy(d=>config.Challenge(d.Id,difficulty).Challenge).ThenBy(d=>d.Id).ToArray();
+            var same=candidates.Where(d=>config.Challenge(d.Id,difficulty).Challenge==config.Challenge(candidates[0].Id,difficulty).Challenge).ToArray();
+            var next=same.Length==0?null:same[recoveryRandom.Next(0,same.Length)];
             Target=new(next??config.Dungeons.Single(d=>d.Id==BranchCastle),false);
             Stage=CampaignStage.TravelDungeon;BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));Status="支线计划 · "+Target.Dungeon.Name;return;
         }
@@ -122,7 +125,7 @@ public sealed partial class WorldCampaign
             Target=new(config.Dungeons.Single(d=>d.Id==pendingCastles[0]),false);
             pendingCastles.RemoveAt(0);
         }
-        else Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm,difficulty);
+        else Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm,difficulty,recoveryRandom);
         Stage=CampaignStage.TravelDungeon;
         BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));
         Status=(Target.Farming?"复刷 · ":"前往 · ")+Target.Dungeon.Name;
@@ -146,9 +149,11 @@ public sealed partial class WorldCampaign
     internal void Tick(GameSession game,float dt)
     {
         teamLevel=game.TeamChallengeLevel;
+        if(TickPortal(game,dt))return;
         if(Stage==CampaignStage.Dungeon)return;
         if(Stage==CampaignStage.Village)
         {
+            if(config.Town!=null){TickTown(game,dt);return;}
             var npc=config.Npcs.Single(n=>n.Id==Village.NpcId);
             bool arrived=true;
             foreach(var h in game.Heroes)
@@ -205,11 +210,13 @@ public sealed partial class WorldCampaign
         game.MarkChanged();
         Stage=CampaignStage.Village;TradeElapsed=0;route.Clear();villagePaths.Clear();
         for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(0,i*.2f);
+        if(config.Town!=null)SpawnTown(game,TownVisitPhase.Heal);
         Status=Village.Name+" · 前往交易 NPC";
     }
     /// <summary>全灭直接在当前区域村庄复活；不记地牢通关，必须完成正常交易后才选目标。</summary>
     internal void RespawnInVillage(GameSession game,int regionId)
     {
+        PortalPhase=PortalPhase.None;PortalElapsed=0;PortalWaypoint="";
         Village=config.ReturnVillage(regionId);
         Position=WorldPoint(Village.RegionId,Village.X,Village.Y);
         Progress.Explored.Add(Village.RegionId);
@@ -225,6 +232,7 @@ public sealed partial class WorldCampaign
         Stage=CampaignStage.TravelVillage;
         BuildRoute(Village.RegionId,WorldPoint(Village.RegionId,Village.X,Village.Y));
         Status="通关返村 · "+Village.Name;
+        if(config.Town!=null)BeginPortal(true,origin:game.Heroes[0].Position);
     }
     /// <summary>旧档可能位于新规则锁定范围；保留资源，返初始村庄交易，再按已解锁范围出发。</summary>
     internal bool ReconcileAreaPartAccess(GameSession game)

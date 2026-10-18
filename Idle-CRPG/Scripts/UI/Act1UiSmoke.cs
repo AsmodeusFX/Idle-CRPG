@@ -13,9 +13,9 @@ public partial class Main
         {
             config=Config.Load(ProjectSettings.GlobalizePath("res://config"));session=GameSession.CreateWorld(config,962,new[]{"warrior","ranger","mage"});
             session.World!.Progress.Cleared.UnionWith(new[]{"A01-C01","A02-C01"});Refresh();SelectStarView(0);
-            Check(branchCards.Count==1&&branchCards.Values.Single().Text.Contains("挑战支线-埋骨之地"),"支线入口或等级信息");
-            branchCards.Values.Single().EmitSignal(Button.SignalName.Pressed);
-            Check(session.BranchQueue.Count==1&&branchCards.Values.Single().Disabled,"支线按钮未入计划或未防重复");
+            Check(branchCards.Count==0,"当前章节仍显示整条支线授权入口");
+            session.World.Progress.Cleared.UnionWith(config.Dungeons.Where(d=>!d.Castle&&config.Optional(d.Id)).Select(d=>d.Id));Refresh();
+            Check(castleCards.ContainsKey("A03-C01"),"支线普通地牢清空后未显示手动要塞卡");
             SelectStarView(1);Check(config.WorldWidth==8&&castleRows.Count==8&&selectedRegion==36,"正式8x8地图或中央营地");
             int index=config.AreaParts.FindIndex(a=>a.Id=="ap4");config.AreaParts[index]=config.AreaParts[index] with {UnlockMode="all"};config.RegionPrerequisites.Add(new(4,"A01-C01"));
             SelectMapTile(4);Check(selectedTileInfo.Text.Contains("全部前置")&&gateConditions!.Text.Contains("鲜血荒地岗哨")&&gateConditions.Text.Contains("冰冷之原哨站"),"AND详情未显示全部条件");
@@ -32,7 +32,7 @@ public partial class Main
             SelectStarView(0);Refresh();
             var card=castleCards["A01-C01"];var retry=card.GetNode<Label>("Content/Words/Retry");
             Check(retry.Visible&&retry.Text=="（再次挑战）"&&retry.GetThemeColor("font_color")==new Color("ff6262")&&!card.Disabled,"红色再次挑战按钮");
-            card.EmitSignal(Button.SignalName.Pressed);Check(session.World.Target.Dungeon.Id=="A01-C01"&&!session.World.IsCastleRetry("A01-C01"),"再次挑战按钮未重新授权");
+            card.EmitSignal(Button.SignalName.Pressed);Check((session.World.Target.Dungeon.Id=="A01-C01"||session.World.PendingCastles.Contains("A01-C01"))&&!session.World.IsCastleRetry("A01-C01"),"再次挑战按钮未重新授权");
             GD.Print("ACT1_UI_SMOKE_OK: central town, manual branch card, 8 castles, explicit AND condition list and red manual retry button");
         }
         catch(Exception e){GD.PushError(e.ToString());QuitSafely(1);}

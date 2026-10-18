@@ -86,13 +86,13 @@ public sealed partial class GameSession
         config=config.ChapterMaps[0];
         var game=new GameSession(config,seed,ids);game.Log.Clear();
         game.Floors.Clear();game.World=new WorldCampaign(config);
+        game.World.StartTownDeparture(game);
         game.Note("从初始村庄出发，自动远征已开始");return game;
     }
     /// <summary>预留科技系统命令，只有后续首次生成的房间受影响。</summary>
     public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);if(Config.Dungeons.Any(d=>d.LevelMax+(long)Config.Spawn.Level-1+modifiers.LevelBonus>Config.MaxMonsterLevel))throw new ArgumentOutOfRangeException(nameof(modifiers));SpawnModifiers=modifiers;MarkChanged();}
     public bool RequestCastleChallenge(string castleId)
     {
-        if(Config.Optional(castleId)&&ActiveBranch?.Castle!=castleId)return false;
         if(World?.RequestCastle(castleId)!=true)return false;
         Note("已安排城堡挑战，完成当前地牢及返村交易后出发");return true;
     }
@@ -155,8 +155,13 @@ public sealed partial class GameSession
             if (room.Event == "营火") { foreach(var h in Heroes.Where(h=>h.Alive)) h.Hp=Math.Min(h.MaxHp,h.Hp+h.MaxHp*0.3f); Note("营火：存活队员恢复 30% 生命"); }
             if (room.Event == "宝箱") { GainExperience(8); Note("宝箱：全队获得 8 经验"); }
         }
-        if (Floor.Clear && CurrentRoom == Floor.BossRoom.Id && destination < 0)
+        if (Floor.Clear && destination < 0 && (CurrentRoom == Floor.BossRoom.Id||Config.Town!=null&&FloorIndex==Floors.Count-1))
         {
+            if(Config.Town!=null&&FloorIndex==Floors.Count-1)
+            {
+                // 最后一层不需要地面出口：完成救援、拾取与事件后，小队就地施放回城门。
+                Won=true;Status="施放回城传送门";Note("所有楼层已清空，小队打开回城传送门");return;
+            }
             Status="楼梯集合";
             var stairs=Floor.StairPosition(room);
             foreach(var h in Heroes.Where(h=>h.Alive)) Move(h,stairs,dt);

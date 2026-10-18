@@ -36,6 +36,7 @@ public partial class Main
     }
     private void DrawVillageOrTravel()
     {
+        if(session!.World!.InTownScene&&config.Town!=null){DrawTownScene();return;}
         var w=session!.World!;V center=cameraCenter/config.WorldUnits;
         int cells=WorldNavigation.CellsPerRegion;
         int x0=Math.Max(0,(int)((center.X-1.6f)*cells)),x1=Math.Min(config.WorldWidth*cells-1,(int)((center.X+1.6f)*cells));
@@ -58,8 +59,9 @@ public partial class Main
         foreach(var r in nearby)
         {
             V c=new(r.X+.5f,r.Y+.5f);
-            if(r.X+1<config.WorldWidth)DrawLine(OutdoorPoint(c),OutdoorPoint(c+new V(1,0)),new Color("847a66"),18,true);
-            if(r.Y+1<config.WorldHeight)DrawLine(OutdoorPoint(c),OutdoorPoint(c+new V(0,1)),new Color("847a66"),18,true);
+            var east=config.Regions.FirstOrDefault(n=>n.X==r.X+1&&n.Y==r.Y);var south=config.Regions.FirstOrDefault(n=>n.X==r.X&&n.Y==r.Y+1);
+            if(east!=null&&config.CanCross(r.Id,east.Id))DrawLine(OutdoorPoint(c),OutdoorPoint(c+new V(1,0)),new Color("847a66"),18,true);
+            if(south!=null&&config.CanCross(r.Id,south.Id))DrawLine(OutdoorPoint(c),OutdoorPoint(c+new V(0,1)),new Color("847a66"),18,true);
             var village=config.Villages.FirstOrDefault(v=>v.RegionId==r.Id);if(village==null)continue;V v=WorldLocation(r.Id,village.X,village.Y);
             DrawPolyline(Road(village.Id,v,c).Select(OutdoorPoint).ToArray(),new Color("928773"),15,true);
             foreach(var d in config.Dungeons.Where(d=>d.RegionId==r.Id))DrawPolyline(Road(d.Id,v,WorldLocation(r.Id,d.X,d.Y)).Select(OutdoorPoint).ToArray(),new Color("928773"),11,true);
@@ -78,16 +80,20 @@ public partial class Main
             var village=config.Villages.FirstOrDefault(v=>v.RegionId==r.Id);if(village==null)continue;V anchor=WorldLocation(r.Id,village.X,village.Y);var p=OutdoorPoint(anchor);
             House(p-new Vector2(10,35),r.Terrain);Text(village.Name,p+new Vector2(-35,-88),14,"f4e1b9");
             var npc=config.Npcs.Single(n=>n.Id==village.NpcId);var n=OutdoorPoint(anchor+npc.Position/config.WorldUnits);
-            DrawFighter(n,new Color("b89761"),-1,false,1,npc.Name);
-            foreach(var d in config.Dungeons.Where(d=>d.RegionId==r.Id))
-            {
-                var dp=OutdoorPoint(WorldLocation(r.Id,d.X,d.Y));
-                if(d.Castle)CastleIcon(dp-new Vector2(0,14),2.2f);
-                else {DrawCircle(dp-new Vector2(0,13),18,new Color("687c83"));DrawCircle(dp-new Vector2(0,10),12,new Color("182b37"));DrawLine(dp-new Vector2(19,0),dp+new Vector2(19,0),new Color("a6b8ba"),5);}
-                Text(d.Name,dp+new Vector2(-40,-45),13,"e7d2a4");
-            }
+            if(config.Town==null)DrawFighter(n,new Color("b89761"),-1,false,1,npc.Name);
         }
         V worldLeader=VisualWorldPosition;
+        // 地牢造型独立于村庄存在；第一章只有营地格有村庄，不能把其余入口放在村庄循环里。
+        foreach(var dungeon in config.Dungeons.Where(d=>nearby.Any(r=>r.Id==d.RegionId)))
+        {
+            var point=OutdoorPoint(WorldLocation(dungeon.RegionId,dungeon.X,dungeon.Y));
+            DrawLandmark(point,dungeon.Castle,1);Text(dungeon.Name,point+new Vector2(-36,-64),13,"e7d2a4");
+        }
+        foreach(var waypoint in config.Waypoints.Where(p=>nearby.Any(r=>r.Id==p.Region)))
+        {
+            bool unlocked=w.Progress.WaypointUnlocked(config,waypoint);
+            var point=OutdoorPoint(config.WaypointPoint(waypoint));DrawPortalRing(point,unlocked?1:.4f,unlocked?"68cce8":"6b817d");Text(unlocked?"传送点":"传送点 · 未解锁",point+new Vector2(-20,19),10,"a8c7cd");
+        }
         foreach(int i in new[]{2,1,0})
         {
             V position=worldLeader+new V(-i*.04f,i*.04f);

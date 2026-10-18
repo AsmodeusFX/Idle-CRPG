@@ -1,5 +1,7 @@
 # 文档索引
 
+- [固定城镇、传送与最新攻略规则](design/towns_portals.md)：六NPC、先治疗后售卖、两处城镇设施、区域点解锁、自动支线与同级随机、GM通关本章。
+
 - [第一章正式规则](design/act1.md)：V0.5地图、单营地、手动要塞与跨章支线、失败回刷及待补充开发。
 - [第一章配置字典](technical/act1_config.md)：POI/逐层数据、any/all门禁及存档版本4。
 - [第一章实施验收](reviews/2026-10-18/act1_implementation_audit.md)：来源归档、实测结果和未投放范围。

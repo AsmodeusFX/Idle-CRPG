@@ -15,7 +15,53 @@ public static class Act1Checks
         Check(c.Villages.Count==1&&c.StartRegionId==36&&c.IsTown(36),"单一营地");
         var game=GameSession.CreateWorld(c,123,new[]{"warrior","ranger","mage"});
         Check(game.World!.CurrentRegion==36,"营地出生");
+        Check(!game.World.TownReturnPortalVisible&&c.TownPortal!=c.TownWaypoint,"首次进城出现回城门或两处传送位置重合");
+        // 固定场景共用局部导航/绘制配置；服务阶段必须保存，售卖后读档不重复到账。
+        Check(c.ChapterMaps.All(m=>m.Town?.Npcs.Count==6),"后续章节缺少固定主城及六职能NPC");
+        var town=c.Town!;Check(!town.Walkable(new(1,10))&&!town.Walkable(new(23,5))&&town.Walkable(town.Exit),"围栏存在非出口通路");
+        var townSave=game.CaptureProgress();townSave.World!.TownPhase=TownVisitPhase.Heal;
+        foreach(var h in townSave.Heroes){h.Hp=h.MaxHp/2;h.Position=town.Entry;}
+        var junk=c.Items.First(i=>c.ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="junk");townSave.Inventory.Add(new(junk.Id,5,3));
+        var visit=GameSession.Restore(c,townSave);
+        for(int i=0;i<5000&&visit.World!.TownPhase==TownVisitPhase.Heal;i++)
+        {visit.Tick(.05f);Check(visit.Heroes.All(h=>town.Walkable(h.Position)),"营地移动穿过建筑或围栏");}
+        Check(visit.World!.TownPhase==TownVisitPhase.Sell&&visit.Heroes.All(h=>h.Hp==h.MaxHp&&Vector2.Distance(h.Position,town.Npc("heal").Position)<=town.InteractionRange)&&visit.Inventory.Values.Sum()==3&&visit.Gold==0,"未先走近治疗或治疗时提前售卖");
+        visit=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=visit.CaptureProgress()})).Session!);
+        for(int i=0;i<5000&&visit.World!.TownPhase!=TownVisitPhase.Exit;i++)visit.Tick(.05f);
+        Check(visit.World!.TownPhase==TownVisitPhase.Exit&&visit.Gold==15&&visit.Inventory.Count==0&&visit.World.Trades==1&&visit.Heroes.All(h=>Vector2.Distance(h.Position,town.Npc("sell").Position)<=town.InteractionRange),"未走近铁匠或售卖结果不正确");
+        visit=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=visit.CaptureProgress()})).Session!);
+        for(int i=0;i<5000&&visit.World!.Stage==CampaignStage.Village;i++)visit.Tick(.05f);
+        Check(visit.World!.Stage==CampaignStage.TravelDungeon&&visit.Gold==15&&visit.World.Trades==1&&visit.Heroes.All(h=>Vector2.Distance(h.Position,town.Exit)<=town.InteractionRange),"未通过唯一出口或读档重复售卖");
         Check(c.FloorPlans.Count==207&&c.PoiChallenges.Count==123,"逐层和难度数据缺失");
+        var ordering=new WorldProgress();ordering.Cleared.UnionWith(new[]{"A01-C01","A02-C01"});var opened=ordering.AccessibleRegions(c);
+        var equalGroup=c.Dungeons.Where(d=>!d.Castle&&opened.Contains(d.RegionId)).GroupBy(d=>c.Challenge(d.Id,0).Challenge).OrderBy(g=>g.Key).First(g=>g.Count()>1);
+        ordering.Cleared.UnionWith(c.Dungeons.Where(d=>!d.Castle&&c.Challenge(d.Id,0).Challenge<equalGroup.Key).Select(d=>d.Id));var choices=new System.Collections.Generic.HashSet<string>();
+        var selectionRandom=new PersistentRandom(123731u);
+        for(int i=0;i<40;i++){var pick=ExpeditionPlanner.Select(c,ordering,36,false,0,selectionRandom);Check(c.Challenge(pick.Dungeon.Id,0).Challenge==equalGroup.Key,"未优先选择全部主支线的最低挑战等级");choices.Add(pick.Dungeon.Id);}
+        Check(choices.Count>1,"同挑战等级没有随机选择");
+        var portalGame=GameSession.CreateWorld(c,731,new[]{"warrior","ranger","mage"});var wp=c.Waypoints.Single(w=>w.Castle=="A01-C01");
+        Check(c.Waypoints.Count==8&&!portalGame.World!.Progress.WaypointUnlocked(c,wp),"传送点数量或初始解锁");
+        portalGame.World!.Progress.Cleared.UnionWith(c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]=="A01-C01").Select(d=>d.Id));
+        Check(portalGame.World.Progress.WaypointUnlocked(c,wp),"地块全清未解锁传送点");
+        var extra=c.Dungeons.First(d=>d.RegionId==wp.Region) with {Id="qa_extra"};c.Dungeons.Add(extra);Check(!portalGame.World.Progress.WaypointUnlocked(c,wp),"多地牢地块未全清却解锁");c.Dungeons.Remove(extra);
+        var seenPortals=new System.Collections.Generic.HashSet<string>();
+        portalGame.SetGmBattle(new(InstantDungeonClear:true));bool returned=false;
+        for(int i=0;i<20000&&!returned;i++)
+        {
+            portalGame.Tick(.05f);var w=portalGame.World!;
+            if(w.PortalPhase!=PortalPhase.None)
+            {
+                string phase=(w.PortalReturning?"return_":"out_")+w.PortalPhase;
+                if(seenPortals.Add(phase))
+                {
+                    var round=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=portalGame.CaptureProgress()})).Session!);
+                    Check(round.World!.PortalPhase==w.PortalPhase&&round.World.PortalReturning==w.PortalReturning,"传送动画阶段读档丢失");portalGame=round;portalGame.SetGmBattle(new(InstantDungeonClear:true));
+                }
+            }
+            returned=seenPortals.Contains("return_Arriving")&&w.PortalPhase==PortalPhase.None;
+        }
+        Check(returned&&seenPortals.Count==6&&portalGame.World!.Stage==CampaignStage.Village&&portalGame.World.TownReturnPortalVisible&&portalGame.Heroes.All(h=>Vector2.Distance(h.Position,c.TownPortal)<.5f),"往返传送未经历三阶段或未抵达城镇传送点");
+        var portalRestored=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=portalGame.CaptureProgress()})).Session!);Check(portalRestored.World!.TownReturnPortalVisible,"首次回城后常驻传送门未保存");
         Check(c.FloorPlans.Where(p=>p.Difficulty==0).Sum(p=>p.TargetKills)==2517&&c.FloorPlans.Where(p=>p.Difficulty==1).Sum(p=>p.TargetKills)==2601&&c.FloorPlans.Where(p=>p.Difficulty==2).Sum(p=>p.TargetKills)==3439,"V0.5规划预算汇总");
         Check(Config.KillBudget(5,3,1,1,2,0,0)==18,"预算算例");
         var progress=new WorldProgress();Check(!progress.AreaPartUnlocked(c,"ap2"),"提前开放");progress.Cleared.Add("A01-C01");progress.Cleared.Add("A02-C01");
@@ -32,9 +78,9 @@ public static class Act1Checks
         GameSession Trade(GameSession g)
         {
             var s=g.CaptureProgress();var map=g.Config;var w=s.World!;var v=map.ReturnVillage(map.StartRegionId);var r=map.Regions.Single(r=>r.Id==v.RegionId);var npc=map.Npcs.Single(n=>n.Id==v.NpcId);
-            w.Stage=CampaignStage.Village;w.Position=new Vector2(r.X+v.X,r.Y+v.Y)+npc.Position/map.WorldUnits;w.VillageId=v.Id;w.Route.Clear();w.VillagePaths.Clear();w.TradeElapsed=map.TradeSeconds-.025f;s.Floors.Clear();s.ActiveDungeonId="";s.SkillState=new();
-            foreach(var h in s.Heroes){h.Position=npc.Position;h.Hp=h.MaxHp;}
-            var result=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=s})).Session!);result.Tick(.05f);return result;
+            w.Stage=CampaignStage.Village;w.PortalPhase=PortalPhase.None;w.PortalElapsed=0;w.PortalWaypoint="";w.Position=new Vector2(r.X+v.X,r.Y+v.Y);w.VillageId=v.Id;w.Route.Clear();w.VillagePaths.Clear();w.TownPhase=TownVisitPhase.Sell;w.TradeElapsed=(map.Town?.ServiceSeconds??map.TradeSeconds)-.025f;s.Floors.Clear();s.ActiveDungeonId="";s.SkillState=new();
+            foreach(var h in s.Heroes){h.Position=map.Town?.Npc("sell").Position??npc.Position;h.Hp=h.MaxHp;}
+            var result=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=s})).Session!);for(int i=0;i<3000&&result.World!.Stage==CampaignStage.Village;i++)result.Tick(.05f);return result;
         }
         void Enter(GameSession g,string id)
         {
@@ -48,7 +94,7 @@ public static class Act1Checks
         retry=Copy(retry);foreach(var h in retry.Heroes)h.Level=2;retry=Trade(retry);
         Check(!retry.World!.Target.Dungeon.Castle&&c.Challenge(retry.World.Target.Dungeon.Id,0).Challenge==2,"升级后自动重试了要塞或未选择最高匹配复刷");
         Check(retry.RequestCastleChallenge("A01-C01")&&!retry.World.IsCastleRetry("A01-C01"),"再次挑战无法由玩家授权");
-        var normal=GameSession.CreateWorld(c,13,new[]{"warrior","ranger","mage"});normal.World!.Progress.Cleared.UnionWith(c.Dungeons.Where(d=>!c.Optional(d.Id)&&c.Challenge(d.Id,0).Challenge<7).Select(d=>d.Id));
+        var normal=GameSession.CreateWorld(c,13,new[]{"warrior","ranger","mage"});normal.World!.Progress.Cleared.UnionWith(c.Dungeons.Where(d=>c.Challenge(d.Id,0).Challenge<7).Select(d=>d.Id));
         normal=Trade(normal);Check(normal.World!.Target.Dungeon.Id=="A04-D04","普通地牢全局ChallengeLevel排序");Enter(normal,"A04-D04");Wipe(normal);normal=Trade(normal);Enter(normal,"A04-D04");Wipe(normal);normal=Trade(normal);
         Check(normal.World!.Target.Farming,"普通地牢失败未回刷");foreach(var h in normal.Heroes)h.Level=2;normal=Trade(normal);Check(normal.World!.Target.Dungeon.Id=="A04-D04"&&!normal.World.Target.Farming,"小队等级变化未重试失败普通地牢");
         // 实际运行完整主线：测试只授权要塞，所有首通来自战斗与出口，绝不按规划预算结算。
@@ -65,7 +111,7 @@ public static class Act1Checks
             if(run.ActiveDungeon?.Id=="A08-C01")foreach(var monster in run.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters).Where(m=>m.Name.Contains("安达利尔")))if(seen.Add(monster))andarielSpawns++;
             Check(!run.World!.Progress.Cleared.Contains("A03-C01"),"支线被自动攻略");
         }
-        Check(run.LatestMapIndex==1&&run.ChapterIndex==1&&run.MapProgress(0,0).Cleared.Count==37&&andarielSpawns==1,"主线真实通关或唯一安达利尔/支线非阻断失败");
+        Check(run.LatestMapIndex==1&&run.ChapterIndex==1&&run.MapProgress(0,0).Cleared.Count==40&&andarielSpawns==1,"主线真实通关或唯一安达利尔/支线非阻断失败");
         Check(run.RequestBranchChallenge(0,0,"A03-C01"),"旧章支线不能授权");run=Trade(run);Check(run.ActiveBranch!=null&&run.ChapterIndex==0&&run.LatestMapIndex==1,"支线未传送到原章");
         run=Copy(run);run.SetGmBattle(new(Invincible:true));
         for(int i=0;i<200000&&run.ActiveBranch!=null;i++)run.Tick(.05f);
@@ -73,6 +119,6 @@ public static class Act1Checks
         var recovered=Copy(run);Check(recovered.MapProgress(0,0).Cleared.Count==41,"跨章支线进度读档丢失");
         var store=new SaveStore(Path.Combine(root,"artifacts/qa/act1-reset/progress.json"));store.Reset();File.WriteAllText(store.PathName,"{bad");File.WriteAllText(store.PathName+".bak","{bad");Check(store.Load(c)?.Session==null&&store.RecoveryReset&&store.LastWarning!=null,"损坏主备份未提示自动重置");store.Reset();
         Console.WriteLine("PASS: production Act1 8x8 topology, 41 POIs, 8 gates and single central town");
-        Console.WriteLine("PASS: V0.5 207 floor budgets, AND/OR, manual castles, 2-failure recovery, level-based retry, actual 37-POI main clear, cross-chapter branch return, unique Andariel and reset notice");
+        Console.WriteLine("PASS: V0.5 207 floor budgets, AND/OR, manual castles, 2-failure recovery, level-based retry, actual 40-POI main plus optional dungeon clear, cross-chapter branch return, unique Andariel, town heal/sell/exit, portal stages and reset notice");
     }
 }

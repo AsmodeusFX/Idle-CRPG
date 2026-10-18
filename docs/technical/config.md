@@ -1,5 +1,7 @@
 # 配置字段字典
 
+固定城镇town_scene/town_npc/town_prop、传送portal_rule及各章waypoint字段和校验见 [城镇传送配置](../design/towns_portals.md)。
+
 最新扩展：areapart.csv新增unlock_mode（any/all，缺列默认any），显式地牢及旧统治区前置均按此聚合；不再限定OR。正式第一章目录chapters/act1（8×8、独立营地），根旧世界表仅保留回归用途。POI、逐层计划、门禁与失败阈值字段见 [第一章配置](act1_config.md)，覆盖下文旧目录/尺寸描述。
 
 地形扩展：`world/region.csv` 新增必填enterable（0/1），terrain新增mountain/ocean且二者必须不可进入；阻断格仍覆盖矩形，但不得关联村庄、地牢或统治城堡。新增 `world/region_prerequisite.csv` 字段id,region_id,required_dungeon_id，唯一行ID、可进入格引用、本章地牢引用；同区域所有行OR合并并覆盖旧areapart前置，可只有表头。规则、校验和迁移见 [地形与前置](../design/map_access.md)。
