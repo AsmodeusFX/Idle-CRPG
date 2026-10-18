@@ -91,7 +91,13 @@ public partial class Main
                 string label=poi?.Name??"空地";if(label.Length>6)label=label[..5]+"…";
                 Text(label,pos+new Vector2(5,tile*.58f),12,"f1ede2");
                 Text($"{r.X+1}-{r.Y+1}",pos+new Vector2(5,tile-9),11);
-                if(poi is {Castle:false})DrawCircle(pos+new Vector2(tile-11,11),3,new Color("efda8c"));
+                if(poi is {Castle:false})DrawLandmark(pos+new Vector2(tile-14,25),false,.35f);
+            }
+            var waypoint=MapConfig.Waypoints.FirstOrDefault(w=>w.Region==r.Id);
+            if(waypoint!=null)
+            {
+                bool active=world.Progress.WaypointUnlocked(MapConfig,waypoint);
+                DrawArc(pos+new Vector2(tile-14,tile-14),6,0,MathF.Tau,20,new Color(active?"68d9ef":"71837f"),2,true);
             }
         }
         if(MapConfig.Gates.Count>0)DrawGateBoundaries(tile);

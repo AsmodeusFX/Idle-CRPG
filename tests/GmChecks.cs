@@ -75,6 +75,11 @@ public static class GmChecks
         int tradesBefore=progression.World.Trades;
         for(int i=0;i<60000&&!progression.World.Progress.Cleared.Contains("A01-C01");i++)progression.Tick(.05f);
         Check(progression.World.Progress.Cleared.Contains("A01-C01")&&progression.World.Progress.AreaPartUnlocked(production,"ap2")&&progression.World.Trades>tradesBefore,"authorized castle clear did not unlock region or skipped trade");
+        var chapter=GameSession.CreateWorld(production,29,new[]{"warrior","ranger","mage"});
+        chapter.CompleteGmChapter();Check(chapter.World!.Progress.Cleared.Count==production.Dungeons.Count&&chapter.World.Stage==CampaignStage.Village&&chapter.Floors.Count==0&&chapter.Gold==0&&chapter.Experience==0&&chapter.Kills==0,"GM chapter clear did not clear all content or forged rewards");
+        chapter=GameSession.Restore(production,SaveStore.Decode(production,SaveStore.Encode(new(){Session=chapter.CaptureProgress()})).Session!);
+        for(int i=0;i<20000&&chapter.ChapterIndex==0;i++)chapter.Tick(.05f);
+        Check(chapter.ChapterIndex==1&&chapter.MapProgress(0,0).Cleared.Count==production.Dungeons.Count,"GM chapter clear did not advance after town services");
         string qa=Path.Combine(root,"artifacts/qa/gm-config-"+Guid.NewGuid().ToString("N"));
         string source=Path.Combine(root,"Idle-CRPG/config");
         foreach(var file in Directory.EnumerateFiles(source,"*",SearchOption.AllDirectories))
