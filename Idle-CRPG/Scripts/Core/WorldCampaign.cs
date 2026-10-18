@@ -142,7 +142,7 @@ public sealed partial class WorldCampaign
                 long sold=game.SellJunk();Trades++;
                 foreach(var h in game.Heroes){h.Hp=h.MaxHp;h.Timer=0;}
                 game.Note($"{Village.Name}：杂物售出 {sold} 金币，补给完成");
-                Plan(Target.Farming);
+                if(!game.AdvanceChapter())Plan(Target.Farming);
             }
             return;
         }

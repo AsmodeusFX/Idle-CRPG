@@ -85,7 +85,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-stars")){captureView="stars";SelectStarView(3);BuyStarNode("s_root");BuyStarNode("s_hp");BuyStarNode("s_atk");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-star-editor")){captureView="star-editor";viewMode=3;ToggleStarEditor();EditorClickNode("s_root");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-gm")){captureView="gm";ToggleGm();}
-        if(smoke){RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunGmSmoke();RunStarSmoke();}
+        if(smoke){RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunGmSmoke();RunStarSmoke();}
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
@@ -116,7 +116,7 @@ public partial class Main : Node2D
             if(hudElapsed>=.1){hudElapsed=0;Refresh();}
         }
         else {motionAlpha=1;if(session!=null)motion.BeforeTick(session);}
-        TrackSounds();AutoSave(delta);
+        SyncCampaignConfig();TrackSounds();AutoSave(delta);
         TickStarPanels();
         UpdateCamera(delta);sceneCanvas.QueueRedraw();
         if(performanceRun){processTimes.Add(Milliseconds(profileStart));frameTimes.Add(delta*1000);}
@@ -135,6 +135,7 @@ public partial class Main : Node2D
 
     private void Refresh()
     {
+        if(session!=null&&!ReferenceEquals(config,session.Config)){SyncCampaignConfig();return;}
         RefreshHud();RefreshCastleInteractions();
         if(viewMode==1)RefreshWorldPage();
         if(session==null)return;

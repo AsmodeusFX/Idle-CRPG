@@ -1,5 +1,7 @@
 # 文档索引
 
+- [难度、章节与独立地图](design/world_chapters.md)：3档难度、5章地图、顺序解锁、自动推进及旧档兼容。
+
 - [三阶段战斗公式](design/combat_formula.md)：DMG1/2/3、事件瀑布、五类乘区及手算验收。
 - [技能、效果与增益](design/skills_effects_buffs.md)：15技能迁移、二维/20Hz适配、生命周期与保存边界。
 - [属性注册与等级成长](design/attributes_levels.md)：统一属性目录、英雄/怪物等级表、表尾上限。

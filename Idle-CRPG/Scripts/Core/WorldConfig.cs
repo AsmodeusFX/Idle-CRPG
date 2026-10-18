@@ -31,9 +31,9 @@ public sealed partial class Config
     public List<DropSpec> Drops = new();
     public Dictionary<int,string> Rulers = new();
 
-    private void LoadWorld(string directory)
+    private void LoadWorld(string directory,string? sharedDirectory=null)
     {
-        List<Dictionary<string,string>> Table(string p) => Read(Path.Combine(directory,p));
+        List<Dictionary<string,string>> Table(string p) => Read(Path.Combine(sharedDirectory!=null&&(p.StartsWith("item/")||p.StartsWith("monster/")||p=="village/npc.csv")?sharedDirectory:directory,p));
         Dictionary<string,string> One(string p) { var rows=Table(p); return rows.Count==1?rows[0]:throw new InvalidDataException(p+" 必须恰有一行"); }
         var w=One("world/world.csv");
         WorldWidth=Integer(w,"width"); WorldHeight=Integer(w,"height"); StartRegionId=Integer(w,"start_region_id");
@@ -62,7 +62,7 @@ public sealed partial class Config
         static bool Unique<T>(IEnumerable<T> values) => values.Distinct().Count()==values.Count();
         Require(WorldWidth>0&&WorldWidth<=64&&WorldHeight>0&&WorldHeight<=64&&Regions.Count==WorldWidth*WorldHeight,"世界尺寸/区域数量错误");
         Require(TravelSpeed>0&&VillageSpeed>0&&TradeSeconds>0&&TradeRange>0,"世界移动/交互参数非法");
-        Require(Unique(Regions.Select(r=>r.Id))&&Unique(Regions.Select(r=>(r.X,r.Y)))&&Regions.All(r=>r.Id>0&&r.X>=0&&r.X<WorldWidth&&r.Y>=0&&r.Y<WorldHeight&&new[]{"snow","tropical","desert","coast","grass"}.Contains(r.Terrain)),"区域 ID/坐标/地形非法");
+        Require(Unique(Regions.Select(r=>r.Id))&&Unique(Regions.Select(r=>(r.X,r.Y)))&&Regions.All(r=>r.Id>0&&r.X>=0&&r.X<WorldWidth&&r.Y>=0&&r.Y<WorldHeight&&new[]{"snow","tropical","desert","coast","grass","hell"}.Contains(r.Terrain)),"区域 ID/坐标/地形非法");
         Require(Regions.Any(r=>r.Id==StartRegionId),"出生区域不存在");
         bool Region(int id)=>Regions.Any(r=>r.Id==id);
         Require(Unique(Dungeons.Select(d=>d.Id))&&Dungeons.All(d=>!string.IsNullOrWhiteSpace(d.Id)&&Region(d.RegionId)&&new[]{"normal","castle"}.Contains(d.Kind)&&d.LevelMin>=1&&d.LevelMax>=d.LevelMin&&d.X>0&&d.X<1&&d.Y>0&&d.Y<1),"地牢 ID/引用/等级/位置非法");

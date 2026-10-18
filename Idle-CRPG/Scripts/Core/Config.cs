@@ -42,6 +42,7 @@ public sealed partial class Config
         c.LoadGm(directory);
         c.LoadLevels(directory);
         c.LoadCombat(directory);
+        c.LoadChapters(directory);
         return c;
     }
 

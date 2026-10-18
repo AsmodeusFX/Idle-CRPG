@@ -1,5 +1,7 @@
 # 配置字段字典
 
+章节扩展：`world/difficulty.csv`字段id,name，必须按normal/nightmare/hell三行排列；`world/chapter.csv`字段id,name,terrain,width,height,directory，必须按act1～act5五行排列。地形为mixed或grass/desert/tropical/coast/snow/hell；尺寸1～64且须与本章world.csv和region覆盖一致。目录`.`保留第一章，其他目录须在config内。各章地图表的字段沿用下表，物品、NPC模板、刷怪和战斗数值共享根配置，详见 [章节地图配置](../design/world_chapters.md)。
+
 所有 CSV 为 UTF-8，按功能放在 `Idle-CRPG/config/` 子目录。首行为英文表头，字段不含逗号，数字使用小数点。ID 唯一、跨表引用有效，缺字段直接报错。CSV 的 Godot importer 使用 keep，不作为翻译资源。
 
 星图三表使用迁移自 Idle-Diablo 的严格 CSV 解析器，支持引号内逗号、多行文本和双引号转义；其余已有简表仍按上述限制。星图的多值字段使用分号。
@@ -10,7 +12,7 @@
 |---|---|---|
 | world/world.csv | width,height,start_region_id | 矩形尺寸，各为 1–64，当前 16×16；出生区域引用 |
 | world/world.csv | travel_speed,village_speed,trade_seconds,trade_range | 世界坐标每秒区域距离、村庄移速、交易秒数、交互范围；均为正数 |
-| world/region.csv | id,x,y,name,terrain | 正区域 ID、网格坐标、名称、地貌；坐标不重复且覆盖整个矩形。地貌限 snow/tropical/desert/coast/grass |
+| world/region.csv | id,x,y,name,terrain | 正区域 ID、网格坐标、名称、地貌；坐标不重复且覆盖整个矩形。地貌限 snow/tropical/desert/coast/grass/hell |
 | world/castle_region.csv | region_id,castle_id | 每区恰好一行统治关联；城堡必须存在且包含其所在区域 |
 | world/areapart.csv | id,castle_id,initially_unlocked | 统治区唯一 ID、城堡引用、默认开放 0/1；统治区和城堡一一对应，仅出生统治区为 1 |
 | world/areapart_prerequisite.csv | areapart_id,required_areapart_id | 每行一个可选前置，多个前置按 OR 判定：任一前置的城堡被攻克即可；必须共边接壤，无重复边/自引用/失效引用，所有统治区按 OR 从初始区可达 |

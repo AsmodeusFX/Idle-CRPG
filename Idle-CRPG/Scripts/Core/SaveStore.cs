@@ -8,7 +8,7 @@ namespace IdleCrpg.Core;
 
 public sealed class SaveDocument
 {
-    [JsonRequired] public int Version=2;
+    [JsonRequired] public int Version=3;
     [JsonRequired] public SessionSnapshot? Session;
     public int Speed=1,ViewMode,SelectedRegion=-1;
     public bool Paused;
@@ -25,8 +25,11 @@ public sealed class SaveStore(string path)
     public static SaveDocument Decode(Config c,string text)
     {
         var document=JsonSerializer.Deserialize<SaveDocument>(text,JsonOptions)??throw new InvalidDataException("空存档");
-        if(document.Version is not (1 or 2))throw new InvalidDataException("不支持的存档版本 "+document.Version);
-        if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>3||(document.SelectedRegion!=-1&&!c.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
+        if(document.Version is not (1 or 2 or 3))throw new InvalidDataException("不支持的存档版本 "+document.Version);
+        int chapter=document.Session?.ChapterIndex??0;
+        if(chapter<0||chapter>=c.ChapterMaps.Count)throw new InvalidDataException("存档章节参数错误");
+        var map=c.ChapterMaps[chapter];
+        if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>3||(document.SelectedRegion!=-1&&!map.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
         if(document.Session!=null)GameSession.Restore(c,document.Session);
         return document;
     }

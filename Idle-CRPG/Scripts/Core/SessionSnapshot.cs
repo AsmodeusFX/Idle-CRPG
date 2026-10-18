@@ -9,6 +9,8 @@ namespace IdleCrpg.Core;
 
 public sealed class SessionSnapshot
 {
+    public int DifficultyIndex,ChapterIndex;
+    public List<ChapterProgressSave> CompletedMaps=new();
     public int Seed, DungeonSeed, FloorIndex, CurrentRoom, Experience, Kills, Retries, Destination=-1, Phase;
     public long Gold, Revision, HitCount;
     public uint LootRandomState;
@@ -56,6 +58,7 @@ public sealed partial class GameSession
 {
     /// <summary>快照包含房间生成结果、尸体、计时与随机源。序列化必须紧随快照，期间不推进模拟。</summary>
     public SessionSnapshot Capture() => new() {
+        DifficultyIndex=DifficultyIndex,ChapterIndex=ChapterIndex,CompletedMaps=CaptureChapters(),
         Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,CombatVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
@@ -98,6 +101,8 @@ public sealed partial class GameSession
     /// <summary>校验后恢复；正式检查点重建未清房战斗，保留到账成长和待拾取奖励，不结算离线时间。</summary>
     public static GameSession Restore(Config config,SessionSnapshot s)
     {
+        if(s.DifficultyIndex<0||s.DifficultyIndex>2||s.ChapterIndex<0||s.ChapterIndex>4)throw new InvalidDataException("难度/章节越界");
+        config=config.ChapterMaps[s.ChapterIndex];
         MigrateWorldLayout(config,s);
         if(s.RoomCheckpoint)
         {
@@ -116,6 +121,7 @@ public sealed partial class GameSession
         }
         ValidateSnapshot(config,s);
         var game=new GameSession(config,s.Seed,s.Heroes.Select(h=>h.SpecId));
+        game.RestoreChapters(s);
         game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);
         game.Floors=s.Floors;game.dungeonSeed=s.DungeonSeed;game.FloorIndex=s.FloorIndex;game.CurrentRoom=s.CurrentRoom;
         game.Experience=s.Experience;game.Kills=s.Kills;game.Retries=s.Retries;game.Gold=s.Gold;game.Revision=s.Revision;game.HitCount=s.HitCount;

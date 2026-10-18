@@ -56,10 +56,10 @@ public sealed partial class Config
 {
     public List<WorldObstacle> Obstacles=new();
     public float CameraFollow,CameraTransition,CameraMaxZoom,WorldZoom,WorldUnits;
-    private void LoadSceneConfig(string directory)
+    private void LoadSceneConfig(string directory,string? sharedDirectory=null)
     {
         Obstacles=Read(Path.Combine(directory,"world/obstacle.csv")).Select(r=>new WorldObstacle(r["id"],r["kind"],Number(r,"x"),Number(r,"y"),Number(r,"width"),Number(r,"height"))).ToList();
-        var rows=Read(Path.Combine(directory,"system/camera.csv"));if(rows.Count!=1)throw new InvalidDataException("camera.csv 必须一行");var s=rows[0];
+        var rows=Read(Path.Combine(sharedDirectory??directory,"system/camera.csv"));if(rows.Count!=1)throw new InvalidDataException("camera.csv 必须一行");var s=rows[0];
         CameraFollow=Number(s,"follow_rate");CameraTransition=Number(s,"transition_rate");CameraMaxZoom=Number(s,"dungeon_max_zoom");WorldZoom=Number(s,"world_zoom");WorldUnits=Number(s,"world_units");
         if(CameraFollow<=0||CameraTransition<=0||CameraMaxZoom<=0||WorldZoom<=0||WorldUnits<12||Obstacles.Select(o=>o.Id).Distinct().Count()!=Obstacles.Count||Obstacles.Any(o=>o.Kind is not ("water" or "rock")||o.X<0||o.Y<0||o.Width<=0||o.Height<=0||o.X+o.Width>WorldWidth||o.Y+o.Height>WorldHeight))throw new InvalidDataException("场景/障碍配置非法");
         foreach(var r in Regions)

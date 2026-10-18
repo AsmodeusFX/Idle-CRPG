@@ -13,15 +13,15 @@ public partial class Main
     private readonly Dictionary<int,RegionStatus> mapStatuses=new();
     private RegionStatus MapStatus(int region)
     {
-        var world=session!.World!;var progress=world.Progress;
+        var world=MapWorld!;var progress=world.Progress;
         string plan=string.Join(",",world.PendingCastles)+"/"+world.Target.Dungeon.Id+"/"+world.Stage;
         if(mapPlan!=plan||!ReferenceEquals(mapProgress,progress)||mapCleared!=progress.Cleared.Count||mapExplored!=progress.Explored.Count)
         {
             mapPlan=plan;mapProgress=progress;mapCleared=progress.Cleared.Count;mapExplored=progress.Explored.Count;mapStatuses.Clear();
             var rulers=new Dictionary<string,RegionStatus>();
-            foreach(var r in config.Regions)
+            foreach(var r in MapConfig.Regions)
             {
-                string castle=config.Rulers[r.Id];
+                string castle=MapConfig.Rulers[r.Id];
                 if(!rulers.TryGetValue(castle,out var state))
                 {
                     state=world.RegionState(r.Id);
@@ -34,30 +34,30 @@ public partial class Main
         return mapStatuses[region];
     }
     private void Text(string value,Vector2 position,int size=16,string color="c1d0d8") => DrawString(font,position,value,HorizontalAlignment.Left,-1,size,new Color(color));
-    private static string TerrainName(string terrain) => terrain switch {"snow"=>"北境雪原","desert"=>"西部沙海","tropical"=>"南方雨林","coast"=>"东岸湖湾","grass"=>"中央原野",_=>throw new ArgumentOutOfRangeException(nameof(terrain))};
-    private static Color TerrainColor(string terrain) => new(terrain switch {"snow"=>"bbcdd0","desert"=>"9b8052","tropical"=>"315b44","coast"=>"47747e","grass"=>"526b52",_=>throw new ArgumentOutOfRangeException(nameof(terrain))});
+    private static string TerrainName(string terrain) => terrain switch {"snow"=>"北境雪原","desert"=>"西部沙海","tropical"=>"南方雨林","coast"=>"东岸湖湾","grass"=>"中央原野","hell"=>"地狱荒原",_=>throw new ArgumentOutOfRangeException(nameof(terrain))};
+    private static Color TerrainColor(string terrain) => new(terrain switch {"snow"=>"bbcdd0","desert"=>"9b8052","tropical"=>"315b44","coast"=>"47747e","grass"=>"526b52","hell"=>"784538",_=>throw new ArgumentOutOfRangeException(nameof(terrain))});
     private static string StatusName(RegionStatus status) => status switch {RegionStatus.Unexplored=>"未展开探索",RegionStatus.Sweeping=>"地牢扫荡中",RegionStatus.WaitingCastle=>"等待攻略城堡",RegionStatus.Occupied=>"已占领",RegionStatus.PlannedAttack=>"计划攻击",_=>throw new ArgumentOutOfRangeException(nameof(status))};
     private static Color StatusColor(RegionStatus status) => new(status switch {RegionStatus.Unexplored=>"141e27",RegionStatus.Sweeping=>"747e85",RegionStatus.WaitingCastle=>"ad5828",RegionStatus.Occupied=>"39764e",RegionStatus.PlannedAttack=>"ffe600",_=>throw new ArgumentOutOfRangeException(nameof(status))});
-    private float MapTile => Math.Min(46,Math.Min(920f/config.WorldWidth,736f/config.WorldHeight));
-    private Vector2 MapOrigin => new(464+(952-config.WorldWidth*MapTile)/2,108);
+    private float MapTile => Math.Min(46,Math.Min(920f/MapConfig.WorldWidth,680f/MapConfig.WorldHeight));
+    private Vector2 MapOrigin => new(32+(940-MapConfig.WorldWidth*MapTile)/2,148+(680-MapConfig.WorldHeight*MapTile)/2);
     private Vector2 MapPoint(V point) => MapOrigin+new Vector2(point.X,point.Y)*MapTile;
 
     public override void _UnhandledInput(InputEvent input)
     {
         if(session==null||input is not InputEventMouseButton {Pressed:true,ButtonIndex:MouseButton.Left} mouse)return;
-        var w=session.World!;
+        var w=MapWorld!;
         bool map=viewMode==1;
         if(!map)return;
         var p=(mouse.Position-MapOrigin)/MapTile;
-        if(p.X>=0&&p.Y>=0&&p.X<config.WorldWidth&&p.Y<config.WorldHeight)
-        {SelectMapTile(config.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id);}
+        if(p.X>=0&&p.Y>=0&&p.X<MapConfig.WorldWidth&&p.Y<MapConfig.WorldHeight)
+        {SelectMapTile(MapConfig.Regions.Single(r=>r.X==(int)p.X&&r.Y==(int)p.Y).Id);}
     }
 
     private void DrawWorld()
     {
-        var world=session!.World!;
+        var world=MapWorld!;
         float tile=MapTile;
-        foreach(var r in config.Regions)
+        foreach(var r in MapConfig.Regions)
         {
             var status=MapStatus(r.Id);
             var pos=MapPoint(new V(r.X,r.Y));
@@ -69,14 +69,14 @@ public partial class Main
                 DrawLine(pos+new Vector2(0,tile*.5f),pos+new Vector2(tile-2,tile*.5f),road,2);
                 DrawLine(pos+new Vector2(tile*.5f,0),pos+new Vector2(tile*.5f,tile-2),road,2);
                 Decoration(pos+new Vector2(8,tile-7),r.Terrain,0.42f,r.Id);
-                var village=config.Villages.Single(v=>v.RegionId==r.Id);
+                var village=MapConfig.Villages.Single(v=>v.RegionId==r.Id);
                 DrawRect(new Rect2(pos+new Vector2(village.X,village.Y)*tile-new Vector2(2,2),new Vector2(4,4)),new Color("d6c7a4"));
             }
-            if(config.Dungeons.Any(d=>d.RegionId==r.Id&&d.Castle))CastleIcon(pos+new Vector2(tile*.65f,tile*.36f),0.65f);
+            if(MapConfig.Dungeons.Any(d=>d.RegionId==r.Id&&d.Castle))CastleIcon(pos+new Vector2(tile*.65f,tile*.36f),0.65f);
         }
         // 勾勒选中统治区的外边界，方便识别不规则辖区，不改变探索状态颜色。
-        string selectedCastle=config.Rulers[selectedRegion<0?world.CurrentRegion:selectedRegion];
-        var selectedCells=config.Regions.Where(r=>config.Rulers[r.Id]==selectedCastle).Select(r=>(r.X,r.Y)).ToHashSet();
+        string selectedCastle=MapConfig.Rulers[selectedRegion<0?world.CurrentRegion:selectedRegion];
+        var selectedCells=MapConfig.Regions.Where(r=>MapConfig.Rulers[r.Id]==selectedCastle).Select(r=>(r.X,r.Y)).ToHashSet();
         foreach(var cell in selectedCells)
         {
             var p=MapPoint(new V(cell.X,cell.Y));var color=SelectedDominionColor;
@@ -86,19 +86,22 @@ public partial class Main
             if(!selectedCells.Contains((cell.X,cell.Y+1)))DrawLine(p+new Vector2(0,tile),p+new Vector2(tile,tile),color,2);
         }
         var route=new[]{world.Position}.Concat(world.Route).Select(MapPoint).ToArray();
-        if(route.Length>1)DrawPolyline(route,new Color("71d9d0"),2,true);
+        if(ViewingCurrentMap&&route.Length>1)DrawPolyline(route,new Color("71d9d0"),2,true);
+        if(ViewingCurrentMap)
+        {
         var marker=MapPoint(VisualWorldPosition);
         DrawCircle(marker,8,new Color("0b1019"));DrawCircle(marker,5,new Color("71e4d0"));
         DrawArc(marker,10,0,Mathf.Tau,24,new Color("71e4d0"),1,true);
-        var current=config.Regions.Single(r=>r.Id==world.CurrentRegion);
+        var current=MapConfig.Regions.Single(r=>r.Id==world.CurrentRegion);
         DrawRect(new Rect2(MapPoint(new V(current.X,current.Y)),new Vector2(tile-2,tile-2)),new Color("71e4d0"),false,2);
+        }
         // 选中格内缩绘制并置顶，和金色辖区外轮廓、青色玩家位置分别辨识。
-        var selected=config.Regions.Single(r=>r.Id==(selectedRegion<0?world.CurrentRegion:selectedRegion));
+        var selected=MapConfig.Regions.Single(r=>r.Id==(selectedRegion<0?world.CurrentRegion:selectedRegion));
         DrawRect(new Rect2(MapPoint(new V(selected.X,selected.Y))+new Vector2(3,3),new Vector2(tile-8,tile-8)),SelectedTileColor,false,3);
 
         for(int i=0;i<5;i++)
         {
-            var state=(RegionStatus)i;var p=new Vector2(478+i*181,860);
+            var state=(RegionStatus)i;var p=new Vector2(40+i*181,856);
             DrawRect(new Rect2(p,new Vector2(12,12)),StatusColor(state));Text(StatusName(state),p+new Vector2(20,12),13);
         }
     }
@@ -112,6 +115,11 @@ public partial class Main
     }
     private void Decoration(Vector2 p,string terrain,float scale,int seedValue)
     {
+        if(terrain=="hell")
+        {
+            DrawColoredPolygon(new[]{p+new Vector2(-11,0)*scale,p+new Vector2(-3,-19)*scale,p+new Vector2(4,-8)*scale,p+new Vector2(10,0)*scale},new Color("3e3031"));
+            DrawLine(p+new Vector2(-8,3)*scale,p+new Vector2(8,-2)*scale,new Color("e79446"),2*scale);return;
+        }
         if(terrain=="desert")
         {
             DrawArc(p,12*scale,Mathf.Pi*1.1f,Mathf.Pi*1.9f,12,new Color("e0bd79"),2*scale,true);

@@ -1,5 +1,7 @@
 # 工程架构
 
+章节扩展：ChapterConfiguration加载3难度/5章节目录及独立地图Config，共享战斗和成长定义；ChapterCampaign保存连续完成历史，在村庄交易结束后检查全部地牢完成并切图。UI的ChapterMapUi将查看地图与实际远征分开，地图选择不修改GameSession目标。存档版本3支持当前地图与历史进度，仍读取旧版。详见 design/world_chapters.md。
+
 战斗扩展（2026-10-18）：FightAttributes管理统一属性注册与规则；LevelConfiguration读取英雄累计成长及怪物倍率、表尾上限；CombatConfiguration绑定模板事件属性。SkillConfiguration加载和验证定义，SkillRuntime推进动作/队列/Buff及唯一扣血入口，AbilityRuntime执行二维弹道和机制；DamagePipeline是无场景依赖的纯伤害函数。SkillBattleState保存内部测试现场，SkillSnapshot验证引用和数量。普攻和主动技能共用同一Effect/伤害/奖励路径。详见 design/combat_formula.md、design/skills_effects_buffs.md、design/attributes_levels.md 与 technical/combat_config.md。
 
 `Idle-CRPG/Scripts/Core/` 是不依赖 Godot 的 C# 模型。Config / WorldConfig 负责 CSV 与跨表校验，Dungeon 负责拓扑，MonsterSpawning 负责刷怪快照与奖励成长，WorldCampaign / ExpeditionPlanner 负责自动远征、相邻路径、统治进度与交易。GameSession 是 UI 唯一状态命令入口，持有固定队员、金币、背包、经验与当前地牢。坐标使用 System.Numerics.Vector2。

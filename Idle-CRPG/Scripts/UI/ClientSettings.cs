@@ -54,7 +54,7 @@ public partial class Main
         var document=saveStore.Load(config);
         if(document?.Session!=null)
         {
-            session=GameSession.Restore(config,document.Session);speed=document.Speed;paused=document.Paused;viewMode=document.ViewMode;selectedRegion=document.SelectedRegion;
+            session=GameSession.Restore(config,document.Session);config=session.Config;OpenCurrentChapter();speed=document.Speed;paused=document.Paused;viewMode=document.ViewMode;selectedRegion=document.SelectedRegion;
             seed.Text=session.Seed.ToString();UpdatePartyControls();ResetSoundBaseline();Refresh();
             savedRevision=session.Revision;
         }
@@ -83,7 +83,7 @@ public partial class Main
         if(forceProgressSave||(session.Revision!=savedRevision&&sinceSave>=config.AutosaveMinSeconds))
         {
             // 主线程只复制已分离引用的检查点，编码、Flush 和原子替换都在后台串行完成。
-            var document=new SaveDocument {Session=session.CaptureProgress(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion};
+            var document=new SaveDocument {Session=session.CaptureProgress(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=SavedSelectedRegion};
             writingRevision=session.Revision;sinceSave=0;forceProgressSave=false;
             progressWrite=Task.Run(()=>saveStore.WriteEncoded(SaveStore.Encode(document)));
         }
@@ -101,7 +101,7 @@ public partial class Main
         if(!wait){forceProgressSave=true;AutoSave(0);return;}
         FinishProgressWrite();
         if(session==null||saveStore==null)return;
-        try {saveStore.Save(session,speed,paused,viewMode,selectedRegion);savedRevision=session.Revision;sinceSave=0;forceProgressSave=false;if(saveStatus!=null)saveStatus.Text="进度已自动保存";}
+        try {saveStore.Save(session,speed,paused,viewMode,SavedSelectedRegion);savedRevision=session.Revision;sinceSave=0;forceProgressSave=false;if(saveStatus!=null)saveStatus.Text="进度已自动保存";}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException)
         {sinceSave=0;if(help!=null)help.Text="保存失败，将重试："+e.Message;}
     }

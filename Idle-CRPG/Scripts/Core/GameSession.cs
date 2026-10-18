@@ -27,7 +27,7 @@ public sealed class Actor
 
 public sealed partial class GameSession
 {
-    public Config Config { get; }
+    public Config Config { get; private set; }
     public int Seed { get; }
     public List<Floor> Floors { get; private set; }
     public WorldCampaign? World { get; private set; }
@@ -82,6 +82,7 @@ public sealed partial class GameSession
     /// <summary>世界远征入口。保留单地牢构造供独立模拟和检查使用。</summary>
     public static GameSession CreateWorld(Config config,int seed,IEnumerable<string> ids)
     {
+        config=config.ChapterMaps[0];
         var game=new GameSession(config,seed,ids);game.Log.Clear();
         game.Floors.Clear();game.World=new WorldCampaign(config);
         game.Note("从初始村庄出发，自动远征已开始");return game;

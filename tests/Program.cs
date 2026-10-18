@@ -206,6 +206,8 @@ Check(sawVillage&&sawLoot&&sawTrade&&sawCastle&&campaign.Gold>0,"自动远征闭
 Check(w.Progress.Cleared.Count==worldConfig.Dungeons.Count&&worldConfig.Regions.All(r=>w.Progress.Status(worldConfig,r.Id)==RegionStatus.Occupied),"全世界推进停滞/占领不完整");
 Check(team.SequenceEqual(campaign.Heroes),"世界切换队伍被替换");
 // 掉落保留：正在世界地牢中全灭，金币、背包、世界进度都不变。
+// 本场景保留一座待挑战城堡，验证等待玩家攻城时持续复刷；跨章由ChapterChecks独立验证。
+w.Progress.Cleared.Remove(worldConfig.Dungeons.Last(d=>d.Castle).Id);
 for(int i=0;i<10000&&w.Stage!=CampaignStage.Dungeon;i++)campaign.Tick(.05f);
 for(int i=0;i<10000&&(w.Stage!=CampaignStage.Dungeon||campaign.Inventory.Count==0);i++)campaign.Tick(.05f);
 Check(w.Stage==CampaignStage.Dungeon&&campaign.Inventory.Count>0,"未构造有掉落的全灭场景");
@@ -228,7 +230,7 @@ for(int i=0;i<1000&&w.Stage==CampaignStage.Village;i++)
 Check(w.Trades==previousTrades+1&&w.Stage==CampaignStage.TravelDungeon&&campaign.Gold==keptGold+sale&&campaign.Inventory.Count==0,"全灭后未准确交易再出发");
 for(int i=0;i<10000&&w.Stage!=CampaignStage.Dungeon;i++)campaign.Tick(.05f);
 Check(w.Stage==CampaignStage.Dungeon&&w.DungeonVisits==previousVisits+1,"复活交易后冒险停滞");
-Check(w.Target.Farming,"世界全部完成后未持续复刷");
+Check(w.Target.Farming,"等待最后一座城堡挑战时未持续复刷");
 // 实际由怪物击杀最后一人时也应在同一个逻辑步返村，而非只处理步开始时已全灭。
 var battleWipe=GameSession.CreateWorld(c,7,new[]{"warrior","ranger","mage"});
 for(int i=0;i<2000&&(battleWipe.World!.Stage!=CampaignStage.Dungeon||battleWipe.CurrentRoom==0);i++)battleWipe.Tick(.05f);
@@ -256,3 +258,4 @@ StarChecks.Run(root);
 GmChecks.Run(root);
 CombatSkillChecks.Run(root);
 AttributeLevelChecks.Run(root);
+ChapterChecks.Run(root);
