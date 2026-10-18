@@ -29,12 +29,4 @@ public sealed partial class GameSession
         if(gold>0||experience>0)Note($"GM：获得 {gold:N0} 金币 / {experience:N0} 共享经验");
     }
 
-    /// <summary>伤害只有此处计算：基础伤害至少 1；GM 血量倍率用承伤除以倍率实现等效生命，保留当前生命比例且不污染出生模板。</summary>
-    private float AttackDamage(Actor actor,Actor target)
-    {
-        bool hero=Heroes.Contains(actor);
-        if(!hero&&Gm.Invincible)return 0;
-        float damage=Math.Max(1,actor.Attack*(hero?1:Gm.MonsterAttack)-target.Defense);
-        return hero?damage/Gm.MonsterHp:damage;
-    }
 }

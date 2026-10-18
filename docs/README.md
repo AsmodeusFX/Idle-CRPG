@@ -1,5 +1,11 @@
 # 文档索引
 
+- [三阶段战斗公式](design/combat_formula.md)：DMG1/2/3、事件瀑布、五类乘区及手算验收。
+- [技能、效果与增益](design/skills_effects_buffs.md)：15技能迁移、二维/20Hz适配、生命周期与保存边界。
+- [属性注册与等级成长](design/attributes_levels.md)：统一属性目录、英雄/怪物等级表、表尾上限。
+- [战斗配置字段](technical/combat_config.md)：属性、等级及Skill/Effect/Buff相关CSV合同。
+- [2026-10-18迁移验收归档](reviews/2026-10-18/combat_skill_migration.md)：来源哈希、用户裁定、差异与验证范围。
+
 - [主界面五区构图](design/ui_layout.md)：功能标签、战斗视口、货币及独立交互卡、五席角色状态和药剂占位。
 - [GM 调试与编辑器菜单](design/gm.md)：当局资源与战斗调试、临时参数边界、上下分区及编辑器入口。
 

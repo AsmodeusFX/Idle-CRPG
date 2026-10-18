@@ -13,11 +13,15 @@ public sealed class Actor
     public float Hp, MaxHp, Attack, Defense, Speed, Range, Cooldown, Timer;
     public int Level = 1;
     public bool Boss;
+    public bool Ranged;
+    public BattleAttributes Battle=new();
+    public string[] SkillIds=Array.Empty<string>();
+    public Dictionary<string,int> SkillLevels=new();
     public int RewardXp;
     public float DropMultiplier=1, ValueMultiplier=1;
     public bool Alive => Hp > 0;
     /// <summary>角色字段均为值类型或不可变字符串，复制后可独立用于检查点，不共享可变战斗状态。</summary>
-    public Actor Copy()=>(Actor)MemberwiseClone();
+    public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.SkillLevels=new(SkillLevels);return a;}
     public static Actor From(UnitSpec s) => new() { SpecId=s.Id, Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
 }
 
@@ -65,10 +69,12 @@ public sealed partial class GameSession
     {
         Config = config; Seed = seed;
         Stars=new StarProgression(config.Stars);
+        combatRandom=new PersistentRandom(unchecked((uint)seed^932701u));
         lootRandom=new PersistentRandom(unchecked((uint)seed^173831u));dungeonSeed=seed;
         var chosen = ids.ToArray();
         if (chosen.Length != 3 || chosen.Distinct().Count() != 3) throw new ArgumentException("选择三个不同职业");
         Heroes.AddRange(chosen.Select(id => Actor.From(config.Heroes.Single(s => s.Id == id))));
+        foreach(var hero in Heroes)config.ApplyCombatProfile(hero);
         Floors = Dungeon.Generate(seed,config);
         EnterFloor();
     }
@@ -81,7 +87,7 @@ public sealed partial class GameSession
         game.Note("从初始村庄出发，自动远征已开始");return game;
     }
     /// <summary>预留科技系统命令，只有后续首次生成的房间受影响。</summary>
-    public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);SpawnModifiers=modifiers;MarkChanged();}
+    public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);if(Config.Dungeons.Any(d=>d.LevelMax+(long)Config.Spawn.Level-1+modifiers.LevelBonus>Config.MaxMonsterLevel))throw new ArgumentOutOfRangeException(nameof(modifiers));SpawnModifiers=modifiers;MarkChanged();}
     public bool RequestCastleChallenge(string castleId)
     {
         if(World?.RequestCastle(castleId)!=true)return false;
@@ -204,6 +210,7 @@ public sealed partial class GameSession
     /// <summary>放弃本轮地牢并在所在区域村庄满血复活，资源保留，交易完成后重新决策。</summary>
     private void RespawnParty()
     {
+        ResetSkillRoom();
         Retries++;
         int region=World?.CurrentRegion??ActiveDungeon?.RegionId??Config.StartRegionId;
         Floors.Clear();ActiveDungeon=null;Won=false;
@@ -269,6 +276,7 @@ public sealed partial class GameSession
         {
             var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),room.Boss&&i==count-1,modifiers);
             m.Position=room.Center+new Vector2(((float)rng.NextDouble()*2-1)*(room.HalfWidth-.8f),((float)rng.NextDouble()*2-1)*(room.HalfHeight-.8f));
+            Config.ApplyCombatProfile(m);
             room.Monsters.Add(m);
             room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,modifiers));
         }
@@ -278,9 +286,14 @@ public sealed partial class GameSession
 
     private void Fight(Room room,float dt)
     {
+        effectBudgetRemaining=SkillConfig.EffectBudget;
+        AdvanceSkills(dt);
+        DrainEffects();
         foreach(var h in Heroes.Where(h=>h.Alive)) Act(h,room.Monsters,dt,room);
         foreach(var m in room.Monsters.Where(m=>m.Alive)) Act(m,Heroes,dt,room);
+        DrainEffects();
         Separate(Heroes,room,dt);Separate(room.Monsters,room,dt);
+        if(room.Clear)ResetSkillRoom();
     }
     private static void Separate(List<Actor> actors,Room room,float dt)
     {
@@ -295,28 +308,23 @@ public sealed partial class GameSession
     }
     private void Act(Actor actor,List<Actor> opponents,float dt,Room room)
     {
-        actor.Timer=Math.Max(0,actor.Timer-dt);
+        if(Stunned(actor))return;
+        actor.Timer=Math.Max(0,actor.Timer-dt*(float)(1+EffectiveAttributes(actor).AttackSpeed));
+        if(RunActiveSkill(actor))return;
         var target=opponents.Where(o=>o.Alive).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault();
         if(target==null) return;
-        if(Vector2.Distance(actor.Position,target.Position)>actor.Range)
+        if(Vector2.Distance(actor.Position,target.Position)>EffectiveValue(actor,"attack_range",actor.Range))
         {
-            Move(actor,target.Position,dt);
+            Move(actor,target.Position,dt,(float)EffectiveValue(actor,"move_speed",actor.Speed)*MoveMultiplier(actor));
             // 进房门之后的战斗局限于当前房间，允许门口队员跨过边界。
             actor.Position=Vector2.Clamp(actor.Position,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
             return;
         }
         if(actor.Timer>0) return;
-        actor.Timer=actor.Cooldown;
-        HitCount++;
-        target.Hp=Math.Max(0,target.Hp-AttackDamage(actor,target));
-        if(!target.Alive && room.Monsters.Contains(target))
-        {
-            // 击杀即得的经验立即结算并保存；实物掉落只生成待拾取对象。
-            Kills++;GainExperience(target.RewardXp);
-            var loot=RollDrops(target);
-            if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
-            if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}
-        }
+        actor.Timer=(float)EffectiveValue(actor,"basic_cooldown",actor.Cooldown);
+        string basic=Heroes.Contains(actor)?"basic_player":"basic_monster";
+        foreach(string effect in SkillConfig.Skills[basic].Effects)Enqueue(new(){Effect=effect,Skill=basic,Owner=CombatId(actor),Target=CombatId(target),Coefficient=SkillConfig.Skills[basic].Coefficient});
+        DrainEffects();
     }
     internal static void Move(Actor a,Vector2 target,float dt,float? speed=null)
     {
@@ -342,6 +350,7 @@ public sealed partial class GameSession
     }
     private void CaptureRoomEntry()
     {
+        ResetSkillRoom();roomEntryCombatState=combatRandom.State;
         roomEntry=Heroes.Select(h=>new PartyEntry(h.Position,h.Hp)).ToList();roomEntryLootState=lootRandom.State;
     }
     /// <summary>清房后先救援，再逐份战利品走近领取，最后处理房间事件。掉落金币和物品在领取时入账。</summary>
@@ -373,11 +382,12 @@ public sealed partial class GameSession
     private void GainExperience(int amount)
     {
         MarkChanged();
-        Experience+=amount;
-        while(Experience>=Heroes[0].Level*18)
+        Experience=(int)Math.Min(int.MaxValue,Experience+(long)amount);
+        while(Heroes[0].Level<Config.MaxHeroLevel&&Experience>=Config.HeroLevels[Heroes[0].Level].Experience)
         {
-            Experience-=Heroes[0].Level*18;
-            foreach(var h in Heroes) { h.Level++; h.MaxHp+=18; h.Attack+=4; if(h.Alive) h.Hp=Math.Min(h.MaxHp,h.Hp+18); }
+            var before=Config.HeroLevels[Heroes[0].Level];var after=Config.HeroLevels[Heroes[0].Level+1];
+            Experience-=before.Experience;
+            foreach(var h in Heroes) { h.Level++;h.MaxHp+=after.HpBonus-before.HpBonus;h.Attack+=after.AttackBonus-before.AttackBonus;if(h.Alive)h.Hp=Math.Min(CombatMaximumHp(h),h.Hp+after.HpBonus-before.HpBonus); }
             Note($"全队成长至等级 {Heroes[0].Level}");
         }
     }

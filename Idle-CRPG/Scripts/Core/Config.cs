@@ -40,6 +40,8 @@ public sealed partial class Config
         c.LoadSceneConfig(directory);
         c.LoadStars(directory);
         c.LoadGm(directory);
+        c.LoadLevels(directory);
+        c.LoadCombat(directory);
         return c;
     }
 

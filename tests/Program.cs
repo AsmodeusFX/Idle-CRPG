@@ -254,3 +254,5 @@ ProgressChecks.Run(root);
 AreaPartChecks.Run(root);
 StarChecks.Run(root);
 GmChecks.Run(root);
+CombatSkillChecks.Run(root);
+AttributeLevelChecks.Run(root);

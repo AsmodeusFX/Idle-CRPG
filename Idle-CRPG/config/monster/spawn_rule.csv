@@ -1,2 +1,2 @@
-count_min,count_max,level,hp_per_level,attack_per_level,defense_per_level,boss_hp,boss_attack,xp_base,boss_reward,drop_chance_multiplier,value_per_level
-1,5,1,0.18,0.12,1,4,1.4,2,4,1,0.25
+count_min,count_max,level,boss_hp,boss_attack,xp_base,boss_reward,drop_chance_multiplier,value_per_level
+1,5,1,4,1.4,2,4,1,0.25

@@ -1,5 +1,7 @@
 # 工程架构
 
+战斗扩展（2026-10-18）：FightAttributes管理统一属性注册与规则；LevelConfiguration读取英雄累计成长及怪物倍率、表尾上限；CombatConfiguration绑定模板事件属性。SkillConfiguration加载和验证定义，SkillRuntime推进动作/队列/Buff及唯一扣血入口，AbilityRuntime执行二维弹道和机制；DamagePipeline是无场景依赖的纯伤害函数。SkillBattleState保存内部测试现场，SkillSnapshot验证引用和数量。普攻和主动技能共用同一Effect/伤害/奖励路径。详见 design/combat_formula.md、design/skills_effects_buffs.md、design/attributes_levels.md 与 technical/combat_config.md。
+
 `Idle-CRPG/Scripts/Core/` 是不依赖 Godot 的 C# 模型。Config / WorldConfig 负责 CSV 与跨表校验，Dungeon 负责拓扑，MonsterSpawning 负责刷怪快照与奖励成长，WorldCampaign / ExpeditionPlanner 负责自动远征、相邻路径、统治进度与交易。GameSession 是 UI 唯一状态命令入口，持有固定队员、金币、背包、经验与当前地牢。坐标使用 System.Numerics.Vector2。
 
 `Scripts/UI/Main.cs` / `WorldView.cs` / `FollowScene.cs` 处理 Godot 控件、地图选择和场景绘制，每固定 0.05 秒推进逻辑。SceneCanvas 位于裁切容器中，镜头独立于角色 AI：赶路跟随排头，战斗锁定房间中心和完整尺寸。默认显示连续室外或地牢，只手动打开进度网格 UI。WorldNavigation 使用统一坐标和共享障碍定义生成细网格 A* 路径；村庄交易位置在同一世界坐标平面内推进，不另换一张地图。
@@ -9,6 +11,8 @@
 用 Godot 4.7 .NET 打开 `Idle-CRPG/project.godot` 并运行。命令行 `dotnet build Idle-CRPG/Idle-CRPG.csproj`；核心检查 `dotnet run --project tests/IdleCrpg.Checks.csproj`。Godot 可通过 `--headless --path Idle-CRPG -- --smoke-test` 自动推进并退出。
 
 配置错误直接报错，不静默使用默认数值。模型不读 UI，不在绘制期间发奖励，不把房间渲染状态作为战斗状态。
+
+Git 工作约定（2026-10-18 用户确认）：代理完成改动及自检后汇报结果，不主动提交或推送，由用户自行操作。没有后续明确授权时，不执行 commit、push 或 merge。
 
 GmPanel 参考 Idle-Sword 的双区菜单布局，上区当局指令、下区编辑器入口。GmCommands 作为 GameSession 的命令扩展，管理临时无敌/怪物倍率/房间数量参数及资源发放；正常战斗与 GM 共用唯一伤害及经验实现。GmConfig 从 gm/gm.csv 校验发放量、倍率档位和数量步长。临时参数不进入快照，到账资源和已生成房间仍走正常保存，详见 design/gm.md。
 

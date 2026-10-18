@@ -23,7 +23,7 @@
 | hero/heroes.csv | id,name,hp,attack,defense,speed,range,cooldown | 职业与基础属性；HP、攻击、移速、射程、攻击间隔为正，防御非负 |
 | monster/monsters.csv | id,name,hp,attack,defense,speed,range,cooldown | 怪物基础属性，约束同 hero |
 | monster/spawn_rule.csv | count_min,count_max,level | 独立数量上下限与基础等级，初始 1、5、1；数量上限含 BOSS |
-| monster/spawn_rule.csv | hp_per_level,attack_per_level,defense_per_level | 每级生命/攻击比例增量、防御数值增量；非负 |
+| hero/herolevel.csv、monster/monsterlevel.csv | 英雄累计攻击/HP加值、怪物攻击/HP倍率 | 见 [战斗配置字段](combat_config.md)；替代旧spawn_rule属性成长列，护甲不随等级成长 |
 | monster/spawn_rule.csv | boss_hp,boss_attack,xp_base,boss_reward | BOSS 属性倍率≥1，基础经验正整数，BOSS 经验/物品价值倍率正整数 |
 | monster/spawn_rule.csv | drop_chance_multiplier,value_per_level | 基础掉率倍率、每级金币/物品售价增长，非负 |
 | monster/monster_drop.csv | monster_id,item_id,chance,quantity_min,quantity_max | 怪物引用、物品引用、概率 0–1、正整数数量范围；每行独立掷骰 |
@@ -52,8 +52,8 @@
 
 实际数量 = 随机整数 [count_min + MinBonus, count_max + MaxBonus]。实际怪物等级 = 地牢等级区间内随机整数 + level − 1 + LevelBonus。科技增量独立、非负，合并后数量下限不得超过上限，总数不得超过 1000；当前没有科技加点 UI。楼层和英雄等级不参与刷怪。
 
-生命 = 基础生命 × [1 + hp_per_level × (等级−1)] × BOSS生命倍率；攻击同理。防御 = 基础防御 + defense_per_level × (等级−1)。经验 = xp_base × 等级 × BOSS奖励倍率。
+生命 = 基础生命 × monsterlevel对应等级HP倍率 × BOSS生命倍率；攻击同理。护甲 = 模板基础防御，不随等级增加。经验 = xp_base × 等级 × BOSS奖励倍率。等级表末行即最高等级，超范围生成拒绝。
 
 实际掉率 = min(1, chance × drop_chance_multiplier × 科技掉率倍率)。价值倍率 = [1 + value_per_level × (等级−1)] × 科技价值倍率 × BOSS奖励倍率。金币数量及杂物单价乘价值倍率向上取整；杂物数量不额外乘等级。怪物的经验、掉率和价值在生成时锁定，物品单价在拾取时锁定。售卖只结算锁定价格 × 数量。
 
-公式唯一实现位于 MonsterSpawning 和 GameSession。数值均为原型配置，不代表最终平衡。
+生成和奖励成长唯一实现位于 MonsterSpawning 和 GameSession；伤害公式唯一实现为DamagePipeline，扣血及击杀奖励应用入口为GameSession.SettleDamage。属性注册、战斗事件与技能八表见 [战斗配置字段字典](combat_config.md)。数值均为原型配置，不代表最终平衡。

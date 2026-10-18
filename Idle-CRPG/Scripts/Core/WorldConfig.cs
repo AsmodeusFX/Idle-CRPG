@@ -39,7 +39,7 @@ public sealed partial class Config
         WorldWidth=Integer(w,"width"); WorldHeight=Integer(w,"height"); StartRegionId=Integer(w,"start_region_id");
         TravelSpeed=Number(w,"travel_speed"); VillageSpeed=Number(w,"village_speed"); TradeSeconds=Number(w,"trade_seconds"); TradeRange=Number(w,"trade_range");
         var s=One("monster/spawn_rule.csv");
-        Spawn=new SpawnRule(Integer(s,"count_min"),Integer(s,"count_max"),Integer(s,"level"),Number(s,"hp_per_level"),Number(s,"attack_per_level"),Number(s,"defense_per_level"),Number(s,"boss_hp"),Number(s,"boss_attack"),Integer(s,"xp_base"),Integer(s,"boss_reward"),Number(s,"drop_chance_multiplier"),Number(s,"value_per_level"));
+        Spawn=new SpawnRule(Integer(s,"count_min"),Integer(s,"count_max"),Integer(s,"level"),Number(s,"boss_hp"),Number(s,"boss_attack"),Integer(s,"xp_base"),Integer(s,"boss_reward"),Number(s,"drop_chance_multiplier"),Number(s,"value_per_level"));
         Regions=Table("world/region.csv").Select(r=>new RegionSpec(Integer(r,"id"),Integer(r,"x"),Integer(r,"y"),r["name"],r["terrain"])).ToList();
         Dungeons=Table("dungeon/dungeon.csv").Select(r=>new DungeonSpec(r["id"],r["name"],Integer(r,"region_id"),r["kind"],Integer(r,"level_min"),Integer(r,"level_max"),Number(r,"x"),Number(r,"y"))).ToList();
         Villages=Table("village/village.csv").Select(r=>new VillageSpec(r["id"],r["name"],Integer(r,"region_id"),Number(r,"x"),Number(r,"y"),r["npc_id"])).ToList();

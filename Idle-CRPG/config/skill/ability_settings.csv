@@ -1,0 +1,16 @@
+id,value
+pixels_per_unit,100
+skill_level_bonus,0.15
+self_buff_heal_fraction,0.05
+buff_cooldown_per_level,0.02
+buff_cooldown_floor_ratio,1.25
+mirror_offset,-110
+mirror_delay,0.18
+fallback_radius,80
+max_reacquire,2
+max_flights,256
+cooldown_reduction_cap,1
+default_projectile_speed,15
+mirror_level_bonus,0.01
+counter_lifetime,0.5
+execute_multiplier,2
