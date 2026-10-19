@@ -129,8 +129,7 @@ public partial class Main : Node2D
         TickClient(delta);
         if(session!=null && !paused && !settingsRoot.Visible && !resetConfirmation.Visible && !gmRoot.Visible && !_editingStars)
         {
-            accumulator+=Math.Min(delta,0.25)*speed;
-            while(accumulator>=0.05) { motion.BeforeTick(session);session.Tick(0.05f); accumulator-=0.05; }
+            AdvanceSimulation(delta);
             motionAlpha=(float)(accumulator/.05);
             hudElapsed+=delta;
             if(hudElapsed>=.1){hudElapsed=0;Refresh();}
@@ -142,6 +141,12 @@ public partial class Main : Node2D
         if(performanceRun){processTimes.Add(Milliseconds(profileStart));frameTimes.Add(delta*1000);}
         if(capture && ++smokeFrames==10) Capture();
         if(smoke && ++smokeFrames>=120 && !quitRequested && !displaySmokeActive) { GD.Print("SMOKE_OK: "+session?.Status); QuitSafely(); }
+    }
+    /// <summary>城镇、室外、地牢和传送统一按倍速消费固定逻辑步；表现仍按帧插值。</summary>
+    private void AdvanceSimulation(double delta)
+    {
+        accumulator+=Math.Min(delta,0.25)*speed;
+        while(accumulator>=0.05){motion.BeforeTick(session!);session!.Tick(0.05f);accumulator-=0.05;}
     }
 
     private async void Capture()

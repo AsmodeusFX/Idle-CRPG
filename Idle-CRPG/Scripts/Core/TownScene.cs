@@ -79,6 +79,15 @@ public sealed partial class WorldCampaign
     }
     private void TickTown(GameSession game,float dt)
     {
+        // 每步重新核对需求，兼容读档和在补给途中切换 GM；新增 NPC/MP 功能时须扩展此流程。
+        var next=TownPhase;
+        if(game.Gm.SkipSupplies)next=TownVisitPhase.Exit;
+        else
+        {
+            if(next==TownVisitPhase.Heal&&!game.NeedsTownHealing)next=TownVisitPhase.Sell;
+            if(next==TownVisitPhase.Sell&&!game.HasAutoSellItems)next=TownVisitPhase.Exit;
+        }
+        if(next!=TownPhase){TownPhase=next;TradeElapsed=0;villagePaths.Clear();game.MarkChanged();}
         var town=config.Town!;var target=TownPhase==TownVisitPhase.Exit?(HasTownPortal?config.TownWaypoint:town.Exit):town.Npc(TownPhase==TownVisitPhase.Heal?"heal":"sell").Position;
         bool arrived=true;
         foreach(var hero in game.Heroes)
@@ -86,8 +95,14 @@ public sealed partial class WorldCampaign
             if(Vector2.Distance(hero.Position,target)<=town.InteractionRange)continue;
             arrived=false;
             if(!villagePaths.TryGetValue(hero.SpecId,out var path)){path=new(town.FindPath(hero.Position,target));villagePaths[hero.SpecId]=path;}
-            while(path.Count>0&&Vector2.DistanceSquared(path.Peek(),hero.Position)<.0001f)path.Dequeue();
-            GameSession.Move(hero,path.Count>0?path.Peek():target,dt,config.VillageSpeed);
+            // 消耗完整步长的距离预算；倍速由 UI 增加固定步数量，不能在此重复乘倍速。
+            float remaining=dt*config.VillageSpeed;
+            while(path.Count>0&&remaining>0)
+            {
+                var point=path.Peek();float distance=Vector2.Distance(hero.Position,point);
+                if(distance<=remaining){hero.Position=point;path.Dequeue();remaining-=distance;}
+                else {hero.Position+=Vector2.Normalize(point-hero.Position)*remaining;remaining=0;}
+            }
         }
         if(!arrived){TradeElapsed=0;Status="前往 "+(TownPhase==TownVisitPhase.Exit?(HasTownPortal?"固定传送阵":"营地出口"):town.Npc(TownPhase==TownVisitPhase.Heal?"heal":"sell").Name);return;}
         if(TownPhase==TownVisitPhase.Exit)
@@ -105,7 +120,7 @@ public sealed partial class WorldCampaign
         if(TradeElapsed+.00001f<town.ServiceSeconds)return;
         if(TownPhase==TownVisitPhase.Heal)
         {
-            foreach(var h in game.Heroes){h.Hp=h.MaxHp;h.Timer=0;}
+            game.RestoreTownHealth();
             TownPhase=TownVisitPhase.Sell;game.Note(town.Npc("heal").Name+"：全队治疗完成");
         }
         else

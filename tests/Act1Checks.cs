@@ -22,7 +22,26 @@ public static class Act1Checks
         var townSave=game.CaptureProgress();townSave.World!.TownPhase=TownVisitPhase.Heal;
         foreach(var h in townSave.Heroes){h.Hp=h.MaxHp/2;h.Position=town.Entry;}
         var junk=c.Items.First(i=>c.ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="junk");townSave.Inventory.Add(new(junk.Id,5,3));
-        var visit=GameSession.Restore(c,townSave);
+        GameSession RestoreTown(SessionSnapshot snapshot)=>GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=snapshot})).Session!);
+        var visit=RestoreTown(townSave);
+        // 按需服务和 GM 例外均复用正式回城阶段；不允许偷偷恢复或卖掉物品。
+        var healthy=RestoreTown(townSave);
+        foreach(var h in healthy.Heroes)h.Hp=h.MaxHp;
+        healthy.Tick(.05f);
+        Check(healthy.World!.TownPhase==TownVisitPhase.Sell&&healthy.Inventory.Count>0,"满血携带杂物未跳过治疗");
+        var empty=game.CaptureProgress();empty.World!.TownPhase=TownVisitPhase.Heal;
+        var noServices=RestoreTown(empty);noServices.Tick(.05f);
+        Check(noServices.World!.TownPhase==TownVisitPhase.Exit,"满血空背包未跳过两项服务");
+        var injured=RestoreTown(empty);injured.Heroes[0].Hp/=2;injured.Tick(.05f);
+        Check(injured.World!.TownPhase==TownVisitPhase.Heal,"受伤空背包错误跳过治疗");
+        for(int i=0;i<5000&&injured.World.TownPhase==TownVisitPhase.Heal;i++)injured.Tick(.05f);
+        injured.Tick(.05f);Check(injured.World.TownPhase==TownVisitPhase.Exit,"治疗后空背包未跳过售卖");
+        var bypass=RestoreTown(townSave);bypass.Tick(.05f);
+        bypass.SetGmBattle(new(SkipSupplies:true));bypass.Tick(.05f);
+        Check(bypass.World!.TownPhase==TownVisitPhase.Exit&&bypass.Heroes[0].Hp==bypass.Heroes[0].MaxHp/2&&bypass.Inventory.Values.Sum()==3&&bypass.Gold==0,"跳过补给没有中止寻路或伪造了补给");
+        var reloaded=GameSession.Restore(c,bypass.CaptureProgress());Check(!reloaded.Gm.SkipSupplies,"跳过补给开关被存档");
+        for(int i=0;i<5000&&bypass.World.Stage==CampaignStage.Village;i++)bypass.Tick(.05f);
+        Check(bypass.World.Stage==CampaignStage.TravelDungeon&&bypass.Inventory.Values.Sum()==3&&bypass.Gold==0,"跳过补给未继续出发或售卖了物品");
         for(int i=0;i<5000&&visit.World!.TownPhase==TownVisitPhase.Heal;i++)
         {visit.Tick(.05f);Check(visit.Heroes.All(h=>town.Walkable(h.Position)),"营地移动穿过建筑或围栏");}
         Check(visit.World!.TownPhase==TownVisitPhase.Sell&&visit.Heroes.All(h=>h.Hp==h.MaxHp&&Vector2.Distance(h.Position,town.Npc("heal").Position)<=town.InteractionRange)&&visit.Inventory.Values.Sum()==3&&visit.Gold==0,"未先走近治疗或治疗时提前售卖");

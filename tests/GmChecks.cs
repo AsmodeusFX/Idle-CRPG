@@ -72,9 +72,8 @@ public static class GmChecks
         for(int i=0;i<60000&&!normals.All(id=>progression.World!.Progress.Cleared.Contains(id));i++)progression.Tick(.05f);
         Check(normals.All(id=>progression.World!.Progress.Cleared.Contains(id))&&!progression.World!.Progress.Cleared.Contains("A01-C01"),"instant mode bypassed manual castle gate");
         Check(progression.World!.Progress.CastleUnlocked(production,"A01-C01")&&progression.RequestCastleChallenge("A01-C01"),"castle not unlocked/requestable after normal clears");
-        int tradesBefore=progression.World.Trades;
         for(int i=0;i<60000&&!progression.World.Progress.Cleared.Contains("A01-C01");i++)progression.Tick(.05f);
-        Check(progression.World.Progress.Cleared.Contains("A01-C01")&&progression.World.Progress.AreaPartUnlocked(production,"ap2")&&progression.World.Trades>tradesBefore,"authorized castle clear did not unlock region or skipped trade");
+        Check(progression.World.Progress.Cleared.Contains("A01-C01")&&progression.World.Progress.AreaPartUnlocked(production,"ap2")&&progression.World.DungeonVisits>1,"authorized castle clear did not unlock region or resume departure after optional supplies");
         var chapter=GameSession.CreateWorld(production,29,new[]{"warrior","ranger","mage"});
         chapter.CompleteGmChapter();Check(chapter.World!.Progress.Cleared.Count==production.Dungeons.Count&&chapter.World.Stage==CampaignStage.Village&&chapter.Floors.Count==0&&chapter.Gold==0&&chapter.Experience==0&&chapter.Kills==0,"GM chapter clear did not clear all content or forged rewards");
         chapter=GameSession.Restore(production,SaveStore.Decode(production,SaveStore.Encode(new(){Session=chapter.CaptureProgress()})).Session!);

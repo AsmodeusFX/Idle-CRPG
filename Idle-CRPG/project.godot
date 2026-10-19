@@ -20,10 +20,8 @@ config/icon="res://icon.svg"
 window/size/viewport_width=1440
 window/size/viewport_height=900
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 window/size/min_width=800
 window/size/min_height=500
-window/subwindows/embed_subwindows=true
 
 [dotnet]
 

@@ -4,7 +4,7 @@ using System.Linq;
 namespace IdleCrpg.Core;
 
 /// <summary>本次运行的 GM 战斗参数；不属于成长、科技或存档，重新创建/读取会话后恢复默认。</summary>
-public record GmBattleSettings(bool Invincible=false,float MonsterHp=1,float MonsterAttack=1,int RoomCountBonus=0,bool InstantDungeonClear=false);
+public record GmBattleSettings(bool Invincible=false,float MonsterHp=1,float MonsterAttack=1,int RoomCountBonus=0,bool InstantDungeonClear=false,bool SkipSupplies=false);
 
 public sealed partial class GameSession
 {

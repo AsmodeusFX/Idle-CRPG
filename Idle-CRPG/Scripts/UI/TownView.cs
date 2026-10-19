@@ -92,6 +92,6 @@ public partial class Main
         }
         Text("唯一出入口",P(right,town.Exit.Y)+new Vector2(-12,29),11,"e7c978");
         Text(town.Name,new Vector2(48,165),20,"f4e1b9");Text(world.Status,new Vector2(48,190),14,"e0e8e7");
-        Text("固定城镇 · "+town.Npc("heal").Name+"治疗 → "+town.Npc("sell").Name+"售卖 → 出发",new Vector2(48,218),12,"a6b5a3");
+        Text(session.Gm.SkipSupplies?"跳过补给 · 直接前往出发点":"按需补给 · "+town.Npc("heal").Name+"治疗 → "+town.Npc("sell").Name+"售卖 → 出发",new Vector2(48,218),12,"a6b5a3");
     }
 }

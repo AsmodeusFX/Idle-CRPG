@@ -400,6 +400,17 @@ public sealed partial class GameSession
         }
         Gold=checked(Gold+total);return total;
     }
+    /// <summary>只检查实际自动售卖的背包物品，与售卖结算共用配置条件。</summary>
+    internal bool HasAutoSellItems=>inventory.Any(e=>e.Value>0&&Config.ItemTypes.Single(t=>t.Id==Config.Items.Single(i=>i.Id==e.Key.ItemId).TypeId).AutoSell);
+
+    /// <summary>当前仅实现 HP；MP 接入后须同时检查和恢复。负面效果按现有技能目标声明识别。</summary>
+    internal bool NeedsTownHealing=>Heroes.Any(h=>h.Hp<h.MaxHp)||skillState.Buffs.Any(b=>b.Target>=0&&b.Target<Heroes.Count&&b.Remaining>0&&Config.Skills.Buffs[b.Id].Target=="enemy");
+
+    internal void RestoreTownHealth()
+    {
+        skillState.Buffs.RemoveAll(b=>b.Target>=0&&b.Target<Heroes.Count&&Config.Skills.Buffs[b.Id].Target=="enemy");
+        foreach(var h in Heroes){h.Hp=h.MaxHp;h.Timer=0;}
+    }
     private void GainExperience(int amount)
     {
         MarkChanged();
