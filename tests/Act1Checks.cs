@@ -17,7 +17,7 @@ public static class Act1Checks
         Check(game.World!.CurrentRegion==36,"营地出生");
         Check(!game.World.TownReturnPortalVisible&&c.TownPortal!=c.TownWaypoint,"首次进城出现回城门或两处传送位置重合");
         // 固定场景共用局部导航/绘制配置；服务阶段必须保存，售卖后读档不重复到账。
-        Check(c.ChapterMaps.All(m=>m.Town?.Npcs.Count==6),"后续章节缺少固定主城及六职能NPC");
+        Check(c.ChapterMaps.Select(m=>m.Town?.Npcs.Count).SequenceEqual(new int?[]{6,7,7,4,5}),"各章固定主城NPC数量与合并职能不符");
         var town=c.Town!;Check(!town.Walkable(new(1,10))&&!town.Walkable(new(23,5))&&town.Walkable(town.Exit),"围栏存在非出口通路");
         var townSave=game.CaptureProgress();townSave.World!.TownPhase=TownVisitPhase.Heal;
         foreach(var h in townSave.Heroes){h.Hp=h.MaxHp/2;h.Position=town.Entry;}
@@ -132,7 +132,12 @@ public static class Act1Checks
         }
         Check(run.LatestMapIndex==1&&run.ChapterIndex==1&&run.MapProgress(0,0).Cleared.Count==40&&andarielSpawns==1,"主线真实通关或唯一安达利尔/支线非阻断失败");
         Check(run.RequestBranchChallenge(0,0,"A03-C01"),"旧章支线不能授权");run=Trade(run);Check(run.ActiveBranch!=null&&run.ChapterIndex==0&&run.LatestMapIndex==1,"支线未传送到原章");
-        run=Copy(run);run.SetGmBattle(new(Invincible:true));
+        var oldBranch=run.CaptureProgress();oldBranch.SuspendedWorld!.TownLayoutVersion=0;
+        oldBranch.SuspendedWorld.VillagePaths[run.Heroes[0].SpecId]=new(){new(23,10),new(18,5)};
+        var branchPositions=run.Heroes.Select(h=>h.Position).ToArray();
+        run=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=oldBranch})).Session!);
+        Check(run.CaptureProgress().SuspendedWorld!.TownLayoutVersion==1&&run.CaptureProgress().SuspendedWorld!.VillagePaths.Count==0&&run.Heroes.Select(h=>h.Position).SequenceEqual(branchPositions),"暂挂主线布局迁移丢失当前支线位置");
+        run.SetGmBattle(new(Invincible:true));
         for(int i=0;i<200000&&run.ActiveBranch!=null;i++)run.Tick(.05f);
         Check(run.ActiveBranch==null&&run.ChapterIndex==1&&run.LatestMapIndex==1&&run.MapProgress(0,0).Cleared.Contains("A03-C01"),"支线未真实完成并返回最新章");
         var recovered=Copy(run);Check(recovered.MapProgress(0,0).Cleared.Count==41,"跨章支线进度读档丢失");

@@ -267,3 +267,4 @@ ChapterChecks.Run(root);
 TerrainGateChecks.Run(root);
 Act1Checks.Run(root);
 CampaignPackageChecks.Run(root);
+TownLayoutChecks.Run(root);

@@ -42,6 +42,7 @@ public record PartyEntry(Vector2 Position,float Hp);
 public sealed class WorldSnapshot
 {
     public int TownVersion;
+    public int TownLayoutVersion;
     public TownVisitPhase TownPhase;
     public PortalPhase PortalPhase;
     public bool PortalReturning;
@@ -130,6 +131,7 @@ public sealed partial class GameSession
         if(config.MapVersion>1&&s.World!=null&&s.World.MapVersion!=config.MapVersion)throw new InvalidDataException("第一章地图结构已更换，旧地图编号不能映射到新POI；需要重置不兼容存档");
         MigrateWorldLayout(config,s);
         MigrateTerrainRules(config,s);
+        bool townMigrated=MigrateTownLayout(config,s);
         if(s.RoomCheckpoint)
         {
             foreach(var floor in s.Floors)foreach(var r in floor.Rooms)
@@ -165,6 +167,7 @@ public sealed partial class GameSession
         game.ValidateStarTotals(game.Stars.Totals());game.ApplyStarTotals(game.Stars.Totals());
         foreach(var i in s.Inventory)game.inventory.Add((i.ItemId,i.Price),i.Count);
         game.World=s.World==null?null:WorldCampaign.Restore(config,s.World,s.DifficultyIndex);
+        if(townMigrated)game.Note("主城布局更新：保留成长、背包、通关和补给阶段，移动到安全落点");
         if(config.Town!=null&&game.World?.Stage==CampaignStage.Village)
         {
             if(s.World!.TownVersion==0){game.World.SpawnTown(game,TownVisitPhase.Heal);game.Note("营地场景更新：保留进度，重新完成治疗与售卖");}
@@ -250,7 +253,7 @@ public sealed partial class GameSession
 
 public sealed partial class WorldCampaign
 {
-    internal WorldSnapshot Capture() => new() {WaitingApproval=WaitingApproval,WaitApprovalTicks=WaitApprovalTicks,PortalOrigin=PortalOrigin,ReturnPortalVisible=Progress.ReturnPortalVisible,PortalPhase=PortalPhase,PortalReturning=PortalReturning,PortalElapsed=PortalElapsed,PortalWaypoint=PortalWaypoint,TownVersion=1,TownPhase=TownPhase,MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
+    internal WorldSnapshot Capture() => new() {WaitingApproval=WaitingApproval,WaitApprovalTicks=WaitApprovalTicks,PortalOrigin=PortalOrigin,ReturnPortalVisible=Progress.ReturnPortalVisible,PortalPhase=PortalPhase,PortalReturning=PortalReturning,PortalElapsed=PortalElapsed,PortalWaypoint=PortalWaypoint,TownVersion=1,TownLayoutVersion=config.Town?.LayoutVersion??0,TownPhase=TownPhase,MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
     internal static WorldCampaign Restore(Config c,WorldSnapshot s,int difficulty=0)
     {
         var restoredProgress=new WorldProgress {ReturnPortalVisible=s.ReturnPortalVisible};restoredProgress.Explored.UnionWith(s.Explored);restoredProgress.Cleared.UnionWith(s.Cleared);
@@ -275,6 +278,7 @@ public sealed partial class WorldCampaign
             if(!s.PortalReturning){var p=new WorldProgress();p.Cleared.UnionWith(s.Cleared);if(!p.WaypointUnlocked(c,c.Waypoints.Single(w=>w.Id==s.PortalWaypoint)))throw new InvalidDataException("传送目标未解锁");}
         }
         if(s.TownVersion is not (0 or 1)||!Enum.IsDefined(s.TownPhase))throw new InvalidDataException("营地流程版本或阶段无效");
+        if(s.TownLayoutVersion<0||s.TownLayoutVersion>(c.Town?.LayoutVersion??0))throw new InvalidDataException("不支持的主城布局版本");
         if(s.Failures==null||s.PausedAtLevel==null||s.RetryCastles==null||s.TeamLevel<1||s.TeamLevel>c.MaxHeroLevel||s.Failures.Any(p=>!c.Dungeons.Any(d=>d.Id==p.Key)||p.Value<1||p.Value>100000)||s.PausedAtLevel.Any(p=>!c.Dungeons.Any(d=>d.Id==p.Key)||p.Value<1||p.Value>c.MaxHeroLevel)||s.RetryCastles.Distinct().Count()!=s.RetryCastles.Count||s.RetryCastles.Any(id=>!c.Dungeons.Any(d=>d.Id==id&&d.Castle))||s.BranchCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.BranchCastle&&d.Castle&&c.Optional(id:d.Id)))throw new InvalidDataException("失败回刷或支线状态引用非法");
         if(s.LayoutVersion is not (0 or 1))throw new InvalidDataException("世界布局存档版本无效");
         if(s.AreaPartAccessVersion is not (0 or 1))throw new InvalidDataException("统治区前置存档版本无效");

@@ -31,3 +31,5 @@ GameSession 在清房后优先执行救援状态机：前往尸体 → 范围内
 金币以 long 计数；杂物按 (item_id, 锁定售价) 堆叠，掉落按每只怪物的首次生成快照结算一次。BOSS 占数量上限中的一个名额。未来科技树通过 SetSpawnModifiers 命令输入独立增量，不追溯修改已经生成的怪物。无离线结算。
 
 SessionSnapshot 的 Capture 保留内部确定性测试现场，CaptureProgress 则复制正式精简检查点：放弃未清房战斗现场，保留已到账成长和待拾取奖励，读取时重开当前房间。击杀经验即时到账、走近拾取后实物入库。SaveStore 负责原子替换、备份和重置；ClientSettings 用单后台任务编码与写盘，仅在关键持久状态变化时安排，退出/重置等待任务完成。MotionPresentation 将 20 Hz 逻辑坐标逐帧插值，镜头临界阻尼过渡，HUD 每 0.1 秒刷新；表现不改变命中和交互判定。村庄缓存每个角色的路径，避免每逻辑步重新寻路导致回头。SettingsStore 和 Audio 只管理偏好与表现。细节见 persistence_settings.md。
+
+第二至五章主城（2026-10-19）：TownScene读取town_scene/town_zone/town_npc/town_prop CSV，配置多职能服务路由及地板矩形并集。ChapterTownView只读同一几何绘制沙漠港城、雨林栈桥、圣殿石台及雪城；第一章沿用TownView营地绘制。TownLayoutMigration在存档校验前安全迁移旧本地现场，WorldSnapshot.TownLayoutVersion与世界地图版本分离；当前与暂挂世界按各自章节处理。TownLayoutChecks覆盖补给、传送、读档和备份；第五章任务驱动NPC变化明确延期。详见 design/towns_portals.md 与 reviews/2026-10-19_chapter_towns.md。

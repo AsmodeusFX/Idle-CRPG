@@ -12,6 +12,9 @@ public partial class Main
         var town=config.Town!;var world=session!.World!;
         Vector2 P(float x,float y)=>Project(new V(x,y));
         Vector2[] Quad(float x,float y,float w,float h)=>new[]{P(x,y),P(x+w,y),P(x+w,y+h),P(x,y+h)};
+        if(town.Theme!="camp")DrawChapterTown(town);
+        else
+        {
         for(int y=-8;y<(int)town.Height+8;y++)for(int x=-8;x<(int)town.Width+8;x++)
         {
             uint noise=unchecked((uint)(x*73856093^y*19349663));bool inside=x>=2&&x<town.Width-6&&y>=2&&y<town.Height-4;
@@ -74,12 +77,13 @@ public partial class Main
                 if(prop.Kind=="stash")Text("储物箱 · 待开放",center-new Vector2(30,22),10,"d6c493");
             }
         }
+        }
         foreach(var npc in town.Npcs.OrderBy(n=>n.Position.X+n.Position.Y))
         {
-            bool active=world.TownPhase==TownVisitPhase.Heal&&npc.Role=="heal"||world.TownPhase==TownVisitPhase.Sell&&npc.Role=="sell";
-            var p=Project(npc.Position);DrawFighter(p,new Color(npc.Role=="heal"?"b69fca":npc.Role=="sell"?"d4a363":"9eac83"),-1,false,1,npc.Name);
+            bool active=world.TownPhase==TownVisitPhase.Heal&&npc.HasRole("heal")||world.TownPhase==TownVisitPhase.Sell&&npc.HasRole("sell");
+            var p=Project(npc.Position);DrawFighter(p,new Color(npc.HasRole("heal")?"b69fca":npc.HasRole("sell")?"d4a363":"9eac83"),-1,false,1,npc.Name);
             if(active)DrawArc(p,new Vector2(12,0).Length(),0,MathF.Tau,24,new Color("e7c978"),2,true);
-            string role=npc.Role switch {"heal"=>"治疗","sell"=>"售卖杂物","mercenary"=>"雇佣兵 · 待开放","gamble"=>"赌博 · 待开放","travel"=>"下一幕 · 待开放",_=>"鉴定 · 待开放"};
+            string role=string.Join(" / ",npc.Role.Split(';').Select(r=>r switch {"heal"=>"治疗","sell"=>"售卖杂物","mercenary"=>"队伍管理·待开放","gamble"=>"赌博·待开放","travel"=>"航行·待开放","magic"=>"法系商店·待开放","dialogue"=>"剧情·待开放",_=>"鉴定·待开放"}));
             Text(role,p+new Vector2(-20,14),10,active?"efd498":"a6b5a3");
         }
         if(world.TownReturnPortalVisible){DrawPortalRing(Project(config.TownPortal),.85f);Text("回城传送门",Project(config.TownPortal)+new Vector2(-25,20),11,"a8d9e4");}
@@ -90,7 +94,7 @@ public partial class Main
         {
             var hero=session.Heroes[i];DrawFighter(Project(VisualPosition(hero)),heroColors[i],i,false,hero.Hp/hero.MaxHp,i==0?"小队":"");
         }
-        Text("唯一出入口",P(right,town.Exit.Y)+new Vector2(-12,29),11,"e7c978");
+        Text(town.ExitName,Project(town.Theme=="camp"?new V(town.Width-6,town.Exit.Y):town.Exit)+new Vector2(-30,29),11,"e7c978");
         Text(town.Name,new Vector2(48,165),20,"f4e1b9");Text(world.Status,new Vector2(48,190),14,"e0e8e7");
         Text(session.Gm.SkipSupplies?"跳过补给 · 直接前往出发点":"按需补给 · "+town.Npc("heal").Name+"治疗 → "+town.Npc("sell").Name+"售卖 → 出发",new Vector2(48,218),12,"a6b5a3");
     }

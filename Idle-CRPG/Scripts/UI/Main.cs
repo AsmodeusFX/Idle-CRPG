@@ -47,6 +47,8 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-village"))captureView="village";
         if(OS.GetCmdlineUserArgs().Contains("--capture-town-return"))captureView="town-return";
         if(OS.GetCmdlineUserArgs().Contains("--capture-town-out"))captureView="town-out";
+        string? townCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-town-act"));
+        if(townCapture!=null)captureView="village";
         BuildStarPanels();BuildSettings();
         ResumeProgress();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))GD.Print($"STARTUP_MS config={configMs:F1}; ready={startup.Elapsed.TotalMilliseconds:F1}");
@@ -97,6 +99,20 @@ public partial class Main : Node2D
                     if(session.World!.Stage==CampaignStage.Dungeon&&session.Status=="楼梯集合")break;
                 }
                 captureView="stairs";viewMode=2;paused=true;
+            }
+            if(townCapture!=null)
+            {
+                int act=int.Parse(townCapture.Substring("--capture-town-act".Length));
+                if(act<2||act>5)throw new ArgumentOutOfRangeException(nameof(act));
+                while(session!.ChapterIndex<act-1)
+                {
+                    int chapter=session.ChapterIndex;session.CompleteGmChapter();
+                    for(int i=0;i<5000&&session.ChapterIndex==chapter;i++)session.Tick(.05f);
+                    if(session.ChapterIndex==chapter)throw new Exception("城镇预览跨章停滞");
+                }
+                session.SetGmBattle(new(InstantDungeonClear:true));
+                for(int i=0;i<20000&&!(session.World!.TownReturnPortalVisible&&session.World.Stage==CampaignStage.Village&&session.World.PortalPhase==PortalPhase.None);i++)session.Tick(.05f);
+                config=session.Config;OpenCurrentChapter();captureView="town-act"+act;viewMode=0;paused=true;cameraReady=false;
             }
             Refresh();ResetSoundBaseline();
         }

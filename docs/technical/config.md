@@ -67,3 +67,15 @@
 实际掉率 = min(1, chance × drop_chance_multiplier × 科技掉率倍率)。价值倍率 = [1 + value_per_level × (等级−1)] × 科技价值倍率 × BOSS奖励倍率。金币数量及杂物单价乘价值倍率向上取整；杂物数量不额外乘等级。怪物的经验、掉率和价值在生成时锁定，物品单价在拾取时锁定。售卖只结算锁定价格 × 数量。
 
 生成和奖励成长唯一实现位于 MonsterSpawning 和 GameSession；伤害公式唯一实现为DamagePipeline，扣血及击杀奖励应用入口为GameSession.SettleDamage。属性注册、战斗事件与技能八表见 [战斗配置字段字典](combat_config.md)。数值均为原型配置，不代表最终平衡。
+
+## 独立主城配置（2026-10-19）
+
+| CSV | 字段与校验 |
+|---|---|
+| village/town_scene.csv | id,chapter_id,name,width,height,entry_x,entry_y,exit_x,exit_y,interaction_range,service_seconds，以及新增 theme,layout_version,return_x,return_y,waypoint_x,waypoint_y,exit_name；每章唯一场景，尺寸16–64，交互范围(0,1]，服务时间>0；主题camp/sand/docks/sanctum/snow；布局版本非负整数。入口与出口不再限定东侧。每章独立回城和出发阵坐标，三人落点均检查可走及可达 |
+| village/town_zone.csv | scene_id,id,kind,x,y,width,height；新增可走地板表，矩形并集决定区域；kind=stone/wood/bridge/stairs/sand/snow；尺寸≥1，不越场景边界，同场景ID唯一；camp使用原有边界，其余主题必须有地板 |
+| village/town_npc.csv | scene_id,id,name,role,x,y,description；role现在支持分号多职能，允许heal/mercenary/sell/gamble/travel/identify/magic/dialogue；单个角色内不得重复；heal/mercenary/sell/gamble/identify均须恰好一个提供者，travel可0或1（无实体时由出口承担），magic/dialogue可额外配置。每场景NPC ID唯一，名字非空，所有服务点可达；不强制六人 |
+| village/town_prop.csv | scene_id,id,kind,x,y,width,height,blocks；建筑矩形在场景范围内、正尺寸、ID唯一；blocks占地增加0.2单位导航余量，与建筑绘制共用坐标。新增宫殿/房屋/码头/船只/石柱/圣火等程序绘制原型 |
+| village/portal_rule.csv | phase_seconds,use_range继续定义共用表演时间及使用距离。历史town_x/town_y/waypoint_x/waypoint_y保留兼容列；正式城镇坐标以town_scene各章字段为准 |
+
+上述 CSV importer 均为 keep，正式运行不读 TownDesign 的 JSON 或 PNG。TownLayoutVersion 只保存布局版本，几何和职能仍来自CSV；迁移与边界见 design/towns_portals.md。
