@@ -37,7 +37,7 @@ public sealed partial class Config
             Need(reached.Count==cells.Count,"统治区必须连续，不得存在飞地");
             Need(Dungeons.Any(d=>!d.Castle&&Rulers[d.RegionId]==part.CastleId),"统治区必须配置普通地牢");
         }
-        Need(AreaParts.Count(p=>p.InitiallyUnlocked)==1&&(IsTown(StartRegionId)||AreaPart(StartRegionId).InitiallyUnlocked),"仅出生统治区默认开放");
+        Need(AreaParts.Count(p=>p.InitiallyUnlocked&&!Optional(p.CastleId))==1&&(IsTown(StartRegionId)||AreaPart(StartRegionId).InitiallyUnlocked),"仅出生主线统治区默认开放；无前置可选区域允许同时开放");
         Need(AreaPartPrerequisites.Distinct().Count()==AreaPartPrerequisites.Count,"重复前置关系");
         foreach(var edge in AreaPartPrerequisites)
         {

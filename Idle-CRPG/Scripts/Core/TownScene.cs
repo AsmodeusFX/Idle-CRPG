@@ -16,13 +16,15 @@ public sealed class TownScene
     public Vector2 Entry,Exit;
     public List<TownNpc> Npcs=new();
     public List<TownProp> Props=new();
+    private readonly Dictionary<Vector2,IReadOnlyList<Vector2>> entrancePaths=new();
     public TownNpc Npc(string role)=>Npcs.Single(n=>n.Role==role);
     public bool Walkable(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&
         ((p.X>=2&&p.X<=Width-6&&p.Y>=2&&p.Y<=Height-4)||(p.X>=Width-6&&p.X<=Exit.X&&Math.Abs(p.Y-Exit.Y)<=1))&&
         !Props.Any(o=>o.Blocks&&p.X>=o.X-.2f&&p.X<=o.X+o.Width+.2f&&p.Y>=o.Y-.2f&&p.Y<=o.Y+o.Height+.2f);
     /// <summary>城镇半格广度优先寻路；绘制与移动共用物件矩形，禁止穿帐篷、围栏或从非入口离场。</summary>
-    public List<Vector2> FindPath(Vector2 from,Vector2 to)
+    public IReadOnlyList<Vector2> FindPath(Vector2 from,Vector2 to)
     {
+        if(from==Entry&&entrancePaths.TryGetValue(to,out var cached))return cached;
         if(!Walkable(from)||!Walkable(to))throw new InvalidOperationException("城镇路径端点不可走");
         (int X,int Y) Cell(Vector2 p)=>((int)MathF.Round(p.X*2),(int)MathF.Round(p.Y*2));
         Vector2 Point((int X,int Y) p)=>new(p.X*.5f,p.Y*.5f);
@@ -34,7 +36,7 @@ public sealed class TownScene
                 if(!parents.ContainsKey(n)&&Walkable(Point(n))){parents[n]=p;queue.Enqueue(n);}
         }
         if(!parents.ContainsKey(end))throw new InvalidOperationException("城镇服务不可达");
-        var result=new List<Vector2>{to};var current=end;while(current!=start){result.Add(Point(current));current=parents[current];}result.Add(from);result.Reverse();return result;
+        var result=new List<Vector2>{to};var current=end;while(current!=start){result.Add(Point(current));current=parents[current];}result.Add(from);result.Reverse();var path=result.AsReadOnly();if(from==Entry)entrancePaths[to]=path;return path;
     }
 }
 public sealed partial class Config

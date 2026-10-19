@@ -1,0 +1,4 @@
+DifficultyId,CombatMin,CombatTarget,CombatMax,EliteEscortMin,EliteEscortTarget,EliteEscortMax,BossEscortExtra,CorridorMin,CorridorTarget,CorridorMax,SpawnLogicStatus
+NORMAL,2,3,4,1,2,3,0,0,0,1,首版建议，未经实测
+NIGHTMARE,3,3,4,2,3,4,1,0,0,1,首版建议，未经实测
+HELL,3,4,5,3,4,5,2,0,0,1,首版建议，未经实测

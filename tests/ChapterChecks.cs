@@ -65,7 +65,7 @@ public static class ChapterChecks
         {
             string target=Path.Combine(qa,Path.GetRelativePath(Path.Combine(root,"Idle-CRPG/config"),file));Directory.CreateDirectory(Path.GetDirectoryName(target)!);File.Copy(file,target,true);
         }
-        string chapterFile=Path.Combine(qa,"world/chapter.csv"),text=File.ReadAllText(chapterFile);
+        string chapterFile=Path.Combine(qa,"legacy/chapter.csv"),text=File.ReadAllText(chapterFile);
         File.WriteAllText(chapterFile,text.Replace("desert,10,8","desert,11,8"));rejected=false;
         try{Config.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}Check(rejected,"章节尺寸不一致未拒绝");
         File.WriteAllText(chapterFile,text.Replace("act2,","act1,"));rejected=false;

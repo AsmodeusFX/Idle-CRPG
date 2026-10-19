@@ -29,7 +29,9 @@ public partial class Main : Node2D
 
     public override void _Ready()
     {
+        var startup=System.Diagnostics.Stopwatch.StartNew();
         config = Config.Load(ProjectSettings.GlobalizePath("res://config"));
+        double configMs=startup.Elapsed.TotalMilliseconds;
         InitializeClient();
         font = ThemeDB.FallbackFont;
         BuildSceneCanvas();
@@ -47,6 +49,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-town-out"))captureView="town-out";
         BuildStarPanels();BuildSettings();
         ResumeProgress();
+        if(OS.GetCmdlineUserArgs().Contains("--performance-test"))GD.Print($"STARTUP_MS config={configMs:F1}; ready={startup.Elapsed.TotalMilliseconds:F1}");
         if(smoke && session==null) Start();
         bool captureSetup=OS.GetCmdlineUserArgs().Contains("--capture-setup");
         if(captureSetup){session=null;captureView="setup";viewMode=0;}
@@ -57,6 +60,7 @@ public partial class Main : Node2D
             int ticks=captureView=="world"?24000:captureView is "travel" or "village" or "town-return" or "town-out"?0:400;
             for(int i=0;i<ticks;i++)session!.Tick(0.05f);
             if(captureView=="village"){for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Village;i++)session.Tick(0.05f);paused=true;}
+            if(captureView=="travel"){for(int i=0;i<50000&&session!.World!.Stage==CampaignStage.Village;i++)session.Tick(.05f);paused=true;}
             if(captureView=="town-return")
             {
                 session!.SetGmBattle(new(InstantDungeonClear:true));

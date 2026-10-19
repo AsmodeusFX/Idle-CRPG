@@ -1,0 +1,6 @@
+﻿GateId,FromRow,FromCol,ToRow,ToCol,TravelKind,UnlockDescription,Notes
+G-T-01,6,1,6,2,INFERNAL_GATE,章节开始,群魔堡垒东门→郊外大草原
+G-01-02,6,3,6,4,STONE_BRIDGE,郊外破魔岗哨已征服,破魔岗哨后的单格石桥，通往绝望平原
+G-02-03,4,3,4,4,CURSED_PASS,衣卒尔·堕落之牢已征服,绝望平原与神罚之城交界
+G-03-04,3,5,3,6,LAVA_BRIDGE,神罚之城·城塞已征服,火焰之河的唯一主线通道；城塞守门
+G-04-05,3,6,4,6,SIDE_LAVA_SPUR,神罚之城·城塞已征服 ＋ 玩家批准地狱熔炉支线,火焰之河下游→地狱熔炉岔路（可选，不阻断终局）

@@ -1,1 +1,10 @@
 id,region_id,required_dungeon_id
+ap2_0,12,A01-C01
+ap3_0,4,A01-C01
+ap4_0,17,A02-C01
+ap4_1,17,A03-C01
+ap5_0,43,A04-C01
+ap6_0,47,A04-C01
+ap7_0,60,A05-C01
+ap7_1,60,A06-C01
+ap9_0,27,A04-C01

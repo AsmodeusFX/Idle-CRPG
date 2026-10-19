@@ -73,7 +73,7 @@ public sealed partial class WorldCampaign
     public WorldProgress Progress { get; } = new();
     public CampaignStage Stage { get; private set; }
     public Vector2 Position { get; private set; }
-    public int CurrentRegion => config.Regions.Single(r=>r.X==(int)Position.X&&r.Y==(int)Position.Y).Id;
+    public int CurrentRegion => config.RegionAt((int)Position.X,(int)Position.Y).Id;
     public ExpeditionTarget Target { get; private set; } = null!;
     public VillageSpec Village { get; private set; }
     public float TradeElapsed { get; private set; }
@@ -107,7 +107,9 @@ public sealed partial class WorldCampaign
     private Vector2 WorldPoint(int region,float x,float y) {var r=config.Regions.Single(r=>r.Id==region);return new Vector2(r.X+x,r.Y+y);}
     private void Plan(bool previousWasFarm)
     {
-        if(pendingCastles.Count==0&&TryRecovery(out var recovery))
+        pendingCastles.RemoveAll(id=>Progress.Cleared.Contains(id));
+        bool headReady=pendingCastles.Count>0&&Progress.CastleUnlocked(config,pendingCastles[0]);
+        if(!headReady&&TryRecovery(out var recovery))
         {
             Target=recovery;Stage=CampaignStage.TravelDungeon;BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));Status="失败回刷 · "+Target.Dungeon.Name;return;
         }
@@ -119,8 +121,8 @@ public sealed partial class WorldCampaign
             Target=new(next??config.Dungeons.Single(d=>d.Id==BranchCastle),false);
             Stage=CampaignStage.TravelDungeon;BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));Status="支线计划 · "+Target.Dungeon.Name;return;
         }
-        pendingCastles.RemoveAll(id=>Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id));
-        if(pendingCastles.Count>0)
+        // 新拓扑可能使旧队首暂时不满足前置；保留批准与顺序，继续合法普通地牢，禁止静默删掉玩家指令。
+        if(headReady)
         {
             Target=new(config.Dungeons.Single(d=>d.Id==pendingCastles[0]),false);
             pendingCastles.RemoveAt(0);

@@ -1,5 +1,7 @@
 # 工程架构
 
+五章导入由tools/import_campaign.py完成，运行仍是CSV。SpatialIndex在校验后构建每章独立格子/ID/Gate索引；TownScene缓存固定入口道路；CampaignMigration迁移第一章v2→v3。FloorReports区分实际房间、战斗/移动Ticks与静态格子预算；见 [五章实现](../design/campaign_five_acts.md)。
+
 第一章扩展：PoiConfiguration负责POI/关口，FloorPlanning负责规划预算和实际统计，BranchCampaign负责手动支线与暂挂主线，FailureRecovery负责失败计数与复刷；均在Core且不依赖Godot。AreaPartUnlocked统一处理any/all，UI只展示与提交命令。字段和存档边界见 [第一章配置](act1_config.md)。
 
 章节扩展：ChapterConfiguration加载3难度/5章节目录及独立地图Config，共享战斗和成长定义；ChapterCampaign保存连续完成历史，在村庄交易结束后检查全部地牢完成并切图。UI的ChapterMapUi将查看地图与实际远征分开，地图选择不修改GameSession目标。存档版本3支持当前地图与历史进度，仍读取旧版。详见 design/world_chapters.md。

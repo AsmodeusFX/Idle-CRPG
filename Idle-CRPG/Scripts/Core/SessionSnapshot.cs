@@ -92,7 +92,7 @@ public sealed partial class GameSession
         var s=Capture();s.Heroes=Heroes.Select(h=>h.Copy()).ToList();
         foreach(var hero in s.Heroes)hero.Hp=Math.Min(hero.Hp,hero.MaxHp);
         s.Floors=Floors.Select(f=>new Floor {
-            Seed=f.Seed,ActualSpawned=f.ActualSpawned,ActualKillFacts=f.ActualKillFacts,ElapsedTicks=f.ElapsedTicks,
+            Seed=f.Seed,ActualSpawned=f.ActualSpawned,ActualKillFacts=f.ActualKillFacts,ElapsedTicks=f.ElapsedTicks,BattleTicks=f.BattleTicks,WalkTicks=f.WalkTicks,
             Passages=f.Passages.Select(p=>new Passage {A=p.A,B=p.B,Revealed=p.Revealed}).ToList(),
             Rooms=f.Rooms.Select(r=>new Room {
                 Id=r.Id,X=r.X,Y=r.Y,Depth=r.Depth,HalfWidth=r.HalfWidth,HalfHeight=r.HalfHeight,
@@ -124,6 +124,7 @@ public sealed partial class GameSession
     {
         if(s.DifficultyIndex<0||s.DifficultyIndex>2||s.ChapterIndex<0||s.ChapterIndex>4)throw new InvalidDataException("难度/章节越界");
         config=config.ChapterMaps[s.ChapterIndex];
+        MigrateCampaignPatch(config,s);
         if(config.MapVersion>1&&s.World!=null&&s.World.MapVersion!=config.MapVersion)throw new InvalidDataException("第一章地图结构已更换，旧地图编号不能映射到新POI；需要重置不兼容存档");
         MigrateWorldLayout(config,s);
         MigrateTerrainRules(config,s);

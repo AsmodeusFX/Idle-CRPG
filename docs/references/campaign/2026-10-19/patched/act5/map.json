@@ -1,0 +1,2707 @@
+{
+  "schemaVersion": "ACT05_V0.1_PROPOSAL_RUNTIME_PATCH_V02",
+  "chapterId": "ACT05",
+  "rows": 11,
+  "columns": 11,
+  "gridRows": [
+    "xxxxxAAxxxx",
+    "xxxxxAAAxxx",
+    "xxxxx44455x",
+    "xxx33444555",
+    "xxx33344556",
+    "xxx22336666",
+    "xxx2223x666",
+    "xx11222x777",
+    "BT111x88777",
+    "BB11x988879",
+    "BBxxx999999"
+  ],
+  "town": {
+    "id": "TOWN_HARROGATH",
+    "name": "哈洛加斯",
+    "tiles": [
+      [
+        9,
+        2
+      ]
+    ],
+    "safe": true
+  },
+  "regions": [
+    {
+      "id": 1,
+      "name": "血腥丘陵",
+      "optional": false,
+      "parents": [],
+      "castleName": "督军山克营寨",
+      "description": "从哈洛加斯出城，连续燃烧坡道、战场断垣与恶魔营寨",
+      "tiles": 7,
+      "dungeonCount": 5,
+      "castlePoiId": "W01-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 2,
+      "name": "冰冻高地",
+      "optional": false,
+      "parents": [
+        1
+      ],
+      "castleName": "冰冻高地·恶魔指挥所",
+      "description": "战壕冰坡与散落军营；邪恶督军艾德瑞奇等经典名字",
+      "tiles": 8,
+      "dungeonCount": 6,
+      "castlePoiId": "W02-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 3,
+      "name": "亚瑞特高原",
+      "optional": false,
+      "parents": [
+        2
+      ],
+      "castleName": "亚瑞特高原·破军壁垒",
+      "description": "起伏高原、恶魔远征阵地和雪山断崖",
+      "tiles": 8,
+      "dungeonCount": 5,
+      "castlePoiId": "W03-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 4,
+      "name": "水晶通道",
+      "optional": false,
+      "parents": [
+        3
+      ],
+      "castleName": "水晶通道·晶核圣所",
+      "description": "冰晶洞穴，分岔可通冰河支线",
+      "tiles": 8,
+      "dungeonCount": 5,
+      "castlePoiId": "W04-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 5,
+      "name": "冰川之路",
+      "optional": false,
+      "parents": [
+        4
+      ],
+      "castleName": "冰川之路·冰冢堡垒",
+      "description": "狭长冰川迷宫与岩壁冰窖",
+      "tiles": 7,
+      "dungeonCount": 5,
+      "castlePoiId": "W05-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 6,
+      "name": "冰冻苔原",
+      "optional": false,
+      "parents": [
+        4
+      ],
+      "castleName": "冰冻苔原·霜卫城寨",
+      "description": "冻土开阔风场与冰原前哨",
+      "tiles": 8,
+      "dungeonCount": 5,
+      "castlePoiId": "W06-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 7,
+      "name": "远古之路",
+      "optional": false,
+      "parents": [
+        5,
+        6
+      ],
+      "castleName": "远古之路·祭坛关隘",
+      "description": "岩壁/冰洞交替，指向山巅狭窄古道",
+      "tiles": 7,
+      "dungeonCount": 5,
+      "castlePoiId": "W07-C01",
+      "unlockMode": "all"
+    },
+    {
+      "id": 8,
+      "name": "亚瑞特山巅",
+      "optional": false,
+      "parents": [
+        7
+      ],
+      "castleName": "亚瑞特山巅·远古试炼",
+      "description": "三位远古守护者为城塞固定终局事件，不能随机刷成普通怪",
+      "tiles": 5,
+      "dungeonCount": 3,
+      "castlePoiId": "W08-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 9,
+      "name": "世界之石要塞",
+      "optional": false,
+      "parents": [
+        8
+      ],
+      "castleName": "世界之石大殿",
+      "description": "三层世界之石要塞、毁灭王座五波仆从、世界之石大殿巴尔",
+      "tiles": 8,
+      "dungeonCount": 6,
+      "castlePoiId": "W09-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 10,
+      "name": "冰河",
+      "optional": true,
+      "parents": [
+        4
+      ],
+      "castleName": "冰河·安雅囚笼",
+      "description": "水晶通道分岔，可选营救安雅；玩家手动批准",
+      "tiles": 5,
+      "dungeonCount": 4,
+      "castlePoiId": "W10-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 11,
+      "name": "尼拉塞克神殿",
+      "optional": true,
+      "parents": [
+        10
+      ],
+      "castleName": "瓦特之厅·尼拉塞克",
+      "description": "需冰河营救线完成才开放哈洛加斯传送，独立第二次支线批准",
+      "tiles": 5,
+      "dungeonCount": 4,
+      "castlePoiId": "W11-C01",
+      "unlockMode": "any"
+    }
+  ],
+  "gates": [
+    {
+      "gateId": "G-T-01",
+      "fromTile": 90,
+      "toTile": 91,
+      "a": [
+        9,
+        2
+      ],
+      "b": [
+        9,
+        3
+      ],
+      "kind": "TOWN_ROAD",
+      "unlockBy": "NONE"
+    },
+    {
+      "gateId": "G-01-02",
+      "fromTile": 81,
+      "toTile": 82,
+      "a": [
+        8,
+        4
+      ],
+      "b": [
+        8,
+        5
+      ],
+      "kind": "MOUNTAIN_PASS",
+      "unlockBy": "W01-C01"
+    },
+    {
+      "gateId": "G-02-03",
+      "fromTile": 60,
+      "toTile": 49,
+      "a": [
+        6,
+        5
+      ],
+      "b": [
+        5,
+        5
+      ],
+      "kind": "ICE_BRIDGE",
+      "unlockBy": "W02-C01"
+    },
+    {
+      "gateId": "G-03-04",
+      "fromTile": 50,
+      "toTile": 51,
+      "a": [
+        5,
+        6
+      ],
+      "b": [
+        5,
+        7
+      ],
+      "kind": "CRYSTAL_CLEFT",
+      "unlockBy": "W03-C01"
+    },
+    {
+      "gateId": "G-04-05",
+      "fromTile": 30,
+      "toTile": 31,
+      "a": [
+        3,
+        8
+      ],
+      "b": [
+        3,
+        9
+      ],
+      "kind": "GLACIAL_PASS",
+      "unlockBy": "W04-C01"
+    },
+    {
+      "gateId": "G-05-06",
+      "fromTile": 54,
+      "toTile": 65,
+      "a": [
+        5,
+        10
+      ],
+      "b": [
+        6,
+        10
+      ],
+      "kind": "WIND_GAP",
+      "unlockBy": "W04-C01"
+    },
+    {
+      "gateId": "G-06-07",
+      "fromTile": 76,
+      "toTile": 87,
+      "a": [
+        7,
+        10
+      ],
+      "b": [
+        8,
+        10
+      ],
+      "kind": "FROST_BRIDGE",
+      "unlockBy": "AND(W05-C01,W06-C01)"
+    },
+    {
+      "gateId": "G-07-08",
+      "fromTile": 97,
+      "toTile": 96,
+      "a": [
+        9,
+        9
+      ],
+      "b": [
+        9,
+        8
+      ],
+      "kind": "ANCIENT_PASS",
+      "unlockBy": "W07-C01"
+    },
+    {
+      "gateId": "G-08-09",
+      "fromTile": 106,
+      "toTile": 117,
+      "a": [
+        10,
+        7
+      ],
+      "b": [
+        11,
+        7
+      ],
+      "kind": "WORLDSTONE_GATE",
+      "unlockBy": "W08-C01"
+    },
+    {
+      "gateId": "G-04-10",
+      "fromTile": 29,
+      "toTile": 18,
+      "a": [
+        3,
+        7
+      ],
+      "b": [
+        2,
+        7
+      ],
+      "kind": "SIDE_FROZEN_RIVER",
+      "unlockBy": "W04-C01"
+    },
+    {
+      "gateId": "G-T-11",
+      "fromTile": 90,
+      "toTile": 89,
+      "a": [
+        9,
+        2
+      ],
+      "b": [
+        9,
+        1
+      ],
+      "kind": "SIDE_ANYA_PORTAL",
+      "unlockBy": "W10-C01"
+    },
+    {
+      "gateId": "G-04-06",
+      "fromTile": 52,
+      "toTile": 63,
+      "a": [
+        5,
+        8
+      ],
+      "b": [
+        6,
+        8
+      ],
+      "kind": "PATCH_ROAD",
+      "unlockBy": "W04-C01"
+    }
+  ],
+  "poi": [
+    {
+      "id": "W01-D01",
+      "name": "血腥丘陵·燃烧坡道",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 10,
+      "col": 3,
+      "floors": 2,
+      "source": "D2_OUTDOOR_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 32,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 33,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 101,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 71,
+        "NIGHTMARE": 94,
+        "HELL": 117
+      }
+    },
+    {
+      "id": "W01-D02",
+      "name": "荒野攻城营",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 9,
+      "col": 3,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 32,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 33,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 102,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 71,
+        "NIGHTMARE": 94,
+        "HELL": 117
+      }
+    },
+    {
+      "id": "W01-D03",
+      "name": "督军战壕",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 8,
+      "col": 3,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 32,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 33,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 103,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 71,
+        "NIGHTMARE": 94,
+        "HELL": 117
+      }
+    },
+    {
+      "id": "W01-D04",
+      "name": "裂骨哨所",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 8,
+      "col": 4,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 32,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 33,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 104,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 117,
+        "NIGHTMARE": 155,
+        "HELL": 193
+      }
+    },
+    {
+      "id": "W01-D05",
+      "name": "恶魔冲锋谷",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 9,
+      "col": 4,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 32,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 33,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 105,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 71,
+        "NIGHTMARE": 94,
+        "HELL": 117
+      }
+    },
+    {
+      "id": "W01-C01",
+      "name": "督军山克营寨",
+      "type": "Castle",
+      "regionId": 1,
+      "row": 9,
+      "col": 5,
+      "floors": 4,
+      "source": "D2_BOSS_ADAPTED",
+      "boss": "督军山克",
+      "notes": "山克驻守原典地表，作为区域Castle终局；宽阔Boss格",
+      "challenge": {
+        "NORMAL": 33,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 106,
+      "fixedBossArena": true,
+      "questFacts": [
+        "ACT05_SHENK_DEFEATED"
+      ],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 284,
+        "NIGHTMARE": 376,
+        "HELL": 468
+      }
+    },
+    {
+      "id": "W02-D01",
+      "name": "冰冻高地·寒霜坡道",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 8,
+      "col": 5,
+      "floors": 2,
+      "source": "D2_OUTDOOR_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 33,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 201,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 86,
+        "NIGHTMARE": 114,
+        "HELL": 142
+      }
+    },
+    {
+      "id": "W02-D02",
+      "name": "冰雪囚营",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 8,
+      "col": 6,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 33,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 202,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 138,
+        "NIGHTMARE": 183,
+        "HELL": 228
+      }
+    },
+    {
+      "id": "W02-D03",
+      "name": "邪魔瞭望台",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 7,
+      "col": 4,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 33,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 203,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 86,
+        "NIGHTMARE": 114,
+        "HELL": 142
+      }
+    },
+    {
+      "id": "W02-D04",
+      "name": "远征补给场",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 7,
+      "col": 5,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 33,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 204,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 86,
+        "NIGHTMARE": 114,
+        "HELL": 142
+      }
+    },
+    {
+      "id": "W02-D05",
+      "name": "战壕地窖",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 7,
+      "col": 6,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 33,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 205,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 138,
+        "NIGHTMARE": 183,
+        "HELL": 228
+      }
+    },
+    {
+      "id": "W02-D06",
+      "name": "亚巴顿（Abaddon）",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 6,
+      "col": 4,
+      "floors": 2,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 33,
+        "NIGHTMARE": 66,
+        "HELL": 93
+      },
+      "recommended": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 206,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 86,
+        "NIGHTMARE": 114,
+        "HELL": 142
+      }
+    },
+    {
+      "id": "W02-C01",
+      "name": "冰冻高地·恶魔指挥所",
+      "type": "Castle",
+      "regionId": 2,
+      "row": 6,
+      "col": 5,
+      "floors": 4,
+      "source": "D2_THEME_ADAPTED",
+      "boss": "督军艾德瑞奇",
+      "notes": "D2特有恶魔首领改造作城塞首领",
+      "challenge": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 207,
+      "fixedBossArena": true,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 309,
+        "NIGHTMARE": 409,
+        "HELL": 509
+      }
+    },
+    {
+      "id": "W03-D01",
+      "name": "亚瑞特高原·雪界营地",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 5,
+      "col": 5,
+      "floors": 2,
+      "source": "D2_OUTDOOR_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 301,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 89,
+        "NIGHTMARE": 118,
+        "HELL": 147
+      }
+    },
+    {
+      "id": "W03-D02",
+      "name": "山脊督战所",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 5,
+      "col": 4,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 302,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 144,
+        "NIGHTMARE": 191,
+        "HELL": 238
+      }
+    },
+    {
+      "id": "W03-D03",
+      "name": "阿刻戎之坑",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 4,
+      "col": 4,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 303,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 144,
+        "NIGHTMARE": 191,
+        "HELL": 238
+      }
+    },
+    {
+      "id": "W03-D04",
+      "name": "远征前锋堡",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 4,
+      "col": 5,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 304,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 89,
+        "NIGHTMARE": 118,
+        "HELL": 147
+      }
+    },
+    {
+      "id": "W03-D05",
+      "name": "高原断崖洞",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 5,
+      "col": 6,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 34,
+        "NIGHTMARE": 67,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 305,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 144,
+        "NIGHTMARE": 191,
+        "HELL": 238
+      }
+    },
+    {
+      "id": "W03-C01",
+      "name": "亚瑞特高原·破军壁垒",
+      "type": "Castle",
+      "regionId": 3,
+      "row": 6,
+      "col": 7,
+      "floors": 4,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "破军恶魔统领（占位）",
+      "notes": "较大BossArena",
+      "challenge": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 36,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 306,
+      "fixedBossArena": true,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 319,
+        "NIGHTMARE": 422,
+        "HELL": 525
+      }
+    },
+    {
+      "id": "W04-D01",
+      "name": "水晶通道·前庭",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 5,
+      "col": 7,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 36,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 401,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 113,
+        "NIGHTMARE": 165,
+        "HELL": 217
+      }
+    },
+    {
+      "id": "W04-D02",
+      "name": "水晶洞窟",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 4,
+      "col": 6,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 36,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 402,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 113,
+        "NIGHTMARE": 165,
+        "HELL": 217
+      }
+    },
+    {
+      "id": "W04-D03",
+      "name": "冰霜晶脉",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 3,
+      "col": 6,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 36,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 403,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 113,
+        "NIGHTMARE": 165,
+        "HELL": 217
+      }
+    },
+    {
+      "id": "W04-D04",
+      "name": "魔化水晶室",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 3,
+      "col": 7,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 36,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 404,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 113,
+        "NIGHTMARE": 165,
+        "HELL": 217
+      }
+    },
+    {
+      "id": "W04-D05",
+      "name": "晶壁回廊",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 4,
+      "col": 8,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 35,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 36,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 405,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 70,
+        "NIGHTMARE": 102,
+        "HELL": 134
+      }
+    },
+    {
+      "id": "W04-C01",
+      "name": "水晶通道·晶核圣所",
+      "type": "Castle",
+      "regionId": 4,
+      "row": 3,
+      "col": 8,
+      "floors": 4,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "水晶守护者（占位）",
+      "notes": "与冰河支线分岔连接",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 406,
+      "fixedBossArena": true,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 250,
+        "NIGHTMARE": 363,
+        "HELL": 476
+      }
+    },
+    {
+      "id": "W05-D01",
+      "name": "冰川之路·入口冰洞",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 3,
+      "col": 9,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 501,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 119,
+        "NIGHTMARE": 174,
+        "HELL": 229
+      }
+    },
+    {
+      "id": "W05-D02",
+      "name": "漂泊者之窟",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 3,
+      "col": 10,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 502,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 119,
+        "NIGHTMARE": 174,
+        "HELL": 229
+      }
+    },
+    {
+      "id": "W05-D03",
+      "name": "冰川冰窖",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 4,
+      "col": 9,
+      "floors": 3,
+      "source": "D2_THEME_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 503,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 119,
+        "NIGHTMARE": 174,
+        "HELL": 229
+      }
+    },
+    {
+      "id": "W05-D04",
+      "name": "碎冰长廊",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 4,
+      "col": 10,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 504,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 119,
+        "NIGHTMARE": 174,
+        "HELL": 229
+      }
+    },
+    {
+      "id": "W05-D05",
+      "name": "凝霜石殿",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 5,
+      "col": 9,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 505,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 74,
+        "NIGHTMARE": 108,
+        "HELL": 142
+      }
+    },
+    {
+      "id": "W05-C01",
+      "name": "冰川之路·冰冢堡垒",
+      "type": "Castle",
+      "regionId": 5,
+      "row": 5,
+      "col": 10,
+      "floors": 4,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "冰冢看守者（占位）",
+      "notes": "冰川狭长战场与冰冻阻隔",
+      "challenge": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 38,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 506,
+      "fixedBossArena": true,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 259,
+        "NIGHTMARE": 375,
+        "HELL": 491
+      }
+    },
+    {
+      "id": "W06-D01",
+      "name": "冰冻苔原·破冰雪原",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 6,
+      "col": 10,
+      "floors": 2,
+      "source": "D2_OUTDOOR_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 38,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 601,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 95,
+        "NIGHTMARE": 126,
+        "HELL": 157
+      }
+    },
+    {
+      "id": "W06-D02",
+      "name": "冻土暗穴",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 6,
+      "col": 9,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 38,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 602,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 153,
+        "NIGHTMARE": 203,
+        "HELL": 253
+      }
+    },
+    {
+      "id": "W06-D03",
+      "name": "雪界烽火台",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 5,
+      "col": 11,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 38,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 603,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 153,
+        "NIGHTMARE": 203,
+        "HELL": 253
+      }
+    },
+    {
+      "id": "W06-D04",
+      "name": "地狱魔窟",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 6,
+      "col": 11,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 38,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 604,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 153,
+        "NIGHTMARE": 203,
+        "HELL": 253
+      }
+    },
+    {
+      "id": "W06-D05",
+      "name": "冰川裂谷",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 7,
+      "col": 9,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 38,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 605,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 95,
+        "NIGHTMARE": 126,
+        "HELL": 157
+      }
+    },
+    {
+      "id": "W06-C01",
+      "name": "冰冻苔原·霜卫城寨",
+      "type": "Castle",
+      "regionId": 6,
+      "row": 7,
+      "col": 10,
+      "floors": 4,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "冰原守将（占位）",
+      "notes": "暴风雪大平台",
+      "challenge": {
+        "NORMAL": 38,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 97
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 606,
+      "fixedBossArena": true,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 340,
+        "NIGHTMARE": 450,
+        "HELL": 560
+      }
+    },
+    {
+      "id": "W07-D01",
+      "name": "远古之路·封雪入口",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 8,
+      "col": 10,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 38,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 701,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 125,
+        "NIGHTMARE": 183,
+        "HELL": 241
+      }
+    },
+    {
+      "id": "W07-D02",
+      "name": "远古冰窖",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 8,
+      "col": 11,
+      "floors": 4,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 38,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 702,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 176,
+        "NIGHTMARE": 258,
+        "HELL": 340
+      }
+    },
+    {
+      "id": "W07-D03",
+      "name": "石碑试炼场",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 8,
+      "col": 9,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 38,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 703,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 125,
+        "NIGHTMARE": 183,
+        "HELL": 241
+      }
+    },
+    {
+      "id": "W07-D04",
+      "name": "破碎祭祀所",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 9,
+      "col": 11,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 38,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 704,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 125,
+        "NIGHTMARE": 183,
+        "HELL": 241
+      }
+    },
+    {
+      "id": "W07-D05",
+      "name": "隐秘山道",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 10,
+      "col": 10,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 38,
+        "NIGHTMARE": 69,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 705,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 125,
+        "NIGHTMARE": 183,
+        "HELL": 241
+      }
+    },
+    {
+      "id": "W07-C01",
+      "name": "远古之路·祭坛关隘",
+      "type": "Castle",
+      "regionId": 7,
+      "row": 9,
+      "col": 10,
+      "floors": 4,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "古道守护者（占位）",
+      "notes": "通向远古山巅的单格山口",
+      "challenge": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 40,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 706,
+      "fixedBossArena": true,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 276,
+        "NIGHTMARE": 399,
+        "HELL": 522
+      }
+    },
+    {
+      "id": "W08-D01",
+      "name": "山巅前哨",
+      "type": "Dungeon",
+      "regionId": 8,
+      "row": 9,
+      "col": 7,
+      "floors": 3,
+      "source": "D2_OUTDOOR_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 40,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 801,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 135,
+        "NIGHTMARE": 198,
+        "HELL": 261
+      }
+    },
+    {
+      "id": "W08-D02",
+      "name": "远古祭坛石阶",
+      "type": "Dungeon",
+      "regionId": 8,
+      "row": 9,
+      "col": 8,
+      "floors": 3,
+      "source": "D2_THEME_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 40,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 802,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 135,
+        "NIGHTMARE": 198,
+        "HELL": 261
+      }
+    },
+    {
+      "id": "W08-D03",
+      "name": "三贤者圣坛前厅",
+      "type": "Dungeon",
+      "regionId": 8,
+      "row": 10,
+      "col": 7,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 40,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 803,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 86,
+        "NIGHTMARE": 126,
+        "HELL": 166
+      }
+    },
+    {
+      "id": "W08-C01",
+      "name": "亚瑞特山巅·远古试炼",
+      "type": "Castle",
+      "regionId": 8,
+      "row": 10,
+      "col": 8,
+      "floors": 4,
+      "source": "D2_BOSS_ADAPTED",
+      "boss": "科力克／马道克／塔力克",
+      "notes": "末阶段固定三位远古守护者，不应随机刷额外Boss",
+      "challenge": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 42,
+        "NIGHTMARE": 72,
+        "HELL": 98
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 804,
+      "fixedBossArena": true,
+      "questFacts": [
+        "ACT05_ANCIENTS_DEFEATED"
+      ],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 240,
+        "NIGHTMARE": 348,
+        "HELL": 456
+      }
+    },
+    {
+      "id": "W09-D01",
+      "name": "要塞外侧护阵",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 11,
+      "col": 7,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 42,
+        "NIGHTMARE": 72,
+        "HELL": 98
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 901,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 145,
+        "NIGHTMARE": 213,
+        "HELL": 281
+      }
+    },
+    {
+      "id": "W09-D02",
+      "name": "世界之石外廊",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 11,
+      "col": 6,
+      "floors": 3,
+      "source": "D2_THEME_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 42,
+        "NIGHTMARE": 72,
+        "HELL": 98
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 902,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 145,
+        "NIGHTMARE": 213,
+        "HELL": 281
+      }
+    },
+    {
+      "id": "W09-D03",
+      "name": "破碎圣纹大厅",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 11,
+      "col": 8,
+      "floors": 4,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 42,
+        "NIGHTMARE": 72,
+        "HELL": 98
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 903,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 205,
+        "NIGHTMARE": 300,
+        "HELL": 395
+      }
+    },
+    {
+      "id": "W09-D04",
+      "name": "堕落守卫壁垒",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 11,
+      "col": 9,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 42,
+        "NIGHTMARE": 72,
+        "HELL": 98
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 904,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 145,
+        "NIGHTMARE": 213,
+        "HELL": 281
+      }
+    },
+    {
+      "id": "W09-D05",
+      "name": "世界之石祭所",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 11,
+      "col": 10,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 42,
+        "NIGHTMARE": 72,
+        "HELL": 98
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 905,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 145,
+        "NIGHTMARE": 213,
+        "HELL": 281
+      }
+    },
+    {
+      "id": "W09-D06",
+      "name": "毁灭王座·前哨",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 10,
+      "col": 11,
+      "floors": 4,
+      "source": "D2_THEME_ADAPTED",
+      "boss": "",
+      "notes": "终局Boss前的独立据点；不重复算Castle内王座",
+      "challenge": {
+        "NORMAL": 41,
+        "NIGHTMARE": 71,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 42,
+        "NIGHTMARE": 72,
+        "HELL": 98
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 906,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 205,
+        "NIGHTMARE": 300,
+        "HELL": 395
+      }
+    },
+    {
+      "id": "W09-C01",
+      "name": "世界之石大殿",
+      "type": "Castle",
+      "regionId": 9,
+      "row": 11,
+      "col": 11,
+      "floors": 6,
+      "source": "D2_FINALE_ADAPTED",
+      "boss": "巴尔",
+      "notes": "要塞1–3层→毁灭王座入口→五波仆从→世界之石大殿巴尔",
+      "challenge": {
+        "NORMAL": 43,
+        "NIGHTMARE": 72,
+        "HELL": 97
+      },
+      "recommended": {
+        "NORMAL": 44,
+        "NIGHTMARE": 73,
+        "HELL": 98
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 907,
+      "fixedBossArena": true,
+      "questFacts": [
+        "ACT05_THRONE_FIVE_WAVES_CLEARED",
+        "ACT05_BAAL_DEFEATED"
+      ],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 509,
+        "NIGHTMARE": 736,
+        "HELL": 963
+      }
+    },
+    {
+      "id": "W10-D01",
+      "name": "冰河·入口冰洞",
+      "type": "Dungeon",
+      "regionId": 10,
+      "row": 2,
+      "col": 7,
+      "floors": 2,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1001,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 74,
+        "NIGHTMARE": 108,
+        "HELL": 142
+      }
+    },
+    {
+      "id": "W10-D02",
+      "name": "冰窟回环",
+      "type": "Dungeon",
+      "regionId": 10,
+      "row": 2,
+      "col": 6,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1002,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 119,
+        "NIGHTMARE": 174,
+        "HELL": 229
+      }
+    },
+    {
+      "id": "W10-D03",
+      "name": "霜魔巢穴",
+      "type": "Dungeon",
+      "regionId": 10,
+      "row": 1,
+      "col": 6,
+      "floors": 3,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1003,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 119,
+        "NIGHTMARE": 174,
+        "HELL": 229
+      }
+    },
+    {
+      "id": "W10-D04",
+      "name": "冰封囚道",
+      "type": "Dungeon",
+      "regionId": 10,
+      "row": 1,
+      "col": 7,
+      "floors": 2,
+      "source": "ORIGINAL_PLACEHOLDER",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 36,
+        "NIGHTMARE": 68,
+        "HELL": 94
+      },
+      "recommended": {
+        "NORMAL": 37,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1004,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 74,
+        "NIGHTMARE": 108,
+        "HELL": 142
+      }
+    },
+    {
+      "id": "W10-C01",
+      "name": "冰河·安雅囚笼",
+      "type": "Castle",
+      "regionId": 10,
+      "row": 2,
+      "col": 8,
+      "floors": 4,
+      "source": "D2_QUEST_ADAPTED",
+      "boss": "冰冻怪物（Frozenstein）",
+      "notes": "营救安雅，事实触发下阶段尼拉塞克神殿支线解锁；可选",
+      "challenge": {
+        "NORMAL": 38,
+        "NIGHTMARE": 69,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 96
+      },
+      "requiredForCastle": false,
+      "branch": "SIDE",
+      "autoOrder": 1005,
+      "fixedBossArena": true,
+      "questFacts": [
+        "ACT05_ANYA_RESCUED"
+      ],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 221,
+        "NIGHTMARE": 321,
+        "HELL": 421
+      }
+    },
+    {
+      "id": "W11-D01",
+      "name": "尼拉塞克神殿·前庭",
+      "type": "Dungeon",
+      "regionId": 11,
+      "row": 9,
+      "col": 1,
+      "floors": 3,
+      "source": "D2_THEME_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 40,
+        "NIGHTMARE": 71,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1101,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 123,
+        "NIGHTMARE": 180,
+        "HELL": 237
+      }
+    },
+    {
+      "id": "W11-D02",
+      "name": "悲痛之厅",
+      "type": "Dungeon",
+      "regionId": 11,
+      "row": 10,
+      "col": 1,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 40,
+        "NIGHTMARE": 71,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1102,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 123,
+        "NIGHTMARE": 180,
+        "HELL": 237
+      }
+    },
+    {
+      "id": "W11-D03",
+      "name": "痛苦之厅",
+      "type": "Dungeon",
+      "regionId": 11,
+      "row": 10,
+      "col": 2,
+      "floors": 3,
+      "source": "D2_DUNGEON_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 40,
+        "NIGHTMARE": 71,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1103,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 123,
+        "NIGHTMARE": 180,
+        "HELL": 237
+      }
+    },
+    {
+      "id": "W11-D04",
+      "name": "瓦特之厅·前哨",
+      "type": "Dungeon",
+      "regionId": 11,
+      "row": 11,
+      "col": 1,
+      "floors": 3,
+      "source": "D2_THEME_ADAPTED",
+      "boss": "",
+      "notes": "",
+      "challenge": {
+        "NORMAL": 39,
+        "NIGHTMARE": 70,
+        "HELL": 95
+      },
+      "recommended": {
+        "NORMAL": 40,
+        "NIGHTMARE": 71,
+        "HELL": 96
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 1104,
+      "fixedBossArena": false,
+      "questFacts": [],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 123,
+        "NIGHTMARE": 180,
+        "HELL": 237
+      }
+    },
+    {
+      "id": "W11-C01",
+      "name": "瓦特之厅·尼拉塞克",
+      "type": "Castle",
+      "regionId": 11,
+      "row": 11,
+      "col": 2,
+      "floors": 4,
+      "source": "D2_BOSS_ADAPTED",
+      "boss": "尼拉塞克",
+      "notes": "四阶段Castle最终尼拉塞克；神殿从哈洛加斯传送门抵达",
+      "challenge": {
+        "NORMAL": 42,
+        "NIGHTMARE": 71,
+        "HELL": 96
+      },
+      "recommended": {
+        "NORMAL": 43,
+        "NIGHTMARE": 72,
+        "HELL": 97
+      },
+      "requiredForCastle": false,
+      "branch": "SIDE",
+      "autoOrder": 1105,
+      "fixedBossArena": true,
+      "questFacts": [
+        "ACT05_NIHLATHAK_DEFEATED"
+      ],
+      "contentStatus": "PROPOSAL_UNBALANCED",
+      "plannedKills": {
+        "NORMAL": 282,
+        "NIGHTMARE": 408,
+        "HELL": 534
+      }
+    }
+  ],
+  "policy": {
+    "selection": "CHALLENGE_ASC_RANDOM_TIES",
+    "castleRequiresExplicitApproval": true,
+    "sideRegionRequiresExplicitApproval": false,
+    "sideDoesNotBlockMain": true
+  },
+  "planningDisclaimer": "D2世界地名仅用于内部对齐。此为内容候选静态模型，原创地牢、Boss行为、怪物预算未经Godot实机验证。",
+  "runtimeUnlockGraph": {
+    "1": {
+      "mode": "any",
+      "castles": []
+    },
+    "2": {
+      "mode": "any",
+      "castles": [
+        "W01-C01"
+      ]
+    },
+    "3": {
+      "mode": "any",
+      "castles": [
+        "W02-C01"
+      ]
+    },
+    "4": {
+      "mode": "any",
+      "castles": [
+        "W03-C01"
+      ]
+    },
+    "5": {
+      "mode": "any",
+      "castles": [
+        "W04-C01"
+      ]
+    },
+    "6": {
+      "mode": "any",
+      "castles": [
+        "W04-C01"
+      ]
+    },
+    "7": {
+      "mode": "all",
+      "castles": [
+        "W05-C01",
+        "W06-C01"
+      ]
+    },
+    "8": {
+      "mode": "any",
+      "castles": [
+        "W07-C01"
+      ]
+    },
+    "9": {
+      "mode": "any",
+      "castles": [
+        "W08-C01"
+      ]
+    },
+    "10": {
+      "mode": "any",
+      "castles": [
+        "W04-C01"
+      ]
+    },
+    "11": {
+      "mode": "any",
+      "castles": [
+        "W10-C01"
+      ]
+    }
+  },
+  "runtimeGates": [
+    {
+      "id": "G-T-01",
+      "fromTile": 90,
+      "toTile": 91,
+      "kind": "TOWN_ROAD"
+    },
+    {
+      "id": "G-01-02",
+      "fromTile": 81,
+      "toTile": 82,
+      "kind": "MOUNTAIN_PASS"
+    },
+    {
+      "id": "G-02-03",
+      "fromTile": 60,
+      "toTile": 49,
+      "kind": "ICE_BRIDGE"
+    },
+    {
+      "id": "G-03-04",
+      "fromTile": 50,
+      "toTile": 51,
+      "kind": "CRYSTAL_CLEFT"
+    },
+    {
+      "id": "G-04-05",
+      "fromTile": 30,
+      "toTile": 31,
+      "kind": "GLACIAL_PASS"
+    },
+    {
+      "id": "G-05-06",
+      "fromTile": 54,
+      "toTile": 65,
+      "kind": "WIND_GAP"
+    },
+    {
+      "id": "G-06-07",
+      "fromTile": 76,
+      "toTile": 87,
+      "kind": "FROST_BRIDGE"
+    },
+    {
+      "id": "G-07-08",
+      "fromTile": 97,
+      "toTile": 96,
+      "kind": "ANCIENT_PASS"
+    },
+    {
+      "id": "G-08-09",
+      "fromTile": 106,
+      "toTile": 117,
+      "kind": "WORLDSTONE_GATE"
+    },
+    {
+      "id": "G-04-10",
+      "fromTile": 29,
+      "toTile": 18,
+      "kind": "SIDE_FROZEN_RIVER"
+    },
+    {
+      "id": "G-T-11",
+      "fromTile": 90,
+      "toTile": 89,
+      "kind": "SIDE_ANYA_PORTAL"
+    },
+    {
+      "id": "G-04-06",
+      "fromTile": 52,
+      "toTile": 63,
+      "kind": "PATCH_ROAD"
+    }
+  ],
+  "unlockGraph": {
+    "1": {
+      "mode": "any",
+      "castles": []
+    },
+    "2": {
+      "mode": "any",
+      "castles": [
+        "W01-C01"
+      ]
+    },
+    "3": {
+      "mode": "any",
+      "castles": [
+        "W02-C01"
+      ]
+    },
+    "4": {
+      "mode": "any",
+      "castles": [
+        "W03-C01"
+      ]
+    },
+    "5": {
+      "mode": "any",
+      "castles": [
+        "W04-C01"
+      ]
+    },
+    "6": {
+      "mode": "any",
+      "castles": [
+        "W04-C01"
+      ]
+    },
+    "7": {
+      "mode": "all",
+      "castles": [
+        "W05-C01",
+        "W06-C01"
+      ]
+    },
+    "8": {
+      "mode": "any",
+      "castles": [
+        "W07-C01"
+      ]
+    },
+    "9": {
+      "mode": "any",
+      "castles": [
+        "W08-C01"
+      ]
+    },
+    "10": {
+      "mode": "any",
+      "castles": [
+        "W04-C01"
+      ]
+    },
+    "11": {
+      "mode": "any",
+      "castles": [
+        "W10-C01"
+      ]
+    }
+  }
+}

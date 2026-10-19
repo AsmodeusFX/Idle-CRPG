@@ -6,9 +6,9 @@ using System.Linq;
 namespace IdleCrpg.Core;
 
 /// <summary>V0.5规划数据，不等同于已生成房间、怪物或可领取奖励。</summary>
-public record FloorPlan(string Poi,int Difficulty,int Index,string Name,int Rows,int Columns,int Active,int Combat,int Elite,int Arena,int MonsterLevel,int BossActors,int MinimumKills,int TargetKills,int MaximumKills);
+public record FloorPlan(string Poi,int Difficulty,int Index,string Name,int Rows,int Columns,int Active,int Combat,int Elite,int Arena,int MonsterLevel,int BossActors,int MinimumKills,int TargetKills,int MaximumKills,int FixedActors=0,int ScriptedWaves=0,int WaveMonsters=0,string StageMode="DUNGEON_FLOOR");
 public record DifficultyBand(string Difficulty,string Chapter,int Minimum,int Maximum,int RecommendedMinimum,int RecommendedMaximum);
-public record FloorRunReport(string Poi,int Floor,int Seed,int PlannedCells,int GeneratedRooms,int GeneratedPassages,int PlannedKills,int ActualSpawned,int ActualKillFacts,long ElapsedTicks);
+public record FloorRunReport(string Poi,int Floor,int Seed,int PlannedCells,int GeneratedRooms,int GeneratedPassages,int PlannedKills,int ActualSpawned,int ActualKillFacts,long ElapsedTicks,int CombatRoomCount=0,int BossRoomCount=0,long BattleTicks=0,long WalkTicks=0,int Difficulty=0,int Chapter=0,int RepeatAttempts=0);
 public sealed partial class Config
 {
     public List<FloorPlan> FloorPlans=new();
@@ -20,13 +20,14 @@ public sealed partial class Config
         foreach(var r in CsvTable.Load(path,File.ReadAllText(path),columns).Rows)
         {
             int N(string id)=>r.Integer(id);
+            int OptionalN(string id)=>columns.Contains(id)?N(id):0;
             int difficulty=r.Required("DifficultyId") switch {"NORMAL"=>0,"NIGHTMARE"=>1,"HELL"=>2,_=>throw r.Error("DifficultyId","未知难度")};
-            var p=new FloorPlan(r.Required("PoiId"),difficulty,N("FloorIndex"),r.Required("FloorDisplayName"),N("LayoutRows"),N("LayoutCols"),N("ActiveCellTarget"),N("CombatCellCount"),N("EliteCellCount"),N("BossArenaCellCount"),N("MonsterLevel"),N("BossActorCount"),N("PlannedKillMin"),N("PlannedKillTarget"),N("PlannedKillMax"));
+            var p=new FloorPlan(r.Required("PoiId"),difficulty,N("FloorIndex"),r.Required("FloorDisplayName"),N("LayoutRows"),N("LayoutCols"),N("ActiveCellTarget"),N("CombatCellCount"),N("EliteCellCount"),N("BossArenaCellCount"),N("MonsterLevel"),N("BossActorCount"),N("PlannedKillMin"),N("PlannedKillTarget"),N("PlannedKillMax"),OptionalN("FixedUniqueActorCount"),OptionalN("ScriptedWaveCount"),OptionalN("ScriptedWaveMonsterTarget"),columns.Contains("StageMode")?r.Required("StageMode"):"DUNGEON_FLOOR");
             int sum=new[]{"Entry","Corridor","Combat","Elite","Event","Exit","BossArena"}.Sum(id=>N(id+"CellCount"));
-            if(p.Rows<1||p.Columns<1||p.Active<1||p.Active>p.Rows*p.Columns||sum!=p.Active||new[]{"Entry","Corridor","Combat","Elite","Event","Exit","BossArena"}.Any(id=>N(id+"CellCount")<0)||p.BossActors is <0 or >1||(p.Arena>0)!=(p.BossActors==1)||p.MonsterLevel<1||p.MonsterLevel>MaxMonsterLevel||p.MinimumKills<0||p.MinimumKills>p.TargetKills||p.TargetKills>p.MaximumKills)throw r.Error("ActiveCellTarget","格数或预算不一致");
+            if(p.Rows<1||p.Columns<1||p.Active<1||p.Active>p.Rows*p.Columns||sum!=p.Active||new[]{"Entry","Corridor","Combat","Elite","Event","Exit","BossArena"}.Any(id=>N(id+"CellCount")<0)||p.BossActors is <0 or >1||p.Arena>0&&p.BossActors+p.FixedActors<1||p.FixedActors<0||p.ScriptedWaves<0||p.WaveMonsters<0||p.MonsterLevel<1||p.MonsterLevel>MaxMonsterLevel||p.MinimumKills<0||p.MinimumKills>p.TargetKills||p.TargetKills>p.MaximumKills)throw r.Error("ActiveCellTarget","格数或预算不一致");
             foreach(string suffix in new[]{"Min","Target","Max"})
             {
-                int expected=KillBudget(p.Combat,N("CombatMonstersPerCell"+suffix),p.Elite,N("ElitePerCell"),N("EliteEscortPerCell"+suffix),p.BossActors,N("BossEscort"+suffix));
+                int expected=KillBudget(p.Combat,N("CombatMonstersPerCell"+suffix),p.Elite,N("ElitePerCell"),N("EliteEscortPerCell"+suffix),p.BossActors,N("BossEscort"+suffix))+p.FixedActors+p.WaveMonsters;
                 if(expected!=N("PlannedKill"+suffix))throw r.Error("PlannedKill"+suffix,"规划击杀预算错误");
             }
             FloorPlans.Add(p);
@@ -52,6 +53,6 @@ public sealed partial class GameSession
     public IReadOnlyList<FloorRunReport> FloorReports()=>Floors.Select((f,index)=>
     {
         var plan=ActiveDungeon==null?null:Config.FloorPlans.FirstOrDefault(p=>p.Poi==ActiveDungeon.Id&&p.Difficulty==DifficultyIndex&&p.Index==index+1);
-        return new FloorRunReport(ActiveDungeon?.Id??"",index+1,f.Seed,plan?.Active??0,f.Rooms.Count,f.Passages.Count,plan?.TargetKills??0,f.ActualSpawned,f.ActualKillFacts,f.ElapsedTicks);
+        return new FloorRunReport(ActiveDungeon?.Id??"",index+1,f.Seed,plan?.Active??0,f.Rooms.Count,f.Passages.Count,plan?.TargetKills??0,f.ActualSpawned,f.ActualKillFacts,f.ElapsedTicks,f.Rooms.Count(r=>r.Id!=0),f.Rooms.Count(r=>r.Monsters.Any(m=>m.Boss)),f.BattleTicks,f.WalkTicks,DifficultyIndex,ChapterIndex,Retries);
     }).ToArray();
 }

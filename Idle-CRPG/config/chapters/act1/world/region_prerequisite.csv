@@ -1,8 +1,9 @@
 id,region_id,required_dungeon_id
-gate2,11,A01-C01
-gate3,1,A02-C01
-gate4,4,A02-C01
-gate5,7,A04-C01
-gate6,30,A05-C01
-gate7,46,A06-C01
-gate8,45,A07-C01
+ap2_0,11,A01-C01
+ap3_0,1,A02-C01
+ap4_0,4,A02-C01
+ap5_0,7,A04-C01
+ap6_0,30,A04-C01
+ap7_0,46,A05-C01
+ap7_1,46,A06-C01
+ap8_0,45,A07-C01

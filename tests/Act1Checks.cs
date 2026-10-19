@@ -10,8 +10,8 @@ public static class Act1Checks
     {
         var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
         void Check(bool ok,string why){if(!ok)throw new Exception("ACT1_CHECK: "+why);}
-        Check(c.WorldWidth==8&&c.WorldHeight==8&&c.Regions.Count(r=>r.Enterable)==49&&c.Regions.Count(r=>!r.Enterable)==15,"网格数量");
-        Check(c.Dungeons.Count==41&&c.Dungeons.Count(d=>d.Castle)==8&&c.Gates.Count==8,"POI或关口数量");
+        Check(c.WorldWidth==8&&c.WorldHeight==8&&c.Regions.Count(r=>r.Enterable)==50&&c.Regions.Count(r=>!r.Enterable)==14,"网格数量");
+        Check(c.Dungeons.Count==41&&c.Dungeons.Count(d=>d.Castle)==8&&c.Gates.Count==9,"POI或关口数量");
         Check(c.Villages.Count==1&&c.StartRegionId==36&&c.IsTown(36),"单一营地");
         var game=GameSession.CreateWorld(c,123,new[]{"warrior","ranger","mage"});
         Check(game.World!.CurrentRegion==36,"营地出生");

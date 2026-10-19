@@ -45,7 +45,7 @@ public partial class Main
         for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)
         {
             V a=new(x/(float)cells,y/(float)cells),b=a+new V(1f/cells);var p=OutdoorPoint((a+b)*.5f);if(!OnScreen(p,110))continue;
-            var r=config.Regions.Single(r=>r.X==x/cells&&r.Y==y/cells);uint noise=unchecked((uint)(x*73856093^y*19349663));
+            var r=config.RegionAt(x/cells,y/cells);uint noise=unchecked((uint)(x*73856093^y*19349663));
             var color=TerrainColor(r.Terrain).Lightened((noise%13)/400f);
             var corners=new[]{OutdoorPoint(a),OutdoorPoint(new V(b.X,a.Y)),OutdoorPoint(b),OutdoorPoint(new V(a.X,b.Y))};DrawColoredPolygon(corners,color);
             if(!r.Enterable){Decoration(p,r.Terrain,.45f,(int)noise);continue;}

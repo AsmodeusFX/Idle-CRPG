@@ -1,0 +1,2008 @@
+{
+  "schemaVersion": "ACT02_V0.1_PROPOSAL_RUNTIME_PATCH_V02",
+  "chapterId": "ACT02",
+  "rows": 9,
+  "columns": 9,
+  "gridRows": [
+    "xxx333xxx",
+    "xx223334x",
+    "882234449",
+    "882114499",
+    "xTT114559",
+    "x6115555x",
+    "x6665777x",
+    "x6667777x",
+    "xxxxx7xxx"
+  ],
+  "town": {
+    "id": "TOWN_LUT_GHOLEIN",
+    "name": "鲁·高因",
+    "tiles": [
+      [
+        5,
+        2
+      ],
+      [
+        5,
+        3
+      ]
+    ],
+    "portalNote": "皇宫入口由城市向南开放"
+  },
+  "regions": [
+    {
+      "id": 1,
+      "name": "碎石荒地",
+      "optional": false,
+      "parents": [],
+      "castleName": "碎石关隘",
+      "description": "从鲁·高因驶出，短而密集的第一片荒地",
+      "tiles": 6,
+      "dungeonCount": 5,
+      "castlePoiId": "A01-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 2,
+      "name": "干燥高地",
+      "optional": false,
+      "parents": [
+        1
+      ],
+      "castleName": "高地岩堡",
+      "description": "死亡之殿保留三层深度",
+      "tiles": 5,
+      "dungeonCount": 4,
+      "castlePoiId": "A02-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 3,
+      "name": "遥远绿洲",
+      "optional": false,
+      "parents": [
+        1
+      ],
+      "castleName": "绿洲守卫塔",
+      "description": "虫巢和绿洲地形的反差",
+      "tiles": 7,
+      "dungeonCount": 5,
+      "castlePoiId": "A03-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 4,
+      "name": "遗失城市",
+      "optional": false,
+      "parents": [
+        2,
+        3
+      ],
+      "castleName": "遗失之城城门",
+      "description": "两条主线分岔的枢纽",
+      "tiles": 7,
+      "dungeonCount": 5,
+      "castlePoiId": "A04-C01",
+      "unlockMode": "all"
+    },
+    {
+      "id": 5,
+      "name": "群蛇峡谷",
+      "optional": false,
+      "parents": [
+        4
+      ],
+      "castleName": "利爪蝮蛇神殿",
+      "description": "蝮蛇护符线，偏紧凑神殿",
+      "tiles": 7,
+      "dungeonCount": 4,
+      "castlePoiId": "A05-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 6,
+      "name": "皇宫与神秘庇护所",
+      "optional": false,
+      "parents": [
+        4
+      ],
+      "castleName": "神秘庇护所",
+      "description": "从鲁·高因皇宫侧进入，而非群蛇峡谷之后",
+      "tiles": 7,
+      "dungeonCount": 5,
+      "castlePoiId": "A06-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 7,
+      "name": "术士峡谷",
+      "optional": false,
+      "parents": [
+        5,
+        6
+      ],
+      "castleName": "塔·拉夏古墓（真墓）",
+      "description": "六座假墓＋真正的古墓要塞，都瑞尔",
+      "tiles": 8,
+      "dungeonCount": 6,
+      "castlePoiId": "A07-C01",
+      "unlockMode": "all"
+    },
+    {
+      "id": 8,
+      "name": "鲁·高因下水道",
+      "optional": true,
+      "parents": [],
+      "castleName": "下水道深处",
+      "description": "拉达门特支线，章节初始即可发现",
+      "tiles": 4,
+      "dungeonCount": 3,
+      "castlePoiId": "A08-C01",
+      "unlockMode": "any"
+    },
+    {
+      "id": 9,
+      "name": "古代通道",
+      "optional": true,
+      "parents": [
+        4
+      ],
+      "castleName": "遗迹之心",
+      "description": "从遗失城市进入的考古支线",
+      "tiles": 4,
+      "dungeonCount": 3,
+      "castlePoiId": "A09-C01",
+      "unlockMode": "any"
+    }
+  ],
+  "gates": [
+    {
+      "gateId": "G-T-01",
+      "fromTile": 39,
+      "toTile": 40,
+      "a": [
+        5,
+        3
+      ],
+      "b": [
+        5,
+        4
+      ],
+      "kind": "ROAD",
+      "unlockBy": "NONE"
+    },
+    {
+      "gateId": "G-T-08",
+      "fromTile": 38,
+      "toTile": 29,
+      "a": [
+        5,
+        2
+      ],
+      "b": [
+        4,
+        2
+      ],
+      "kind": "ROAD",
+      "unlockBy": "NONE"
+    },
+    {
+      "gateId": "G-01-02",
+      "fromTile": 31,
+      "toTile": 30,
+      "a": [
+        4,
+        4
+      ],
+      "b": [
+        4,
+        3
+      ],
+      "kind": "ROAD",
+      "unlockBy": "A01-C01"
+    },
+    {
+      "gateId": "G-02-03",
+      "fromTile": 13,
+      "toTile": 14,
+      "a": [
+        2,
+        4
+      ],
+      "b": [
+        2,
+        5
+      ],
+      "kind": "ROAD",
+      "unlockBy": "A01-C01"
+    },
+    {
+      "gateId": "G-03-04",
+      "fromTile": 23,
+      "toTile": 24,
+      "a": [
+        3,
+        5
+      ],
+      "b": [
+        3,
+        6
+      ],
+      "kind": "ROAD",
+      "unlockBy": "AND(A02-C01,A03-C01)"
+    },
+    {
+      "gateId": "G-04-05",
+      "fromTile": 42,
+      "toTile": 43,
+      "a": [
+        5,
+        6
+      ],
+      "b": [
+        5,
+        7
+      ],
+      "kind": "ROAD",
+      "unlockBy": "A04-C01"
+    },
+    {
+      "gateId": "G-T-06",
+      "fromTile": 38,
+      "toTile": 47,
+      "a": [
+        5,
+        2
+      ],
+      "b": [
+        6,
+        2
+      ],
+      "kind": "PALACE_DOOR",
+      "unlockBy": "A04-C01"
+    },
+    {
+      "gateId": "G-04-09",
+      "fromTile": 26,
+      "toTile": 27,
+      "a": [
+        3,
+        8
+      ],
+      "b": [
+        3,
+        9
+      ],
+      "kind": "ROAD",
+      "unlockBy": "A04-C01"
+    },
+    {
+      "gateId": "G-06-07",
+      "fromTile": 67,
+      "toTile": 68,
+      "a": [
+        8,
+        4
+      ],
+      "b": [
+        8,
+        5
+      ],
+      "kind": "ARCANE_PORTAL",
+      "unlockBy": "AND(A05-C01,A06-C01)"
+    },
+    {
+      "gateId": "G-01-03",
+      "fromTile": 32,
+      "toTile": 23,
+      "a": [
+        4,
+        5
+      ],
+      "b": [
+        3,
+        5
+      ],
+      "kind": "PATCH_ROAD",
+      "unlockBy": "A01-C01"
+    }
+  ],
+  "poi": [
+    {
+      "id": "A01-D01",
+      "name": "碎石遗迹",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 5,
+      "col": 4,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "开局短小石窟",
+      "challenge": {
+        "NORMAL": 13,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 101,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 27,
+        "NIGHTMARE": 36,
+        "HELL": 45
+      }
+    },
+    {
+      "id": "A01-D02",
+      "name": "石制古墓",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 4,
+      "col": 4,
+      "floors": 2,
+      "source": "原典",
+      "boss": "",
+      "notes": "D2 Stony Tomb，两层",
+      "challenge": {
+        "NORMAL": 13,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 102,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 60,
+        "NIGHTMARE": 80,
+        "HELL": 100
+      }
+    },
+    {
+      "id": "A01-D03",
+      "name": "流沙洞穴",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 4,
+      "col": 5,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "沙漠小型洞穴",
+      "challenge": {
+        "NORMAL": 13,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 103,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 27,
+        "NIGHTMARE": 36,
+        "HELL": 45
+      }
+    },
+    {
+      "id": "A01-D04",
+      "name": "旱地猎手营",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 6,
+      "col": 3,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "敌人营地",
+      "challenge": {
+        "NORMAL": 14,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 15,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 104,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 27,
+        "NIGHTMARE": 36,
+        "HELL": 45
+      }
+    },
+    {
+      "id": "A01-D05",
+      "name": "破碎石廊",
+      "type": "Dungeon",
+      "regionId": 1,
+      "row": 6,
+      "col": 4,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "狭窄岩石通道",
+      "challenge": {
+        "NORMAL": 14,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 15,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 105,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 60,
+        "NIGHTMARE": 80,
+        "HELL": 100
+      }
+    },
+    {
+      "id": "A01-C01",
+      "name": "碎石关隘",
+      "type": "Castle",
+      "regionId": 1,
+      "row": 5,
+      "col": 5,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "堕落荒野守卫（占位）",
+      "notes": "区域 Castle",
+      "challenge": {
+        "NORMAL": 14,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 15,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 106,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 87,
+        "NIGHTMARE": 115,
+        "HELL": 143
+      }
+    },
+    {
+      "id": "A02-D01",
+      "name": "死亡之殿",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 4,
+      "col": 3,
+      "floors": 3,
+      "source": "原典",
+      "boss": "",
+      "notes": "赫拉迪克方块于深层",
+      "challenge": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 15,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 201,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 144,
+        "NIGHTMARE": 192,
+        "HELL": 240
+      }
+    },
+    {
+      "id": "A02-D02",
+      "name": "干燥洞穴",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 3,
+      "col": 3,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "过渡地牢",
+      "challenge": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 15,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 202,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 30,
+        "NIGHTMARE": 40,
+        "HELL": 50
+      }
+    },
+    {
+      "id": "A02-D03",
+      "name": "远古埋骨窟",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 2,
+      "col": 3,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "石墓变体",
+      "challenge": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 15,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 203,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 30,
+        "NIGHTMARE": 40,
+        "HELL": 50
+      }
+    },
+    {
+      "id": "A02-D04",
+      "name": "沙盗哨站",
+      "type": "Dungeon",
+      "regionId": 2,
+      "row": 3,
+      "col": 4,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "人形精英据点",
+      "challenge": {
+        "NORMAL": 15,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 16,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 204,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 30,
+        "NIGHTMARE": 40,
+        "HELL": 50
+      }
+    },
+    {
+      "id": "A02-C01",
+      "name": "高地岩堡",
+      "type": "Castle",
+      "regionId": 2,
+      "row": 2,
+      "col": 4,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "高地守卫（占位）",
+      "notes": "区域 Castle",
+      "challenge": {
+        "NORMAL": 15,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 16,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 205,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 96,
+        "NIGHTMARE": 127,
+        "HELL": 158
+      }
+    },
+    {
+      "id": "A03-D01",
+      "name": "蛆虫巢穴",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 2,
+      "col": 5,
+      "floors": 3,
+      "source": "原典",
+      "boss": "",
+      "notes": "D2 Maggot Lair，三层与窄道",
+      "challenge": {
+        "NORMAL": 15,
+        "NIGHTMARE": 52,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 16,
+        "NIGHTMARE": 53,
+        "HELL": 81
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 301,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 117,
+        "NIGHTMARE": 156,
+        "HELL": 195
+      }
+    },
+    {
+      "id": "A03-D02",
+      "name": "枯泉虫巢",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 1,
+      "col": 4,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "小型虫群地牢",
+      "challenge": {
+        "NORMAL": 15,
+        "NIGHTMARE": 52,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 16,
+        "NIGHTMARE": 53,
+        "HELL": 81
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 302,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 36,
+        "NIGHTMARE": 48,
+        "HELL": 60
+      }
+    },
+    {
+      "id": "A03-D03",
+      "name": "干枯绿洲",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 1,
+      "col": 5,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "远景水源及洞穴",
+      "challenge": {
+        "NORMAL": 15,
+        "NIGHTMARE": 52,
+        "HELL": 80
+      },
+      "recommended": {
+        "NORMAL": 16,
+        "NIGHTMARE": 53,
+        "HELL": 81
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 303,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 78,
+        "NIGHTMARE": 104,
+        "HELL": 130
+      }
+    },
+    {
+      "id": "A03-D04",
+      "name": "隐沙墓室",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 1,
+      "col": 6,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "石墓",
+      "challenge": {
+        "NORMAL": 16,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "recommended": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 304,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 36,
+        "NIGHTMARE": 48,
+        "HELL": 60
+      }
+    },
+    {
+      "id": "A03-D05",
+      "name": "绿洲危径",
+      "type": "Dungeon",
+      "regionId": 3,
+      "row": 2,
+      "col": 6,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "小型狭路地牢",
+      "challenge": {
+        "NORMAL": 16,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "recommended": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 305,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 36,
+        "NIGHTMARE": 48,
+        "HELL": 60
+      }
+    },
+    {
+      "id": "A03-C01",
+      "name": "绿洲守卫塔",
+      "type": "Castle",
+      "regionId": 3,
+      "row": 2,
+      "col": 7,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "绿洲守卫（占位）",
+      "notes": "区域 Castle",
+      "challenge": {
+        "NORMAL": 16,
+        "NIGHTMARE": 52,
+        "HELL": 81
+      },
+      "recommended": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 306,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 105,
+        "NIGHTMARE": 139,
+        "HELL": 173
+      }
+    },
+    {
+      "id": "A04-D01",
+      "name": "失落街区",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 3,
+      "col": 6,
+      "floors": 1,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "城市废墟地牢化",
+      "challenge": {
+        "NORMAL": 16,
+        "NIGHTMARE": 53,
+        "HELL": 81
+      },
+      "recommended": {
+        "NORMAL": 17,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 401,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 39,
+        "NIGHTMARE": 52,
+        "HELL": 65
+      }
+    },
+    {
+      "id": "A04-D02",
+      "name": "古城地窖",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 3,
+      "col": 7,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "古城地下回廊",
+      "challenge": {
+        "NORMAL": 16,
+        "NIGHTMARE": 53,
+        "HELL": 81
+      },
+      "recommended": {
+        "NORMAL": 17,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 402,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 84,
+        "NIGHTMARE": 112,
+        "HELL": 140
+      }
+    },
+    {
+      "id": "A04-D03",
+      "name": "碎裂神殿",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 3,
+      "col": 8,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "祭祀室",
+      "challenge": {
+        "NORMAL": 16,
+        "NIGHTMARE": 53,
+        "HELL": 81
+      },
+      "recommended": {
+        "NORMAL": 17,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 403,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 39,
+        "NIGHTMARE": 52,
+        "HELL": 65
+      }
+    },
+    {
+      "id": "A04-D04",
+      "name": "沙丘遗殿",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 4,
+      "col": 6,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "古代神殿",
+      "challenge": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 404,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 39,
+        "NIGHTMARE": 52,
+        "HELL": 65
+      }
+    },
+    {
+      "id": "A04-D05",
+      "name": "古代碑廊",
+      "type": "Dungeon",
+      "regionId": 4,
+      "row": 4,
+      "col": 7,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "古代碑廊",
+      "challenge": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 405,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 84,
+        "NIGHTMARE": 112,
+        "HELL": 140
+      }
+    },
+    {
+      "id": "A04-C01",
+      "name": "遗失之城城门",
+      "type": "Castle",
+      "regionId": 4,
+      "row": 5,
+      "col": 6,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "失落城守卫（占位）",
+      "notes": "区域 Castle",
+      "challenge": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 83
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 406,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 117,
+        "NIGHTMARE": 155,
+        "HELL": 193
+      }
+    },
+    {
+      "id": "A05-D01",
+      "name": "蛇谷岗哨",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 5,
+      "col": 7,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "蛇人看守据点",
+      "challenge": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 501,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 42,
+        "NIGHTMARE": 56,
+        "HELL": 70
+      }
+    },
+    {
+      "id": "A05-D02",
+      "name": "毒蛇祭坑",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 5,
+      "col": 8,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "毒系怪物",
+      "challenge": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 502,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 42,
+        "NIGHTMARE": 56,
+        "HELL": 70
+      }
+    },
+    {
+      "id": "A05-D03",
+      "name": "缠蛇洞穴",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 6,
+      "col": 5,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "洞穴",
+      "challenge": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 503,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 42,
+        "NIGHTMARE": 56,
+        "HELL": 70
+      }
+    },
+    {
+      "id": "A05-D04",
+      "name": "毒牙侧殿",
+      "type": "Dungeon",
+      "regionId": 5,
+      "row": 6,
+      "col": 6,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "蝮蛇神庙前殿",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 504,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 93,
+        "NIGHTMARE": 124,
+        "HELL": 155
+      }
+    },
+    {
+      "id": "A05-C01",
+      "name": "利爪蝮蛇神殿",
+      "type": "Castle",
+      "regionId": 5,
+      "row": 6,
+      "col": 7,
+      "floors": 2,
+      "source": "原典",
+      "boss": "牙皮（Fangskin）",
+      "notes": "Castle：第二层末端获取蝮蛇护符",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 505,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 123,
+        "NIGHTMARE": 163,
+        "HELL": 203
+      }
+    },
+    {
+      "id": "A06-D01",
+      "name": "皇宫后宫",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 6,
+      "col": 2,
+      "floors": 2,
+      "source": "原典",
+      "boss": "",
+      "notes": "Harem，两层",
+      "challenge": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 601,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 102,
+        "NIGHTMARE": 136,
+        "HELL": 170
+      }
+    },
+    {
+      "id": "A06-D02",
+      "name": "皇宫地窖",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 7,
+      "col": 2,
+      "floors": 3,
+      "source": "原典",
+      "boss": "",
+      "notes": "Palace Cellar，三层",
+      "challenge": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 602,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 165,
+        "NIGHTMARE": 220,
+        "HELL": 275
+      }
+    },
+    {
+      "id": "A06-D03",
+      "name": "皇家护卫营",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 7,
+      "col": 3,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "宫殿内护卫战",
+      "challenge": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 603,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 45,
+        "NIGHTMARE": 60,
+        "HELL": 75
+      }
+    },
+    {
+      "id": "A06-D04",
+      "name": "宫廷仪式厅",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 7,
+      "col": 4,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "仪式场地",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 604,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 45,
+        "NIGHTMARE": 60,
+        "HELL": 75
+      }
+    },
+    {
+      "id": "A06-D05",
+      "name": "传送秘廊",
+      "type": "Dungeon",
+      "regionId": 6,
+      "row": 8,
+      "col": 2,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "魔法门通道",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 605,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 45,
+        "NIGHTMARE": 60,
+        "HELL": 75
+      }
+    },
+    {
+      "id": "A06-C01",
+      "name": "神秘庇护所",
+      "type": "Castle",
+      "regionId": 6,
+      "row": 8,
+      "col": 4,
+      "floors": 2,
+      "source": "原典改造",
+      "boss": "召唤者（The Summoner）",
+      "notes": "Castle：召唤者，胜利激活术士峡谷传送门",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 54,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 606,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 135,
+        "NIGHTMARE": 179,
+        "HELL": 223
+      }
+    },
+    {
+      "id": "A07-D01",
+      "name": "塔·拉夏古墓Ⅰ（假墓）",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 7,
+      "col": 6,
+      "floors": 1,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "六座假墓之一",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 56,
+        "HELL": 84
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 701,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 42,
+        "NIGHTMARE": 56,
+        "HELL": 70
+      }
+    },
+    {
+      "id": "A07-D02",
+      "name": "塔·拉夏古墓Ⅱ（假墓）",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 7,
+      "col": 7,
+      "floors": 1,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "六座假墓之一",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 56,
+        "HELL": 84
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 702,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 42,
+        "NIGHTMARE": 56,
+        "HELL": 70
+      }
+    },
+    {
+      "id": "A07-D03",
+      "name": "塔·拉夏古墓Ⅲ（假墓）",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 7,
+      "col": 8,
+      "floors": 2,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "六座假墓之一",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 56,
+        "HELL": 84
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 703,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 99,
+        "NIGHTMARE": 132,
+        "HELL": 165
+      }
+    },
+    {
+      "id": "A07-D04",
+      "name": "塔·拉夏古墓Ⅳ（假墓）",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 8,
+      "col": 5,
+      "floors": 1,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "六座假墓之一",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 56,
+        "HELL": 84
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 704,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 42,
+        "NIGHTMARE": 56,
+        "HELL": 70
+      }
+    },
+    {
+      "id": "A07-D05",
+      "name": "塔·拉夏古墓Ⅴ（假墓）",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 8,
+      "col": 6,
+      "floors": 2,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "六座假墓之一",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 56,
+        "HELL": 84
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 705,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 99,
+        "NIGHTMARE": 132,
+        "HELL": 165
+      }
+    },
+    {
+      "id": "A07-D06",
+      "name": "塔·拉夏古墓Ⅵ（假墓）",
+      "type": "Dungeon",
+      "regionId": 7,
+      "row": 8,
+      "col": 7,
+      "floors": 2,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "六座假墓之一",
+      "challenge": {
+        "NORMAL": 19,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "recommended": {
+        "NORMAL": 20,
+        "NIGHTMARE": 56,
+        "HELL": 84
+      },
+      "requiredForCastle": true,
+      "branch": "MAIN",
+      "autoOrder": 706,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 99,
+        "NIGHTMARE": 132,
+        "HELL": 165
+      }
+    },
+    {
+      "id": "A07-C01",
+      "name": "塔·拉夏古墓（真墓）",
+      "type": "Castle",
+      "regionId": 7,
+      "row": 8,
+      "col": 8,
+      "floors": 3,
+      "source": "原典改造",
+      "boss": "都瑞尔（Duriel）",
+      "notes": "Castle：古墓、密室、都瑞尔专属竞技场",
+      "challenge": {
+        "NORMAL": 20,
+        "NIGHTMARE": 55,
+        "HELL": 83
+      },
+      "recommended": {
+        "NORMAL": 21,
+        "NIGHTMARE": 56,
+        "HELL": 84
+      },
+      "requiredForCastle": false,
+      "branch": "MAIN",
+      "autoOrder": 707,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 195,
+        "NIGHTMARE": 259,
+        "HELL": 323
+      }
+    },
+    {
+      "id": "A08-D01",
+      "name": "排污渠入口",
+      "type": "Dungeon",
+      "regionId": 8,
+      "row": 3,
+      "col": 1,
+      "floors": 1,
+      "source": "原典改造",
+      "boss": "",
+      "notes": "下水道入口展开",
+      "challenge": {
+        "NORMAL": 13,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 801,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 21,
+        "NIGHTMARE": 28,
+        "HELL": 35
+      }
+    },
+    {
+      "id": "A08-D02",
+      "name": "旧水渠",
+      "type": "Dungeon",
+      "regionId": 8,
+      "row": 3,
+      "col": 2,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "下水道支线小房间",
+      "challenge": {
+        "NORMAL": 13,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 802,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 21,
+        "NIGHTMARE": 28,
+        "HELL": 35
+      }
+    },
+    {
+      "id": "A08-D03",
+      "name": "污秽洞窟",
+      "type": "Dungeon",
+      "regionId": 8,
+      "row": 4,
+      "col": 1,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "下水道精英",
+      "challenge": {
+        "NORMAL": 13,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 14,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 803,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 21,
+        "NIGHTMARE": 28,
+        "HELL": 35
+      }
+    },
+    {
+      "id": "A08-C01",
+      "name": "下水道深处",
+      "type": "Castle",
+      "regionId": 8,
+      "row": 4,
+      "col": 2,
+      "floors": 3,
+      "source": "原典改造",
+      "boss": "拉达门特（Radament）",
+      "notes": "Castle：下水道三层深处拉达门特",
+      "challenge": {
+        "NORMAL": 14,
+        "NIGHTMARE": 50,
+        "HELL": 79
+      },
+      "recommended": {
+        "NORMAL": 15,
+        "NIGHTMARE": 51,
+        "HELL": 80
+      },
+      "requiredForCastle": false,
+      "branch": "SIDE",
+      "autoOrder": 804,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 132,
+        "NIGHTMARE": 175,
+        "HELL": 218
+      }
+    },
+    {
+      "id": "A09-D01",
+      "name": "古代通道",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 3,
+      "col": 9,
+      "floors": 1,
+      "source": "原典",
+      "boss": "",
+      "notes": "Ancient Tunnels",
+      "challenge": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 901,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 33,
+        "NIGHTMARE": 44,
+        "HELL": 55
+      }
+    },
+    {
+      "id": "A09-D02",
+      "name": "被沙掩埋的庭院",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 4,
+      "col": 8,
+      "floors": 1,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "古城前厅",
+      "challenge": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 902,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 33,
+        "NIGHTMARE": 44,
+        "HELL": 55
+      }
+    },
+    {
+      "id": "A09-D03",
+      "name": "封存祭室",
+      "type": "Dungeon",
+      "regionId": 9,
+      "row": 4,
+      "col": 9,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "",
+      "notes": "古代祭坛",
+      "challenge": {
+        "NORMAL": 17,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 18,
+        "NIGHTMARE": 54,
+        "HELL": 83
+      },
+      "requiredForCastle": true,
+      "branch": "SIDE",
+      "autoOrder": 903,
+      "fixedBossArena": false,
+      "plannedKills": {
+        "NORMAL": 72,
+        "NIGHTMARE": 96,
+        "HELL": 120
+      }
+    },
+    {
+      "id": "A09-C01",
+      "name": "遗迹之心",
+      "type": "Castle",
+      "regionId": 9,
+      "row": 5,
+      "col": 9,
+      "floors": 2,
+      "source": "原创占位",
+      "boss": "遗迹祭司（占位）",
+      "notes": "Castle：古代通道支线收束",
+      "challenge": {
+        "NORMAL": 18,
+        "NIGHTMARE": 53,
+        "HELL": 82
+      },
+      "recommended": {
+        "NORMAL": 19,
+        "NIGHTMARE": 54,
+        "HELL": 83
+      },
+      "requiredForCastle": false,
+      "branch": "SIDE",
+      "autoOrder": 904,
+      "fixedBossArena": true,
+      "plannedKills": {
+        "NORMAL": 99,
+        "NIGHTMARE": 131,
+        "HELL": 163
+      }
+    }
+  ],
+  "planningDisclaimer": "仅内容配置方案，非当前 Godot 读取器已验证 schema",
+  "policy": {
+    "selection": "CHALLENGE_ASC_RANDOM_TIES",
+    "castleRequiresExplicitApproval": true,
+    "sideRegionRequiresExplicitApproval": false,
+    "sideDoesNotBlockMain": true
+  },
+  "runtimeUnlockGraph": {
+    "1": {
+      "mode": "any",
+      "castles": []
+    },
+    "2": {
+      "mode": "any",
+      "castles": [
+        "A01-C01"
+      ]
+    },
+    "3": {
+      "mode": "any",
+      "castles": [
+        "A01-C01"
+      ]
+    },
+    "4": {
+      "mode": "all",
+      "castles": [
+        "A02-C01",
+        "A03-C01"
+      ]
+    },
+    "5": {
+      "mode": "any",
+      "castles": [
+        "A04-C01"
+      ]
+    },
+    "6": {
+      "mode": "any",
+      "castles": [
+        "A04-C01"
+      ]
+    },
+    "7": {
+      "mode": "all",
+      "castles": [
+        "A05-C01",
+        "A06-C01"
+      ]
+    },
+    "8": {
+      "mode": "any",
+      "castles": []
+    },
+    "9": {
+      "mode": "any",
+      "castles": [
+        "A04-C01"
+      ]
+    }
+  },
+  "runtimeGates": [
+    {
+      "id": "G-T-01",
+      "fromTile": 39,
+      "toTile": 40,
+      "kind": "ROAD"
+    },
+    {
+      "id": "G-T-08",
+      "fromTile": 38,
+      "toTile": 29,
+      "kind": "ROAD"
+    },
+    {
+      "id": "G-01-02",
+      "fromTile": 31,
+      "toTile": 30,
+      "kind": "ROAD"
+    },
+    {
+      "id": "G-02-03",
+      "fromTile": 13,
+      "toTile": 14,
+      "kind": "ROAD"
+    },
+    {
+      "id": "G-03-04",
+      "fromTile": 23,
+      "toTile": 24,
+      "kind": "ROAD"
+    },
+    {
+      "id": "G-04-05",
+      "fromTile": 42,
+      "toTile": 43,
+      "kind": "ROAD"
+    },
+    {
+      "id": "G-T-06",
+      "fromTile": 38,
+      "toTile": 47,
+      "kind": "PALACE_DOOR"
+    },
+    {
+      "id": "G-04-09",
+      "fromTile": 26,
+      "toTile": 27,
+      "kind": "ROAD"
+    },
+    {
+      "id": "G-06-07",
+      "fromTile": 67,
+      "toTile": 68,
+      "kind": "ARCANE_PORTAL"
+    },
+    {
+      "id": "G-01-03",
+      "fromTile": 32,
+      "toTile": 23,
+      "kind": "PATCH_ROAD"
+    }
+  ],
+  "unlockGraph": {
+    "1": {
+      "mode": "any",
+      "castles": []
+    },
+    "2": {
+      "mode": "any",
+      "castles": [
+        "A01-C01"
+      ]
+    },
+    "3": {
+      "mode": "any",
+      "castles": [
+        "A01-C01"
+      ]
+    },
+    "4": {
+      "mode": "all",
+      "castles": [
+        "A02-C01",
+        "A03-C01"
+      ]
+    },
+    "5": {
+      "mode": "any",
+      "castles": [
+        "A04-C01"
+      ]
+    },
+    "6": {
+      "mode": "any",
+      "castles": [
+        "A04-C01"
+      ]
+    },
+    "7": {
+      "mode": "all",
+      "castles": [
+        "A05-C01",
+        "A06-C01"
+      ]
+    },
+    "8": {
+      "mode": "any",
+      "castles": []
+    },
+    "9": {
+      "mode": "any",
+      "castles": [
+        "A04-C01"
+      ]
+    }
+  }
+}

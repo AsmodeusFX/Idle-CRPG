@@ -1,0 +1,9 @@
+﻿ChapterId,RegionId,Name,IsOptional,UnlockParents,CastlePoiId,TileCount,Status
+ACT01,REGION_01,鲜血荒地,0,,A01-C01,4,已确认拓扑
+ACT01,REGION_02,冰冷之原,0,REGION_01,A02-C01,8,已确认拓扑
+ACT01,REGION_03,埋骨之地,1,REGION_02,A03-C01,4,已确认拓扑
+ACT01,REGION_04,石块旷野,0,REGION_02,A04-C01,7,已确认拓扑
+ACT01,REGION_05,黑暗森林,0,REGION_04,A05-C01,5,已确认拓扑
+ACT01,REGION_06,黑色荒地,0,REGION_05,A06-C01,7,已确认拓扑
+ACT01,REGION_07,塔摩高地,0,REGION_06,A07-C01,5,已确认拓扑
+ACT01,REGION_08,修道院,0,REGION_07,A08-C01,8,已确认拓扑

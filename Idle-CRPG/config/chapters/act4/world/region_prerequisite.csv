@@ -1,2 +1,5 @@
 id,region_id,required_dungeon_id
-gate1,25,c1
+ap2_0,23,D01-C01
+ap3_0,11,D02-C01
+ap4_0,5,D03-C01
+ap5_0,27,D03-C01

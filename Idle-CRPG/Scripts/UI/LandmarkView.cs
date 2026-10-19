@@ -32,8 +32,9 @@ public partial class Main
     private void DrawPortalRing(Vector2 p,float amount,string color="68cce8")
     {
         float width=15*Math.Max(.1f,amount),height=26*Math.Max(.1f,amount);var c=new Color(color);
-        var points=Enumerable.Range(0,33).Select(i=>p+new Vector2(MathF.Cos(i*MathF.Tau/32)*width,MathF.Sin(i*MathF.Tau/32)*height-25)).ToArray();
-        DrawColoredPolygon(points,new Color(c.R*.2f,c.G*.2f,c.B*.3f,.8f));DrawPolyline(points,c,3,true);
+        // 填充多边形不重复首尾顶点；旧33点闭环在浮点舍入后产生退化边，导致逐帧三角化报错。
+        var points=Enumerable.Range(0,32).Select(i=>p+new Vector2(MathF.Cos(i*MathF.Tau/32)*width,MathF.Sin(i*MathF.Tau/32)*height-25)).ToArray();
+        DrawColoredPolygon(points,new Color(c.R*.2f,c.G*.2f,c.B*.3f,.8f));DrawPolyline(points.Append(points[0]).ToArray(),c,3,true);
         DrawArc(p-new Vector2(0,25),7*Math.Max(.1f,amount),0,MathF.Tau,24,c.Lightened(.2f),2,true);
     }
     /// <summary>表演严格读取逻辑传送阶段：打开、进入收束、目标地点展开；动画不触发传送或奖励。</summary>

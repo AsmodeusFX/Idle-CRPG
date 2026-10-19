@@ -24,7 +24,7 @@ public partial class Main
                 foreach(var hero in s.Heroes)hero.Position=config.Town!=null?config.TownWaypoint:npc.Position;
                 session=GameSession.Restore(config,s);session.Tick(.05f);SyncCampaignConfig();RefreshWorldPage();
                 Check(ViewingCurrentMap&&MapConfig==session.Config&&castleRows.Count==config.Dungeons.Count(d=>d.Castle),"自动换章后的地图/清单");
-                var last=config.Regions.Last();SelectMapTile(last.Id);
+                var last=config.Regions.Last(r=>r.Enterable&&!config.IsTown(r.Id));SelectMapTile(last.Id);
                 Check(detailRegion==last.Id,"新尺寸地图格子详情");
                 foreach(var blocked in config.Regions.Where(r=>!r.Enterable))
                 {
@@ -34,7 +34,7 @@ public partial class Main
             }
             Check(session.DifficultyIndex==1&&!difficultyPicker.IsItemDisabled(1)&&difficultyPicker.IsItemDisabled(2),"难度解锁控件");
             var target=session.World!.Target;BrowseChapter(0,4);
-            Check(!ViewingCurrentMap&&MapConfig.WorldWidth==12&&MapWorld!.Progress.Cleared.Count==MapConfig.Dungeons.Count&&session.World.Target==target,"旧章查看改变远征或完成记录");
+            Check(!ViewingCurrentMap&&MapConfig.WorldWidth==11&&MapWorld!.Progress.Cleared.Count==MapConfig.Dungeons.Count&&session.World.Target==target,"旧章查看改变远征或完成记录");
             SelectMapTile(MapConfig.Regions.Last().Id);SaveNow(true);
             Check(saveStore.Load(config)?.Session?.DifficultyIndex==1,"浏览异尺寸旧图导致存档不可恢复");
             BrowseChapter(1,1);Check(mapDifficulty==0&&mapChapter==4,"锁定章节仍可切换");

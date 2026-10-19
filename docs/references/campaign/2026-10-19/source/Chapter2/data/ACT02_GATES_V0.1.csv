@@ -1,0 +1,10 @@
+﻿GateId,FromRow,FromCol,ToRow,ToCol,TravelKind,UnlockDescription,Notes
+G-T-01,5,3,5,4,ROAD,初始,鲁·高因东门，直接进入碎石荒地
+G-T-08,5,2,4,2,ROAD,鲁·高因下水道支线批准,下水道入口，初始可见需批准
+G-01-02,4,4,4,3,ROAD,碎石荒地 Castle 击败,荒漠与高地关口
+G-02-03,2,4,2,5,ROAD,干燥高地 Castle 击败,高地转入绿洲
+G-03-04,3,5,3,6,ROAD,遥远绿洲 Castle 击败,绿洲转遗失城市
+G-04-05,5,6,5,7,ROAD,遗失城市 Castle 击败,遗失城市进群蛇峡谷
+G-T-06,5,2,6,2,PALACE_DOOR,遗失城市 Castle 击败,从鲁·高因皇宫入口进入第二主线
+G-04-09,3,8,3,9,ROAD,遗失城市 Castle 击败，且古代通道支线批准,遗失城市东缘古代通道支线
+G-06-07,8,4,8,5,ARCANE_PORTAL,群蛇峡谷及皇宫神秘庇护所两个 Castle 均已征服,神秘庇护所红色传送门 → 术士峡谷；并非普通道路

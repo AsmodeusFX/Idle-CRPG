@@ -1,0 +1,6 @@
+id,name,terrain,width,height,directory
+act1,第一幕：罗格营地,mixed,8,8,chapters/act1
+act2,第二幕：鲁·高因,desert,10,8,legacy/act2
+act3,第三幕：库拉斯特,tropical,8,10,legacy/act3
+act4,第四幕：群魔堡垒,hell,8,6,legacy/act4
+act5,第五幕：哈洛加斯,snow,12,10,legacy/act5

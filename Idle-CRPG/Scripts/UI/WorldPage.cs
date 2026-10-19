@@ -102,7 +102,7 @@ public partial class Main
             selectedTileTitle.Text=$"{region.Name} · 地块 {region.Id:000}";
             selectedTileInfo.Text=$"{TerrainName(region.Terrain)} · 坐标 ({region.X+1}, {region.Y+1})\n不可进入 · 地形阻断\n不属于统治区域，不参与探索或通关";
             foreach(var child in selectedTileDungeons.GetChildren()){selectedTileDungeons.RemoveChild(child);child.QueueFree();}
-            if(MapConfig.IsTown(region.Id))selectedTileInfo.Text="罗格营地 · 安全村庄\n每次地牢结束后返回交易补给\n营地不属于统治要塞，不计入地牢完成数";
+            if(MapConfig.IsTown(region.Id))selectedTileInfo.Text=$"{MapConfig.Town?.Name??region.Name} · 安全城镇\n每次地牢结束后返回治疗、售卖\n城镇不属于统治要塞，不计入地牢完成数";
             selectedDungeonLabels.Clear();detailRegion=-1;return;
         }
         var castle=MapConfig.Dungeons.Single(d=>d.Id==MapConfig.Rulers[region.Id]);
@@ -145,10 +145,12 @@ public partial class Main
     /// <summary>全局地图使用设计坐标绘制，鼠标直接按相同原点和格宽命中。</summary>
     public void RenderCastleMap(CanvasItem context)
     {
+        long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
         painter=context;context.DrawSetTransform(-GlobalPageRect.Position);
         DrawRect(GlobalPageRect,new Color("080d15"));
         if(session!=null)DrawWorld();
         else Text("请先在游戏页组建小队，开启世界远征。",new Vector2(650,420),20);
+        if(performanceRun)drawTimes.Add(Milliseconds(profileStart));
     }
 }
 

@@ -8,18 +8,19 @@ namespace IdleCrpg.Core;
 /// <summary>显式POI排程及原型内容定义；等级来自配置，绝不依据英雄等级或预算发放奖励。</summary>
 public record PoiProfile(string Id,bool Optional,bool RequiredForCastle,int Floors,int Order,string Boss,string Interior,string Status);
 public record PoiChallenge(string Poi,int Difficulty,int Challenge,int Recommended);
-public record MapGate(string Id,int From,int To);
+public record MapGate(string Id,int From,int To,string Kind="ROAD");
 public record AreaStyle(string Castle,int Index,string Name,string Color);
 public sealed partial class Config
 {
     public int TownRegionId {get;private set;}
+    public HashSet<int> TownRegions {get;private set;}=new();
     public string MainClearPoi {get;private set;}="";
     public int MapVersion {get;private set;}=1;
     public List<MapGate> Gates=new();
     public Dictionary<string,PoiProfile> PoiProfiles=new();
     public List<PoiChallenge> PoiChallenges=new();
     public Dictionary<string,AreaStyle> AreaStyles=new();
-    public bool IsTown(int region)=>region==TownRegionId;
+    public bool IsTown(int region)=>region==TownRegionId||TownRegions.Contains(region);
     public bool Optional(string id)=>PoiProfiles.TryGetValue(id,out var profile)&&profile.Optional;
     public bool MainCleared(WorldProgress p)=>MainClearPoi==""?Dungeons.All(d=>p.Cleared.Contains(d.Id)):p.Cleared.Contains(MainClearPoi);
     public PoiChallenge Challenge(string id,int difficulty)=>PoiChallenges.SingleOrDefault(p=>p.Poi==id&&p.Difficulty==difficulty)??new(id,difficulty,Dungeons.Single(d=>d.Id==id).LevelMin,Dungeons.Single(d=>d.Id==id).LevelMin);
@@ -27,18 +28,19 @@ public sealed partial class Config
     /// <summary>同区四邻接直接通行，跨区只能经过显式关口；无Gate表的旧地图维持原导航。</summary>
     public bool CanCross(int from,int to)
     {
-        var first=Regions.SingleOrDefault(r=>r.Id==from);var second=Regions.SingleOrDefault(r=>r.Id==to);
+        var first=RegionById(from);var second=RegionById(to);
         if(first is not {Enterable:true}||second is not {Enterable:true})return false;
         if(from==to)return true;
         if(Math.Abs(first.X-second.X)+Math.Abs(first.Y-second.Y)!=1)return false;
-        return Gates.Count==0||Rulers.TryGetValue(from,out var a)&&Rulers.TryGetValue(to,out var b)&&a==b||Gates.Any(g=>g.From==from&&g.To==to||g.From==to&&g.To==from);
+        return Gates.Count==0||IsTown(from)&&IsTown(to)||Rulers.TryGetValue(from,out var a)&&Rulers.TryGetValue(to,out var b)&&a==b||gateIndex.Contains((Math.Min(from,to),Math.Max(from,to)));
     }
     private void LoadPoiConfiguration(string directory)
     {
-        TownRegionId=0;MainClearPoi="";MapVersion=1;Gates=new();PoiProfiles=new();PoiChallenges=new();FloorPlans=new();AreaStyles=new();
+        TownRegionId=0;TownRegions=new();MainClearPoi="";MapVersion=1;Gates=new();PoiProfiles=new();PoiChallenges=new();FloorPlans=new();AreaStyles=new();
         string path=Path.Combine(directory,"world/map_policy.csv");if(!File.Exists(path))return;
         var policy=CsvTable.Load(path,File.ReadAllText(path),"id","value");TownRegionId=policy.Require("town_region_id").Integer("value");MainClearPoi=policy.Require("main_clear_poi").Required("value");MapVersion=policy.Require("version").Integer("value");
-        path=Path.Combine(directory,"world/gate.csv");Gates=CsvTable.Load(path,File.ReadAllText(path),"id","from_region","to_region").Rows.Select(r=>new MapGate(r.Id,r.Integer("from_region"),r.Integer("to_region"))).ToList();
+        var townRows=policy.Rows.FirstOrDefault(r=>r.Id=="town_regions");if(townRows!=null)TownRegions=townRows.Required("value").Split(';').Select(int.Parse).ToHashSet();
+        path=Path.Combine(directory,"world/gate.csv");var gateText=File.ReadAllText(path);bool typed=CsvTable.ReadRecords(path,gateText)[0].Cells.Contains("kind");Gates=CsvTable.Load(path,gateText,typed?new[]{"id","from_region","to_region","kind"}:new[]{"id","from_region","to_region"}).Rows.Select(r=>new MapGate(r.Id,r.Integer("from_region"),r.Integer("to_region"),typed?r.Required("kind"):"ROAD")).ToList();
         path=Path.Combine(directory,"dungeon/poi_profile.csv");
         PoiProfiles=CsvTable.Load(path,File.ReadAllText(path),"id","optional","required_for_castle","floors","auto_order","boss_name","interior","status").Rows.Select(r=>new PoiProfile(r.Id,r["optional"] switch {"0"=>false,"1"=>true,_=>throw r.Error("optional","必须为0或1")},r["required_for_castle"] switch {"0"=>false,"1"=>true,_=>throw r.Error("required_for_castle","必须为0或1")},r.Integer("floors"),r.Integer("auto_order"),r["boss_name"],r["interior"],r.Required("status"))).ToDictionary(p=>p.Id);
         path=Path.Combine(directory,"dungeon/poi_challenge.csv");

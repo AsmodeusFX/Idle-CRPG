@@ -1,3 +1,6 @@
 id,castle_id,initially_unlocked,unlock_mode
-ap1,c1,1,any
-ap2,c2,0,any
+ap1,D01-C01,1,any
+ap2,D02-C01,0,any
+ap3,D03-C01,0,any
+ap4,D04-C01,0,any
+ap5,D05-C01,0,any

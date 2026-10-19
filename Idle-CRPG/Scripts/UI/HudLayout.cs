@@ -107,7 +107,8 @@ public partial class Main
     private static string CompactAmount(long value)=>value>=1000000?$"{value/1000000d:0.#}M":value>=10000?$"{value/1000d:0.#}K":value.ToString("N0");
     private void RefreshHud()
     {
-        teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel}";
+        int waiting=session?.World==null?0:config.Dungeons.Count(d=>d.Castle&&!session.World.Progress.Cleared.Contains(d.Id)&&session.World.Progress.CastleUnlocked(config,d.Id)&&!session.World.PendingCastles.Contains(d.Id)&&session.World.Target.Dungeon.Id!=d.Id);
+        teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel} · 待批要塞 {waiting}";
         partySetup.Visible=session==null;
         interactionHeading.Visible=session!=null;interactionScroll.Visible=session!=null;
         for(int i=0;i<5;i++)

@@ -14,33 +14,34 @@ public static class WorldNavigation
     public static bool Walkable(Config c,int x,int y)
     {
         if(x<0||y<0||x>=c.WorldWidth*CellsPerRegion||y>=c.WorldHeight*CellsPerRegion)return false;
-        if(!c.Regions.Any(r=>r.X==x/CellsPerRegion&&r.Y==y/CellsPerRegion&&r.Enterable))return false;
+        if(!c.RegionAt(x/CellsPerRegion,y/CellsPerRegion).Enterable)return false;
         float left=x/(float)CellsPerRegion,top=y/(float)CellsPerRegion,size=1f/CellsPerRegion;
         return !c.Obstacles.Any(o=>left<o.X+o.Width-.00001f&&left+size>o.X+.00001f&&top<o.Y+o.Height-.00001f&&top+size>o.Y+.00001f);
     }
-    public static bool Walkable(Config c,Vector2 p)=>Walkable(c,(int)(p.X*CellsPerRegion),(int)(p.Y*CellsPerRegion));
+    public static bool Walkable(Config c,Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&p.X>=0&&p.Y>=0&&p.X<c.WorldWidth&&p.Y<c.WorldHeight&&Walkable(c,(int)(p.X*CellsPerRegion),(int)(p.Y*CellsPerRegion));
     public static List<Vector2> FindPath(Config c,Vector2 from,Vector2 to,ISet<int>? explored=null,ISet<int>? allowedRegions=null)
     {
         int width=c.WorldWidth*CellsPerRegion;
         int Id(Vector2 p)=>(int)(p.Y*CellsPerRegion)*width+(int)(p.X*CellsPerRegion);
         int start=Id(from),goal=Id(to);
-        var regions=c.Regions.ToDictionary(r=>(r.X,r.Y),r=>r.Id);
-        if(allowedRegions!=null&&(!allowedRegions.Contains(regions[((int)from.X,(int)from.Y)])||!allowedRegions.Contains(regions[((int)to.X,(int)to.Y)])))throw new InvalidOperationException("路径端点属于未解锁统治区");
+        if(!Walkable(c,from)||!Walkable(c,to))throw new InvalidDataException("世界路径端点被阻挡或越界");
+        int RegionId(int x,int y)=>c.RegionAt(x,y).Id;
+        if(allowedRegions!=null&&(!allowedRegions.Contains(RegionId((int)from.X,(int)from.Y))||!allowedRegions.Contains(RegionId((int)to.X,(int)to.Y))))throw new InvalidOperationException("路径端点属于未解锁统治区");
         if(!Walkable(c,from)||!Walkable(c,to))throw new InvalidDataException("世界路径端点被障碍阻挡");
         var open=new PriorityQueue<int,int>();var cost=new Dictionary<int,int>{{start,0}};var parent=new Dictionary<int,int>();open.Enqueue(start,0);
         bool Allowed(int x,int y)
         {
             if(!Walkable(c,x,y))return false;
-            if(allowedRegions!=null&&!allowedRegions.Contains(regions[(x/CellsPerRegion,y/CellsPerRegion)]))return false;
+            if(allowedRegions!=null&&!allowedRegions.Contains(RegionId(x/CellsPerRegion,y/CellsPerRegion)))return false;
             int gx=(int)to.X,gy=(int)to.Y;
-            return explored==null||explored.Contains(regions[(x/CellsPerRegion,y/CellsPerRegion)])||(x/CellsPerRegion==gx&&y/CellsPerRegion==gy);
+            return explored==null||explored.Contains(RegionId(x/CellsPerRegion,y/CellsPerRegion))||(x/CellsPerRegion==gx&&y/CellsPerRegion==gy);
         }
         while(open.Count>0)
         {
             int id=open.Dequeue();if(id==goal)break;int x=id%width,y=id/width;
             foreach(var (dx,dy) in new[]{(1,0),(0,1),(-1,0),(0,-1)})
             {
-                int nx=x+dx,ny=y+dy;if(!Allowed(nx,ny)||!c.CanCross(regions[(x/CellsPerRegion,y/CellsPerRegion)],regions[(nx/CellsPerRegion,ny/CellsPerRegion)]))continue;int next=ny*width+nx,newCost=cost[id]+1;
+                int nx=x+dx,ny=y+dy;if(!Allowed(nx,ny)||!c.CanCross(RegionId(x/CellsPerRegion,y/CellsPerRegion),RegionId(nx/CellsPerRegion,ny/CellsPerRegion)))continue;int next=ny*width+nx,newCost=cost[id]+1;
                 if(cost.TryGetValue(next,out int old)&&old<=newCost)continue;
                 cost[next]=newCost;parent[next]=id;open.Enqueue(next,newCost+Math.Abs(nx-goal%width)+Math.Abs(ny-goal/width));
             }

@@ -122,7 +122,10 @@ public sealed partial class GameSession
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
         if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);return;}
+        var tickFloor=Floor;bool fighting=!Floor.Rooms[CurrentRoom].Clear&&Floor.Rooms[CurrentRoom].Generated;
+        var p0=Heroes[0].Position;var p1=Heroes[1].Position;var p2=Heroes[2].Position;
         TickDungeon(dt);
+        if(fighting)tickFloor.BattleTicks++;else if(p0!=Heroes[0].Position||p1!=Heroes[1].Position||p2!=Heroes[2].Position)tickFloor.WalkTicks++;
         if(World!=null&&Won)World.CompleteDungeon(this);
     }
     private void TickDungeon(float dt)

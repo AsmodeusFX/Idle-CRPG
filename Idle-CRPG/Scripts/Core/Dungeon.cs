@@ -49,6 +49,7 @@ public sealed class Floor
 {
     public int Seed,ActualSpawned,ActualKillFacts;
     public long ElapsedTicks;
+    public long BattleTicks,WalkTicks;
     public List<Room> Rooms = new();
     public List<Passage> Passages = new();
     public bool Clear => Rooms.All(r => r.Clear);

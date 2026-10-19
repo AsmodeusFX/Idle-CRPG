@@ -1,5 +1,7 @@
 # 配置字段字典
 
+五章正式地图：map_policy增加town_regions（分号分隔安全格集合）、version=3；gate增加kind（外观类型，进入权限仍由区域推导）；floor_plan兼容FixedUniqueActorCount、ScriptedWaveCount、ScriptedWaveMonsterTarget、StageMode，波次目标为总怪量。字段、导入器与规划边界见 [五章合同](../design/campaign_five_acts.md)。legacy目录仅QA旧回归，不是正式地图。
+
 固定城镇town_scene/town_npc/town_prop、传送portal_rule及各章waypoint字段和校验见 [城镇传送配置](../design/towns_portals.md)。
 
 最新扩展：areapart.csv新增unlock_mode（any/all，缺列默认any），显式地牢及旧统治区前置均按此聚合；不再限定OR。正式第一章目录chapters/act1（8×8、独立营地），根旧世界表仅保留回归用途。POI、逐层计划、门禁与失败阈值字段见 [第一章配置](act1_config.md)，覆盖下文旧目录/尺寸描述。

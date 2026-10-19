@@ -19,7 +19,7 @@ public sealed partial class Config
     private void LoadChapters(string directory,bool legacyFixture)
     {
         Difficulties=Read(Path.Combine(directory,"world/difficulty.csv")).Select(r=>new DifficultyDefinition(r["id"],r["name"])).ToArray();
-        Chapters=Read(Path.Combine(directory,"world/chapter.csv")).Select(r=>new ChapterDefinition(r["id"],r["name"],r["terrain"],Integer(r,"width"),Integer(r,"height"),r["directory"])).ToArray();
+        Chapters=Read(Path.Combine(directory,legacyFixture?"legacy/chapter.csv":"world/chapter.csv")).Select(r=>new ChapterDefinition(r["id"],r["name"],r["terrain"],Integer(r,"width"),Integer(r,"height"),r["directory"])).ToArray();
         if(!Difficulties.Select(d=>d.Id).SequenceEqual(new[]{"normal","nightmare","hell"})||!Chapters.Select(c=>c.Id).SequenceEqual(new[]{"act1","act2","act3","act4","act5"}))throw new InvalidDataException("难度和章节稳定ID及顺序不得变更；显示名称可配置");
         if(Difficulties.Count!=3||Chapters.Count!=5||Difficulties.Select(d=>d.Id).Distinct().Count()!=3||Chapters.Select(c=>c.Id).Distinct().Count()!=5||Difficulties.Any(d=>string.IsNullOrWhiteSpace(d.Id)||string.IsNullOrWhiteSpace(d.Name))||Chapters.Any(c=>string.IsNullOrWhiteSpace(c.Id)||string.IsNullOrWhiteSpace(c.Name)||c.Width<1||c.Width>64||c.Height<1||c.Height>64||!new[]{"mixed","grass","desert","tropical","coast","snow","hell"}.Contains(c.Terrain)))throw new InvalidDataException("必须配置3档难度及5个有效独立章节");
         if(legacyFixture)Chapters=Chapters.Select((c,i)=>i==0?c with {Width=WorldWidth,Height=WorldHeight,Directory="."}:c).ToArray();

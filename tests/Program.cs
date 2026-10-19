@@ -6,6 +6,11 @@ using IdleCrpg.Core;
 
 static void Check(bool value,string message) {if(!value)throw new Exception(message);}
 var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"));
+if(args.Contains("--config-benchmark"))
+{
+    for(int i=0;i<3;i++){var clock=System.Diagnostics.Stopwatch.StartNew();var loaded=Config.Load(Path.Combine(root,"Idle-CRPG/config"));Console.WriteLine($"CONFIG_LOAD_MS {i}: {clock.Elapsed.TotalMilliseconds:F1}; POI={loaded.ChapterMaps.Sum(m=>m.Dungeons.Count)}");}
+    return;
+}
 var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
 string Shape(int seed)=>string.Join(";",Dungeon.Generate(seed,c).SelectMany(f=>f.Rooms.Select(r=>$"{r.Id}:{r.X},{r.Y}:{string.Join(',',r.Neighbors)}")));
 Check(Shape(42)==Shape(42),"种子不可重现");
@@ -261,3 +266,4 @@ AttributeLevelChecks.Run(root);
 ChapterChecks.Run(root);
 TerrainGateChecks.Run(root);
 Act1Checks.Run(root);
+CampaignPackageChecks.Run(root);

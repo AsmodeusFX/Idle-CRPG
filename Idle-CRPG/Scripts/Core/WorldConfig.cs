@@ -65,6 +65,7 @@ public sealed partial class Config
         Require(TravelSpeed>0&&VillageSpeed>0&&TradeSeconds>0&&TradeRange>0,"世界移动/交互参数非法");
         Require(Unique(Regions.Select(r=>r.Id))&&Unique(Regions.Select(r=>(r.X,r.Y)))&&Regions.All(r=>r.Id>0&&r.X>=0&&r.X<WorldWidth&&r.Y>=0&&r.Y<WorldHeight&&new[]{"snow","tropical","desert","coast","grass","hell","mountain","ocean"}.Contains(r.Terrain)&&(!(r.Terrain is "mountain" or "ocean")||!r.Enterable)),"区域 ID/坐标/地形非法");
         Require(Regions.Any(r=>r.Id==StartRegionId&&r.Enterable),"出生区域不存在或不可进入");
+        IndexWorld();
         bool Region(int id)=>Regions.Any(r=>r.Id==id&&r.Enterable);
         Require(Unique(Dungeons.Select(d=>d.Id))&&Dungeons.All(d=>!string.IsNullOrWhiteSpace(d.Id)&&Region(d.RegionId)&&new[]{"normal","castle"}.Contains(d.Kind)&&d.LevelMin>=1&&d.LevelMax>=d.LevelMin&&d.X>0&&d.X<1&&d.Y>0&&d.Y<1),"地牢 ID/引用/等级/位置非法");
         Require(Unique(Villages.Select(v=>v.Id))&&Unique(Npcs.Select(n=>n.Id))&&Npcs.All(n=>n.Kind=="trade")&&Villages.All(v=>Region(v.RegionId)&&Npcs.Any(n=>n.Id==v.NpcId)&&v.X>0&&v.X<1&&v.Y>0&&v.Y<1),"村庄/NPC 配置非法");
