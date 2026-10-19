@@ -46,6 +46,8 @@ public sealed class WorldSnapshot
     public PortalPhase PortalPhase;
     public bool PortalReturning;
     public bool ReturnPortalVisible;
+    public bool WaitingApproval;
+    public long WaitApprovalTicks;
     public float PortalElapsed;
     public string PortalWaypoint="";
     public Vector2 PortalOrigin;
@@ -248,11 +250,11 @@ public sealed partial class GameSession
 
 public sealed partial class WorldCampaign
 {
-    internal WorldSnapshot Capture() => new() {PortalOrigin=PortalOrigin,ReturnPortalVisible=Progress.ReturnPortalVisible,PortalPhase=PortalPhase,PortalReturning=PortalReturning,PortalElapsed=PortalElapsed,PortalWaypoint=PortalWaypoint,TownVersion=1,TownPhase=TownPhase,MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
+    internal WorldSnapshot Capture() => new() {WaitingApproval=WaitingApproval,WaitApprovalTicks=WaitApprovalTicks,PortalOrigin=PortalOrigin,ReturnPortalVisible=Progress.ReturnPortalVisible,PortalPhase=PortalPhase,PortalReturning=PortalReturning,PortalElapsed=PortalElapsed,PortalWaypoint=PortalWaypoint,TownVersion=1,TownPhase=TownPhase,MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
     internal static WorldCampaign Restore(Config c,WorldSnapshot s,int difficulty=0)
     {
         var restoredProgress=new WorldProgress {ReturnPortalVisible=s.ReturnPortalVisible};restoredProgress.Explored.UnionWith(s.Explored);restoredProgress.Cleared.UnionWith(s.Cleared);
-        var w=new WorldCampaign(c,difficulty,restoredProgress,s.BranchCastle) {PortalOrigin=s.PortalOrigin,PortalPhase=s.PortalPhase,PortalReturning=s.PortalReturning,PortalElapsed=s.PortalElapsed,PortalWaypoint=s.PortalWaypoint,TownPhase=s.TownPhase,Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
+        var w=new WorldCampaign(c,difficulty,restoredProgress,s.BranchCastle) {WaitingApproval=s.WaitingApproval,WaitApprovalTicks=s.WaitApprovalTicks,PortalOrigin=s.PortalOrigin,PortalPhase=s.PortalPhase,PortalReturning=s.PortalReturning,PortalElapsed=s.PortalElapsed,PortalWaypoint=s.PortalWaypoint,TownPhase=s.TownPhase,Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
         foreach(var p in s.Failures)w.failures.Add(p.Key,p.Value);foreach(var p in s.PausedAtLevel)w.pausedAtLevel.Add(p.Key,p.Value);w.retryCastles.UnionWith(s.RetryCastles);w.teamLevel=s.TeamLevel;if(s.RecoveryRandomState!=0)w.recoveryRandom.State=s.RecoveryRandomState;
         w.Progress.Explored.Clear();w.Progress.Explored.UnionWith(s.Explored);w.Progress.Cleared.UnionWith(s.Cleared);w.pendingCastles.AddRange(s.PendingCastles.Count>0?s.PendingCastles:s.PendingCastle!=""?new[]{s.PendingCastle}:Array.Empty<string>());w.route.Clear();foreach(var p in s.Route)w.route.Enqueue(p);
         foreach(var p in s.VillagePaths)w.villagePaths[p.Key]=new Queue<Vector2>(p.Value);
@@ -264,6 +266,7 @@ public sealed partial class WorldCampaign
     }
     internal static void Validate(Config c,WorldSnapshot s)
     {
+        if(s.WaitApprovalTicks<0)throw new InvalidDataException("Invalid approval clock");
         if(!Enum.IsDefined(s.PortalPhase)||!float.IsFinite(s.PortalElapsed)||s.PortalElapsed<0||s.PortalElapsed>c.PortalSeconds)throw new InvalidDataException("传送表演状态无效");
         if(s.PortalPhase!=PortalPhase.None)
         {

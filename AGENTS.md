@@ -1,6 +1,7 @@
 # Idle-CRPG 开发规范
 
 - 开发前阅读 `docs/README.md`、`docs/design/dungeon_combat.md`、`docs/design/world.md`、`docs/technical/architecture.md`。
+- 五章正式地图及V0.2拓扑见 docs/design/campaign_five_acts.md；转换器tools/import_campaign.py，--check只校验。用户明确的自动支线、同级随机优先于源AI文本手动支线/稳定排序；冲突裁定见docs/reviews/2026-10-19_campaign.md。legacy目录只用于显式旧回归，不是正式地图。
 - Godot 工程仅在 `Idle-CRPG/`；归档文档在根目录 `docs/`。
 - 使用 C#。纯逻辑在 `Scripts/Core/`，不得引用 Godot；节点、绘制、输入在 `Scripts/UI/`。
 - 数值统一使用 `Idle-CRPG/config/` 下按 hero、monster、dungeon、world、village、item 等功能分目录的 CSV，UTF-8。字段改变同步更新字段字典和校验。

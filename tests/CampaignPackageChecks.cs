@@ -31,6 +31,11 @@ public static class CampaignPackageChecks
         var queued=resumed.CaptureProgress();queued.World!.PendingCastles.Add("A07-C01");var held=GameSession.Restore(c,queued);
         for(int i=0;i<3000&&held.World!.Stage==CampaignStage.Village;i++)held.Tick(.05f);
         Need(held.World!.PendingCastles.Contains("A07-C01")&&!held.World.Progress.Cleared.Contains("A05-C01"),"新门禁静默删除批准队列或伪造前置");
+        var waiting=GameSession.CreateWorld(c,22,new[]{"warrior","ranger","mage"});waiting.World!.Progress.Cleared.UnionWith(c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]=="A01-C01").Select(d=>d.Id));
+        for(int i=0;i<3000&&waiting.World.Stage==CampaignStage.Village;i++)waiting.Tick(.05f);
+        Need(waiting.World.WaitingApproval&&waiting.World.Target.Farming,"待批准未反馈继续复刷");waiting.Tick(.05f);
+        var waited=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=waiting.CaptureProgress()})).Session!);
+        Need(waited.World!.WaitApprovalTicks==waiting.World.WaitApprovalTicks&&waited.World.WaitApprovalTicks>0,"授权等待观测未保存");
         // 全15张图真实走动/进场，用GM跳过战斗；所有要塞仍由测试显式授权，不能从普通候选自动发起。
         var run=GameSession.CreateWorld(c,987,new[]{"warrior","ranger","mage"});run.SetGmBattle(new(InstantDungeonClear:true));
         for(int tick=0;tick<2000000;tick++)

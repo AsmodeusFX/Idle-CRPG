@@ -79,6 +79,9 @@ public sealed partial class WorldCampaign
     public float TradeElapsed { get; private set; }
     public int Trades { get; private set; }
     public int DungeonVisits { get; private set; }
+    public bool WaitingApproval {get;private set;}
+    public long WaitApprovalTicks {get;private set;}
+    internal void ObserveApprovalWait(){if(WaitingApproval)WaitApprovalTicks++;}
     private readonly List<string> pendingCastles=new();
     /// <summary>按玩家点击顺序保存待派遣城堡，重复请求不入队。</summary>
     public IReadOnlyList<string> PendingCastles => pendingCastles.AsReadOnly();
@@ -107,6 +110,7 @@ public sealed partial class WorldCampaign
     private Vector2 WorldPoint(int region,float x,float y) {var r=config.Regions.Single(r=>r.Id==region);return new Vector2(r.X+x,r.Y+y);}
     private void Plan(bool previousWasFarm)
     {
+        WaitingApproval=false;
         pendingCastles.RemoveAll(id=>Progress.Cleared.Contains(id));
         bool headReady=pendingCastles.Count>0&&Progress.CastleUnlocked(config,pendingCastles[0]);
         if(!headReady&&TryRecovery(out var recovery))
@@ -128,9 +132,10 @@ public sealed partial class WorldCampaign
             pendingCastles.RemoveAt(0);
         }
         else Target=ExpeditionPlanner.Select(config,Progress,CurrentRegion,previousWasFarm,difficulty,recoveryRandom);
+        WaitingApproval=Target.Farming&&config.Dungeons.Any(d=>d.Castle&&!Progress.Cleared.Contains(d.Id)&&Progress.CastleUnlocked(config,d.Id)&&!pendingCastles.Contains(d.Id));
         Stage=CampaignStage.TravelDungeon;
         BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));
-        Status=(Target.Farming?"复刷 · ":"前往 · ")+Target.Dungeon.Name;
+        Status=(Target.Farming?"复刷 · ":"前往 · ")+Target.Dungeon.Name+(WaitingApproval?" · 待批要塞期间继续积累":"");
     }
     internal void PrepareResume()=>Plan(Target.Farming);
     private void BuildRoute(int region,Vector2 target)
@@ -143,6 +148,7 @@ public sealed partial class WorldCampaign
         if(!config.Dungeons.Any(d=>d.Id==id&&d.Castle)||Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id))return false;
         if(pendingCastles.Contains(id)||(Target.Dungeon.Id==id&&Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon))return false;
         pendingCastles.Add(id);
+        WaitingApproval=false;
         ClearFailure(id);
         if(Stage==CampaignStage.TravelDungeon&&!Target.Dungeon.Castle)Plan(false);
         return true;

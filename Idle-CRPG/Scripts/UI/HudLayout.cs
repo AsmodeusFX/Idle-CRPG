@@ -108,7 +108,8 @@ public partial class Main
     private void RefreshHud()
     {
         int waiting=session?.World==null?0:config.Dungeons.Count(d=>d.Castle&&!session.World.Progress.Cleared.Contains(d.Id)&&session.World.Progress.CastleUnlocked(config,d.Id)&&!session.World.PendingCastles.Contains(d.Id)&&session.World.Target.Dungeon.Id!=d.Id);
-        teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel} · 待批要塞 {waiting}";
+        teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel} · 待批 {waiting} · 排队 {session.World?.PendingCastles.Count??0}";
+        teamChallengeLabel.TooltipText=session?.World==null?"":string.Join("\n",session.World.PendingCastles.Select(id=>config.Dungeons.Single(d=>d.Id==id).Name+(session.World.Progress.CastleUnlocked(config,id)?" · 已批准待执行":" · 已批准，等待新前置满足")));
         partySetup.Visible=session==null;
         interactionHeading.Visible=session!=null;interactionScroll.Visible=session!=null;
         for(int i=0;i<5;i++)
