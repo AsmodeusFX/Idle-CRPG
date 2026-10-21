@@ -45,7 +45,7 @@ public partial class Main
             else
             {
                 var saved=saveStore.Load(config);
-                if(session==null||saved?.Session==null||!paused||speed!=2||start.Visible||seed.Editable||preferences.MusicVolume!=35)throw new Exception("重新启动未自动恢复界面/偏好");
+                if(viewMode!=0||session==null||saved?.Session==null||!paused||speed!=2||start.Visible||seed.Editable||preferences.MusicVolume!=35)throw new Exception("重新启动未自动恢复界面/偏好");
                 string expected=SaveStore.Encode(new SaveDocument {Session=GameSession.Restore(config,saved.Session).CaptureProgress()});
                 string actual=SaveStore.Encode(new SaveDocument {Session=session.CaptureProgress()});
                 if(expected!=actual)throw new Exception("重新启动恢复状态不一致");

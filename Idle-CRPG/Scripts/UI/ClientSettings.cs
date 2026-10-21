@@ -54,7 +54,7 @@ public partial class Main
         var document=saveStore.Load(config);
         if(document?.Session!=null)
         {
-            session=GameSession.Restore(config,document.Session);config=session.Config;OpenCurrentChapter();speed=document.Speed;paused=document.Paused;viewMode=document.ViewMode;selectedRegion=document.SelectedRegion;
+            session=GameSession.Restore(config,document.Session);config=session.Config;OpenCurrentChapter();speed=document.Speed;paused=document.Paused;viewMode=0;selectedRegion=document.SelectedRegion;
             seed.Text=session.Seed.ToString();UpdatePartyControls();ResetSoundBaseline();Refresh();
             savedRevision=session.Revision;
         }

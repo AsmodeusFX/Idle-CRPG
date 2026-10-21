@@ -10,7 +10,8 @@ public partial class SceneCanvas : Node2D
 }
 public partial class Main
 {
-    private static readonly Rect2 SceneRect=new(24,92,1040,558);
+    private static readonly Vector2 CreationOffset=new(176,90);
+    private Rect2 SceneRect=>session==null?new Rect2(24,92,1392,784):new Rect2(24,92,1040,558);
     private SceneCanvas sceneCanvas=null!;
     private CanvasItem painter=null!;
     private V cameraCenter;

@@ -36,7 +36,7 @@ public partial class Main
     {
         HudPanel(canvas,new Vector2(24,20),new Vector2(1392,60));
         var tabs=new HBoxContainer {Position=new Vector2(36,32)};tabs.AddThemeConstantOverride("separation",6);canvas.AddChild(tabs);
-        foreach(var pair in new[]{("游戏",0),("城堡",1),("星图",3),("英雄",4)})
+        foreach(var pair in new[]{("游戏",0),("英雄",4),("星图",3),("地图",1)})
         {
             var button=new Button {Text=pair.Item1,CustomMinimumSize=new Vector2(104,36)};
             int mode=pair.Item2;button.Pressed+=()=>{SelectStarView(mode);PlaySound("sfx_click");};tabs.AddChild(button);
@@ -68,7 +68,7 @@ public partial class Main
         interactionEmpty=UiLabel("暂无可用交互\n\n城堡满足挑战条件后在此显示。",14);interactionEmpty.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(interactionEmpty);
 
         // 开局选择占用交互区，进入远征后隐藏，避免永久占据战斗构图。
-        partySetup=new Control {Size=new Vector2(1060,650)};gameHud.AddChild(partySetup);
+        partySetup=new Control {Position=CreationOffset,Size=new Vector2(1060,650)};canvas.AddChild(partySetup);
         seed=new LineEdit {Text="20261017",Position=new Vector2(416,520),Size=new Vector2(240,32)};partySetup.AddChild(seed);
         var group=new ButtonGroup();
         choices=config.Heroes.Select((s,i)=>new CheckBox {Text=s.Name,ButtonGroup=group,ButtonPressed=i==0,Disabled=config.HeroUnlockKills[s.Id]>0,Position=new Vector2(85+i*182,i%2==0?380:315),Size=new Vector2(180,40),TooltipText=config.HeroUnlockKills[s.Id]>0?$"累计击杀 {config.HeroUnlockKills[s.Id]} 后解锁":"初始可用"}).ToArray();

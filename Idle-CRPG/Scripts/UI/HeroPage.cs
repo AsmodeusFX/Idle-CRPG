@@ -46,6 +46,7 @@ public partial class Main
     }
     private void PaintCreationCamp()
     {
+        painter.DrawSetTransform(-SceneRect.Position+CreationOffset);
         DrawString(font,new Vector2(360,180),"选择你的第一位英雄",HorizontalAlignment.Left,-1,28,new Color("e7ba71"));
         DrawString(font,new Vector2(312,220),"一人启程 · 在星图扩编 · 最多五人同行",HorizontalAlignment.Left,-1,18,new Color("91a6b7"));
         float flicker=Mathf.Sin(Time.GetTicksMsec()*.009f);var fire=new Vector2(530,458);DrawCircle(fire,74+flicker*3,new Color(.8f,.35f,.1f,.12f));
@@ -58,7 +59,7 @@ public partial class Main
             var pos=new Vector2(165+i*182,i%2==0?370:305);bool selected=choices[i].ButtonPressed;
             var tint=choices[i].Disabled?new Color("46505c"):heroColors[i];
             if(selected)DrawArc(pos+new Vector2(0,8),29,0,Mathf.Tau,32,new Color("f6ce83"),3,true);
-            painter.DrawSetTransform(-SceneRect.Position-pos,0,Vector2.One*2);DrawFighter(pos,tint,i,false,1,"");painter.DrawSetTransform(-SceneRect.Position);
+            painter.DrawSetTransform(-SceneRect.Position+CreationOffset-pos,0,Vector2.One*2);DrawFighter(pos,tint,i,false,1,"");painter.DrawSetTransform(-SceneRect.Position+CreationOffset);
             if(selected)DrawString(font,pos+new Vector2(-7,-65),"▼",HorizontalAlignment.Left,-1,24,new Color("f6ce83"));
         }
     }

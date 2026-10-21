@@ -42,7 +42,8 @@ public partial class Main
         bool show=viewMode==3;
         bool global=viewMode==1||show||viewMode==4;TickHeroPage();
         bool openCastle=viewMode==1&&!castlePage.Visible;
-        gameHud.Visible=!global;castlePage.Visible=viewMode==1;
+        gameHud.Visible=!global&&session!=null;partySetup.Visible=!global&&session==null;
+        ((Control)sceneCanvas.GetParent()).Size=SceneRect.Size;castlePage.Visible=viewMode==1;
         rateButton.Visible=!global&&session!=null;
         summary.Visible=!global;
         if(openCastle){OpenCurrentChapter();RefreshWorldPage();if(selectedRegion>=0&&MapConfig.Rulers.TryGetValue(selectedRegion,out var ruler))castleListScroll.EnsureControlVisible(castleRows[ruler]);}
