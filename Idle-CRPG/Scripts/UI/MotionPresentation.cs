@@ -1,6 +1,8 @@
 using IdleCrpg.Core;
 using System.Collections.Generic;
 using System.Numerics;
+using System;
+using System.Linq;
 
 /// <summary>只读表现插值：固定逻辑前后位置之间绘制，不回写模型或改变交互、伤害判定。</summary>
 public sealed class MotionPresentation
@@ -12,6 +14,31 @@ public sealed class MotionPresentation
     private Vector2 worldPosition;
     private WorldCampaign? world;
     private readonly List<Vector2> outdoorParty=new();
+    private readonly Dictionary<Actor,Vector2> combatOffsets=new();
+    private GameSession? visualOwner;
+    private Room? visualRoom;
+    /// <summary>围攻偏移只改变绘制，按本房实例ID稳定取位；目标变化平滑过渡，禁止写回Actor.Position。</summary>
+    public void UpdateCombatVisuals(GameSession game,double dt)
+    {
+        var room=game.Floors.Count>0&&(game.World==null||game.World.InDungeonScene)?game.Floor.Rooms[game.CurrentRoom]:null;
+        if(!ReferenceEquals(visualOwner,game)||!ReferenceEquals(visualRoom,room)){combatOffsets.Clear();visualOwner=game;visualRoom=room;}
+        if(room==null)return;
+        var locks=game.MonsterTargets.ToDictionary(l=>l.Owner);
+        float blend=1-MathF.Exp(-12*(float)Math.Clamp(dt,0,.1));
+        for(int i=0;i<room.Monsters.Count;i++)
+        {
+            var actor=room.Monsters[i];Vector2 goal=Vector2.Zero;
+            if(actor.Alive&&locks.TryGetValue(game.Heroes.Count+i,out var target)&&target.Kind!=MonsterLockKind.Ranged)
+            {
+                float distance=Vector2.Distance(actor.Position,game.Heroes[target.Target].Position);
+                float proximity=Math.Clamp((actor.Range+2-distance)/2,0,1);
+                float angle=i*2.399963f+target.Target*.7f;
+                goal=new Vector2(MathF.Cos(angle)*(18+i%3*3),MathF.Sin(angle)*(13+i%4*3))*proximity;
+            }
+            combatOffsets[actor]=Vector2.Lerp(combatOffsets.GetValueOrDefault(actor),goal,blend);
+        }
+    }
+    public Vector2 CombatVisualOffset(Actor actor)=>combatOffsets.GetValueOrDefault(actor);
     public void BeforeTick(GameSession game)
     {
         owner=game;stage=game.World?.Stage;floor=game.Floors.Count>0?game.Floor:null;

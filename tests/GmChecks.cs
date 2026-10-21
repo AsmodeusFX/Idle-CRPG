@@ -13,6 +13,7 @@ public static class GmChecks
         {
             var game=new GameSession(c,123,new[]{"warrior","ranger","mage"});
             for(int i=0;i<10000&&game.CurrentRoom==0;i++)game.Tick(.05f);
+            while(game.CombatEntryRemaining>0)game.Tick(.05f);
             var room=game.Floor.Rooms[game.CurrentRoom];
             Check(room.Monsters.Any(),"battle fixture");
             foreach(var hero in game.Heroes){hero.Hp=hero.MaxHp=10000;hero.Attack=10;hero.Defense=0;hero.Range=100;hero.Cooldown=.05f;hero.Timer=0;hero.Position=room.Center;}

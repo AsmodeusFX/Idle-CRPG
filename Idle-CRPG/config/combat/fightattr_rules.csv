@@ -25,3 +25,4 @@ boss_damage_pct,0,0,
 skill_coefficient_bonus,0,0,
 damage_multiplier,1,0.000001,
 vulnerable_damage_pct,0,0,
+engagement_capacity,0,0,100000

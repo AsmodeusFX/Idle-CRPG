@@ -29,7 +29,7 @@ public sealed partial class GameSession
     private IEnumerable<Actor> RoomActors=>Heroes.Concat(Floor.Rooms[CurrentRoom].Monsters);
     private int CombatId(Actor actor)=>Heroes.Contains(actor)?Heroes.IndexOf(actor):Heroes.Count+Floor.Rooms[CurrentRoom].Monsters.IndexOf(actor);
     private Actor? CombatActor(int id)=>id<0?null:id<Heroes.Count?Heroes[id]:Floor.Rooms[CurrentRoom].Monsters.ElementAtOrDefault(id-Heroes.Count);
-    private IEnumerable<Actor> Enemies(int owner)=>owner<Heroes.Count?Floor.Rooms[CurrentRoom].Monsters.Where(m=>m.Alive):Heroes.Where(h=>h.Alive);
+    private IEnumerable<Actor> Enemies(int owner)=>owner<Heroes.Count?Floor.Rooms[CurrentRoom].Monsters.Where(InCombatRoom):Heroes.Where(InCombatRoom);
     private IEnumerable<SkillBuffState> ActorBuffs(int id)=>skillState.Buffs.Where(b=>b.Target==id&&b.Remaining>0);
     private bool Stunned(Actor actor)=>ActorBuffs(CombatId(actor)).Any(b=>SkillConfig.Buffs[b.Id].Mechanic=="stun");
     private float MoveMultiplier(Actor actor)=>(float)ActorBuffs(CombatId(actor)).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="chill").Select(b=>1-b.Value).DefaultIfEmpty(1).Min();
@@ -68,14 +68,14 @@ public sealed partial class GameSession
     }
     private void ResetSkillRoom()
     {
-        skillState=new();foreach(var actor in Heroes)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
+        skillState=new();monsterLockIndex.Clear();foreach(var actor in Heroes)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
         if(FloorIndex<Floors.Count&&CurrentRoom<Floors[FloorIndex].Rooms.Count)foreach(var actor in Floor.Rooms[CurrentRoom].Monsters)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
     }
 
     /// <summary>所有普攻/技能/反击/持续伤害共用一次 HP 应用和奖励结算，死亡后不会重复结算。</summary>
     private DamageBreakdown? SettleDamage(Actor attacker,Actor target,string skill,double coefficient,DamageType type,bool ranged,SkillAttackSnapshot? snapshot=null,bool? critical=null,bool events=true,int depth=0,double multiplier=1)
     {
-        if(!attacker.Alive||!target.Alive)return null;
+        if(!attacker.Alive||!target.Alive||!InCombatRoom(target))return null;
         bool hero=Heroes.Contains(attacker);snapshot??=AttackSnapshot(attacker);
         var debuffs=ActorBuffs(CombatId(target)).Select(b=>b.Id).ToHashSet();
         var attributes=snapshot.Attributes.Copy();
@@ -94,7 +94,7 @@ public sealed partial class GameSession
             if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}
         }
-        if(killed)skillState.Buffs.RemoveAll(b=>b.Target==CombatId(target));
+        if(killed){skillState.Buffs.RemoveAll(b=>b.Target==CombatId(target));ReleaseCombatTargets(CombatId(target));}
         if(events)
         {
             if(!result.Dmg2.Dodged)React("OnHit",CombatId(attacker),CombatId(target),skill,coefficient,depth);
@@ -134,7 +134,7 @@ public sealed partial class GameSession
         action.Windup=0;
         var actor=CombatActor(action.Owner);var target=CombatActor(action.Target);string id=action.Active;var skill=SkillConfig.Skills[id];
         // 目标在前摇期间死亡则取消，不扣冷却；本项目保留单动作槽。
-        if(actor is not {Alive:true}||target is not {Alive:true}||Stunned(actor)){action.Active="";return;}
+        if(actor is not {Alive:true}||target is not {Alive:true}||!InCombatRoom(actor)||!InCombatRoom(target)||Stunned(actor)){action.Active="";return;}
         double cooldown=skill.Cooldown/(double)SkillConfig.TickRate;
         if(SkillConfig.Abilities.TryGetValue(id,out var ability)&&ability.Form=="buff")
             cooldown=Math.Max(ability.Buffs.Max(b=>SkillConfig.Buffs[b].Duration)/(double)SkillConfig.TickRate*SkillConfig.Setting("buff_cooldown_floor_ratio"),cooldown*(1-SkillConfig.Setting("buff_cooldown_per_level")*(LevelOf(actor,id)-1)));

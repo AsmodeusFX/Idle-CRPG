@@ -39,6 +39,7 @@ public static class SaveChecks
         // 正在交战的房间与半程救援读条均不重新生成或丢失计时。
         for(int i=0;i<10000&&(game.World!.Stage!=CampaignStage.Dungeon||game.CurrentRoom==0);i++)game.Tick(.05f);
         foreach(var m in game.Floor.Rooms[game.CurrentRoom].Monsters)m.Hp=0;
+        foreach(var hero in game.Heroes)hero.Position=game.Floor.Rooms[game.CurrentRoom].Center;
         game.Heroes[0].Hp=0;game.Heroes[0].Position=game.Heroes[1].Position;
         for(int i=0;i<20;i++)game.Tick(.05f);
         Check(game.ReviveElapsed>0&&game.ReviveElapsed<c.ReviveSeconds,"未构造半程救援");

@@ -1,5 +1,7 @@
 # 工程架构
 
+2026-10-22战斗AI：CombatTargeting作为GameSession部分实现统一怪物普通主锁、容量预约与有界溢出重评；临时数据唯一存于SkillBattleState.Targeting，复用CombatId和技能动作边界。Travel按编队顺序连续穿门，真实房间空间资格用于普通攻击和技能候选；有怪房警觉期间按配置展开，已清理路径不等待。Separate逻辑推挤已移除，MotionPresentation只做表现偏移。正式进度仍是房间检查点，原技能/伤害/经验/实物奖励路径保留。详见[索敌设计](../design/combat_targeting.md)与[执行记录](../reviews/2026-10-22_combat_targeting/Execution_Record.md)。
+
 五章导入由tools/import_campaign.py完成，运行仍是CSV。SpatialIndex在校验后构建每章独立格子/ID/Gate索引；TownScene缓存固定入口道路；CampaignMigration迁移第一章v2→v3。FloorReports区分实际房间、战斗/移动Ticks与静态格子预算；见 [五章实现](../design/campaign_five_acts.md)。
 
 第一章扩展：PoiConfiguration负责POI/关口，FloorPlanning负责规划预算和实际统计，BranchCampaign负责手动支线与暂挂主线，FailureRecovery负责失败计数与复刷；均在Core且不依赖Godot。AreaPartUnlocked统一处理any/all，UI只展示与提交命令。字段和存档边界见 [第一章配置](act1_config.md)。

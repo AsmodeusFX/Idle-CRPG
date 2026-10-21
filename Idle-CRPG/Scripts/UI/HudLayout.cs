@@ -119,7 +119,8 @@ public partial class Main
             var hero=session?.Heroes.ElementAtOrDefault(i);
             heroIcons[i].Modulate=hero==null?new Color("536575"):Colors.White;
             heroAdd[i].Visible=session!=null&&hero==null&&i<session.PartyCapacity;
-            heroNames[i].TooltipText=hero==null?"":$"{hero.Name} Lv.{hero.Level}\n个人经验 {HeroExperienceText(hero)}\n只结算上阵英雄（含倒地者）；按本人等级计算怪物经验倍率。";
+            heroNames[i].TooltipText=hero==null?"":$"{hero.Name} Lv.{hero.Level}\n个人经验 {HeroExperienceText(hero)}\n近战优先接敌容量 {session!.EngagementCapacity(hero)}（不是受击人数上限）\n只结算上阵英雄（含倒地者）；按本人等级计算怪物经验倍率。";
+            heroNames[i].MouseFilter=Control.MouseFilterEnum.Stop;
             heroNames[i].Text=hero==null?(i<(session?.PartyCapacity??1)?"席位空缺":"席位未解锁"):$"{hero.Name}  Lv.{hero.Level}";
             heroHealth[i].Visible=hero!=null;
             heroExperience[i].Text=hero==null?"":"XP "+HeroExperienceText(hero);

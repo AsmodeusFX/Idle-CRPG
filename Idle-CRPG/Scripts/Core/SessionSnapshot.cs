@@ -192,6 +192,13 @@ public sealed partial class GameSession
             game.Note("统治区前置规则更新：保留成长与资源，回初始村庄补给后继续冒险");
         }
         if(config.Town!=null)foreach(var h in game.Heroes.Concat(game.reserveHeroes))if(game.GrantStarterSkill(h))game.MarkChanged();
+        if(s.RoomCheckpoint&&game.Floors.Count>0&&(game.World==null||game.World.Stage==CampaignStage.Dungeon)&&!game.Floor.Rooms[game.CurrentRoom].Clear)
+        {
+            game.skillState=new();
+            var room=game.Floor.Rooms[game.CurrentRoom];
+            var anchor=room.Neighbors.Select(i=>room.DoorTowards(game.Floor.Rooms[i])).OrderBy(p=>Vector2.DistanceSquared(p,game.Heroes[0].Position)).FirstOrDefault(room.Center-Vector2.UnitX*room.HalfWidth);
+            game.StartCombatEntry(room,anchor);
+        }
         return game;
     }
     private static void ValidateSnapshot(Config c,SessionSnapshot s)

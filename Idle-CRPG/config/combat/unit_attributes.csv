@@ -1,8 +1,8 @@
-id,side,dodge_rate,crit_rate,crit_damage,block_rate,block_reduction,ranged
-warrior,hero,0,0,0,0,0,false
-ranger,hero,0,0,0,0,0,true
-mage,hero,0,0,0,0,0,true
-priest,hero,0,0,0,0,0,true
-rat,monster,0,0,0,0,0,false
-guard,monster,0,0,0,0,0,false
-necromancer,hero,0,0,0,0,0,true
+id,side,dodge_rate,crit_rate,crit_damage,block_rate,block_reduction,ranged,engagement_capacity
+warrior,hero,0,0,0,0,0,false,3
+ranger,hero,0,0,0,0,0,true,0
+mage,hero,0,0,0,0,0,true,0
+priest,hero,0,0,0,0,0,true,5
+rat,monster,0,0,0,0,0,false,0
+guard,monster,0,0,0,0,0,false,0
+necromancer,hero,0,0,0,0,0,true,0

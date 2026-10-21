@@ -139,6 +139,11 @@ public sealed partial class GameSession
         Floor.ElapsedTicks++;
         if (!Heroes.Any(h=>h.Alive)) { RespawnParty(); return; }
         var room = Floor.Rooms[CurrentRoom];
+        if(room.Clear&&(skillState.Targeting.Locks.Count>0||skillState.Targeting.EntryPrepared))ResetSkillRoom();
+        if(destination<0&&room.Generated)
+        {
+            if(!room.Clear)AdvanceRoomEntry(room,dt);else entryMoved.Clear();
+        }
         if (!room.Clear && room.Generated)
         {
             Status = "交战中";
@@ -264,19 +269,26 @@ public sealed partial class GameSession
         var dir=Vector2.Normalize(b.Center-a.Center);
         var exit=a.DoorTowards(b); var entry=b.DoorTowards(a);
         var goal=phase==0 ? exit : phase==1 ? entry : b.Center;
-        foreach(var h in Heroes.Where(h=>h.Alive)) Move(h,goal,dt);
-        // 任意队员实际触门才揭示。先等全队到入口，避免队尾留在未激活房间。
-        if(phase==0 && Heroes.Any(h=>h.Alive && Vector2.Distance(h.Position,exit)<=0.32f))
+        var party=Heroes.Where(h=>h.Alive).ToArray();
+        for(int i=0;i<party.Length;i++)
+        {
+            var actor=party[i];var waypoint=phase==1&&Vector2.Dot(actor.Position-exit,dir)<-.05f?exit:goal;
+            if(i>0&&Vector2.Distance(actor.Position,party[i-1].Position)<Config.Talents.Rule("dungeon_queue_spacing_milli")/1000f)continue;
+            Move(actor,waypoint,dt);
+        }
+        // 玩家编队首位先穿门，队尾持续移动；不等全员集合再激活敌人。
+        if(phase==0 && Vector2.Distance(party[0].Position,exit)<=0.32f)
         {
             var passage=Floor.Passages.Single(p=>(p.A==a.Id&&p.B==b.Id)||(p.A==b.Id&&p.B==a.Id));
             if(!passage.Revealed){passage.Revealed=true;MarkChanged();}
-            if(Heroes.Where(h=>h.Alive).All(h=>Vector2.Distance(h.Position,exit)<=0.32f)) phase=1;
+            phase=1;
         }
-        else if(phase==1 && Heroes.Any(h=>h.Alive && Vector2.Distance(h.Position,entry)<=0.32f))
+        else if(phase==1 && Vector2.Distance(party[0].Position,entry)<=0.32f)
         {
             Reveal(b);
             CurrentRoom=b.Id; destination=-1;
             CaptureRoomEntry();
+            StartCombatEntry(b,entry);
         }
     }
 
@@ -313,33 +325,27 @@ public sealed partial class GameSession
 
     private void Fight(Room room,float dt)
     {
+        if(CombatEntryRemaining>0)
+        {
+            skillState.Targeting.EntryElapsed+=dt;Status=$"入场展开 · 敌人警觉 {CombatEntryRemaining:0.0}秒";
+            return;
+        }
         effectBudgetRemaining=SkillConfig.EffectBudget;
         AdvanceSkills(dt);
         DrainEffects();
         foreach(var h in Heroes.Where(h=>h.Alive)) Act(h,room.Monsters,dt,room);
+        PrepareMonsterTargets(dt);
         foreach(var m in room.Monsters.Where(m=>m.Alive)) Act(m,Heroes,dt,room);
         DrainEffects();
-        Separate(Heroes,room,dt);Separate(room.Monsters,room,dt);
         if(room.Clear)ResetSkillRoom();
-    }
-    private static void Separate(List<Actor> actors,Room room,float dt)
-    {
-        for(int i=0;i<actors.Count;i++)for(int j=i+1;j<actors.Count;j++)
-        {
-            var a=actors[i];var b=actors[j];if(!a.Alive||!b.Alive)continue;
-            var delta=b.Position-a.Position;float distance=delta.Length();if(distance>=.62f)continue;
-            var push=(distance<.001f?new Vector2(1,0):delta/distance)*Math.Min((.62f-distance)*.5f,dt*2);
-            a.Position=Vector2.Clamp(a.Position-push,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
-            b.Position=Vector2.Clamp(b.Position+push,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
-        }
     }
     private void Act(Actor actor,List<Actor> opponents,float dt,Room room)
     {
-        if(Stunned(actor))return;
+        if(!InCombatRoom(actor)||entryMoved.Contains(actor)||Stunned(actor))return;
         actor.Timer=Math.Max(0,actor.Timer-dt*(float)(1+EffectiveAttributes(actor).AttackSpeed));
         if(RunActiveSkill(actor))return;
-        var target=opponents.Where(o=>o.Alive).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault();
-        if(target==null) return;
+        var target=Heroes.Contains(actor)?opponents.Where(InCombatRoom).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault():OrdinaryMonsterTarget(actor);
+        if(target==null||!InCombatRoom(target)) return;
         double engagementRange=EffectiveValue(actor,"attack_range",actor.Range);
         // 已装配近战主动就绪时先接近其施放距离，避免远程普攻射程使至圣斩永远无法使用。
         foreach(string id in actor.SkillIds)if(SkillCooldown(actor,id)<=0)engagementRange=Math.Min(engagementRange,SkillConfig.Skills[id].Range);

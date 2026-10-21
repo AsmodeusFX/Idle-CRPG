@@ -11,6 +11,7 @@ public sealed class SkillBattleState
     public List<SkillFlightState> Flights=new();
     public List<SkillEffectWork> Pending=new();
     public long NextId;
+    public CombatTargetingState Targeting=new();
 }
 public sealed class SkillActionState
 {

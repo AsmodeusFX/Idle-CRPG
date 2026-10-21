@@ -1,5 +1,7 @@
 # 战斗配置字段字典
 
+2026-10-22：新增统一属性`engagement_capacity`、unit_attributes同名必填列，以及system/config的索敌/警觉/展开规则。字段、范围和旧档边界详见[索敌配置合同](targeting_config.md)。
+
 目录均相对于 `Idle-CRPG/config/`，UTF-8，Godot importer=keep。技能表使用严格 CsvTable 解析；列表以分号分隔，空值与0含义不同，不应随意互换。源字段保留不等于支持所有源系统。算法见 [战斗公式](../design/combat_formula.md)、[技能运行](../design/skills_effects_buffs.md)、[属性与等级](../design/attributes_levels.md)。
 
 ## 属性和等级

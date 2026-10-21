@@ -1,5 +1,7 @@
 # 文档索引
 
+- [战斗索敌、接敌容量与入场展开](design/combat_targeting.md)：稳定锁敌、溢出重评、无单位推挤及有怪房AI警觉；[字段合同](technical/targeting_config.md)、[来源与执行记录](reviews/2026-10-22_combat_targeting/Execution_Record.md)。
+
 - [五章正式配置与V0.2补丁](design/campaign_five_acts.md)：五章地图、并行AND、来源与用户规则冲突裁定、迁移及原型边界。
 - [五章验收和性能检查](reviews/2026-10-19_campaign.md)：全15地图回归、实测帧耗时、已修复bug及待人工体验项目。
 

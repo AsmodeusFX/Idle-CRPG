@@ -13,6 +13,7 @@ if(args.Contains("--config-benchmark"))
 }
 if(args.Contains("--class-follow-checks")){ClassFollowingChecks.Run(root);return;}
 if(args.Contains("--talent-checks")){TalentChecks.Run(root);return;}
+if(args.Contains("--targeting-checks")){CombatTargetingChecks.Run(root);return;}
 var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
 string Shape(int seed)=>string.Join(";",Dungeon.Generate(seed,c).SelectMany(f=>f.Rooms.Select(r=>$"{r.Id}:{r.X},{r.Y}:{string.Join(',',r.Neighbors)}")));
 Check(Shape(42)==Shape(42),"种子不可重现");
@@ -242,7 +243,8 @@ Check(w.Target.Farming,"等待最后一座城堡挑战时未持续复刷");
 var battleWipe=GameSession.CreateWorld(c,7,new[]{"warrior","ranger","mage"});
 for(int i=0;i<2000&&(battleWipe.World!.Stage!=CampaignStage.Dungeon||battleWipe.CurrentRoom==0);i++)battleWipe.Tick(.05f);
 Check(battleWipe.World!.Stage==CampaignStage.Dungeon&&battleWipe.CurrentRoom!=0,"未构造战斗全灭场景");
-foreach(var h in battleWipe.Heroes){h.Hp=1;h.Defense=0;h.Timer=999;}
+while(battleWipe.CombatEntryRemaining>0)battleWipe.Tick(.05f);
+foreach(var h in battleWipe.Heroes){h.Hp=1;h.Defense=0;h.Timer=999;h.Position=battleWipe.Floor.Rooms[battleWipe.CurrentRoom].Center;}
 foreach(var m in battleWipe.Floor.Rooms[battleWipe.CurrentRoom].Monsters){m.Hp=100000;m.Attack=100000;m.Range=100;m.Cooldown=.05f;m.Timer=0;}
 for(int i=0;i<10&&battleWipe.World.Stage==CampaignStage.Dungeon;i++)battleWipe.Tick(.05f);
 Check(battleWipe.World.Stage==CampaignStage.Village&&battleWipe.Retries==1&&battleWipe.Heroes.All(h=>h.Alive&&h.Hp==h.MaxHp),"战斗击杀触发全灭后未立即返村满血复活");
@@ -274,3 +276,4 @@ TalentChecks.Run(root);
 
 ClassFollowingChecks.Run(root);
 HeroExperienceChecks.Run(root);
+CombatTargetingChecks.Run(root);

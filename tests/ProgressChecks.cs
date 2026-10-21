@@ -19,8 +19,9 @@ public static class ProgressChecks
             g.Tick(.05f);
         }
         var room=g.Floor.Rooms[g.CurrentRoom];Check(room.Monsters.Count(m=>m.Alive)>=2,"未构造战斗");
-        int count=room.Monsters.Count;long revision=g.Revision,gold=g.Gold;int xp=g.Experience,kills=g.Kills;
         foreach(var h in g.Heroes)h.Timer=999;
+        while(g.CombatEntryRemaining>0)g.Tick(.05f);
+        int count=room.Monsters.Count;long revision=g.Revision,gold=g.Gold;int xp=g.Experience,kills=g.Kills;
         g.Heroes[0].Timer=0;g.Tick(.05f);
         Check(room.Loot.Count==1&&room.Monsters.Any(m=>m.Alive)&&g.Gold==gold&&g.Kills==kills+1,"战斗中提前发放实物掉落或没有即时记录击杀");
         Check(g.Revision>revision&&(g.Experience!=xp||g.Heroes[0].Level>1),"击杀经验没有即时结算或触发存档");

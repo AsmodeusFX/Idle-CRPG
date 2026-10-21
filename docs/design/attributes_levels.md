@@ -13,7 +13,7 @@
 | 通用增伤 | all_damage_pct、skill_damage_pct、basic_attack_damage_pct、physical_damage_pct、fire_damage_pct、cold_damage_pct、lightning_damage_pct、poison_damage_pct、ranged_damage_pct、boss_damage_pct |
 | 其他伤害池 | skill_coefficient_bonus、damage_multiplier、vulnerable_damage_pct |
 
-共26项。`skill_damage_pct` 表示主动技能通用增伤，进入通用池；技能本体系数的加值使用 `skill_coefficient_bonus`，进入技能池。指定技能的贡献还需 `DamageModifier.SkillId` 等资格，不把“所有技能增伤”和“指定技能系数”混为一项。易伤按 Buff 稳定 ID 分组。
+2026-10-22增加`engagement_capacity`，共27项。它属于基础战斗属性，提供普通近战优先预约，不限制实际受击人数；原型基础值野蛮人3、圣骑士5、其余英雄0。复用基础/固定/百分比聚合，最终向下取整；详见[索敌配置](../technical/targeting_config.md)。`skill_damage_pct` 表示主动技能通用增伤，进入通用池；技能本体系数的加值使用 `skill_coefficient_bonus`，进入技能池。指定技能的贡献还需 `DamageModifier.SkillId` 等资格，不把“所有技能增伤”和“指定技能系数”混为一项。易伤按 Buff 稳定 ID 分组。
 
 `base_flat_pct` 聚合为 `(基础值+Σflat)×(1+Σpct)`；`add` / `add_clamp` 为基础加总；`multiply` 为基础乘各来源。最终按规则边界夹取。Buff 不得重设 base；未知 ID、非法操作、非有限数、非正倍率和不支持的负伤害加值拒绝加载。
 

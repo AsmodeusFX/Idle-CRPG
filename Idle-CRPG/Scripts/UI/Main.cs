@@ -147,6 +147,8 @@ public partial class Main : Node2D
         if(capture&&OS.GetCmdlineUserArgs().Any(a=>a is "--capture-talents" or "--capture-talent-editor" or "--capture-talent-hud" or "--capture-talent-drag"))PrepareTalentCapture(OS.GetCmdlineUserArgs().Contains("--capture-talent-editor"),OS.GetCmdlineUserArgs().Contains("--capture-talent-hud"));
         if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-heroes"))
         {var heroArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-hero="));if(heroArg!=null)captureView="heroes-"+heroArg.Substring("--qa-hero=".Length);}
+        var targetingCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-targeting="));
+        if(capture&&targetingCapture!=null)PrepareTargetingCapture(targetingCapture.Substring("--capture-targeting=".Length));
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
@@ -178,6 +180,7 @@ public partial class Main : Node2D
         else {motionAlpha=1;if(session!=null)motion.BeforeTick(session);}
         SyncCampaignConfig();TrackSounds();AutoSave(delta);
         TickStarPanels();
+        if(session!=null)motion.UpdateCombatVisuals(session,delta);
         UpdateCamera(delta);UpdateTownBackdrop();sceneCanvas.QueueRedraw();
         if(performanceRun){processTimes.Add(Milliseconds(profileStart));frameTimes.Add(delta*1000);}
         if(capture && ++smokeFrames==10) Capture();
@@ -294,8 +297,9 @@ public partial class Main : Node2D
         foreach(var a in visible.SelectMany(r=>r.Monsters).Concat(session.Heroes).Where(a=>a.Alive).OrderBy(a=>a.Position.X+a.Position.Y))
         {
             int index=session.Heroes.IndexOf(a); var color=index>=0?heroColors[index]:a.Boss?new Color("ffc56b"):new Color("dc6b70");
-            DrawFighter(Project(VisualPosition(a))-new Vector2(0,index>=0?session.TalentLeapHeight(a):0),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
-            if(index>=0&&a.Timer>a.Cooldown-.14f)
+            var visualOffset=motion.CombatVisualOffset(a);
+            DrawFighter(Project(VisualPosition(a))+new Vector2(visualOffset.X,visualOffset.Y)-new Vector2(0,index>=0?session.TalentLeapHeight(a):0),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
+            if(index>=0&&session.CombatEntryRemaining<=0&&a.Timer<=a.Cooldown+.001f&&a.Timer>a.Cooldown-.14f)
             {
                 var target=f.Rooms[session.CurrentRoom].Monsters.Where(m=>m.Alive).OrderBy(m=>V.DistanceSquared(a.Position,m.Position)).FirstOrDefault();
                 if(target!=null)DrawLine(Project(VisualPosition(a))-new Vector2(0,18),Project(VisualPosition(target))-new Vector2(0,15),new Color(color.R,color.G,color.B,.6f),2,true);
