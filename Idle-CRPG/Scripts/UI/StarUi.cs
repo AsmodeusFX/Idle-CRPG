@@ -29,6 +29,9 @@ public partial class Main
 
     private string StarEffect(StarNode n, int level)
     {
+        if(n.Attribute=="skill_slots")return "全队主动技能槽 +"+(n.ValuePerLevel*level);
+        if(n.Attribute=="talent_reset")return "解锁城镇洗点";
+        if(n.Attribute=="talent_reset_discount")return "洗点费用降低 "+(n.ValuePerLevel*level*100).ToString("0")+"%";
         if(n.Attribute=="party_slots")return "上阵人数 +"+(n.ValuePerLevel*level);if(n.Attribute=="")return "尚未配置效果";
         return (n.Attribute=="attack"?"全队攻击":"全队生命上限")+" +"+(n.ValuePerLevel*level).ToString("0.##",CultureInfo.InvariantCulture);
     }
@@ -172,9 +175,9 @@ public partial class Main
         _tnCost = StarField(panel, "逐级金币费用（分号分隔，数量=等级数）", string.Join(';', n.Costs));
         panel.AddChild(UiLabel("属性效果", 12)); _tnAttribute = new OptionButton(); panel.AddChild(_tnAttribute); _tnAttribute.AddItem("未配置（占位）");
         int index = 1;
-        foreach (var attr in new[]{"attack","hp","party_slots"})
+        foreach (var attr in new[]{"attack","hp","party_slots","skill_slots","talent_reset","talent_reset_discount"})
         {
-            _tnAttribute.AddItem(attr=="party_slots"?"上阵席位":attr=="attack"?"全队攻击":"全队生命上限");
+            _tnAttribute.AddItem(attr=="skill_slots"?"主动技能槽":attr=="talent_reset"?"解锁洗点":attr=="talent_reset_discount"?"洗点折扣":attr=="party_slots"?"上阵席位":attr=="attack"?"全队攻击":"全队生命上限");
             _tnAttribute.SetItemMetadata(index,attr); if (n.Attribute == attr) _tnAttribute.Select(index); index++;
         }
         panel.AddChild(UiLabel("操作：固定值（当前开放）", 12)); _tnOperation = new OptionButton(); panel.AddChild(_tnOperation);

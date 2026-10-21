@@ -40,7 +40,7 @@ public static class FormationChecks
         g=Reopen(g);Need(g.ReserveHeroes.Single().Attack==attack&&g.ReserveHeroes.Single().Level==level,"候补存档成长丢失");
         Need(g.RequestFormation(new[]{"warrior"},out _),"无法重新上阵候补");Finish(g);
         Need(g.Heroes[0].SpecId=="warrior"&&g.Heroes[0].Attack==attack&&g.Heroes[0].Level==level,"重新上阵重置或重复成长");
-        int reserveLevel=g.ReserveHeroes.Single().Level;g.GrantGmResources(0,c.HeroLevels[g.Heroes[0].Level].Experience);Need(g.ReserveHeroes.Single().Level==reserveLevel+1,"候补未同步共享等级成长");
+        int reserveLevel=g.ReserveHeroes.Single().Level;g.GrantGmResources(0,c.HeroLevels[g.Heroes[0].Level].Experience);Need(g.ReserveHeroes.Single().Level==reserveLevel,"候补错误获得了上阵英雄经验");
         Need(g.RequestFormation(new[]{"ranger"},out _)&&g.RequestFormation(new[]{"mage"},out _)&&g.PendingFormation.Single()=="mage","新计划没有替换旧编队计划");g.CancelFormation();Need(g.PendingFormation.Count==0,"取消计划失败");
         var bad=g.CaptureProgress();bad.PendingFormation=new[]{"missing"};bool rejected=false;try{GameSession.Restore(c,bad);}catch(InvalidDataException){rejected=true;}Need(rejected,"坏计划未拒绝");
         for(int i=0;i<2000;i++)g.Tick(.05f);Need(g.World!.Stage!=CampaignStage.Village,"编队后自动循环停滞");

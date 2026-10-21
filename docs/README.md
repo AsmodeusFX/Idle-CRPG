@@ -33,3 +33,7 @@
 - [星图与 GM 节点编辑器](design/star_map.md)：金币加点、全队属性、三表结构、可视化编辑与配置保存。
 
 参考：用户提供的《末日危机2》截图及 https://www.u77game.net/h5/100.html 。参考空间探索和自动战斗体验，不复制其资源或未确认数值。
+
+- [角色技能与天赋树](design/talent_trees.md)：三系投入、技能装配与冷却、星图解锁/洗点、野蛮人原型；[字段字典](technical/talent_config.md)。
+
+- 五职业基础树、初始技能占点/可洗、室外队列跟随：见[天赋树](design/talent_trees.md)、[镜头与世界](design/camera_world_view.md)和[字段合同](technical/talent_config.md)。

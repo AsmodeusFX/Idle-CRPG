@@ -45,7 +45,7 @@
 | system/window.csv | width,height | 窗口尺寸预设，至少 800×500；等比缩放完整界面 |
 | system/client.csv | autosave_min_seconds,checkpoint_seconds | 关键变更保存最短间隔、周期检查点秒数，均为正且检查点不少于最短间隔；默认 0.5/5 |
 | system/camera.csv | follow_rate,transition_rate,dungeon_max_zoom,world_zoom,world_units | 跟随/入房指数响应、地牢缩放上限、世界缩放、每区场景单位，均为正，world_units≥12 |
-| gm/gm.csv | gold_grant,experience_grant | GM 单次金币及共享经验发放量，正整数且不超过 1000000；原型调试默认均为 10000 |
+| gm/gm.csv | gold_grant,experience_grant | GM 单次金币及每名上阵英雄经验发放量，正整数且不超过 1000000；原型调试默认均为 10000 |
 | gm/gm.csv | monster_scale_steps | 分号分隔倍率档位，至少两档，有限、严格递增，范围 0.5–50，必须包含正常倍率 1；当前 0.5;1;2;3;5;8;12;20;50 |
 | gm/gm.csv | count_step,count_limit | GM 数量增减正整数步长、额外数量绝对值上限；步长不得超过上限，上限不超过 999。实际每房总数仍限制在 1–1000 |
 | world/obstacle.csv | id,kind,x,y,width,height | 唯一 ID、水面 water/岩石 rock、全局区域坐标及正矩形尺寸；边界不得越出世界，不能阻挡地牢/村庄入口导航格 |
@@ -79,6 +79,8 @@
 | village/portal_rule.csv | phase_seconds,use_range继续定义共用表演时间及使用距离。历史town_x/town_y/waypoint_x/waypoint_y保留兼容列；正式城镇坐标以town_scene各章字段为准 |
 
 上述 CSV importer 均为 keep，正式运行不读 TownDesign 的 JSON 或 PNG。TownLayoutVersion 只保存布局版本，几何和职能仍来自CSV；迁移与边界见 design/towns_portals.md。
+
+2026-10-21：鲁高因town_scene尺寸48×40、layout_version=2；town_zone扩建主城区、大道、广场与港口步道，town_prop及town_npc使用新布局坐标。未增加CSV字段，版本1及更早现场走既有安全迁移。五章外围补绘只读视口与主题，不扩展town_zone的导航边界。
 ## 英雄解锁与扩编字段（2026-10-21）
 
 `hero/hero_unlocks.csv`：`id` 必须与 heroes.csv 职业 ID 一一对应；`kills` 为非负整数，0表示初始可用，否则达到本轮累计击杀后可上阵。当前仅支持累计击杀条件，新增职业必须同步补齐 heroes、hero_unlocks、combat/unit_attributes 三表；职业数量可扩展，最大同时上阵五人。
@@ -89,3 +91,10 @@
 `village/town_npc.csv` 的 role 新增 `formation`，每章恰好一位；当前与凯恩的 identify 职能共用NPC，可通过配置调整。目标位置、有效交互范围、服务读条复用城镇NPC、interaction_range、service_seconds，不引入另一套瞬时变阵入口。TownVisitPhase枚举末尾新增Formation=3，旧Heal/Sell/Exit值不变。
 
 编队容量由星图扩编加旧档最低容量推导，上限5；布局编辑不能使现有或已确认计划超过容量。旧增员命令DeployHero统一转为RequestFormation，不再立即增加成员。
+
+## 技能与天赋树（2026-10-21）
+新增system/config.csv通用规则、skill/talent.csv三系内容/布局/前置与效果，详见[talent_config.md](talent_config.md)。星图增加全队主动槽、洗点解锁及折扣效果，CSV继续使用keep导入。
+
+### 英雄经验倍率字段
+
+`hero/experience_level_rate.csv`（UTF-8，importer=keep）：`id` 为英雄等级减怪物等级的整数差（−10000～10000）；`percent` 为经验百分比整数（0～10000，100表示100%）。必须连续覆盖负数、0和正数，0行固定100%，等级差增大时倍率不得递增。超出表范围沿用边界行。当前原型最高300%、英雄高出怪物5级起0%。

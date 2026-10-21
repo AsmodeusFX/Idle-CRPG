@@ -13,16 +13,16 @@ public sealed partial class GameSession
         if(!Stars.CanBuy(id,Gold,out reason))return false;
         var ranks=Stars.Capture().Ranks.Where(r=>r.Id!=id).Append(new StarRankSave(id,Stars.Level(id)+1)).ToArray();
         var next=new StarProgression(Stars.Configuration,new(ranks));var totals=next.Totals();
-        ValidateStarTotals(totals);ValidateFormationCapacity(next);
+        ValidateStarTotals(totals);ValidateFormationCapacity(next);ValidateTalentCapacity(next);
         long cost=Stars.Configuration.Nodes[id].Costs[Stars.Level(id)];
         Gold-=cost;Stars=next;ApplyStarTotals(totals);Note("星图升级："+Stars.Configuration.Nodes[id].Name);return true;
     }
     public void ValidateStarConfiguration(StarConfiguration definition)
-    {var next=new StarProgression(definition,Stars.Capture());ValidateStarTotals(next.Totals());ValidateFormationCapacity(next);}
+    {var next=new StarProgression(definition,Stars.Capture());ValidateStarTotals(next.Totals());ValidateFormationCapacity(next);ValidateTalentCapacity(next);}
     /// <summary>编辑器刷新定义只重算星图自身贡献的差量，保留等级成长、当前生命与其他属性。</summary>
     public void ReloadStars(StarConfiguration definition)
     {
-        var next=new StarProgression(definition,Stars.Capture());var totals=next.Totals();ValidateStarTotals(totals);ValidateFormationCapacity(next);
+        var next=new StarProgression(definition,Stars.Capture());var totals=next.Totals();ValidateStarTotals(totals);ValidateFormationCapacity(next);ValidateTalentCapacity(next);
         Config.Stars=definition;Stars=next;ApplyStarTotals(totals);Note("星图配置已刷新");
     }
     private void ValidateStarTotals(StarTotals totals)

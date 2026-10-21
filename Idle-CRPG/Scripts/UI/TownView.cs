@@ -6,29 +6,43 @@ using V=System.Numerics.Vector2;
 
 public partial class Main
 {
-    /// <summary>固定营地场景：建筑底面来自寻路障碍表；围栏唯一缺口和桥接道路共用出口坐标。</summary>
-    private void DrawTownScene()
+    /// <summary>反投影视口四角并留出装饰余量，外围环境始终覆盖屏幕；不改变可走地板。</summary>
+    private (int Left,int Top,int Right,int Bottom) TownBackdropBounds()
     {
-        var town=config.Town!;var world=session!.World!;
+        V Local(Vector2 p)
+        {
+            var offset=p-origin;float a=offset.X/zoom,b=offset.Y/(zoom*.5f);
+            return new((a+b)*.5f,(b-a)*.5f);
+        }
+        var corners=new[]{SceneRect.Position,SceneRect.Position+new Vector2(SceneRect.Size.X,0),SceneRect.End,SceneRect.Position+new Vector2(0,SceneRect.Size.Y)}.Select(Local).ToArray();
+        return ((int)MathF.Floor(corners.Min(p=>p.X))-3,(int)MathF.Floor(corners.Min(p=>p.Y))-3,(int)MathF.Ceiling(corners.Max(p=>p.X))+3,(int)MathF.Ceiling(corners.Max(p=>p.Y))+3);
+    }
+    /// <summary>固定营地场景：建筑底面来自寻路障碍表；围栏唯一缺口和桥接道路共用出口坐标。</summary>
+    private void DrawTownBackdrop()
+    {
+        var town=config.Town!;
         Vector2 P(float x,float y)=>Project(new V(x,y));
         Vector2[] Quad(float x,float y,float w,float h)=>new[]{P(x,y),P(x+w,y),P(x+w,y+h),P(x,y+h)};
         if(town.Theme!="camp")DrawChapterTown(town);
         else
         {
-        for(int y=-8;y<(int)town.Height+8;y++)for(int x=-8;x<(int)town.Width+8;x++)
+        var bounds=TownBackdropBounds();
+        DrawRect(SceneRect,new Color("243d32"));
+        DrawColoredPolygon(Quad(2,2,town.Width-8,town.Height-6),new Color("354c36"));
+        for(int y=bounds.Top;y<bounds.Bottom;y++)for(int x=bounds.Left;x<bounds.Right;x++)
         {
+            var p=P(x+.3f,y+.6f);if(!SceneRect.Grow(40).HasPoint(p))continue;
             uint noise=unchecked((uint)(x*73856093^y*19349663));bool inside=x>=2&&x<town.Width-6&&y>=2&&y<town.Height-4;
             var color=new Color(inside?"354c36":"243d32").Lightened(noise%11*.003f);
-            DrawColoredPolygon(Quad(x,y,1,1),color);
-            var p=P(x+.3f,y+.6f);DrawLine(p,p+new Vector2(3,-2),color.Lightened(.12f),1);
-            if(!inside&&x<town.Width-3&&noise%9==0)
+            if(noise%3==0)DrawLine(p,p+new Vector2(3,-2),color.Lightened(.12f),1);
+            if(!inside&&(x<town.Width-4||x>=town.Width-1)&&noise%9==0)
             {
                 Decoration(P(x+.5f,y+.5f),"grass",.7f,(int)noise);
             }
         }
         // 出口外溪流、桥及道路只作为环境；可走范围仍由TownScene判定。
-        DrawColoredPolygon(Quad(town.Width-4,-8,3,town.Height+16),new Color("263e46"));
-        for(int i=-6;i<town.Height+6;i+=2)DrawLine(P(town.Width-3.8f,i),P(town.Width-1.2f,i+.6f),new Color("47616a"),2);
+        DrawColoredPolygon(Quad(town.Width-4,bounds.Top,3,bounds.Bottom-bounds.Top),new Color("263e46"));
+        for(int i=bounds.Top;i<bounds.Bottom;i+=2)DrawLine(P(town.Width-3.8f,i),P(town.Width-1.2f,i+.6f),new Color("47616a"),2);
         DrawLine(P(town.Width-6,town.Exit.Y),P(town.Width+5,town.Exit.Y),new Color("5d5341"),26,true);
         for(float x=town.Width-4.5f;x<town.Width+.3f;x+=.35f)DrawLine(P(x,town.Exit.Y-1),P(x,town.Exit.Y+1),new Color("a08a60"),5,true);
         // 主路与六个服务点的支路，由固定可行走路径铺设。
@@ -78,6 +92,11 @@ public partial class Main
             }
         }
         }
+    }
+    /// <summary>人物、门与交互状态逐帧绘制，静态地形建筑由独立画布缓存。</summary>
+    private void DrawTownScene()
+    {
+        var town=config.Town!;var world=session!.World!;
         foreach(var npc in town.Npcs.OrderBy(n=>n.Position.X+n.Position.Y))
         {
             bool active=world.TownPhase==TownVisitPhase.Heal&&npc.HasRole("heal")||world.TownPhase==TownVisitPhase.Sell&&npc.HasRole("sell");

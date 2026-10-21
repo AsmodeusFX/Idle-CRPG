@@ -36,3 +36,6 @@ config/star/star.csv 为节点内容，star_layout.csv 为布局/前置，star_p
 
 ## 英雄扩编（2026-10-21）
 新增四个单级 party_slots 节点，每个增加一席，新档一席，上限五席。编辑器支持此效果，仍保留草稿、外部冲突和已购等级保护。旧档保留现有上阵人数。节点费用与位置为原型配置，后续可调整布局。
+
+## 主动槽与洗点（2026-10-21）
+扩展skill_slots、talent_reset和talent_reset_discount效果；初始一主动槽，四个节点解锁至五槽，洗点由星图解锁并可逐级降低费用。编辑器继续保护草稿、冲突及已购兼容，刷新时额外校验不能锁住已装配主动槽。详见[talent_trees.md](talent_trees.md)及[字段合同](../technical/talent_config.md)。

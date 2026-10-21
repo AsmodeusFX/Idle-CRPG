@@ -5,13 +5,13 @@ rogue,charsi,恰西,sell,5,5,售卖杂物 · 装备买卖与修理待开放
 rogue,gheed,基德,gamble,5,14,赌博 · 待开放
 rogue,warriv,瓦瑞夫,travel,18,11,前往下一幕 · 独立交互待开放
 rogue,cain,凯恩,identify;formation,11,11,鉴定物品 · 待开放 · 编队变更
-lut,atma,阿特玛,heal,25,18,治疗 · 酒馆与消耗品待开放
-lut,greiz,格雷兹,mercenary,15,7,雇佣兵管理 · 待开放
-lut,fara,法拉,sell,23,12,售卖杂物 · 装备买卖与修理待开放
-lut,elzix,艾吉斯,gamble,7,13,赌博 · 待开放
-lut,meshif,马席夫,travel,28,22,航行与章节交通 · 待开放
-lut,cain,迪卡德·凯恩,identify;formation,18,15,鉴定与顾问 · 待开放 · 编队变更
-lut,drognan,卓格南,magic,23,7,法系商店 · 待开放
+lut,atma,阿特玛,heal,37,26,治疗 · 酒馆与消耗品待开放
+lut,greiz,格雷兹,mercenary,21,9,雇佣兵管理 · 待开放
+lut,fara,法拉,sell,33,18,售卖杂物 · 装备买卖与修理待开放
+lut,elzix,艾吉斯,gamble,10,22,赌博 · 待开放
+lut,meshif,马席夫,travel,41,32,航行与章节交通 · 待开放
+lut,cain,迪卡德·凯恩,identify;formation,22,21,鉴定与顾问 · 待开放 · 编队变更
+lut,drognan,卓格南,magic,34,10,法系商店 · 待开放
 kurast,ormus,奥玛斯,heal,17,20,治疗 · 药剂与魔法商店待开放
 kurast,asheara,艾席拉,mercenary,25,16,雇佣兵与队伍管理 · 待开放
 kurast,hratli,赫拉铁力,sell,8,8,售卖杂物 · 装备买卖与修理待开放

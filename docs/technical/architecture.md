@@ -33,6 +33,14 @@ GameSession 在清房后优先执行救援状态机：前往尸体 → 范围内
 SessionSnapshot 的 Capture 保留内部确定性测试现场，CaptureProgress 则复制正式精简检查点：放弃未清房战斗现场，保留已到账成长和待拾取奖励，读取时重开当前房间。击杀经验即时到账、走近拾取后实物入库。SaveStore 负责原子替换、备份和重置；ClientSettings 用单后台任务编码与写盘，仅在关键持久状态变化时安排，退出/重置等待任务完成。MotionPresentation 将 20 Hz 逻辑坐标逐帧插值，镜头临界阻尼过渡，HUD 每 0.1 秒刷新；表现不改变命中和交互判定。村庄缓存每个角色的路径，避免每逻辑步重新寻路导致回头。SettingsStore 和 Audio 只管理偏好与表现。细节见 persistence_settings.md。
 
 第二至五章主城（2026-10-19）：TownScene读取town_scene/town_zone/town_npc/town_prop CSV，配置多职能服务路由及地板矩形并集。ChapterTownView只读同一几何绘制沙漠港城、雨林栈桥、圣殿石台及雪城；第一章沿用TownView营地绘制。TownLayoutMigration在存档校验前安全迁移旧本地现场，WorldSnapshot.TownLayoutVersion与世界地图版本分离；当前与暂挂世界按各自章节处理。TownLayoutChecks覆盖补给、传送、读档和备份；第五章任务驱动NPC变化明确延期。详见 design/towns_portals.md 与 reviews/2026-10-19_chapter_towns.md。
-英雄编队（2026-10-21）：HeroRoster 读取 hero_unlocks 条件，HeroCreation.CreateNewWorld 为玩家单人创角入口，旧多人成员构造供存档兼容及回归保留。GameSession.DeployHero 在安全城镇增加队员，同步等级和星图贡献。HeroPage 为全屏展示、候选与命令入口；CreationCamp 提供模型点击单选。伤害、经验和奖励仍复用原有实现。
+英雄编队（2026-10-21）：HeroRoster 读取 hero_unlocks 条件，HeroCreation.CreateNewWorld 为玩家单人创角入口，旧多人成员构造供存档兼容及回归保留。GameSession.DeployHero 在安全城镇增加队员，新角色从1级开始并应用星图贡献，候补恢复自身等级和经验。HeroPage 为全屏展示、候选与命令入口；CreationCamp 提供模型点击单选。伤害、经验和奖励仍复用原有实现。
 
-编队计划（2026-10-21）：FormationPlans负责GameSession.RequestFormation命令、计划校验、候补保留与NPC执行边界；WorldCampaign.ReturnForFormation复用回城门，TownScene的Formation服务走空间寻路与统一读条。FormationUi提供局部编辑草稿、确认/撤销和右侧计划卡，HudLayout与HeroPage共用此入口。清房流程继续保持救援、拾取、事件优先；角色成长和星图差量同时覆盖候补，实际战斗/奖励仍只有现有实现。
+编队计划（2026-10-21）：FormationPlans负责GameSession.RequestFormation命令、计划校验、候补保留与NPC执行边界；WorldCampaign.ReturnForFormation复用回城门，TownScene的Formation服务走空间寻路与统一读条。FormationUi提供局部编辑草稿、确认/撤销和右侧计划卡，HudLayout与HeroPage共用此入口。清房流程继续保持救援、拾取、事件优先；角色经验仅发给上阵者（含倒地者），星图差量同时覆盖候补，实际战斗/奖励仍只有现有实现。
+
+角色天赋（2026-10-21）：Talents负责规则加载、独立投入、来源等级贡献、学习/装配/洗点命令；SkillRuntime复用伤害/Buff并执行跳斩连续移动。TalentUi负责三系布局、工具提示、装配草稿和共用径向冷却控件，TalentSmoke验证真实UI入口。被动不写回永久数值；检查点继续重开战斗并保留换入冷却。见[talent_config.md](talent_config.md)。
+
+交互优化（2026-10-21）：InteractionButton共用拖动意图、效果预览及目标复核；DragScrollContainer支持空白左键/区域中键滚动。TalentUi和FormationUi复用空槽优先、满槽显式替换、拖放交换；InteractionSmoke覆盖来源/锁定门禁与草稿边界。学习自动装配在Core命令内完成，UI不直接写游戏状态。
+
+五职业与室外队列（2026-10-21）：StartingSkills负责一次性初始点分配与洗点后的初始化标记；Talents追加shot/nova及元素类型，投射物沿用AbilityRuntime。OutdoorFollowing由WorldCampaign记录短折线路径并提供每名队员的世界位置，入口集合使用剩余移动预算；MotionPresentation对队列独立插值，UI不伪造偏移位置。详见[talent_config.md](talent_config.md)。
+
+主城表现缓存（2026-10-21）：SceneCanvas区分静态主城背景与动态场景两层。TownView/ChapterTownView静态地形建筑仅随场景、投影和可见性变化重绘；人物、门、状态每帧更新。地面与装饰裁切减少绘制量，寻路热循环避免捕获委托和邻居数组分配。性能与导航复核见[主城移动检查](../reviews/2026-10-21_town_performance.md)。

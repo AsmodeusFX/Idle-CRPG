@@ -22,6 +22,7 @@ public sealed partial class GameSession
     public void EquipSkills(string heroId,IEnumerable<string> skillIds)
     {
         var hero=Heroes.Single(h=>h.SpecId==heroId);var ids=skillIds.ToArray();
+        if(hero.SkillIds.Any(Config.Talents.Nodes.ContainsKey)||ids.Any(Config.Talents.Nodes.ContainsKey)){if(!SetTalentLoadout(heroId,ids,out var reason))throw new ArgumentException(reason);return;}
         if(ids.Distinct().Count()!=ids.Length||ids.Any(id=>!SkillConfig.Skills.TryGetValue(id,out var s)||s.Kind!="ActiveSkill"))throw new ArgumentException("技能引用重复或不是主动技能");
         hero.SkillIds=ids;ResetSkillRoom();MarkChanged();
     }
@@ -35,6 +36,8 @@ public sealed partial class GameSession
     private double EffectiveValue(Actor actor,string attribute,double basis)
     {
         var declarations=ActorBuffs(CombatId(actor)).SelectMany(b=>SkillConfig.Buffs[b.Id].Attributes).Where(a=>a.Attribute==attribute);
+        basis+=PassiveTalentValue(actor,attribute);
+        foreach(var b in ActorBuffs(CombatId(actor)))if(attribute=="atk"&&(b.Id=="talent_battle_shout"||b.Id=="talent_weaken"))basis*=b.Id=="talent_weaken"?Math.Max(0,1-b.Value):1+b.Value;
         return Config.Attributes.Aggregate(attribute,basis,declarations);
     }
     private BattleAttributes EffectiveAttributes(Actor actor)
@@ -87,7 +90,7 @@ public sealed partial class GameSession
         float before=target.Hp;target.Hp=(float)Math.Max(0,target.Hp-amount);bool killed=!target.Alive;
         if(killed&&Floor.Rooms[CurrentRoom].Monsters.Contains(target))
         {
-            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainExperience(target.RewardXp);var loot=RollDrops(target);
+            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);var loot=RollDrops(target);
             if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}
         }
@@ -113,7 +116,7 @@ public sealed partial class GameSession
         var action=ActionOf(actor);if(action.Active!=""||action.Recovery>0)return true;
         foreach(string id in actor.SkillIds)
         {
-            var skill=SkillConfig.Skills[id];if(action.Cooldowns.GetValueOrDefault(id)>0)continue;
+            var skill=SkillConfig.Skills[id];if(SkillCooldown(actor,id)>0)continue;
             var target=Choose(actor,SkillConfig.Abilities.GetValueOrDefault(id),skill.Range);
             if(target==null)continue;
             action.Active=id;action.Target=CombatId(target);action.Windup=skill.Windup/(double)SkillConfig.TickRate;
@@ -136,9 +139,10 @@ public sealed partial class GameSession
         if(SkillConfig.Abilities.TryGetValue(id,out var ability)&&ability.Form=="buff")
             cooldown=Math.Max(ability.Buffs.Max(b=>SkillConfig.Buffs[b].Duration)/(double)SkillConfig.TickRate*SkillConfig.Setting("buff_cooldown_floor_ratio"),cooldown*(1-SkillConfig.Setting("buff_cooldown_per_level")*(LevelOf(actor,id)-1)));
         action.Cooldowns[id]=cooldown;action.Recovery=skill.Recovery/(double)SkillConfig.TickRate;action.Active="";
+        if(Config.Talents.Nodes.TryGetValue(id,out var talent)){CastTalent(actor,target,talent);return;}
         foreach(string effect in skill.Effects)Enqueue(new(){Effect=effect,Skill=id,Owner=action.Owner,Target=action.Target,Coefficient=skill.Coefficient});
     }
-    private int LevelOf(Actor actor,string skill)=>actor.SkillLevels.GetValueOrDefault(skill,SkillConfig.Abilities.TryGetValue(skill,out var a)?a.Level:1);
+    private int LevelOf(Actor actor,string skill)=>Config.Talents.Nodes.ContainsKey(skill)?TalentLevel(actor,skill):actor.SkillLevels.GetValueOrDefault(skill,SkillConfig.Abilities.TryGetValue(skill,out var a)?a.Level:1);
     private void Enqueue(SkillEffectWork work)
     {
         if(work.Depth>SkillConfig.MaxDepth)throw new InvalidDataException("Effect 触发深度超过预算");
@@ -181,7 +185,13 @@ public sealed partial class GameSession
             foreach(string id in action.Cooldowns.Keys.ToArray())
             {double rate=SkillConfig.Abilities.TryGetValue(id,out var a)&&a.Form=="buff"?1:1+Math.Min(SkillConfig.Setting("cooldown_reduction_cap"),EffectiveAttributes(owner).CooldownReduction);action.Cooldowns[id]=Math.Max(0,action.Cooldowns[id]-dt*rate);}
             action.Recovery=Math.Max(0,action.Recovery-dt);
-            if(action.Active!=""){action.Windup-=dt;if(action.Windup<=.000001)Commit(action);}
+            if(action.Active!=""){
+                if(Config.Talents.Nodes.TryGetValue(action.Active,out var node)&&node.Effect=="leap"&&CombatActor(action.Target) is {Alive:true} victim&&!Stunned(owner))
+                {
+                    Move(owner,victim.Position,dt,(float)(Vector2.Distance(owner.Position,victim.Position)/Math.Max(dt,action.Windup)));
+                    var room=Floor.Rooms[CurrentRoom];owner.Position=Vector2.Clamp(owner.Position,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
+                }
+                action.Windup-=dt;if(action.Windup<=.000001)Commit(action);}
         }
         foreach(var actor in RoomActors)actor.Hp=Math.Min(actor.Hp,CombatMaximumHp(actor));
         AdvanceFlights(dt);

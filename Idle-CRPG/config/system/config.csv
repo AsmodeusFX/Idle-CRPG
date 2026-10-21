@@ -1,0 +1,12 @@
+id,value
+talent_initial_points,1
+talent_points_per_level,1
+talent_row_points,5
+active_skill_max_slots,5
+active_skill_initial_slots,1
+talent_reset_base_cost,25
+talent_reset_cost_per_point,5
+talent_leap_ticks,10
+talent_windup_ticks,3
+talent_recovery_ticks,3
+world_follow_spacing_milli,55

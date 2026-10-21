@@ -103,6 +103,17 @@ public sealed partial class GameSession
                 if(f.Form=="entity")
                 {if(f.Life<=.000001){foreach(var next in def.ResolveEffects)Enqueue(new(){Effect=next,Skill=f.Skill,Owner=f.Owner,Target=f.Target,Coefficient=f.Coefficient,Depth=f.Depth+1});f.Active=false;}continue;}
                 f.Previous=f.Position;f.Position+=f.Direction*f.GenericSpeed*dt;
+                if(Config.Talents.Nodes.TryGetValue(f.Skill,out var talent)&&talent.Effect=="shot")
+                {
+                    var victim=CombatActor(f.Target);
+                    if(victim is {Alive:true}&&SegmentDistance(victim.Position,f.Previous,f.Position)<=f.GenericRadius+SkillConfig.CollisionRadius)
+                    {
+                        var victims=talent.Radius>0?Enemies(f.Owner).Where(e=>Vector2.Distance(e.Position,victim.Position)<=talent.Radius).ToArray():new[]{victim};
+                        foreach(var hit in victims)Enqueue(new(){Effect=def.Impact,Skill=f.Skill,Owner=f.Owner,Target=CombatId(hit),Coefficient=f.Coefficient,Depth=f.Depth+1});
+                        f.Active=false;
+                    }
+                    if(f.Life<=0)f.Active=false;continue;
+                }
                 foreach(var target in Enemies(f.Owner).Where(e=>!f.Hit.Contains(CombatId(e))&&SegmentDistance(e.Position,f.Previous,f.Position)<=f.GenericRadius+SkillConfig.CollisionRadius).OrderBy(e=>Vector2.DistanceSquared(e.Position,f.Previous)).ToArray())
                 {f.Hit.Add(CombatId(target));Enqueue(new(){Effect=def.Impact,Skill=f.Skill,Owner=f.Owner,Target=CombatId(target),Coefficient=f.Coefficient,Depth=f.Depth+1});}
                 if(f.Life<=0)f.Active=false;continue;

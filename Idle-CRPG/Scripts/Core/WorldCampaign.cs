@@ -140,7 +140,7 @@ public sealed partial class WorldCampaign
     internal void PrepareResume()=>Plan(Target.Farming);
     private void BuildRoute(int region,Vector2 target)
     {
-        route.Clear();foreach(var point in WorldNavigation.FindPath(config,Position,target,allowedRegions:Progress.AccessibleRegions(config)))route.Enqueue(point);
+        if(!TrailCurrent)followGather=0;route.Clear();foreach(var point in WorldNavigation.FindPath(config,Position,target,allowedRegions:Progress.AccessibleRegions(config)))route.Enqueue(point);
     }
     /// <summary>玩家请求城堡；地牢/返村/交易中只排队，确保交易流程不会被跳过。</summary>
     internal bool RequestCastle(string id)
@@ -195,9 +195,18 @@ public sealed partial class WorldCampaign
         float remaining=config.TravelSpeed*dt;
         while(route.Count>0&&remaining>0)
         {
-            var target=route.Peek();float distance=Vector2.Distance(Position,target);
-            if(distance<=remaining){Position=target;route.Dequeue();remaining-=distance;}
-            else {Position+=Vector2.Normalize(target-Position)*remaining;remaining=0;}
+            var target=route.Peek();float distance=Vector2.Distance(Position,target);var previous=Position;
+            if(distance<=remaining)
+            {
+                Position=target;RecordOutdoorStep(previous);remaining-=distance;
+                if(route.Count==1)
+                {
+                    followGather+=remaining;remaining=0;
+                    if(followGather+.000001f<FollowSpacing*(game.Heroes.Count-1))break;
+                }
+                route.Dequeue();
+            }
+            else {Position+=Vector2.Normalize(target-Position)*remaining;RecordOutdoorStep(previous);remaining=0;}
             if(Progress.Explored.Add(CurrentRegion))game.MarkChanged();
         }
         if(route.Count>0)return;

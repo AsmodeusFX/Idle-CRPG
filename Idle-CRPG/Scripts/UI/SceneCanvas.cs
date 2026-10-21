@@ -6,13 +6,18 @@ using V=System.Numerics.Vector2;
 public partial class SceneCanvas : Node2D
 {
     public Main OwnerView=null!;
-    public override void _Draw()=>OwnerView.RenderScene(this);
+    public bool TownBackdrop;
+    public override void _Draw(){if(TownBackdrop)OwnerView.RenderTownBackdrop(this);else OwnerView.RenderScene(this);}
 }
 public partial class Main
 {
     private static readonly Vector2 CreationOffset=new(176,90);
     private Rect2 SceneRect=>session==null?new Rect2(24,92,1392,784):new Rect2(24,92,1040,558);
     private SceneCanvas sceneCanvas=null!;
+    private SceneCanvas townBackdropCanvas=null!;
+    private IdleCrpg.Core.TownScene? drawnTown;
+    private Vector2 drawnTownOrigin;
+    private float drawnTownZoom;
     private CanvasItem painter=null!;
     private V cameraCenter;
     private float cameraZoom;
@@ -23,7 +28,24 @@ public partial class Main
     private void BuildSceneCanvas()
     {
         var clip=new Control {Position=SceneRect.Position,Size=SceneRect.Size,ClipContents=true,MouseFilter=Control.MouseFilterEnum.Ignore};AddChild(clip);
+        townBackdropCanvas=new SceneCanvas {OwnerView=this,TownBackdrop=true,Visible=false};clip.AddChild(townBackdropCanvas);
         sceneCanvas=new SceneCanvas {OwnerView=this};clip.AddChild(sceneCanvas);
+    }
+    /// <summary>城镇静态绘制仅在场景、镜头投影或页面可见性变化时失效；角色移动不重建地面。</summary>
+    private void UpdateTownBackdrop()
+    {
+        bool visible=session?.World?.InTownScene==true&&config.Town!=null&&sceneCanvas.Visible;
+        bool redraw=visible&&(!townBackdropCanvas.Visible||!ReferenceEquals(drawnTown,config.Town)||drawnTownOrigin!=origin||drawnTownZoom!=zoom);
+        townBackdropCanvas.Visible=visible;
+        if(!redraw)return;
+        drawnTown=config.Town;drawnTownOrigin=origin;drawnTownZoom=zoom;townBackdropCanvas.QueueRedraw();
+    }
+    public void RenderTownBackdrop(CanvasItem context)
+    {
+        if(session?.World?.InTownScene!=true||config.Town==null)return;
+        long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
+        painter=context;context.DrawSetTransform(-SceneRect.Position);DrawTownBackdrop();
+        if(performanceRun)drawTimes.Add(Milliseconds(profileStart));
     }
     private void UpdateCamera(double dt)
     {

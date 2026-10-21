@@ -7,41 +7,59 @@ public partial class Main
     private Control heroPage=null!;private AcceptDialog heroNotice=null!;
     private Label heroDetails=null!;
     private HBoxContainer heroSlots=null!;
+    private Button heroManageButton=null!;
 
+    private string HeroExperienceText(Actor h)=>session==null?"—":h.Level>=config.MaxHeroLevel?"已满级":(h.Experience+h.ExperienceFraction/100d).ToString("0.##")+" / "+session.ExperienceRequired(h);
     private string selectedHero="";
     private string heroStamp="";
     private void BuildHeroPage()
     {
         heroNotice=new AcceptDialog {Title="英雄席位"};uiLayer.AddChild(heroNotice);heroPage=HudPanel(uiLayer,new Vector2(24,92),new Vector2(1392,784));heroPage.Hide();
-        heroSlots=new HBoxContainer {Position=new Vector2(16,16),Size=new Vector2(1360,90)};heroPage.AddChild(heroSlots);
+        heroSlots=new HBoxContainer {Position=new Vector2(16,16),Size=new Vector2(1216,90)};heroSlots.AddThemeConstantOverride("separation",8);heroPage.AddChild(heroSlots);
+        // 保留按钮实例，战斗中的属性刷新不能中断按下到松开的点击过程。
+        for(int i=0;i<5;i++)
+        {
+            int slot=i;
+            var button=new Button {Name="HeroSlot"+i,CustomMinimumSize=new Vector2(0,90),SizeFlagsHorizontal=Control.SizeFlags.ExpandFill};
+            button.Pressed+=()=>
+            {
+                var hero=session?.Heroes.ElementAtOrDefault(slot);
+                if(hero!=null){selectedHero=hero.SpecId;heroStamp="";}else OpenHeroPicker(slot);
+            };
+            heroSlots.AddChild(button);
+        }
+        heroManageButton=new Button {Name="HeroManageFormation",Text="调整编队",Position=new Vector2(1240,16),Size=new Vector2(136,90)};heroManageButton.Pressed+=()=>OpenFormation(0);heroPage.AddChild(heroManageButton);
         var left=HudPanel(heroPage,new Vector2(16,126),new Vector2(320,636));
         var scroll=new ScrollContainer {Position=new Vector2(12,12),Size=new Vector2(296,610)};left.AddChild(scroll);
         heroDetails=UiLabel("请选择英雄",17);scroll.AddChild(heroDetails);
         var tabs=new TabContainer {Position=new Vector2(352,126),Size=new Vector2(1024,636)};heroPage.AddChild(tabs);
-        foreach(var name in new[]{"技能","装备"}){var content=new VBoxContainer {Name=name};tabs.AddChild(content);content.AddChild(UiLabel(name+"内容后续开放",18));}
-        var manage=new Button {Text="调整编队",Position=new Vector2(1210,126),Size=new Vector2(166,30)};manage.Pressed+=()=>OpenFormation(0);heroPage.AddChild(manage);
+        BuildTalentContent(tabs);
+        foreach(var name in new[]{"装备"}){var content=new VBoxContainer {Name=name};tabs.AddChild(content);content.AddChild(UiLabel(name+"内容后续开放",18));}
     }
     private void TickHeroPage()
     {
         heroPage.Visible=viewMode==4;if(!heroPage.Visible)return;
         string stamp=session==null?"none":$"{session.Revision}:{session.Heroes.Count}:{selectedHero}:{session.Heroes.Sum(h=>h.Hp):0}";
         if(stamp!=heroStamp){heroStamp=stamp;RefreshHeroes();}
+        RefreshTalentPage();
     }
     private void RefreshHeroes()
     {
-        foreach(var c in heroSlots.GetChildren()){heroSlots.RemoveChild(c);c.QueueFree();}
         for(int i=0;i<5;i++)
         {
-            var hero=session?.Heroes.ElementAtOrDefault(i);int slot=i;
-            var b=new Button {Text=hero==null?(i<(session?.PartyCapacity??1)?"+\n席位空缺 · 选择英雄":"席位未解锁\n前往星图扩编"):$"{hero.Name}\nLv.{hero.Level}   HP {hero.Hp:0}/{hero.MaxHp:0}",CustomMinimumSize=new Vector2(264,90)};
-            b.Pressed+=()=>{if(hero!=null){selectedHero=hero.SpecId;heroStamp="";}else OpenHeroPicker(slot);};heroSlots.AddChild(b);
+            var hero=session?.Heroes.ElementAtOrDefault(i);
+            bool locked=i>=(session?.PartyCapacity??1);
+            var b=heroSlots.GetChild<Button>(i);
+            b.Text=hero==null?(!locked?"+\n席位空缺 · 选择英雄":"席位未解锁\n前往星图扩编"):$"{hero.Name}\nLv.{hero.Level}  XP {HeroExperienceText(hero)}\nHP {hero.Hp:0}/{hero.MaxHp:0}";
+            b.Disabled=locked;b.TooltipText=locked?"此席位尚未解锁，请在星图购买远征扩编节点。":hero==null?"点击此槽位调整编队":"点击查看英雄";
         }
+        heroManageButton.Disabled=session==null;
         var h=session?.Heroes.FirstOrDefault(h=>h.SpecId==selectedHero)??session?.Heroes.FirstOrDefault();
-        heroDetails.Text=h==null?"英雄\n\n请先选择一位英雄开始游戏。":$"{h.Name}\n\n角色成长\n等级：{h.Level}\n共享经验：{session!.Experience}\n自动升级 · 上限 {config.MaxHeroLevel}\n\n基础属性\n生命：{h.Hp:0} / {h.MaxHp:0}\n攻击：{h.Attack:0}\n护甲：{h.Defense:0}\n移动速度：{h.Speed:0.##}\n攻击距离：{h.Range:0.##}\n普攻间隔：{h.Cooldown:0.##} 秒\n\n战斗属性\n闪避：{h.Battle.Dodge:P0}\n暴击：{h.Battle.CriticalChance:P0}\n格挡：{h.Battle.BlockChance:P0}\n\n队伍：{session.Heroes.Count}/{session.PartyCapacity}\n累计击杀：{session.Kills}\n\n天赋：后续开放";
+        heroDetails.Text=h==null?"英雄\n\n请先选择一位英雄开始游戏。":$"{h.Name}\n\n角色成长\n等级：{h.Level}\n个人经验：{HeroExperienceText(h)}\n自动升级 · 上限 {config.MaxHeroLevel}\n\n基础属性\n生命：{h.Hp:0} / {h.MaxHp:0}\n攻击：{session!.HeroTalentAttribute(h,"atk",h.Attack):0}\n护甲：{session.HeroTalentAttribute(h,"armor",h.Defense):0}\n移动速度：{h.Speed:0.##}\n攻击距离：{h.Range:0.##}\n普攻间隔：{h.Cooldown:0.##} 秒\n\n战斗属性\n闪避：{h.Battle.Dodge:P0}\n暴击：{Math.Clamp(session!.HeroTalentAttribute(h,"crit_rate",h.Battle.CriticalChance),0,1):P0}\n格挡：{h.Battle.BlockChance:P0}\n\n队伍：{session.Heroes.Count}/{session.PartyCapacity}\n累计击杀：{session.Kills}\n\n可用天赋点：{session.TalentPoints(h)}";
     }
     private void OpenHeroPicker(int slot)
     {
-        if(session!=null&&slot>=session.PartyCapacity){heroNotice.Title="英雄席位";heroNotice.DialogText="此席位尚未解锁，请在星图购买远征扩编节点。";heroNotice.PopupCentered();return;}
+        if(session!=null&&slot>=session.PartyCapacity)return;
         OpenFormation(slot);
     }
     private void PaintCreationCamp()

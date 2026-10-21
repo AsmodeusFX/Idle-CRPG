@@ -64,7 +64,7 @@ public partial class Main
     {
         soundSession=session;
         if(session==null)return;
-        lastHits=session.HitCount;lastKills=session.Kills;lastLevel=session.Heroes[0].Level;lastRetries=session.Retries;
+        lastHits=session.HitCount;lastKills=session.Kills;lastLevel=session.Heroes.Sum(h=>h.Level);lastRetries=session.Retries;
         lastTrades=session.World?.Trades??0;lastCleared=session.World?.Progress.Cleared.Count??0;lastAlive=session.Heroes.Count(h=>h.Alive);
     }
     private void TrackSounds()
@@ -72,7 +72,7 @@ public partial class Main
         if(!ReferenceEquals(soundSession,session)){ResetSoundBaseline();return;}if(session==null)return;
         if(session.HitCount>lastHits)PlaySound("sfx_hit");
         if(session.Kills>lastKills)PlaySound("sfx_kill");
-        if(session.Heroes[0].Level>lastLevel)PlaySound("sfx_breakthrough");
+        if(session.Heroes.Sum(h=>h.Level)>lastLevel)PlaySound("sfx_breakthrough");
         if(session.Retries>lastRetries)PlaySound("sfx_deny");
         if((session.World?.Trades??0)>lastTrades)PlaySound("sfx_buy");
         if((session.World?.Progress.Cleared.Count??0)>lastCleared)PlaySound("sfx_reward");

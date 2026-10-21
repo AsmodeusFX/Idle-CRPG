@@ -21,7 +21,7 @@ public static class ChapterChecks
             var map=game.Config;var s=game.CaptureProgress();var w=s.World!;
             var village=map.Villages.Single(v=>v.RegionId==map.StartRegionId);var region=map.Regions.Single(r=>r.Id==village.RegionId);var npc=map.Npcs.Single(n=>n.Id==village.NpcId);
             w.Stage=CampaignStage.Village;w.VillageId=village.Id;w.Position=new Vector2(region.X+village.X,region.Y+village.Y)+npc.Position/map.WorldUnits;
-            w.Route.Clear();w.VillagePaths.Clear();w.Explored=map.Regions.Select(r=>r.Id).ToList();w.Cleared=map.Dungeons.Where(d=>complete||!d.Castle).Select(d=>d.Id).ToList();w.TradeElapsed=0;w.PendingCastles.Clear();
+            w.OutdoorTrail.Clear();w.FollowGather=0;w.Route.Clear();w.VillagePaths.Clear();w.Explored=map.Regions.Select(r=>r.Id).ToList();w.Cleared=map.Dungeons.Where(d=>complete||!d.Castle).Select(d=>d.Id).ToList();w.TradeElapsed=0;w.PendingCastles.Clear();
             s.Floors.Clear();s.ActiveDungeonId="";s.SkillState=new();
             foreach(var hero in s.Heroes)hero.Position=npc.Position;
             return GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=s})).Session!);

@@ -6,6 +6,8 @@ using V=System.Numerics.Vector2;
 
 public partial class Main
 {
+    private TownScene? townRoadScene;
+    private V[][] townRoads=Array.Empty<V[]>();
     /// <summary>章节城镇的地板、栈桥、阶梯和建筑均读取同一配置几何；水面与深渊不生成可走地板。</summary>
     private void DrawChapterTown(TownScene town)
     {
@@ -13,11 +15,14 @@ public partial class Main
         Vector2[] Q(float x,float y,float w,float h)=>new[]{P(x,y),P(x+w,y),P(x+w,y+h),P(x,y+h)};
         bool sand=town.Theme=="sand",docks=town.Theme=="docks",holy=town.Theme=="sanctum";
         string backdrop=sand?"645438":docks?"183c3d":holy?"161724":"344653";
-        DrawColoredPolygon(Q(-6,-6,town.Width+12,town.Height+12),new Color(backdrop));
-        for(int y=-4;y<town.Height+4;y++)for(int x=-4;x<town.Width+4;x++)
+        DrawRect(SceneRect,new Color(backdrop));
+        var bounds=TownBackdropBounds();
+        for(int y=bounds.Top;y<bounds.Bottom;y++)for(int x=bounds.Left;x<bounds.Right;x++)
         {
             uint noise=unchecked((uint)(x*73856093^y*19349663));var p=P(x+.3f,y+.5f);
+            if(!SceneRect.Grow(45).HasPoint(p))continue;
             if(docks&&noise%4==0)DrawLine(p,p+new Vector2(12,0),new Color("356769"),1);
+            if(sand&&noise%5==0)DrawLine(p,p+new Vector2(8,1),new Color("806c46"),1);
             if(holy&&noise%9==0)DrawCircle(p,1,new Color("5b5467"));
             if(!sand&&!docks&&!holy&&noise%5==0)DrawLine(p,p+new Vector2(4,1),new Color("9cbbc4"),1);
             if((docks||!sand&&!holy)&&noise%19==0&&!town.Zones.Any(z=>z.Contains(new V(x,y))))
@@ -60,9 +65,13 @@ public partial class Main
         }
         if(!docks)
         {
-            foreach(var npc in town.Npcs)
+            if(!ReferenceEquals(townRoadScene,town))
             {
-                var path=town.FindPath(config.TownPortal,npc.Position).Select(Project).ToArray();
+                townRoadScene=town;townRoads=town.Npcs.Select(n=>town.FindPath(config.TownPortal,n.Position).ToArray()).ToArray();
+            }
+            foreach(var road in townRoads)
+            {
+                var path=road.Select(Project).ToArray();
                 DrawPolyline(path,new Color(sand?"bba16e":holy?"8b8295":"b0bfc2"),sand?10:7,true);
             }
         }

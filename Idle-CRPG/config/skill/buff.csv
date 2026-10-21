@@ -6,3 +6,5 @@ buff_chill,100,RefreshDuration,,,,,chill,0.25,0,enemy
 buff_stun,30,RefreshDuration,,,,,stun,0,0,enemy
 buff_crit,160,RefreshDuration,crit_rate:add:0.4,,,tr_crit_shorten,crit_reduce,0.4,1,self
 buff_mirror,200,RefreshDuration,,,,tr_skill_mirror,mirror,0.7,0,self
+talent_battle_shout,120,RefreshDuration,,,,,haste,0,0,self
+talent_weaken,120,RefreshDuration,,,,,crit_reduce,0,0,enemy

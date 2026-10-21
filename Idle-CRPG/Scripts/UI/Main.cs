@@ -66,11 +66,25 @@ public partial class Main : Node2D
                 if(count<1||count>5)throw new ArgumentOutOfRangeException(nameof(count));
                 session=GameSession.CreateWorld(config,20261017,config.Heroes.Take(count).Select(h=>h.Id));
             }
+            var qaHero=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-hero="));
+            if(qaHero!=null)session=GameSession.CreateWorld(config,20261017,new[]{qaHero.Substring("--qa-hero=".Length)});
             viewMode=captureView=="world"?1:2;
             int ticks=captureView=="world"?24000:captureView is "travel" or "village" or "town-return" or "town-out"?0:400;
             for(int i=0;i<ticks;i++)session!.Tick(0.05f);
             if(captureView=="village"){for(int i=0;i<50000&&session!.World!.Stage!=CampaignStage.Village;i++)session.Tick(0.05f);paused=true;}
-            if(captureView=="travel"){for(int i=0;i<50000&&session!.World!.Stage==CampaignStage.Village;i++)session.Tick(.05f);paused=true;}
+            if(captureView=="travel")
+            {
+                session!.SetGmBattle(new(Invincible:true));
+                for(int i=0;i<50000;i++)
+                {
+                    var w=session.World!;
+                    var members=Enumerable.Range(0,session.Heroes.Count).Select(w.OutdoorPartyPosition).ToArray();
+                    bool spaced=members.Zip(members.Skip(1),(a,b)=>V.Distance(a,b)).All(d=>d>=config.Talents.Rule("world_follow_spacing_milli")/1000f*.7f);
+                    if(w.Stage==CampaignStage.TravelDungeon&&w.PortalPhase==PortalPhase.None&&!w.InTownScene&&spaced&&w.Route.Count>0)break;
+                    session.Tick(.05f);
+                }
+                paused=true;
+            }
             if(captureView=="town-return")
             {
                 session!.SetGmBattle(new(InstantDungeonClear:true));
@@ -129,7 +143,10 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-stars")){captureView="stars";SelectStarView(3);BuyStarNode("s_root");BuyStarNode("s_hp");BuyStarNode("s_atk");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-star-editor")){captureView="star-editor";viewMode=3;ToggleStarEditor();EditorClickNode("s_root");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-gm")){captureView="gm";ToggleGm();}
-        if(OS.GetCmdlineUserArgs().Contains("--capture-formation")){captureView="formation";SelectStarView(4);OpenFormation(0);}if(OS.GetCmdlineUserArgs().Contains("--capture-heroes")){captureView="heroes";SelectStarView(4);}if(smoke){RunHeroSmoke();RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunAct1UiSmoke();RunGmSmoke();RunStarSmoke();}
+        if(OS.GetCmdlineUserArgs().Contains("--capture-formation")){captureView="formation";SelectStarView(4);OpenFormation(0);}if(OS.GetCmdlineUserArgs().Contains("--capture-heroes")){captureView="heroes";SelectStarView(4);}if(smoke){RunClassTalentSmoke();RunInteractionSmoke();RunTalentSmoke();RunHeroSmoke();RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunAct1UiSmoke();RunGmSmoke();RunStarSmoke();}
+        if(capture&&OS.GetCmdlineUserArgs().Any(a=>a is "--capture-talents" or "--capture-talent-editor" or "--capture-talent-hud" or "--capture-talent-drag"))PrepareTalentCapture(OS.GetCmdlineUserArgs().Contains("--capture-talent-editor"),OS.GetCmdlineUserArgs().Contains("--capture-talent-hud"));
+        if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-heroes"))
+        {var heroArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-hero="));if(heroArg!=null)captureView="heroes-"+heroArg.Substring("--qa-hero=".Length);}
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
@@ -161,7 +178,7 @@ public partial class Main : Node2D
         else {motionAlpha=1;if(session!=null)motion.BeforeTick(session);}
         SyncCampaignConfig();TrackSounds();AutoSave(delta);
         TickStarPanels();
-        UpdateCamera(delta);sceneCanvas.QueueRedraw();
+        UpdateCamera(delta);UpdateTownBackdrop();sceneCanvas.QueueRedraw();
         if(performanceRun){processTimes.Add(Milliseconds(profileStart));frameTimes.Add(delta*1000);}
         if(capture && ++smokeFrames==10) Capture();
         if(smoke && ++smokeFrames>=120 && !quitRequested && !displaySmokeActive) { GD.Print("SMOKE_OK: "+session?.Status); QuitSafely(); }
@@ -216,7 +233,7 @@ public partial class Main : Node2D
     }
     private void PaintScene()
     {
-        DrawRect(SceneRect,new Color("080d15"));
+        if(!townBackdropCanvas.Visible)DrawRect(SceneRect,new Color("080d15"));
         if(session==null) {PaintCreationCamp();return;}
         var world=session.World!;
         bool showWorld=viewMode==1;
@@ -277,12 +294,17 @@ public partial class Main : Node2D
         foreach(var a in visible.SelectMany(r=>r.Monsters).Concat(session.Heroes).Where(a=>a.Alive).OrderBy(a=>a.Position.X+a.Position.Y))
         {
             int index=session.Heroes.IndexOf(a); var color=index>=0?heroColors[index]:a.Boss?new Color("ffc56b"):new Color("dc6b70");
-            DrawFighter(Project(VisualPosition(a)),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
+            DrawFighter(Project(VisualPosition(a))-new Vector2(0,index>=0?session.TalentLeapHeight(a):0),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
             if(index>=0&&a.Timer>a.Cooldown-.14f)
             {
                 var target=f.Rooms[session.CurrentRoom].Monsters.Where(m=>m.Alive).OrderBy(m=>V.DistanceSquared(a.Position,m.Position)).FirstOrDefault();
                 if(target!=null)DrawLine(Project(VisualPosition(a))-new Vector2(0,18),Project(VisualPosition(target))-new Vector2(0,15),new Color(color.R,color.G,color.B,.6f),2,true);
             }
+        }
+        foreach(var flight in session.TalentProjectiles)
+        {
+            var color=flight.Type switch {DamageType.Fire=>new Color("ff9b48"),DamageType.Cold=>new Color("83daff"),DamageType.Lightning=>new Color("fff08d"),DamageType.Poison=>new Color("b5e47d"),_=>new Color("e2dcc9")};
+            var point=Project(V.Lerp(flight.Previous,flight.Position,motionAlpha));DrawLine(Project(flight.Previous),point,color,2,true);DrawCircle(point,4,color);
         }
         foreach(var h in session.Heroes.Where(h=>!h.Alive))
         {

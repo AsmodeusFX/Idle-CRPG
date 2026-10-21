@@ -1,6 +1,6 @@
 id,chapter_id,name,width,height,entry_x,entry_y,exit_x,exit_y,interaction_range,service_seconds,theme,layout_version,return_x,return_y,waypoint_x,waypoint_y,exit_name
 rogue,act1,罗格营地,28,24,23,10,24,10,0.4,1,camp,0,12,13,14,7,唯一出入口
-lut,act2,鲁·高因,34,28,31,14,32,14,0.4,1,sand,1,18,18,18,8,碎石荒地出口
+lut,act2,鲁·高因,48,40,45,20,46,20,0.4,1,sand,2,22,24,24,12,碎石荒地出口
 kurast,act3,库拉斯海港,32,28,27,5,28,4,0.4,1,docks,1,16,17,17,13,蜘蛛森林栈桥
 pandemonium,act4,群魔堡垒,24,20,21,16,22,16,0.4,1,sanctum,1,12,12,14,6,郊外大草原阶梯
 harrogath,act5,哈洛加斯,32,28,7,4,7,2,0.4,1,snow,1,18,19,19,14,血腥丘陵大门

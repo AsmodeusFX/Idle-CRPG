@@ -10,3 +10,9 @@ s_party_1,1,7,s_root,上阵席位 +1
 s_party_2,2,7,s_party_1,上阵席位 +1
 s_party_3,3,7,s_party_2,上阵席位 +1
 s_party_4,4,7,s_party_3,上阵席位 +1
+s_skill_1,1,9,s_root,主动技能槽 +1
+s_skill_2,2,9,s_skill_1,主动技能槽 +1
+s_skill_3,3,9,s_skill_2,主动技能槽 +1
+s_skill_4,4,9,s_skill_3,主动技能槽 +1
+s_respec,1,11,s_root,解锁城镇洗点
+s_respec_discount,2,11,s_respec,降低洗点费用

@@ -99,7 +99,7 @@ public partial class Main
         // 按实际编队人数倒序绘制，兼容单人创角、旧三人档及扩编后的五人队伍。
         for(int i=session.Heroes.Count-1;i>=0;i--)
         {
-            V position=worldLeader+new V(-i*.04f,i*.04f);
+            V position=motion.OutdoorPartyPosition(session,i,motionAlpha);
             if(w.Stage==CampaignStage.Village)position=WorldLocation(w.Village.RegionId,w.Village.X,w.Village.Y)+VisualPosition(session.Heroes[i])/config.WorldUnits+new V(-i*.025f,i*.025f);
             DrawFighter(OutdoorPoint(position),heroColors[i],i,false,session.Heroes[i].Hp/session.Heroes[i].MaxHp,session.Heroes[i].Name);
             outdoorHeroesDrawn++;

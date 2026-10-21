@@ -41,7 +41,7 @@ public sealed partial class Config
         c.LoadStars(directory);c.LoadHeroUnlocks(directory);
         c.LoadGm(directory);
         c.LoadLevels(directory);
-        c.LoadCombat(directory);
+        c.LoadCombat(directory);c.Talents=TalentConfiguration.Load(directory,c);
         c.LoadRecovery(directory);
         c.LoadChapters(directory,legacyFixture);
         return c.ChapterMaps[0];

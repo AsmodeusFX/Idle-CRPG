@@ -32,8 +32,9 @@ public sealed partial class GameSession
     private Actor CreateFormationHero(string id)
     {
         var hero=Actor.From(Config.Heroes.Single(h=>h.Id==id));Config.ApplyCombatProfile(hero);
-        hero.Level=Heroes[0].Level;var growth=Config.HeroLevels[hero.Level];
-        hero.Attack+=growth.AttackBonus+(float)starAttack;hero.MaxHp+=growth.HpBonus+(float)starHp;hero.Hp=hero.MaxHp;return hero;
+        // 首次加入从1级、0经验起步；候补直接复用原Actor保留个人成长。
+        var growth=Config.HeroLevels[hero.Level];
+        hero.Attack+=growth.AttackBonus+(float)starAttack;hero.MaxHp+=growth.HpBonus+(float)starHp;hero.Hp=hero.MaxHp;GrantStarterSkill(hero);return hero;
     }
     /// <summary>唯一执行入口：全队必须实际到达编队NPC范围并完成城镇服务读条。</summary>
     internal void ApplyPendingFormation()

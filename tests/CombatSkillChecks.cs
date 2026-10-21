@@ -12,7 +12,7 @@ public static class CombatSkillChecks
         void Check(bool ok,string reason){if(!ok)throw new Exception("COMBAT_SKILL_CHECK: "+reason);}
         void Near(double actual,double expected,string reason)=>Check(Math.Abs(actual-expected)<.00001,reason+$" ({actual} != {expected})");
         var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
-        Check(c.Skills.Abilities.Count==15&&c.Skills.Buffs.Count==7&&c.Skills.Triggers.Count==2&&c.Skills.Skills.Count==17,"迁移定义数量");
+        Check(c.Skills.Abilities.Count==15&&c.Skills.Buffs.Keys.Count(id=>!id.StartsWith("talent_"))==7&&c.Skills.Triggers.Count==2&&c.Skills.Skills.Keys.Count(id=>!c.Talents.Nodes.ContainsKey(id))==17,"迁移定义数量");
         Check(c.Skills.Skills["skill_01"].Cooldown==25&&c.Skills.Buffs["buff_haste"].Duration==120,"8Hz→20Hz 换算");
         var attack=new BattleAttributes {CriticalChance=1,CriticalDamage=.5};
         attack.Modifiers.AddRange(new[]{new DamageModifier(DamageBucket.Skill,.3,"spin"),new(DamageBucket.General,.3,Type:DamageType.Fire),new(DamageBucket.General,.3,RangedOnly:true),new(DamageBucket.General,.3,BossOnly:true),new(DamageBucket.Critical,.2),new(DamageBucket.Multiplier,1.5,"spin"),new(DamageBucket.Multiplier,2),new(DamageBucket.Vulnerable,.2,DebuffId:"vulnerable"),new(DamageBucket.Vulnerable,.3,DebuffId:"vulnerable"),new(DamageBucket.Vulnerable,.4,DebuffId:"wounded"),new(DamageBucket.Vulnerable,99,DebuffId:"absent"),new(DamageBucket.Skill,100,"other_skill")});

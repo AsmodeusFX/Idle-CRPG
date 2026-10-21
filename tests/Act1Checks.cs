@@ -97,7 +97,7 @@ public static class Act1Checks
         GameSession Trade(GameSession g)
         {
             var s=g.CaptureProgress();var map=g.Config;var w=s.World!;var v=map.ReturnVillage(map.StartRegionId);var r=map.Regions.Single(r=>r.Id==v.RegionId);var npc=map.Npcs.Single(n=>n.Id==v.NpcId);
-            w.Stage=CampaignStage.Village;w.PortalPhase=PortalPhase.None;w.PortalElapsed=0;w.PortalWaypoint="";w.Position=new Vector2(r.X+v.X,r.Y+v.Y);w.VillageId=v.Id;w.Route.Clear();w.VillagePaths.Clear();w.TownPhase=TownVisitPhase.Sell;w.TradeElapsed=(map.Town?.ServiceSeconds??map.TradeSeconds)-.025f;s.Floors.Clear();s.ActiveDungeonId="";s.SkillState=new();
+            w.Stage=CampaignStage.Village;w.PortalPhase=PortalPhase.None;w.PortalElapsed=0;w.PortalWaypoint="";w.Position=new Vector2(r.X+v.X,r.Y+v.Y);w.VillageId=v.Id;w.OutdoorTrail.Clear();w.FollowGather=0;w.Route.Clear();w.VillagePaths.Clear();w.TownPhase=TownVisitPhase.Sell;w.TradeElapsed=(map.Town?.ServiceSeconds??map.TradeSeconds)-.025f;s.Floors.Clear();s.ActiveDungeonId="";s.SkillState=new();
             foreach(var h in s.Heroes){h.Position=map.Town?.Npc("sell").Position??npc.Position;h.Hp=h.MaxHp;}
             var result=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=s})).Session!);for(int i=0;i<3000&&result.World!.Stage==CampaignStage.Village;i++)result.Tick(.05f);return result;
         }
@@ -136,7 +136,7 @@ public static class Act1Checks
         oldBranch.SuspendedWorld.VillagePaths[run.Heroes[0].SpecId]=new(){new(23,10),new(18,5)};
         var branchPositions=run.Heroes.Select(h=>h.Position).ToArray();
         run=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=oldBranch})).Session!);
-        Check(run.CaptureProgress().SuspendedWorld!.TownLayoutVersion==1&&run.CaptureProgress().SuspendedWorld!.VillagePaths.Count==0&&run.Heroes.Select(h=>h.Position).SequenceEqual(branchPositions),"暂挂主线布局迁移丢失当前支线位置");
+        Check(run.CaptureProgress().SuspendedWorld!.TownLayoutVersion==c.ChapterMaps[1].Town!.LayoutVersion&&run.CaptureProgress().SuspendedWorld!.VillagePaths.Count==0&&run.Heroes.Select(h=>h.Position).SequenceEqual(branchPositions),"暂挂主线布局迁移丢失当前支线位置");
         run.SetGmBattle(new(Invincible:true));
         for(int i=0;i<200000&&run.ActiveBranch!=null;i++)run.Tick(.05f);
         Check(run.ActiveBranch==null&&run.ChapterIndex==1&&run.LatestMapIndex==1&&run.MapProgress(0,0).Cleared.Contains("A03-C01"),"支线未真实完成并返回最新章");

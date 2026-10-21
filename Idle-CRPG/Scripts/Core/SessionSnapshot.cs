@@ -21,6 +21,7 @@ public sealed class SessionSnapshot
     public uint RoomEntryLootState;
     public uint CombatRandomState,RoomEntryCombatState;
     public int CombatVersion;
+    public int HeroExperienceVersion;
     public SkillBattleState SkillState=new();
     public bool Won;
     public float Regroup, ReviveElapsed;
@@ -42,6 +43,8 @@ public record InventoryEntry(string ItemId,long Price,long Count);
 public record PartyEntry(Vector2 Position,float Hp);
 public sealed class WorldSnapshot
 {
+    public List<Vector2> OutdoorTrail=new();
+    public float FollowGather;
     public int TownVersion;
     public int TownLayoutVersion;
     public TownVisitPhase TownPhase;
@@ -84,7 +87,7 @@ public sealed partial class GameSession
         CampaignVersion=2,LatestMapIndex=LatestMapIndex,ActiveBranch=ActiveBranch,BranchQueue=branchQueue.ToList(),SuspendedWorld=suspendedWorld?.Capture(),
         DifficultyIndex=DifficultyIndex,ChapterIndex=ChapterIndex,CompletedMaps=CaptureChapters(),
         Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
-        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,CombatVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
+        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Floors=Floors,
         Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
@@ -128,6 +131,13 @@ public sealed partial class GameSession
     {
         if(s.DifficultyIndex<0||s.DifficultyIndex>2||s.ChapterIndex<0||s.ChapterIndex>4)throw new InvalidDataException("难度/章节越界");
         config=config.ChapterMaps[s.ChapterIndex];
+        foreach(var oldWorld in new[]{s.World,s.SuspendedWorld})if(oldWorld!=null&&(oldWorld.AreaPartAccessVersion==0||oldWorld.NavigationVersion==0||oldWorld.LayoutVersion==0||oldWorld.TerrainVersion==0)){oldWorld.OutdoorTrail=new();oldWorld.FollowGather=0;}
+        if(s.HeroExperienceVersion is not (0 or 1))throw new InvalidDataException("不支持的英雄经验版本");
+        if(s.HeroExperienceVersion==0)
+        {
+            foreach(var hero in s.Heroes.Concat(s.ReserveHeroes)){hero.Experience=s.Experience;hero.ExperienceFraction=0;}
+            s.HeroExperienceVersion=1;
+        }
         MigrateCampaignPatch(config,s);
         if(config.MapVersion>1&&s.World!=null&&s.World.MapVersion!=config.MapVersion)throw new InvalidDataException("第一章地图结构已更换，旧地图编号不能映射到新POI；需要重置不兼容存档");
         MigrateWorldLayout(config,s);
@@ -153,7 +163,7 @@ public sealed partial class GameSession
         game.RestoreChapters(s);
         game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
         game.Floors=s.Floors;game.dungeonSeed=s.DungeonSeed;game.FloorIndex=s.FloorIndex;game.CurrentRoom=s.CurrentRoom;
-        game.Experience=s.Experience;game.Kills=s.Kills;game.Retries=s.Retries;game.Gold=s.Gold;game.Revision=s.Revision;game.HitCount=s.HitCount;
+        game.Kills=s.Kills;game.Retries=s.Retries;game.Gold=s.Gold;game.Revision=s.Revision;game.HitCount=s.HitCount;
         game.lootRandom.State=s.LootRandomState;game.Won=s.Won;game.destination=s.Destination;game.phase=s.Phase;game.regroup=s.Regroup;
         if(s.CombatRandomState!=0)game.combatRandom.State=s.CombatRandomState;
         game.roomEntryCombatState=s.RoomEntryCombatState==0?game.combatRandom.State:s.RoomEntryCombatState;game.skillState=s.SkillState;
@@ -181,6 +191,7 @@ public sealed partial class GameSession
             foreach(var h in game.Heroes){h.Hp=h.MaxHp;h.Timer=0;}
             game.Note("统治区前置规则更新：保留成长与资源，回初始村庄补给后继续冒险");
         }
+        if(config.Town!=null)foreach(var h in game.Heroes.Concat(game.reserveHeroes))if(game.GrantStarterSkill(h))game.MarkChanged();
         return game;
     }
     private static void ValidateSnapshot(Config c,SessionSnapshot s)
@@ -197,7 +208,8 @@ public sealed partial class GameSession
         Need((s.ReviveTarget<0)==(s.Rescuer<0)&&(s.ReviveTarget<0||(!s.Heroes[s.ReviveTarget].Alive&&s.Heroes[s.Rescuer].Alive)),"救援引用");
         c.Spawn.Validate(s.Modifiers!);
         Need(s.Stars!=null&&double.IsFinite(s.StarAttack)&&double.IsFinite(s.StarHp)&&s.StarAttack>=0&&s.StarHp>=0,"星图贡献");
-        _=new StarProgression(c.Stars,s.Stars);ValidateFormationSnapshot(c,s);
+        var talentStars=new StarProgression(c.Stars,s.Stars);ValidateFormationSnapshot(c,s);
+        Need(s.Heroes.Concat(s.ReserveHeroes).All(h=>h.SkillIds!=null&&h.SkillIds.Count(id=>c.Talents.Nodes.ContainsKey(id))<=TalentSlotCapacity(c,talentStars)),"主动技能槽超过星图解锁容量");
         Need(s.Inventory!.All(i=>c.Items.Any(t=>t.Id==i.ItemId)&&i.Price>=0&&i.Count>0)&&s.Inventory.Select(i=>(i.ItemId,i.Price)).Distinct().Count()==s.Inventory.Count,"背包引用/数量");
         Need((s.RoomEntry.Count==0||s.RoomEntry.Count==s.Heroes.Count)&&s.RoomEntry.All(e=>Point(e.Position)&&Finite(e.Hp)&&e.Hp>=0),"进房节点");
         Need(s.ActiveDungeonId==""||c.Dungeons.Any(d=>d.Id==s.ActiveDungeonId),"地牢引用");
@@ -210,8 +222,10 @@ public sealed partial class GameSession
         foreach(var a in s.Heroes.Concat(s.ReserveHeroes).Concat(s.Floors!.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
         {
             Need(Point(a.Position)&&Finite(a.Hp)&&Finite(a.MaxHp)&&Finite(a.Attack)&&Finite(a.Defense)&&Finite(a.Speed)&&Finite(a.Range)&&Finite(a.Cooldown)&&Finite(a.Timer)&&Finite(a.DropMultiplier)&&Finite(a.ValueMultiplier)&&a.MaxHp>0&&a.Hp>=0&&a.Hp<=AllowedMaximum(a)&&a.Level>0&&a.Attack>=0&&a.Defense>=0&&a.Speed>0&&a.Range>0&&a.Cooldown>0&&a.Timer>=0&&a.DropMultiplier>=0&&a.ValueMultiplier>0,"角色属性");
+            Need(a.Experience>=0&&a.ExperienceFraction is >=0 and <100,"角色经验无效");
             Need(a.Battle!=null&&a.SkillIds!=null&&a.SkillLevels!=null,"战斗属性/技能缺失");a.Battle.Validate();
             Need(a.Level<=(s.Heroes.Contains(a)||s.ReserveHeroes.Contains(a)?c.MaxHeroLevel:c.MaxMonsterLevel),"等级超过等级表表尾；请补齐配置，禁止静默降级");
+            ValidateTalents(c,a);
             Need(a.SkillIds.Distinct().Count()==a.SkillIds.Length&&a.SkillIds.All(id=>c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Kind=="ActiveSkill")&&a.SkillLevels.All(p=>c.Skills.Abilities.TryGetValue(p.Key,out var ability)&&p.Value>=1&&p.Value<=ability.MaxLevel),"装备技能/等级引用");
         }
         ValidateSkillSnapshot(c,s);
@@ -254,13 +268,15 @@ public sealed partial class GameSession
 
 public sealed partial class WorldCampaign
 {
-    internal WorldSnapshot Capture() => new() {WaitingApproval=WaitingApproval,WaitApprovalTicks=WaitApprovalTicks,PortalOrigin=PortalOrigin,ReturnPortalVisible=Progress.ReturnPortalVisible,PortalPhase=PortalPhase,PortalReturning=PortalReturning,PortalElapsed=PortalElapsed,PortalWaypoint=PortalWaypoint,TownVersion=1,TownLayoutVersion=config.Town?.LayoutVersion??0,TownPhase=TownPhase,MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
+    internal WorldSnapshot Capture() => new() {OutdoorTrail=TrailCurrent?outdoorTrail.ToList():new(),FollowGather=TrailCurrent?followGather:0,WaitingApproval=WaitingApproval,WaitApprovalTicks=WaitApprovalTicks,PortalOrigin=PortalOrigin,ReturnPortalVisible=Progress.ReturnPortalVisible,PortalPhase=PortalPhase,PortalReturning=PortalReturning,PortalElapsed=PortalElapsed,PortalWaypoint=PortalWaypoint,TownVersion=1,TownLayoutVersion=config.Town?.LayoutVersion??0,TownPhase=TownPhase,MapVersion=config.MapVersion,Failures=new(failures),PausedAtLevel=new(pausedAtLevel),RetryCastles=retryCastles.OrderBy(id=>id).ToList(),TeamLevel=teamLevel,RecoveryRandomState=recoveryRandom.State,BranchCastle=BranchCastle,TerrainVersion=1,LayoutVersion=1,AreaPartAccessVersion=1,Stage=Stage,Position=Position,TargetId=Target.Dungeon.Id,Farming=Target.Farming,VillageId=Village.Id,TradeElapsed=TradeElapsed,Trades=Trades,DungeonVisits=DungeonVisits,Status=Status,PendingCastles=pendingCastles.ToList(),NavigationVersion=1,Explored=Progress.Explored.OrderBy(i=>i).ToList(),Cleared=Progress.Cleared.OrderBy(i=>i).ToList(),Route=route.ToList(),VillagePaths=villagePaths.ToDictionary(p=>p.Key,p=>p.Value.ToList())};
     internal static WorldCampaign Restore(Config c,WorldSnapshot s,int difficulty=0)
     {
         var restoredProgress=new WorldProgress {ReturnPortalVisible=s.ReturnPortalVisible};restoredProgress.Explored.UnionWith(s.Explored);restoredProgress.Cleared.UnionWith(s.Cleared);
         var w=new WorldCampaign(c,difficulty,restoredProgress,s.BranchCastle) {WaitingApproval=s.WaitingApproval,WaitApprovalTicks=s.WaitApprovalTicks,PortalOrigin=s.PortalOrigin,PortalPhase=s.PortalPhase,PortalReturning=s.PortalReturning,PortalElapsed=s.PortalElapsed,PortalWaypoint=s.PortalWaypoint,TownPhase=s.TownPhase,Stage=s.Stage,Position=s.Position,Target=new(c.Dungeons.Single(d=>d.Id==s.TargetId),s.Farming),Village=c.Villages.Single(v=>v.Id==s.VillageId),TradeElapsed=s.TradeElapsed,Trades=s.Trades,DungeonVisits=s.DungeonVisits,Status=s.Status};
         foreach(var p in s.Failures)w.failures.Add(p.Key,p.Value);foreach(var p in s.PausedAtLevel)w.pausedAtLevel.Add(p.Key,p.Value);w.retryCastles.UnionWith(s.RetryCastles);w.teamLevel=s.TeamLevel;if(s.RecoveryRandomState!=0)w.recoveryRandom.State=s.RecoveryRandomState;
         w.Progress.Explored.Clear();w.Progress.Explored.UnionWith(s.Explored);w.Progress.Cleared.UnionWith(s.Cleared);w.pendingCastles.AddRange(s.PendingCastles.Count>0?s.PendingCastles:s.PendingCastle!=""?new[]{s.PendingCastle}:Array.Empty<string>());w.route.Clear();foreach(var p in s.Route)w.route.Enqueue(p);
+        if(s.AreaPartAccessVersion==0||s.NavigationVersion==0||s.LayoutVersion==0||s.TerrainVersion==0){s.OutdoorTrail=new();s.FollowGather=0;}
+        w.ValidateOutdoorTrail(s);w.outdoorTrail.AddRange(s.OutdoorTrail);w.followGather=s.FollowGather;
         foreach(var p in s.VillagePaths)w.villagePaths[p.Key]=new Queue<Vector2>(p.Value);
         if(s.NavigationVersion==0&&s.Stage is CampaignStage.TravelDungeon or CampaignStage.TravelVillage)
         {

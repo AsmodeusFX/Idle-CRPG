@@ -180,7 +180,7 @@ public partial class Main
         forceProgressSave=false;
         try {saveStore.Reset();}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException) {help.Text="重置失败，原进度保留："+e.Message;return;}
-        session=null;formationRoot.Hide();foreach(var choice in choices)choice.SetPressedNoSignal(false);choices[0].SetPressedNoSignal(true);paused=false;speed=1;accumulator=0;sinceSave=0;savedRevision=-1;viewMode=0;selectedRegion=-1;
+        session=null;formationRoot.Hide();talentEditor.Hide();foreach(var choice in choices)choice.SetPressedNoSignal(false);choices[0].SetPressedNoSignal(true);paused=false;speed=1;accumulator=0;sinceSave=0;savedRevision=-1;viewMode=0;selectedRegion=-1;
         UpdatePartyControls();ResetSoundBaseline();settingsRoot.Hide();
         summary.Text="进度已重置，请选择一位英雄开始远征。";roster.Text="";journal.Text="";help.Text="世界无遭遇战 · 通关后必先回村交易 · 无新目标时自动复刷";PlaySound("sfx_reward");QueueRedraw();
     }

@@ -12,8 +12,9 @@ public partial class Main
     private Label interactionHeading=null!;
     private ScrollContainer interactionScroll=null!;
     private Label teamChallengeLabel=null!;
-    private readonly Label[] currencies=new Label[4];
+    private readonly Label[] currencies=new Label[2];
     private readonly Button[] heroAdd=new Button[5];
+    private readonly Label[] heroExperience=new Label[5];
     private readonly Label[] heroNames=new Label[5],heroStats=new Label[5];
     private readonly ProgressBar[] heroHealth=new ProgressBar[5];
     private readonly HudIcon[] heroIcons=new HudIcon[5];
@@ -53,16 +54,17 @@ public partial class Main
         rateButton.Pressed+=()=>{speed=speed==4?1:speed*2;rateButton.Text=$"速度 ×{speed}";PlaySound("sfx_click");SaveNow();};gameHud.AddChild(rateButton);
 
         HudPanel(gameHud,new Vector2(1080,92),new Vector2(336,558));
-        for(int i=0;i<4;i++)
+        for(int i=0;i<currencies.Length;i++)
         {
-            float x=i<3?1092+i*106:1092,y=i<3?104:143;
-            gameHud.AddChild(new HudIcon {Kind=i==0?"coin":i==1?"junk":i==2?"xp":"point",Position=new Vector2(x,y),Size=new Vector2(24,24)});
-            currencies[i]=HudText(gameHud,i==3?"成长点 —":"0",new Vector2(x+28,y+1),i==3?14:16);
-            currencies[i].TooltipText=new[]{"金币","杂物数量","当前经验","成长点：后续开放"}[i];
+            float x=1092+i*156,y=104;
+            string hint=i==0?"金币":"背包杂物数量：回城后自动售卖为金币";
+            gameHud.AddChild(new HudIcon {Kind=i==0?"coin":"junk",Position=new Vector2(x,y),Size=new Vector2(24,24),TooltipText=hint});
+            currencies[i]=HudText(gameHud,"0",new Vector2(x+28,y+1),16);
+            currencies[i].TooltipText=hint;currencies[i].MouseFilter=Control.MouseFilterEnum.Stop;
         }
-        var separator=new HSeparator {Position=new Vector2(1092,177),Size=new Vector2(312,2)};gameHud.AddChild(separator);
-        interactionHeading=HudText(gameHud,"远征交互",new Vector2(1092,187),17);
-        var scroll=new ScrollContainer {Position=new Vector2(1092,220),Size=new Vector2(312,417),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};gameHud.AddChild(scroll);
+        var separator=new HSeparator {Position=new Vector2(1092,143),Size=new Vector2(312,2)};gameHud.AddChild(separator);
+        interactionHeading=HudText(gameHud,"远征交互",new Vector2(1092,153),17);
+        var scroll=new ScrollContainer {Position=new Vector2(1092,186),Size=new Vector2(312,451),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};gameHud.AddChild(scroll);
         interactionScroll=scroll;
         interactionList=new VBoxContainer {SizeFlagsHorizontal=Control.SizeFlags.ExpandFill};interactionList.AddThemeConstantOverride("separation",7);scroll.AddChild(interactionList);
         interactionEmpty=UiLabel("暂无可用交互\n\n城堡满足挑战条件后在此显示。",14);interactionEmpty.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(interactionEmpty);
@@ -87,7 +89,9 @@ public partial class Main
             int slot=i;heroAdd[i]=new Button {Name="HudFormationAdd"+i,Text="+",Position=new Vector2(209,y+1),Size=new Vector2(30,28),Visible=false};heroAdd[i].Pressed+=()=>OpenFormation(slot);gameHud.AddChild(heroAdd[i]);
             heroHealth[i]=new ProgressBar {Position=new Vector2(260,y+5),Size=new Vector2(210,20),ShowPercentage=false,MouseFilter=Control.MouseFilterEnum.Ignore};
             heroHealth[i].AddThemeStyleboxOverride("fill",new StyleBoxFlat {BgColor=new Color("397b70")});gameHud.AddChild(heroHealth[i]);
-            heroStats[i]=HudText(gameHud,"—",new Vector2(486,y+4),14);
+            heroExperience[i]=HudText(gameHud,"",new Vector2(260,y+8),10);heroExperience[i].Size=new Vector2(210,14);heroExperience[i].HorizontalAlignment=HorizontalAlignment.Center;heroExperience[i].MouseFilter=Control.MouseFilterEnum.Ignore;
+            heroStats[i]=HudText(gameHud,"—",new Vector2(486,y+4),14);heroStats[i].Hide();
+            hudSkillBars[i]=new HBoxContainer {Position=new Vector2(480,y),Size=new Vector2(375,28)};hudSkillBars[i].AddThemeConstantOverride("separation",2);gameHud.AddChild(hudSkillBars[i]);
         }
         HudPanel(gameHud,new Vector2(880,662),new Vector2(536,214));
         HudText(gameHud,"药剂",new Vector2(896,669),16);
@@ -115,12 +119,15 @@ public partial class Main
             var hero=session?.Heroes.ElementAtOrDefault(i);
             heroIcons[i].Modulate=hero==null?new Color("536575"):Colors.White;
             heroAdd[i].Visible=session!=null&&hero==null&&i<session.PartyCapacity;
+            heroNames[i].TooltipText=hero==null?"":$"{hero.Name} Lv.{hero.Level}\n个人经验 {HeroExperienceText(hero)}\n只结算上阵英雄（含倒地者）；按本人等级计算怪物经验倍率。";
             heroNames[i].Text=hero==null?(i<(session?.PartyCapacity??1)?"席位空缺":"席位未解锁"):$"{hero.Name}  Lv.{hero.Level}";
             heroHealth[i].Visible=hero!=null;
+            heroExperience[i].Text=hero==null?"":"XP "+HeroExperienceText(hero);
             heroHealth[i].MaxValue=hero?.MaxHp??1;heroHealth[i].Value=hero?.Hp??0;
             heroStats[i].Text=hero==null?"—":$"HP {Math.Ceiling(hero.Hp)} / {hero.MaxHp:0}     ATK {hero.Attack:0}";
         }
-        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text=CompactAmount(session?.Inventory.Values.Sum()??0);currencies[2].Text=CompactAmount(session?.Experience??0);
+        RefreshHudSkills();
+        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text=CompactAmount(session?.Inventory.Values.Sum()??0);
     }
 
     /// <summary>按功能类型、首次刷新次序保留独立交互卡；目前仅投放城堡挑战，免费卡不显示消耗。</summary>
@@ -182,7 +189,7 @@ public partial class Main
             var world=session.World!;world.Progress.Cleared.Add("c1");
             foreach(var dungeon in config.Dungeons.Where(d=>!d.Castle))world.Progress.Cleared.Add(dungeon.Id);
             Refresh();
-            if(castleCards.Count!=3||heroNames.Length!=5||currencies.Length!=4||partySetup.Visible)throw new Exception("五区布局或独立城堡按钮不完整");
+            if(castleCards.Count!=3||heroNames.Length!=5||currencies.Length!=2||partySetup.Visible)throw new Exception("五区布局或独立城堡按钮不完整");
             var order=castleCards.Keys.OrderBy(id=>interactionArrival[id]).ToArray();
             var buttons=order.Select(id=>castleCards[id]).ToArray();
             buttons[2].EmitSignal(Button.SignalName.Pressed);
@@ -234,6 +241,7 @@ public partial class HudIcon : Control
         {DrawCircle(c+new Vector2(0,-r*.55f),r*.3f,Accent);DrawColoredPolygon(new[]{c+new Vector2(0,-r*.1f),c+new Vector2(r*.7f,r),c+new Vector2(-r*.7f,r)},Accent);DrawLine(c+new Vector2(r*.7f,r*.5f),c+new Vector2(r*.9f,-r*.8f),new Color("c1d0d8"),2);}
         else if(Kind=="potion")
         {DrawCircle(c+new Vector2(0,r*.3f),r*.7f,Accent);DrawRect(new Rect2(c+new Vector2(-r*.25f,-r*.8f),new Vector2(r*.5f,r)),Accent);DrawLine(c+new Vector2(-r*.35f,-r*.8f),c+new Vector2(r*.35f,-r*.8f),new Color("a0acb2"),3);}
+        else if(Kind=="level"){DrawString(ThemeDB.FallbackFont,c+new Vector2(-11,6),"Lv",HorizontalAlignment.Left,-1,14,new Color("71c6e4"));}
         else if(Kind=="xp")
         {DrawString(ThemeDB.FallbackFont,c+new Vector2(-11,6),"XP",HorizontalAlignment.Left,-1,14,new Color("71c6e4"));}
         else if(Kind=="junk")

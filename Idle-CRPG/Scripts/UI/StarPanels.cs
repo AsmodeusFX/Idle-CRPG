@@ -19,7 +19,7 @@ public partial class Main
         BuildWorldPage();BuildHeroPage();
         starPage=new VBoxContainer {Position=GlobalPageRect.Position+new Vector2(8,4),Size=GlobalPageRect.Size-new Vector2(16,8),Visible=false};
         starPage.AddThemeConstantOverride("separation",8);uiLayer.AddChild(starPage);
-        BuildGmMenu();BuildFormationUi();
+        BuildGmMenu();BuildFormationUi();BuildTalentEditor();
     }
     private void ToggleGm()
     {RefreshGm();gmRoot.Visible=!gmRoot.Visible;PlaySound("sfx_panel");}

@@ -16,10 +16,24 @@ public partial class Main
         performanceRun=true;
         try
         {
-            foreach(string scene in new[]{"travel","combat","map"})
+            bool towns=OS.GetCmdlineUserArgs().Contains("--performance-towns");
+            foreach(string scene in towns?new[]{"town1","town2","town3","town4","town5"}:new[]{"travel","combat","map"})
             {
                 session=GameSession.CreateWorld(config,20261017,new[]{"warrior","ranger","mage"});
-                if(scene!="travel")
+                if(towns)
+                {
+                    int chapter=int.Parse(scene.Substring(4))-1;
+                    while(session.ChapterIndex<chapter){int before=session.ChapterIndex;session.CompleteGmChapter();for(int t=0;t<10000&&session.ChapterIndex==before;t++)session.Tick(.05f);if(session.ChapterIndex==before)throw new Exception("城镇性能检查跨章失败");}
+                    config=session.Config;
+                    var s=session.CaptureProgress();s.World!.TownPhase=TownVisitPhase.Heal;s.World.TradeElapsed=0;s.World.VillagePaths.Clear();
+                    foreach(var h in s.Heroes){h.Position=config.TownPortal;h.Hp=h.MaxHp/2;}
+                    session=GameSession.Restore(config,s);
+                    var paths=new List<double>();
+                    foreach(var from in config.Town!.Npcs)foreach(var to in config.Town.Npcs)
+                    {long begin=Stopwatch.GetTimestamp();config.Town.FindPath(from.Position,to.Position);paths.Add(Milliseconds(begin));}
+                    GD.Print($"TOWN_PATH {scene}: avg={paths.Average():F2},max={paths.Max():F2}ms");
+                }
+                else if(scene!="travel")
                     for(int i=0;i<50000;i++)
                     {
                         session.Tick(.05f);

@@ -28,10 +28,20 @@ public sealed class TownScene
     public List<TownProp> Props=new();
     public List<TownZone> Zones=new();
     private readonly Dictionary<Vector2,IReadOnlyList<Vector2>> entrancePaths=new();
+    private static readonly (int X,int Y)[] PathDirections={(1,0),(-1,0),(0,1),(0,-1)};
     public TownNpc Npc(string role)=>Npcs.Single(n=>n.HasRole(role));
-    public bool Walkable(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&
-        (Zones.Count>0?Zones.Any(z=>z.Contains(p)):((p.X>=2&&p.X<=Width-6&&p.Y>=2&&p.Y<=Height-4)||(p.X>=Width-6&&p.X<=Exit.X&&Math.Abs(p.Y-Exit.Y)<=1)))&&
-        !Props.Any(o=>o.Blocks&&p.X>=o.X-.2f&&p.X<=o.X+o.Width+.2f&&p.Y>=o.Y-.2f&&p.Y<=o.Y+o.Height+.2f);
+    /// <summary>共用地板和建筑占地；寻路热路径不创建捕获坐标的委托或临时集合。</summary>
+    public bool Walkable(Vector2 p)
+    {
+        if(!float.IsFinite(p.X)||!float.IsFinite(p.Y))return false;
+        bool inside=false;
+        if(Zones.Count==0)inside=(p.X>=2&&p.X<=Width-6&&p.Y>=2&&p.Y<=Height-4)||(p.X>=Width-6&&p.X<=Exit.X&&Math.Abs(p.Y-Exit.Y)<=1);
+        else foreach(var zone in Zones)if(zone.Contains(p)){inside=true;break;}
+        if(!inside)return false;
+        foreach(var o in Props)
+            if(o.Blocks&&p.X>=o.X-.2f&&p.X<=o.X+o.Width+.2f&&p.Y>=o.Y-.2f&&p.Y<=o.Y+o.Height+.2f)return false;
+        return true;
+    }
     /// <summary>城镇半格广度优先寻路；绘制与移动共用物件矩形，禁止穿帐篷、围栏或从非入口离场。</summary>
     public IReadOnlyList<Vector2> FindPath(Vector2 from,Vector2 to)
     {
@@ -43,8 +53,11 @@ public sealed class TownScene
         while(queue.Count>0)
         {
             var p=queue.Dequeue();if(p==end)break;
-            foreach(var n in new[]{(p.X+1,p.Y),(p.X-1,p.Y),(p.X,p.Y+1),(p.X,p.Y-1)})
+            foreach(var direction in PathDirections)
+            {
+                var n=(p.X+direction.X,p.Y+direction.Y);
                 if(!parents.ContainsKey(n)&&Walkable(Point(n))){parents[n]=p;queue.Enqueue(n);}
+            }
         }
         if(!parents.ContainsKey(end))throw new InvalidOperationException("城镇服务不可达");
         var result=new List<Vector2>{to};var current=end;while(current!=start){result.Add(Point(current));current=parents[current];}result.Add(from);result.Reverse();var path=result.AsReadOnly();if(from==Entry)entrancePaths[to]=path;return path;

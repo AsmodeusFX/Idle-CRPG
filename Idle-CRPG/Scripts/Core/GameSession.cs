@@ -12,16 +12,21 @@ public sealed class Actor
     public Vector2 Position;
     public float Hp, MaxHp, Attack, Defense, Speed, Range, Cooldown, Timer;
     public int Level = 1;
+    public int Experience,ExperienceFraction;
     public bool Boss;
     public bool Ranged;
     public BattleAttributes Battle=new();
     public string[] SkillIds=Array.Empty<string>();
     public Dictionary<string,int> SkillLevels=new();
+    public Dictionary<string,int> Talents=new();
+    public bool StartingSkillGranted;
+    public List<TalentBonus> TalentBonuses=new();
+    public Dictionary<string,double> SkillSwapLocks=new();
     public int RewardXp;
     public float DropMultiplier=1, ValueMultiplier=1;
     public bool Alive => Hp > 0;
     /// <summary>角色字段均为值类型或不可变字符串，复制后可独立用于检查点，不共享可变战斗状态。</summary>
-    public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.SkillLevels=new(SkillLevels);return a;}
+    public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.SkillLevels=new(SkillLevels);a.Talents=new(Talents);a.TalentBonuses=new(TalentBonuses);a.SkillSwapLocks=new(SkillSwapLocks);return a;}
     public static Actor From(UnitSpec s) => new() { SpecId=s.Id, Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
 }
 
@@ -46,7 +51,6 @@ public sealed partial class GameSession
     public List<string> Log { get; } = new();
     public int FloorIndex { get; private set; }
     public int CurrentRoom { get; private set; }
-    public int Experience { get; private set; }
     public int Kills { get; private set; }
     public bool Won { get; private set; }
     /// <summary>全灭返村次数；不影响累计成长和击杀资源。</summary>
@@ -75,7 +79,7 @@ public sealed partial class GameSession
         var chosen = ids.ToArray();formationCapacityFloor=chosen.Length;
         if (chosen.Length < 1 || chosen.Length > 5 || chosen.Distinct().Count() != chosen.Length) throw new ArgumentException("选择一至五个不同职业");
         Heroes.AddRange(chosen.Select(id => Actor.From(config.Heroes.Single(s => s.Id == id))));
-        foreach(var hero in Heroes)config.ApplyCombatProfile(hero);
+        foreach(var hero in Heroes){config.ApplyCombatProfile(hero);if(config.Town!=null)GrantStarterSkill(hero);}
         Floors = Dungeon.Generate(seed,config);
         EnterFloor();
     }
@@ -121,7 +125,7 @@ public sealed partial class GameSession
     public void Tick(float dt)
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
-        World?.ObserveApprovalWait();
+        AdvanceSwapLocks(dt);World?.ObserveApprovalWait();
         if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);return;}
         var tickFloor=Floor;bool fighting=!Floor.Rooms[CurrentRoom].Clear&&Floor.Rooms[CurrentRoom].Generated;
         var positions=Heroes.Select(h=>h.Position).ToArray();
@@ -157,7 +161,7 @@ public sealed partial class GameSession
             MarkChanged();
             room.EventUsed=true;
             if (room.Event == "营火") { foreach(var h in Heroes.Where(h=>h.Alive)) h.Hp=Math.Min(h.MaxHp,h.Hp+h.MaxHp*0.3f); Note("营火：存活队员恢复 30% 生命"); }
-            if (room.Event == "宝箱") { GainExperience(8); Note("宝箱：全队获得 8 经验"); }
+            if (room.Event == "宝箱") { GainMonsterExperience(8,Math.Max(1,room.SnapshotLevel)); Note("宝箱：每名上阵英雄按房间等级结算经验（基础8）"); }
         }
         if(pendingFormation.Length>0&&World!=null&&!(Floor.Clear&&FloorIndex==Floors.Count-1))
         {ResetSkillRoom();World.ReturnForFormation(this,true);return;}
@@ -336,7 +340,10 @@ public sealed partial class GameSession
         if(RunActiveSkill(actor))return;
         var target=opponents.Where(o=>o.Alive).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault();
         if(target==null) return;
-        if(Vector2.Distance(actor.Position,target.Position)>EffectiveValue(actor,"attack_range",actor.Range))
+        double engagementRange=EffectiveValue(actor,"attack_range",actor.Range);
+        // 已装配近战主动就绪时先接近其施放距离，避免远程普攻射程使至圣斩永远无法使用。
+        foreach(string id in actor.SkillIds)if(SkillCooldown(actor,id)<=0)engagementRange=Math.Min(engagementRange,SkillConfig.Skills[id].Range);
+        if(Vector2.Distance(actor.Position,target.Position)>engagementRange)
         {
             Move(actor,target.Position,dt,(float)EffectiveValue(actor,"move_speed",actor.Speed)*MoveMultiplier(actor));
             // 进房门之后的战斗局限于当前房间，允许门口队员跨过边界。
@@ -412,18 +419,6 @@ public sealed partial class GameSession
     {
         skillState.Buffs.RemoveAll(b=>b.Target>=0&&b.Target<Heroes.Count&&Config.Skills.Buffs[b.Id].Target=="enemy");
         foreach(var h in Heroes){h.Hp=h.MaxHp;h.Timer=0;}
-    }
-    private void GainExperience(int amount)
-    {
-        MarkChanged();
-        Experience=(int)Math.Min(int.MaxValue,Experience+(long)amount);
-        while(Heroes[0].Level<Config.MaxHeroLevel&&Experience>=Config.HeroLevels[Heroes[0].Level].Experience)
-        {
-            var before=Config.HeroLevels[Heroes[0].Level];var after=Config.HeroLevels[Heroes[0].Level+1];
-            Experience-=before.Experience;
-            foreach(var h in Heroes.Concat(reserveHeroes)) { h.Level++;h.MaxHp+=after.HpBonus-before.HpBonus;h.Attack+=after.AttackBonus-before.AttackBonus;if(h.Alive)h.Hp=Math.Min(Heroes.Contains(h)?CombatMaximumHp(h):h.MaxHp,h.Hp+after.HpBonus-before.HpBonus); }
-            Note($"全队成长至等级 {Heroes[0].Level}");
-        }
     }
     internal void Note(string message) { MarkChanged();Log.Add(message); if(Log.Count>40) Log.RemoveAt(0); }
 }

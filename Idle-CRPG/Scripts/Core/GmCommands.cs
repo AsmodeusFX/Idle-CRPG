@@ -38,15 +38,14 @@ public sealed partial class GameSession
         World.CompleteDungeon(this);
     }
 
-    /// <summary>GM 发放已实现的金币和共享经验；成长复用正常经验公式，到账资源按正常进度保存。</summary>
+    /// <summary>GM 发放已实现的金币和每名上阵英雄经验；成长复用正常经验公式，到账资源按正常进度保存。</summary>
     public void GrantGmResources(long gold=0,int experience=0)
     {
         if(gold<0||experience<0||experience>1000000)throw new ArgumentOutOfRangeException(nameof(experience));
         long total=checked(Gold+gold);
-        _=checked(Experience+experience);
         Gold=total;
         if(experience>0)GainExperience(experience);
-        if(gold>0||experience>0)Note($"GM：获得 {gold:N0} 金币 / {experience:N0} 共享经验");
+        if(gold>0||experience>0)Note($"GM：获得 {gold:N0} 金币 / {experience:N0} 每名上阵英雄经验");
     }
 
 }

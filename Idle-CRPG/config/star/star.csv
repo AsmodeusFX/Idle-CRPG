@@ -10,3 +10,9 @@ s_party_1,远征扩编 1,1,gold,25,party_slots,flat,1,utility
 s_party_2,远征扩编 2,1,gold,50,party_slots,flat,1,utility
 s_party_3,远征扩编 3,1,gold,75,party_slots,flat,1,utility
 s_party_4,远征扩编 4,1,gold,100,party_slots,flat,1,utility
+s_skill_1,主动技能槽 2,1,gold,30,skill_slots,flat,1,utility
+s_skill_2,主动技能槽 3,1,gold,60,skill_slots,flat,1,utility
+s_skill_3,主动技能槽 4,1,gold,90,skill_slots,flat,1,utility
+s_skill_4,主动技能槽 5,1,gold,120,skill_slots,flat,1,utility
+s_respec,天赋重塑,1,gold,50,talent_reset,flat,1,utility
+s_respec_discount,重塑节约,5,gold,30;60;90;120;150,talent_reset_discount,flat,0.1,utility

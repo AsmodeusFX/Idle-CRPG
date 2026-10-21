@@ -38,3 +38,5 @@ Effect 的 kind 决定允许字段：Damage使用damage_type/share；ApplyBuff�
 具体机制参数以CSV和 `SkillConfiguration` 支持集合为准，未实现枚举或组合拒绝。`skill_flat` 当前必须为0，非零拒绝，不投放额外平伤；不得将保留列理解为第二套伤害入口。秒制事件向上量化至0.05秒；原Tick字段已从8Hz转换为20Hz，不能在加载时再乘一次。Ability像素字段在加载时统一除以pixels_per_unit（当前100）；Skill.range及runtime.collision_radius已是世界单位，不再转换。
 
 所有定义加载后只读使用；运行实例、CD、Buff和弹道另存。改字段时同时修改加载器列清单、引用/互斥校验、本文及对应测试。只允许有限数字；有界概率、正数、数量和容量由加载器逐项检查。此轮未提供技能配置热更新界面。
+
+角色三系天赋、新增主动与被动效果、额外等级及基础系统规则见[talent_config.md](talent_config.md)。原有15技能稳定ID和机制继续保留。
