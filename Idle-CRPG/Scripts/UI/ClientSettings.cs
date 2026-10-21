@@ -70,7 +70,7 @@ public partial class Main
         start.Visible=session==null;seed.Editable=session==null;
         for(int i=0;i<choices.Length;i++)
         {
-            choices[i].Disabled=session!=null;
+            choices[i].Disabled=session!=null||config.HeroUnlockKills[config.Heroes[i].Id]>0;
             if(session!=null)choices[i].SetPressedNoSignal(session.Heroes.Any(h=>h.SpecId==config.Heroes[i].Id));
         }
         pause.Text=paused?"继续":"暂停";rateButton.Text=$"速度 ×{speed}";
@@ -180,9 +180,9 @@ public partial class Main
         forceProgressSave=false;
         try {saveStore.Reset();}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException) {help.Text="重置失败，原进度保留："+e.Message;return;}
-        session=null;paused=false;speed=1;accumulator=0;sinceSave=0;savedRevision=-1;viewMode=0;selectedRegion=-1;
+        session=null;formationRoot.Hide();foreach(var choice in choices)choice.SetPressedNoSignal(false);choices[0].SetPressedNoSignal(true);paused=false;speed=1;accumulator=0;sinceSave=0;savedRevision=-1;viewMode=0;selectedRegion=-1;
         UpdatePartyControls();ResetSoundBaseline();settingsRoot.Hide();
-        summary.Text="进度已重置，请选择小队开始远征。";roster.Text="";journal.Text="";help.Text="世界无遭遇战 · 通关后必先回村交易 · 无新目标时自动复刷";PlaySound("sfx_reward");QueueRedraw();
+        summary.Text="进度已重置，请选择一位英雄开始远征。";roster.Text="";journal.Text="";help.Text="世界无遭遇战 · 通关后必先回村交易 · 无新目标时自动复刷";PlaySound("sfx_reward");QueueRedraw();
     }
     private void RefreshVolumeText() {musicValue.Text=$"{preferences.MusicVolume:0}%";soundValue.Text=$"{preferences.SoundVolume:0}%";}
     private void QueueSettingsSave() {settingsDirty=true;settingsDelay=.5;}

@@ -30,7 +30,7 @@ public sealed class SaveStore(string path)
         int chapter=document.Session?.ChapterIndex??0;
         if(chapter<0||chapter>=c.ChapterMaps.Count)throw new InvalidDataException("存档章节参数错误");
         var map=c.ChapterMaps[chapter];
-        if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>3||(document.SelectedRegion!=-1&&!map.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
+        if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>4||(document.SelectedRegion!=-1&&!map.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
         if(document.Session!=null)GameSession.Restore(c,document.Session);
         return document;
     }
@@ -87,7 +87,16 @@ public sealed class SaveStore(string path)
         {
             byte[] bytes=new UTF8Encoding(false).GetBytes(text);file.Write(bytes);file.Flush(true);
         }
-        if(File.Exists(path))File.Replace(temp,path,backup?path+".bak":null);
+        if(File.Exists(path))
+        {
+            // Windows 的短暂文件占用可能阻止原子替换；只在临时文件仍存在时有限重试，最终错误继续上抛。
+            for(int attempt=0;;attempt++)
+            {
+                try {File.Replace(temp,path,backup?path+".bak":null);break;}
+                catch(IOException) when(attempt<5&&File.Exists(temp)&&File.Exists(path))
+                {System.Threading.Thread.Sleep(20*(attempt+1));}
+            }
+        }
         else File.Move(temp,path);
     }
 }

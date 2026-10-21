@@ -67,8 +67,8 @@ public sealed partial class Config
         Town.Zones=Read(Path.Combine(root,"town_zone.csv")).Where(r=>r["scene_id"]==Town.Id).Select(r=>new TownZone(r["id"],r["kind"],Number(r,"x"),Number(r,"y"),Number(r,"width"),Number(r,"height"))).ToList();
         Town.Npcs=Read(Path.Combine(root,"town_npc.csv")).Where(r=>r["scene_id"]==Town.Id).Select(r=>new TownNpc(r["id"],r["name"],r["role"],new(Number(r,"x"),Number(r,"y")),r["description"])).ToList();
         Town.Props=Read(Path.Combine(root,"town_prop.csv")).Where(r=>r["scene_id"]==Town.Id).Select(r=>new TownProp(r["id"],r["kind"],Number(r,"x"),Number(r,"y"),Number(r,"width"),Number(r,"height"),Boolean(r,"blocks"))).ToList();
-        string[] roles={"heal","mercenary","sell","gamble","travel","identify","magic","dialogue"};
-        if(Town.Width<16||Town.Width>64||Town.Height<16||Town.Height>64||Town.InteractionRange<=0||Town.InteractionRange>1||Town.ServiceSeconds<=0||Town.LayoutVersion<0||!new[]{"camp","sand","docks","sanctum","snow"}.Contains(Town.Theme)||string.IsNullOrWhiteSpace(Town.ExitName)||Town.Npcs.Count<4||Town.Npcs.Select(n=>n.Id).Distinct().Count()!=Town.Npcs.Count||Town.Npcs.Any(n=>n.Role.Split(';').Distinct().Count()!=n.Role.Split(';').Length||n.Role.Split(';').Any(r=>!roles.Contains(r)))||roles.Take(6).Any(role=>Town.Npcs.Count(n=>n.HasRole(role))>1)||new[]{"heal","mercenary","sell","gamble","identify"}.Any(role=>Town.Npcs.Count(n=>n.HasRole(role))!=1)||Town.Props.Select(p=>p.Id).Distinct().Count()!=Town.Props.Count||Town.Props.Any(p=>p.Width<=0||p.Height<=0||p.X<0||p.Y<0||p.X+p.Width>Town.Width||p.Y+p.Height>Town.Height)||Town.Zones.Select(z=>z.Id).Distinct().Count()!=Town.Zones.Count||Town.Zones.Any(z=>z.Width<1||z.Height<1||z.X<0||z.Y<0||z.X+z.Width>Town.Width||z.Y+z.Height>Town.Height||!new[]{"stone","wood","bridge","stairs","sand","snow"}.Contains(z.Kind))||Town.Theme!="camp"&&Town.Zones.Count==0)throw new InvalidDataException("固定城镇尺寸、职能映射或场景几何配置非法");
+        string[] roles={"heal","mercenary","sell","gamble","travel","identify","magic","dialogue","formation"};
+        if(Town.Width<16||Town.Width>64||Town.Height<16||Town.Height>64||Town.InteractionRange<=0||Town.InteractionRange>1||Town.ServiceSeconds<=0||Town.LayoutVersion<0||!new[]{"camp","sand","docks","sanctum","snow"}.Contains(Town.Theme)||string.IsNullOrWhiteSpace(Town.ExitName)||Town.Npcs.Count<4||Town.Npcs.Select(n=>n.Id).Distinct().Count()!=Town.Npcs.Count||Town.Npcs.Any(n=>n.Role.Split(';').Distinct().Count()!=n.Role.Split(';').Length||n.Role.Split(';').Any(r=>!roles.Contains(r)))||roles.Take(6).Any(role=>Town.Npcs.Count(n=>n.HasRole(role))>1)||new[]{"heal","mercenary","sell","gamble","identify","formation"}.Any(role=>Town.Npcs.Count(n=>n.HasRole(role))!=1)||Town.Props.Select(p=>p.Id).Distinct().Count()!=Town.Props.Count||Town.Props.Any(p=>p.Width<=0||p.Height<=0||p.X<0||p.Y<0||p.X+p.Width>Town.Width||p.Y+p.Height>Town.Height)||Town.Zones.Select(z=>z.Id).Distinct().Count()!=Town.Zones.Count||Town.Zones.Any(z=>z.Width<1||z.Height<1||z.X<0||z.Y<0||z.X+z.Width>Town.Width||z.Y+z.Height>Town.Height||!new[]{"stone","wood","bridge","stairs","sand","snow"}.Contains(z.Kind))||Town.Theme!="camp"&&Town.Zones.Count==0)throw new InvalidDataException("固定城镇尺寸、职能映射或场景几何配置非法");
         Town.FindPath(Town.Entry,Town.Exit);
         if(Vector2.Distance(TownPortal,TownWaypoint)<=1)throw new InvalidDataException("回城落点与固定出发阵必须分离");
         string[] propKinds={"tent","wagon","forge","fire","stash","palace","sand_house","market","tower","water","pier","ship","sewer","hut","ruin","shrine","palm","column","angel","holy_fire","keep","snow_house","sealed_gate"};
@@ -79,7 +79,7 @@ public sealed partial class Config
     }
 }
 
-public enum TownVisitPhase { Heal, Sell, Exit }
+public enum TownVisitPhase { Heal, Sell, Exit, Formation }
 public sealed partial class WorldCampaign
 {
     public TownVisitPhase TownPhase {get;private set;}
@@ -87,7 +87,7 @@ public sealed partial class WorldCampaign
     internal void SpawnTown(GameSession game,TownVisitPhase phase)
     {
         TownPhase=phase;TradeElapsed=0;villagePaths.Clear();
-        for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=config.Town!.Entry+new Vector2(0,(i-1)*.35f);
+        for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=config.Town!.Entry+new Vector2(0,PartyFormation.SideOffset(i,game.Heroes.Count));
     }
     /// <summary>新开局及传送到新章节从营地门内出发；无需凭空经历一次交易。</summary>
     internal void StartTownDeparture(GameSession game)
@@ -99,14 +99,14 @@ public sealed partial class WorldCampaign
     {
         // 每步重新核对需求，兼容读档和在补给途中切换 GM；新增 NPC/MP 功能时须扩展此流程。
         var next=TownPhase;
-        if(game.Gm.SkipSupplies)next=TownVisitPhase.Exit;
+        if(game.PendingFormation.Count>0)next=TownVisitPhase.Formation;else if(next==TownVisitPhase.Formation)next=TownVisitPhase.Heal;else if(game.Gm.SkipSupplies)next=TownVisitPhase.Exit;
         else
         {
             if(next==TownVisitPhase.Heal&&!game.NeedsTownHealing)next=TownVisitPhase.Sell;
             if(next==TownVisitPhase.Sell&&!game.HasAutoSellItems)next=TownVisitPhase.Exit;
         }
         if(next!=TownPhase){TownPhase=next;TradeElapsed=0;villagePaths.Clear();game.MarkChanged();}
-        var town=config.Town!;var target=TownPhase==TownVisitPhase.Exit?(HasTownPortal?config.TownWaypoint:town.Exit):town.Npc(TownPhase==TownVisitPhase.Heal?"heal":"sell").Position;
+        var town=config.Town!;var target=TownPhase==TownVisitPhase.Exit?(HasTownPortal?config.TownWaypoint:town.Exit):town.Npc(TownPhase==TownVisitPhase.Formation?"formation":TownPhase==TownVisitPhase.Heal?"heal":"sell").Position;
         bool arrived=true;
         foreach(var hero in game.Heroes)
         {
@@ -122,7 +122,7 @@ public sealed partial class WorldCampaign
                 else {hero.Position+=Vector2.Normalize(point-hero.Position)*remaining;remaining=0;}
             }
         }
-        if(!arrived){TradeElapsed=0;Status="前往 "+(TownPhase==TownVisitPhase.Exit?(HasTownPortal?"固定传送阵":"营地出口"):town.Npc(TownPhase==TownVisitPhase.Heal?"heal":"sell").Name);return;}
+        if(!arrived){TradeElapsed=0;Status="前往 "+(TownPhase==TownVisitPhase.Exit?(HasTownPortal?"固定传送阵":"营地出口"):town.Npc(TownPhase==TownVisitPhase.Formation?"formation":TownPhase==TownVisitPhase.Heal?"heal":"sell").Name);return;}
         if(TownPhase==TownVisitPhase.Exit)
         {
             // 全队到达唯一出口后才切回世界场景，世界位置始终是村庄锚点。
@@ -134,8 +134,10 @@ public sealed partial class WorldCampaign
             game.MarkChanged();return;
         }
         TradeElapsed=Math.Min(town.ServiceSeconds,TradeElapsed+dt);
-        Status=(TownPhase==TownVisitPhase.Heal?town.Npc("heal").Name+" · 治疗":town.Npc("sell").Name+" · 售卖杂物")+$" {TradeElapsed:0.0}/{town.ServiceSeconds:0.0}秒";
+        Status=(TownPhase==TownVisitPhase.Heal?town.Npc("heal").Name+" · 治疗":TownPhase==TownVisitPhase.Formation?town.Npc("formation").Name+" · 变更编队":town.Npc("sell").Name+" · 售卖杂物")+$" {TradeElapsed:0.0}/{town.ServiceSeconds:0.0}秒";
         if(TradeElapsed+.00001f<town.ServiceSeconds)return;
+        if(TownPhase==TownVisitPhase.Formation)
+        {game.ApplyPendingFormation();TownPhase=TownVisitPhase.Heal;TradeElapsed=0;villagePaths.Clear();return;}
         if(TownPhase==TownVisitPhase.Heal)
         {
             game.RestoreTownHealth();

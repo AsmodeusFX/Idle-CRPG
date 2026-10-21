@@ -158,7 +158,7 @@ public sealed partial class WorldCampaign
     {
         teamLevel=game.TeamChallengeLevel;
         if(TickPortal(game,dt))return;
-        if(Stage==CampaignStage.Dungeon)return;
+        if(Stage==CampaignStage.Dungeon)return;if(game.PendingFormation.Count>0&&Stage==CampaignStage.TravelDungeon)ReturnForFormation(game,false);
         if(Stage==CampaignStage.Village)
         {
             if(config.Town!=null){TickTown(game,dt);return;}

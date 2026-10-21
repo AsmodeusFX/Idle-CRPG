@@ -38,7 +38,7 @@ public sealed partial class Config
         c.LoadWorld(directory);
         c.LoadClientConfig(directory);
         c.LoadSceneConfig(directory);
-        c.LoadStars(directory);
+        c.LoadStars(directory);c.LoadHeroUnlocks(directory);
         c.LoadGm(directory);
         c.LoadLevels(directory);
         c.LoadCombat(directory);

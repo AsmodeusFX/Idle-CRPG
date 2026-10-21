@@ -255,7 +255,7 @@ RejectConfig(config=>config.Regions[1]=config.Regions[0] with {Id=2},"重复坐�
 RejectConfig(config=>config.Drops[0]=config.Drops[0] with {Chance=1.5f},"非法掉率没有拒绝");
 RejectConfig(config=>config.Items[0]=config.Items[0] with {TypeId="missing"},"无效物品类型没有拒绝");
 Console.WriteLine("PASS: dungeon regression, revival, 256-region world configuration, spawn snapshots/modifiers, loot, travel, automatic trade, castle dominion, occupation, farming, resource retention");
-SaveChecks.Run(root);
+FormationChecks.Run(root);HeroChecks.Run(root);SaveChecks.Run(root);
 SceneChecks.Run(root);
 ProgressChecks.Run(root);
 AreaPartChecks.Run(root);

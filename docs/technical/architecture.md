@@ -33,3 +33,6 @@ GameSession 在清房后优先执行救援状态机：前往尸体 → 范围内
 SessionSnapshot 的 Capture 保留内部确定性测试现场，CaptureProgress 则复制正式精简检查点：放弃未清房战斗现场，保留已到账成长和待拾取奖励，读取时重开当前房间。击杀经验即时到账、走近拾取后实物入库。SaveStore 负责原子替换、备份和重置；ClientSettings 用单后台任务编码与写盘，仅在关键持久状态变化时安排，退出/重置等待任务完成。MotionPresentation 将 20 Hz 逻辑坐标逐帧插值，镜头临界阻尼过渡，HUD 每 0.1 秒刷新；表现不改变命中和交互判定。村庄缓存每个角色的路径，避免每逻辑步重新寻路导致回头。SettingsStore 和 Audio 只管理偏好与表现。细节见 persistence_settings.md。
 
 第二至五章主城（2026-10-19）：TownScene读取town_scene/town_zone/town_npc/town_prop CSV，配置多职能服务路由及地板矩形并集。ChapterTownView只读同一几何绘制沙漠港城、雨林栈桥、圣殿石台及雪城；第一章沿用TownView营地绘制。TownLayoutMigration在存档校验前安全迁移旧本地现场，WorldSnapshot.TownLayoutVersion与世界地图版本分离；当前与暂挂世界按各自章节处理。TownLayoutChecks覆盖补给、传送、读档和备份；第五章任务驱动NPC变化明确延期。详见 design/towns_portals.md 与 reviews/2026-10-19_chapter_towns.md。
+英雄编队（2026-10-21）：HeroRoster 读取 hero_unlocks 条件，HeroCreation.CreateNewWorld 为玩家单人创角入口，旧多人成员构造供存档兼容及回归保留。GameSession.DeployHero 在安全城镇增加队员，同步等级和星图贡献。HeroPage 为全屏展示、候选与命令入口；CreationCamp 提供模型点击单选。伤害、经验和奖励仍复用原有实现。
+
+编队计划（2026-10-21）：FormationPlans负责GameSession.RequestFormation命令、计划校验、候补保留与NPC执行边界；WorldCampaign.ReturnForFormation复用回城门，TownScene的Formation服务走空间寻路与统一读条。FormationUi提供局部编辑草稿、确认/撤销和右侧计划卡，HudLayout与HeroPage共用此入口。清房流程继续保持救援、拾取、事件优先；角色成长和星图差量同时覆盖候补，实际战斗/奖励仍只有现有实现。

@@ -5,3 +5,4 @@ mage,hero,0,0,0,0,0,true
 priest,hero,0,0,0,0,0,true
 rat,monster,0,0,0,0,0,false
 guard,monster,0,0,0,0,0,false
+necromancer,hero,0,0,0,0,0,true

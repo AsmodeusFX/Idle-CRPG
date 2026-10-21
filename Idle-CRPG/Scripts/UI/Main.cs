@@ -25,7 +25,7 @@ public partial class Main : Node2D
     private Vector2 origin;
     private float zoom = 17;
     private Font font = null!;
-    private readonly Color[] heroColors = { new("65d9cb"), new("e7ba71"), new("94a9ff") };
+    private readonly Color[] heroColors = { new("65d9cb"), new("e7ba71"), new("94a9ff"),new("f1d58a"),new("bb8bda") };
 
     public override void _Ready()
     {
@@ -41,7 +41,7 @@ public partial class Main : Node2D
         BuildHud(canvas);
         smoke=OS.GetCmdlineUserArgs().Contains("--smoke-test");
         capture=OS.GetCmdlineUserArgs().Contains("--capture");
-        if(OS.GetCmdlineUserArgs().Contains("--capture-local"))captureView="local";
+        if(OS.GetCmdlineUserArgs().Contains("--capture-formation"))captureView="formation";if(OS.GetCmdlineUserArgs().Contains("--capture-local"))captureView="local";
         if(OS.GetCmdlineUserArgs().Contains("--capture-combat"))captureView="combat";
         if(OS.GetCmdlineUserArgs().Contains("--capture-travel"))captureView="travel";
         if(OS.GetCmdlineUserArgs().Contains("--capture-village"))captureView="village";
@@ -58,6 +58,14 @@ public partial class Main : Node2D
         if(capture && session==null&&!captureSetup) Start();
         if(capture&&!captureSetup)
         {
+            // 仅在隔离 QA 截图模式下构造不同人数，真实绘制验证不能只依赖逻辑回归。
+            var qaPartyArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-party-size="));
+            if(qaPartyArg!=null)
+            {
+                int count=int.Parse(qaPartyArg.Substring("--qa-party-size=".Length));
+                if(count<1||count>5)throw new ArgumentOutOfRangeException(nameof(count));
+                session=GameSession.CreateWorld(config,20261017,config.Heroes.Take(count).Select(h=>h.Id));
+            }
             viewMode=captureView=="world"?1:2;
             int ticks=captureView=="world"?24000:captureView is "travel" or "village" or "town-return" or "town-out"?0:400;
             for(int i=0;i<ticks;i++)session!.Tick(0.05f);
@@ -121,7 +129,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-stars")){captureView="stars";SelectStarView(3);BuyStarNode("s_root");BuyStarNode("s_hp");BuyStarNode("s_atk");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-star-editor")){captureView="star-editor";viewMode=3;ToggleStarEditor();EditorClickNode("s_root");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-gm")){captureView="gm";ToggleGm();}
-        if(smoke){RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunAct1UiSmoke();RunGmSmoke();RunStarSmoke();}
+        if(OS.GetCmdlineUserArgs().Contains("--capture-formation")){captureView="formation";SelectStarView(4);OpenFormation(0);}if(OS.GetCmdlineUserArgs().Contains("--capture-heroes")){captureView="heroes";SelectStarView(4);}if(smoke){RunHeroSmoke();RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunAct1UiSmoke();RunGmSmoke();RunStarSmoke();}
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
@@ -131,8 +139,8 @@ public partial class Main : Node2D
     {
         if(!int.TryParse(seed.Text,out int value)) { summary.Text="Seed 请输入有效整数。"; return; }
         var ids=config.Heroes.Where((_,i)=>choices[i].ButtonPressed).Select(h=>h.Id).ToArray();
-        if(ids.Length!=3) {summary.Text="请选择恰好 3 位成员。";return;}
-        session=GameSession.CreateWorld(config,value,ids); paused=false; accumulator=0; pause.Text="暂停";
+        if(ids.Length!=1) {summary.Text="请选择一位初始英雄。";return;}
+        session=GameSession.CreateNewWorld(config,value,ids.Single()); paused=false; accumulator=0; pause.Text="暂停";
         cameraReady=false;
         UpdatePartyControls();ResetSoundBaseline();SaveNow();PlaySound("sfx_reward");
         Refresh(); QueueRedraw();
@@ -168,6 +176,13 @@ public partial class Main : Node2D
     private async void Capture()
     {
         await ToSignal(RenderingServer.Singleton,RenderingServer.SignalName.FramePostDraw);
+        if(OS.GetCmdlineUserArgs().Contains("--capture-travel"))
+        {
+            var leaderPoint=OutdoorPoint(VisualWorldPosition);
+            if(outdoorHeroesDrawn!=session!.Heroes.Count||!SceneRect.HasPoint(leaderPoint))
+                throw new InvalidOperationException($"室外角色绘制失败：{outdoorHeroesDrawn}/{session.Heroes.Count}，排头屏幕位置 {leaderPoint}");
+            GD.Print($"OUTDOOR_RENDER_OK: {outdoorHeroesDrawn} heroes, leader inside viewport");
+        }
         var path=ProjectSettings.GlobalizePath($"res://../artifacts/preview-{captureView}.png");
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         GetViewport().GetTexture().GetImage().SavePng(path);
@@ -177,7 +192,7 @@ public partial class Main : Node2D
     private void Refresh()
     {
         if(session!=null&&!ReferenceEquals(config,session.Config)){SyncCampaignConfig();return;}
-        RefreshHud();RefreshCastleInteractions();
+        RefreshHud();RefreshCastleInteractions();RefreshFormationPlan();
         if(viewMode==1)RefreshWorldPage();
         if(session==null)return;
         var s=session;
@@ -202,7 +217,7 @@ public partial class Main : Node2D
     private void PaintScene()
     {
         DrawRect(SceneRect,new Color("080d15"));
-        if(session==null) {DrawString(font,new Vector2(320,430),"选择小队，开启第一次远征",HorizontalAlignment.Left,-1,24,new Color("91a6b7"));return;}
+        if(session==null) {PaintCreationCamp();return;}
         var world=session.World!;
         bool showWorld=viewMode==1;
         if(showWorld){DrawWorld();return;}

@@ -72,8 +72,8 @@ public sealed partial class GameSession
         Stars=new StarProgression(config.Stars);
         combatRandom=new PersistentRandom(unchecked((uint)seed^932701u));
         lootRandom=new PersistentRandom(unchecked((uint)seed^173831u));dungeonSeed=seed;
-        var chosen = ids.ToArray();
-        if (chosen.Length != 3 || chosen.Distinct().Count() != 3) throw new ArgumentException("选择三个不同职业");
+        var chosen = ids.ToArray();formationCapacityFloor=chosen.Length;
+        if (chosen.Length < 1 || chosen.Length > 5 || chosen.Distinct().Count() != chosen.Length) throw new ArgumentException("选择一至五个不同职业");
         Heroes.AddRange(chosen.Select(id => Actor.From(config.Heroes.Single(s => s.Id == id))));
         foreach(var hero in Heroes)config.ApplyCombatProfile(hero);
         Floors = Dungeon.Generate(seed,config);
@@ -112,7 +112,7 @@ public sealed partial class GameSession
         var stairs=Floor.StairPosition(start);
         var inward=Vector2.Normalize(start.Center-stairs);
         var side=new Vector2(-inward.Y,inward.X);
-        for (int i=0;i<Heroes.Count;i++) Heroes[i].Position = stairs+inward*.4f+side*((i-1)*.35f);
+        for (int i=0;i<Heroes.Count;i++) Heroes[i].Position = stairs+inward*.4f+side*(PartyFormation.SideOffset(i,Heroes.Count));
         CaptureRoomEntry();
         Note($"抵达第 {FloorIndex+1} 层 · {Floor.Rooms.Count} 个房间");
     }
@@ -124,9 +124,9 @@ public sealed partial class GameSession
         World?.ObserveApprovalWait();
         if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);return;}
         var tickFloor=Floor;bool fighting=!Floor.Rooms[CurrentRoom].Clear&&Floor.Rooms[CurrentRoom].Generated;
-        var p0=Heroes[0].Position;var p1=Heroes[1].Position;var p2=Heroes[2].Position;
+        var positions=Heroes.Select(h=>h.Position).ToArray();
         TickDungeon(dt);
-        if(fighting)tickFloor.BattleTicks++;else if(p0!=Heroes[0].Position||p1!=Heroes[1].Position||p2!=Heroes[2].Position)tickFloor.WalkTicks++;
+        if(fighting)tickFloor.BattleTicks++;else if(Heroes.Where((h,i)=>h.Position!=positions[i]).Any())tickFloor.WalkTicks++;
         if(World!=null&&Won)World.CompleteDungeon(this);
     }
     private void TickDungeon(float dt)
@@ -159,6 +159,8 @@ public sealed partial class GameSession
             if (room.Event == "营火") { foreach(var h in Heroes.Where(h=>h.Alive)) h.Hp=Math.Min(h.MaxHp,h.Hp+h.MaxHp*0.3f); Note("营火：存活队员恢复 30% 生命"); }
             if (room.Event == "宝箱") { GainExperience(8); Note("宝箱：全队获得 8 经验"); }
         }
+        if(pendingFormation.Length>0&&World!=null&&!(Floor.Clear&&FloorIndex==Floors.Count-1))
+        {ResetSkillRoom();World.ReturnForFormation(this,true);return;}
         if (Floor.Clear && destination < 0 && (CurrentRoom == Floor.BossRoom.Id||Config.Town!=null&&FloorIndex==Floors.Count-1))
         {
             if(Config.Town!=null&&FloorIndex==Floors.Count-1)
@@ -419,7 +421,7 @@ public sealed partial class GameSession
         {
             var before=Config.HeroLevels[Heroes[0].Level];var after=Config.HeroLevels[Heroes[0].Level+1];
             Experience-=before.Experience;
-            foreach(var h in Heroes) { h.Level++;h.MaxHp+=after.HpBonus-before.HpBonus;h.Attack+=after.AttackBonus-before.AttackBonus;if(h.Alive)h.Hp=Math.Min(CombatMaximumHp(h),h.Hp+after.HpBonus-before.HpBonus); }
+            foreach(var h in Heroes.Concat(reserveHeroes)) { h.Level++;h.MaxHp+=after.HpBonus-before.HpBonus;h.Attack+=after.AttackBonus-before.AttackBonus;if(h.Alive)h.Hp=Math.Min(Heroes.Contains(h)?CombatMaximumHp(h):h.MaxHp,h.Hp+after.HpBonus-before.HpBonus); }
             Note($"全队成长至等级 {Heroes[0].Level}");
         }
     }

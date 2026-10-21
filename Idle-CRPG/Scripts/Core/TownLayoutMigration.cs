@@ -25,7 +25,7 @@ public sealed partial class GameSession
         if(village||departing)
         {
             var anchor=village?config.TownPortal:config.TownWaypoint;
-            for(int i=0;i<snapshot.Heroes.Count;i++)snapshot.Heroes[i].Position=anchor+new Vector2(0,(i-1)*.35f);
+            for(int i=0;i<snapshot.Heroes.Count;i++)snapshot.Heroes[i].Position=anchor+new Vector2(0,PartyFormation.SideOffset(i,snapshot.Heroes.Count));
             world.VillagePaths.Clear();world.TradeElapsed=0;
             if(departing)world.PortalOrigin=config.TownWaypoint;
         }

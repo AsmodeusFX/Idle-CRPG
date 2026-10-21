@@ -88,7 +88,7 @@ public sealed partial class WorldCampaign
                 Village=config.ReturnVillage(config.StartRegionId);Position=WorldPoint(Village.RegionId,Village.X,Village.Y);Progress.Explored.Add(Village.RegionId);
                 EnterVillage(game);
                 Progress.ReturnPortalVisible=true;
-                for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=config.TownPortal+new Vector2(0,(i-1)*.35f);
+                for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=config.TownPortal+new Vector2(0,PartyFormation.SideOffset(i,game.Heroes.Count));
             }
             else
             {

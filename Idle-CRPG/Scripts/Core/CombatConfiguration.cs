@@ -35,5 +35,5 @@ public sealed partial class Config
         if(!combatProfiles.TryGetValue(actor.SpecId,out var profile))throw new InvalidDataException("缺少战斗属性："+actor.SpecId);
         actor.Battle=profile.Stats.Copy();actor.Ranged=profile.Ranged;
     }
-    internal void ReconcileCombatMetadata(Actor actor)=>actor.Ranged=combatProfiles[actor.SpecId].Ranged;
+    internal void ReconcileCombatMetadata(Actor actor){actor.Ranged=combatProfiles[actor.SpecId].Ranged;var hero=Heroes.FirstOrDefault(h=>h.Id==actor.SpecId);if(hero!=null)actor.Name=hero.Name;}
 }

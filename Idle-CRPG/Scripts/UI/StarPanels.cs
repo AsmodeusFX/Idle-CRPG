@@ -16,10 +16,10 @@ public partial class Main
     private string GoldText()=>(_editingStars?"星图节点编辑器 · 金币 ":"星图 · 金币 ")+(session?.Gold.ToString("N0")??"0");
     private void BuildStarPanels()
     {
-        BuildWorldPage();
+        BuildWorldPage();BuildHeroPage();
         starPage=new VBoxContainer {Position=GlobalPageRect.Position+new Vector2(8,4),Size=GlobalPageRect.Size-new Vector2(16,8),Visible=false};
         starPage.AddThemeConstantOverride("separation",8);uiLayer.AddChild(starPage);
-        BuildGmMenu();
+        BuildGmMenu();BuildFormationUi();
     }
     private void ToggleGm()
     {RefreshGm();gmRoot.Visible=!gmRoot.Visible;PlaySound("sfx_panel");}
@@ -40,7 +40,7 @@ public partial class Main
     private void TickStarPanels()
     {
         bool show=viewMode==3;
-        bool global=viewMode==1||show;
+        bool global=viewMode==1||show||viewMode==4;TickHeroPage();
         bool openCastle=viewMode==1&&!castlePage.Visible;
         gameHud.Visible=!global;castlePage.Visible=viewMode==1;
         rateButton.Visible=!global&&session!=null;

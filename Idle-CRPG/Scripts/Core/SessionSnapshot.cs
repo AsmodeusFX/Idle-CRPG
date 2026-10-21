@@ -26,6 +26,7 @@ public sealed class SessionSnapshot
     public float Regroup, ReviveElapsed;
     public int ReviveTarget=-1, Rescuer=-1;
     public string Status="", ActiveDungeonId="";
+    public List<Actor> ReserveHeroes=new();public string[] PendingFormation=Array.Empty<string>();public int FormationCapacityFloor;
     public List<Actor> Heroes=new();
     public List<Floor> Floors=new();
     public List<InventoryEntry> Inventory=new();
@@ -85,7 +86,7 @@ public sealed partial class GameSession
         Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,CombatVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
-        Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Floors=Floors,
+        ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Floors=Floors,
         Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
     };
     /// <summary>正式存档只保留房间检查点。未完成战斗从进房位置重开，已领取资源与奖励标志一并保留。</summary>
@@ -111,7 +112,7 @@ public sealed partial class GameSession
         {
             for(int i=0;i<s.Heroes.Count;i++)
             {
-                var entry=s.RoomEntry.Count==3?s.RoomEntry[i]:new PartyEntry(s.Floors[s.FloorIndex].Rooms[s.CurrentRoom].Center,s.Heroes[i].MaxHp);
+                var entry=s.RoomEntry.Count==s.Heroes.Count?s.RoomEntry[i]:new PartyEntry(s.Floors[s.FloorIndex].Rooms[s.CurrentRoom].Center,s.Heroes[i].MaxHp);
                 s.Heroes[i].Position=entry.Position;s.Heroes[i].Hp=entry.Hp;s.Heroes[i].Timer=0;
             }
             s.Destination=-1;s.Phase=0;s.Regroup=0;s.ReviveTarget=s.Rescuer=-1;s.ReviveElapsed=0;
@@ -150,13 +151,13 @@ public sealed partial class GameSession
         ValidateSnapshot(config,s);
         var game=new GameSession(config,s.Seed,s.Heroes.Select(h=>h.SpecId));
         game.RestoreChapters(s);
-        game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);
+        game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
         game.Floors=s.Floors;game.dungeonSeed=s.DungeonSeed;game.FloorIndex=s.FloorIndex;game.CurrentRoom=s.CurrentRoom;
         game.Experience=s.Experience;game.Kills=s.Kills;game.Retries=s.Retries;game.Gold=s.Gold;game.Revision=s.Revision;game.HitCount=s.HitCount;
         game.lootRandom.State=s.LootRandomState;game.Won=s.Won;game.destination=s.Destination;game.phase=s.Phase;game.regroup=s.Regroup;
         if(s.CombatRandomState!=0)game.combatRandom.State=s.CombatRandomState;
         game.roomEntryCombatState=s.RoomEntryCombatState==0?game.combatRandom.State:s.RoomEntryCombatState;game.skillState=s.SkillState;
-        foreach(var actor in game.Heroes.Concat(game.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
+        foreach(var actor in game.Heroes.Concat(game.reserveHeroes).Concat(game.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
         {if(s.CombatVersion==0)config.ApplyCombatProfile(actor);else config.ReconcileCombatMetadata(actor);}
         game.ReviveElapsed=s.ReviveElapsed;game.ReviveTarget=s.ReviveTarget<0?null:game.Heroes[s.ReviveTarget];game.Rescuer=s.Rescuer<0?null:game.Heroes[s.Rescuer];
         game.Status=s.Status;game.ActiveDungeon=s.ActiveDungeonId==""?null:config.Dungeons.Single(d=>d.Id==s.ActiveDungeonId);
@@ -189,16 +190,16 @@ public sealed partial class GameSession
         static bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y);
         Need(s.CombatVersion is 0 or 1,"战斗存档版本");
         Need(s.CampaignVersion is 0 or 2,"远征存档版本");
-        Need(s.Heroes!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null,"缺少状态字段");
-        Need(s.Heroes!.Count==3&&s.Heroes.Select(h=>h.SpecId).Distinct().Count()==3&&s.Heroes.All(h=>c.Heroes.Any(t=>t.Id==h.SpecId)),"队伍引用");
+        Need(s.ReserveHeroes!=null&&s.PendingFormation!=null&&s.Heroes!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null,"缺少状态字段");
+        Need(s.Heroes!.Count is >=1 and <=5&&s.Heroes.Select(h=>h.SpecId).Distinct().Count()==s.Heroes.Count&&s.Heroes.All(h=>c.Heroes.Any(t=>t.Id==h.SpecId)),"队伍引用");
         Need(s.Gold>=0&&s.Experience>=0&&s.Kills>=0&&s.Retries>=0&&s.Revision>=0&&s.HitCount>=0&&s.LootRandomState!=0,"资源/随机源");
-        Need(s.Log!.Count<=40&&s.ReviveTarget>=-1&&s.ReviveTarget<3&&s.Rescuer>=-1&&s.Rescuer<3&&Finite(s.ReviveElapsed)&&s.ReviveElapsed>=0&&s.ReviveElapsed<=c.ReviveSeconds&&Finite(s.Regroup)&&s.Regroup>=0,"行动计时");
+        Need(s.Log!.Count<=40&&s.ReviveTarget>=-1&&s.ReviveTarget<s.Heroes.Count&&s.Rescuer>=-1&&s.Rescuer<s.Heroes.Count&&Finite(s.ReviveElapsed)&&s.ReviveElapsed>=0&&s.ReviveElapsed<=c.ReviveSeconds&&Finite(s.Regroup)&&s.Regroup>=0,"行动计时");
         Need((s.ReviveTarget<0)==(s.Rescuer<0)&&(s.ReviveTarget<0||(!s.Heroes[s.ReviveTarget].Alive&&s.Heroes[s.Rescuer].Alive)),"救援引用");
         c.Spawn.Validate(s.Modifiers!);
         Need(s.Stars!=null&&double.IsFinite(s.StarAttack)&&double.IsFinite(s.StarHp)&&s.StarAttack>=0&&s.StarHp>=0,"星图贡献");
-        _=new StarProgression(c.Stars,s.Stars);
+        _=new StarProgression(c.Stars,s.Stars);ValidateFormationSnapshot(c,s);
         Need(s.Inventory!.All(i=>c.Items.Any(t=>t.Id==i.ItemId)&&i.Price>=0&&i.Count>0)&&s.Inventory.Select(i=>(i.ItemId,i.Price)).Distinct().Count()==s.Inventory.Count,"背包引用/数量");
-        Need(s.RoomEntry.Count is 0 or 3&&s.RoomEntry.All(e=>Point(e.Position)&&Finite(e.Hp)&&e.Hp>=0),"进房节点");
+        Need((s.RoomEntry.Count==0||s.RoomEntry.Count==s.Heroes.Count)&&s.RoomEntry.All(e=>Point(e.Position)&&Finite(e.Hp)&&e.Hp>=0),"进房节点");
         Need(s.ActiveDungeonId==""||c.Dungeons.Any(d=>d.Id==s.ActiveDungeonId),"地牢引用");
         double AllowedMaximum(Actor actor)
         {
@@ -206,11 +207,11 @@ public sealed partial class GameSession
             int index=s.Heroes.IndexOf(actor);if(index<0){int monster=s.Floors[s.FloorIndex].Rooms[s.CurrentRoom].Monsters.IndexOf(actor);if(monster<0)return actor.MaxHp;index=s.Heroes.Count+monster;}
             return c.Attributes.Aggregate("hp",actor.MaxHp,s.SkillState.Buffs.Where(b=>b.Target==index&&b.Remaining>0&&c.Skills.Buffs.ContainsKey(b.Id)).SelectMany(b=>c.Skills.Buffs[b.Id].Attributes).Where(a=>a.Attribute=="hp"));
         }
-        foreach(var a in s.Heroes.Concat(s.Floors!.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
+        foreach(var a in s.Heroes.Concat(s.ReserveHeroes).Concat(s.Floors!.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
         {
             Need(Point(a.Position)&&Finite(a.Hp)&&Finite(a.MaxHp)&&Finite(a.Attack)&&Finite(a.Defense)&&Finite(a.Speed)&&Finite(a.Range)&&Finite(a.Cooldown)&&Finite(a.Timer)&&Finite(a.DropMultiplier)&&Finite(a.ValueMultiplier)&&a.MaxHp>0&&a.Hp>=0&&a.Hp<=AllowedMaximum(a)&&a.Level>0&&a.Attack>=0&&a.Defense>=0&&a.Speed>0&&a.Range>0&&a.Cooldown>0&&a.Timer>=0&&a.DropMultiplier>=0&&a.ValueMultiplier>0,"角色属性");
             Need(a.Battle!=null&&a.SkillIds!=null&&a.SkillLevels!=null,"战斗属性/技能缺失");a.Battle.Validate();
-            Need(a.Level<=(s.Heroes.Contains(a)?c.MaxHeroLevel:c.MaxMonsterLevel),"等级超过等级表表尾；请补齐配置，禁止静默降级");
+            Need(a.Level<=(s.Heroes.Contains(a)||s.ReserveHeroes.Contains(a)?c.MaxHeroLevel:c.MaxMonsterLevel),"等级超过等级表表尾；请补齐配置，禁止静默降级");
             Need(a.SkillIds.Distinct().Count()==a.SkillIds.Length&&a.SkillIds.All(id=>c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Kind=="ActiveSkill")&&a.SkillLevels.All(p=>c.Skills.Abilities.TryGetValue(p.Key,out var ability)&&p.Value>=1&&p.Value<=ability.MaxLevel),"装备技能/等级引用");
         }
         ValidateSkillSnapshot(c,s);
@@ -284,7 +285,7 @@ public sealed partial class WorldCampaign
         if(s.AreaPartAccessVersion is not (0 or 1))throw new InvalidDataException("统治区前置存档版本无效");
         if(s.NavigationVersion is not (0 or 1))throw new InvalidDataException("不支持的世界寻路版本");
         bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&p.X>=0&&p.Y>=0&&p.X<c.WorldWidth&&p.Y<c.WorldHeight;
-        if(s.VillagePaths==null||s.VillagePaths.Count>3||s.VillagePaths.Any(p=>!c.Heroes.Any(h=>h.Id==p.Key)||p.Value.Count>20000||p.Value.Any(v=>s.TownVersion==1&&c.Town!=null?!c.Town.Walkable(v):!Point(v))))throw new InvalidDataException("村庄路径无效");
+        if(s.VillagePaths==null||s.VillagePaths.Count>5||s.VillagePaths.Any(p=>!c.Heroes.Any(h=>h.Id==p.Key)||p.Value.Count>20000||p.Value.Any(v=>s.TownVersion==1&&c.Town!=null?!c.Town.Walkable(v):!Point(v))))throw new InvalidDataException("村庄路径无效");
         if(!Enum.IsDefined(s.Stage)||!Point(s.Position)||!c.Dungeons.Any(d=>d.Id==s.TargetId)||!c.Villages.Any(v=>v.Id==s.VillageId)||s.Explored==null||s.Cleared==null||s.Route==null||s.Explored.Any(id=>!c.Regions.Any(r=>r.Id==id))||s.Cleared.Any(id=>!c.Dungeons.Any(d=>d.Id==id))||s.Route.Count>c.Regions.Count*WorldNavigation.CellsPerRegion*WorldNavigation.CellsPerRegion+2||s.Route.Any(p=>!Point(p))||s.Trades<0||s.DungeonVisits<0||!float.IsFinite(s.TradeElapsed)||s.TradeElapsed<0||s.TradeElapsed>(s.TownVersion==0?c.TradeSeconds:c.Town?.ServiceSeconds??c.TradeSeconds)||s.PendingCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.PendingCastle&&d.Castle))
             throw new InvalidDataException("存档世界状态/引用无效");
         if(s.PendingCastles==null||s.PendingCastles.Distinct().Count()!=s.PendingCastles.Count||s.PendingCastles.Any(id=>!c.Dungeons.Any(d=>d.Id==id&&d.Castle)))throw new InvalidDataException("城堡挑战队列无效");

@@ -79,3 +79,13 @@
 | village/portal_rule.csv | phase_seconds,use_range继续定义共用表演时间及使用距离。历史town_x/town_y/waypoint_x/waypoint_y保留兼容列；正式城镇坐标以town_scene各章字段为准 |
 
 上述 CSV importer 均为 keep，正式运行不读 TownDesign 的 JSON 或 PNG。TownLayoutVersion 只保存布局版本，几何和职能仍来自CSV；迁移与边界见 design/towns_portals.md。
+## 英雄解锁与扩编字段（2026-10-21）
+
+`hero/hero_unlocks.csv`：`id` 必须与 heroes.csv 职业 ID 一一对应；`kills` 为非负整数，0表示初始可用，否则达到本轮累计击杀后可上阵。当前仅支持累计击杀条件，新增职业必须同步补齐 heroes、hero_unlocks、combat/unit_attributes 三表；职业数量可扩展，最大同时上阵五人。
+
+星图 `attr_id` 新增 `party_slots`，`operation=flat`，必须 `max_level=1`、`value_per_level=1`。当前投放四节点，形成一条从根开始的扩编链，布局和意图仍分表。效果不影响攻击或生命。存档 Heroes/RoomEntry/VillagePaths 与救援索引按实际人数校验，范围1～5；ViewMode新增4（英雄页），原0～3保持兼容。
+
+## 编队计划（2026-10-21）
+`village/town_npc.csv` 的 role 新增 `formation`，每章恰好一位；当前与凯恩的 identify 职能共用NPC，可通过配置调整。目标位置、有效交互范围、服务读条复用城镇NPC、interaction_range、service_seconds，不引入另一套瞬时变阵入口。TownVisitPhase枚举末尾新增Formation=3，旧Heal/Sell/Exit值不变。
+
+编队容量由星图扩编加旧档最低容量推导，上限5；布局编辑不能使现有或已确认计划超过容量。旧增员命令DeployHero统一转为RequestFormation，不再立即增加成员。

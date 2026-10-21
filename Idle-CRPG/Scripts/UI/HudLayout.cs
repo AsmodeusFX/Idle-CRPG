@@ -13,6 +13,7 @@ public partial class Main
     private ScrollContainer interactionScroll=null!;
     private Label teamChallengeLabel=null!;
     private readonly Label[] currencies=new Label[4];
+    private readonly Button[] heroAdd=new Button[5];
     private readonly Label[] heroNames=new Label[5],heroStats=new Label[5];
     private readonly ProgressBar[] heroHealth=new ProgressBar[5];
     private readonly HudIcon[] heroIcons=new HudIcon[5];
@@ -30,12 +31,12 @@ public partial class Main
     private Label HudText(Node parent,string value,Vector2 position,int size=14)
     {var label=UiLabel(value,size);label.Position=position;parent.AddChild(label);return label;}
 
-    /// <summary>固定设计尺寸内的五区布局；角色区预留五席，当前上阵规则保持三人。</summary>
+    /// <summary>固定设计尺寸内的五区布局；创角单选，星图解锁至五席。</summary>
     private void BuildHud(CanvasLayer canvas)
     {
         HudPanel(canvas,new Vector2(24,20),new Vector2(1392,60));
         var tabs=new HBoxContainer {Position=new Vector2(36,32)};tabs.AddThemeConstantOverride("separation",6);canvas.AddChild(tabs);
-        foreach(var pair in new[]{("游戏",0),("城堡",1),("星图",3)})
+        foreach(var pair in new[]{("游戏",0),("城堡",1),("星图",3),("英雄",4)})
         {
             var button=new Button {Text=pair.Item1,CustomMinimumSize=new Vector2(104,36)};
             int mode=pair.Item2;button.Pressed+=()=>{SelectStarView(mode);PlaySound("sfx_click");};tabs.AddChild(button);
@@ -67,17 +68,13 @@ public partial class Main
         interactionEmpty=UiLabel("暂无可用交互\n\n城堡满足挑战条件后在此显示。",14);interactionEmpty.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(interactionEmpty);
 
         // 开局选择占用交互区，进入远征后隐藏，避免永久占据战斗构图。
-        partySetup=new Panel {Position=new Vector2(1092,187),Size=new Vector2(312,450)};gameHud.AddChild(partySetup);
-        partySetup.AddThemeStyleboxOverride("panel",new StyleBoxFlat {BgColor=new Color("101923")});
-        var setup=new VBoxContainer {Position=new Vector2(10,10),Size=new Vector2(292,397)};partySetup.AddChild(setup);
-        setup.AddChild(UiLabel("组建远征小队",19));
-        seed=new LineEdit {Text="20261017",PlaceholderText="整数 seed"};setup.AddChild(seed);
-        setup.AddChild(UiLabel("选择 3 位成员，出发后阵容锁定",14));
-        choices=config.Heroes.Select(s=>new CheckBox {Text=$"{s.Name}  HP {s.Hp} / ATK {s.Attack}",ButtonPressed=s.Id!="priest"}).ToArray();
-        foreach(var choice in choices){choice.Toggled+=_=>PlaySound("sfx_click");setup.AddChild(choice);}
-        start=new Button {Text="开始世界远征",CustomMinimumSize=new Vector2(0,42)};start.Pressed+=Start;setup.AddChild(start);
-
-        summary=HudText(gameHud,"选定小队后开始。",new Vector2(38,100),14);summary.Size=new Vector2(1008,40);summary.AutowrapMode=TextServer.AutowrapMode.WordSmart;summary.MouseFilter=Control.MouseFilterEnum.Ignore;
+        partySetup=new Control {Size=new Vector2(1060,650)};gameHud.AddChild(partySetup);
+        seed=new LineEdit {Text="20261017",Position=new Vector2(416,520),Size=new Vector2(240,32)};partySetup.AddChild(seed);
+        var group=new ButtonGroup();
+        choices=config.Heroes.Select((s,i)=>new CheckBox {Text=s.Name,ButtonGroup=group,ButtonPressed=i==0,Disabled=config.HeroUnlockKills[s.Id]>0,Position=new Vector2(85+i*182,i%2==0?380:315),Size=new Vector2(180,40),TooltipText=config.HeroUnlockKills[s.Id]>0?$"累计击杀 {config.HeroUnlockKills[s.Id]} 后解锁":"初始可用"}).ToArray();
+        foreach(var choice in choices){choice.Toggled+=_=>{PlaySound("sfx_click");sceneCanvas.QueueRedraw();};partySetup.AddChild(choice);}
+        AddCampHitTargets();start=new Button {Text="开始游戏",Position=new Vector2(416,566),Size=new Vector2(240,48)};start.Pressed+=Start;partySetup.AddChild(start);
+        summary=HudText(gameHud,"选择一位英雄，开启远征。",new Vector2(38,100),14);summary.Size=new Vector2(1008,40);summary.AutowrapMode=TextServer.AutowrapMode.WordSmart;summary.MouseFilter=Control.MouseFilterEnum.Ignore;
         HudPanel(gameHud,new Vector2(24,662),new Vector2(840,214));
         HudText(gameHud,"小队状态",new Vector2(38,669),16);
         teamChallengeLabel=HudText(gameHud,"",new Vector2(260,671),13);
@@ -86,7 +83,8 @@ public partial class Main
         {
             float y=696+i*34;
             heroIcons[i]=new HudIcon {Kind="hero",Position=new Vector2(38,y),Size=new Vector2(28,28),Accent=heroColors[i%heroColors.Length]};gameHud.AddChild(heroIcons[i]);
-            heroNames[i]=HudText(gameHud,"空缺席位",new Vector2(78,y+4),14);
+            heroNames[i]=HudText(gameHud,"席位未解锁",new Vector2(78,y+4),14);
+            int slot=i;heroAdd[i]=new Button {Name="HudFormationAdd"+i,Text="+",Position=new Vector2(209,y+1),Size=new Vector2(30,28),Visible=false};heroAdd[i].Pressed+=()=>OpenFormation(slot);gameHud.AddChild(heroAdd[i]);
             heroHealth[i]=new ProgressBar {Position=new Vector2(260,y+5),Size=new Vector2(210,20),ShowPercentage=false,MouseFilter=Control.MouseFilterEnum.Ignore};
             heroHealth[i].AddThemeStyleboxOverride("fill",new StyleBoxFlat {BgColor=new Color("397b70")});gameHud.AddChild(heroHealth[i]);
             heroStats[i]=HudText(gameHud,"—",new Vector2(486,y+4),14);
@@ -116,7 +114,8 @@ public partial class Main
         {
             var hero=session?.Heroes.ElementAtOrDefault(i);
             heroIcons[i].Modulate=hero==null?new Color("536575"):Colors.White;
-            heroNames[i].Text=hero==null?"空缺席位":$"{hero.Name}  Lv.{hero.Level}";
+            heroAdd[i].Visible=session!=null&&hero==null&&i<session.PartyCapacity;
+            heroNames[i].Text=hero==null?(i<(session?.PartyCapacity??1)?"席位空缺":"席位未解锁"):$"{hero.Name}  Lv.{hero.Level}";
             heroHealth[i].Visible=hero!=null;
             heroHealth[i].MaxValue=hero?.MaxHp??1;heroHealth[i].Value=hero?.Hp??0;
             heroStats[i].Text=hero==null?"—":$"HP {Math.Ceiling(hero.Hp)} / {hero.MaxHp:0}     ATK {hero.Attack:0}";

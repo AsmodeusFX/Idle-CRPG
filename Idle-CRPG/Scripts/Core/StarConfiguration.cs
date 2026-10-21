@@ -30,7 +30,7 @@ public sealed class StarConfiguration
             if(string.IsNullOrWhiteSpace(node.Id)||string.IsNullOrWhiteSpace(node.Name)||node.MaxLevel<1||node.MaxLevel>10000||node.Costs.Count!=node.MaxLevel||node.Costs.Any(c=>c<0)||node.Currency!="gold"||!double.IsFinite(node.ValuePerLevel)||node.ValuePerLevel<0||node.ValuePerLevel*node.MaxLevel>float.MaxValue||node.Icon is not ("attack" or "defense" or "utility"))throw new InvalidOperationException("星图节点名称、等级、金币价目或效果无效："+node.Id);
             if(node.Attribute=="")
             {if(node.Operation!=""||node.ValuePerLevel!=0)throw new InvalidOperationException("占位节点不能有效果");}
-            else if(node.Attribute is not ("attack" or "hp")||node.Operation!="flat")throw new InvalidOperationException("首版仅支持 attack/hp 的 flat 全队属性加成");
+            else if(node.Attribute=="party_slots"&&(node.MaxLevel!=1||node.ValuePerLevel!=1))throw new InvalidOperationException("扩编节点必须单级且增加一席");else if(node.Attribute is not ("attack" or "hp" or "party_slots")||node.Operation!="flat")throw new InvalidOperationException("仅支持 attack/hp 全队属性和 party_slots 扩编的 flat 效果");
         }
         if(l.Values.Count(x=>x.Prerequisites.Count==0)!=1)throw new InvalidOperationException("星图必须恰好一个根节点");
         if(l.Values.Select(x=>(x.Col,x.Row)).Distinct().Count()!=l.Count)throw new InvalidOperationException("星图格子不能重叠");

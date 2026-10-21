@@ -34,8 +34,10 @@ public partial class Main
     {
         if(!roads.TryGetValue(id,out var path)){path=new[]{from}.Concat(WorldNavigation.FindPath(config,from,to)).ToList();roads[id]=path;}return path;
     }
+    private int outdoorHeroesDrawn;
     private void DrawVillageOrTravel()
     {
+        outdoorHeroesDrawn=0;
         if(session!.World!.InTownScene&&config.Town!=null){DrawTownScene();return;}
         var w=session!.World!;V center=cameraCenter/config.WorldUnits;
         int cells=WorldNavigation.CellsPerRegion;
@@ -94,11 +96,13 @@ public partial class Main
             bool unlocked=w.Progress.WaypointUnlocked(config,waypoint);
             var point=OutdoorPoint(config.WaypointPoint(waypoint));DrawPortalRing(point,unlocked?1:.4f,unlocked?"68cce8":"6b817d");Text(unlocked?"传送点":"传送点 · 未解锁",point+new Vector2(-20,19),10,"a8c7cd");
         }
-        foreach(int i in new[]{2,1,0})
+        // 按实际编队人数倒序绘制，兼容单人创角、旧三人档及扩编后的五人队伍。
+        for(int i=session.Heroes.Count-1;i>=0;i--)
         {
             V position=worldLeader+new V(-i*.04f,i*.04f);
             if(w.Stage==CampaignStage.Village)position=WorldLocation(w.Village.RegionId,w.Village.X,w.Village.Y)+VisualPosition(session.Heroes[i])/config.WorldUnits+new V(-i*.025f,i*.025f);
             DrawFighter(OutdoorPoint(position),heroColors[i],i,false,session.Heroes[i].Hp/session.Heroes[i].MaxHp,session.Heroes[i].Name);
+            outdoorHeroesDrawn++;
         }
         Text(w.Stage==CampaignStage.Village?w.Village.Name:"行旅 · "+config.Regions.Single(r=>r.Id==w.CurrentRegion).Name,new Vector2(48,165),20,"f4e1b9");
         Text(w.Status,new Vector2(48,190),14,"e0e8e7");
