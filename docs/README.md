@@ -1,6 +1,6 @@
 # 文档索引
 
-- [技能BD交互规则](design/skill_bd_interactions.md)：G01～G06；[公式提案来源](design/combat_formula_vnext_proposal.md)、[迁移计划](technical/skill_bd_plan.md)、[用户裁决](reviews/2026-10-22_skill_bd/04_approval_requests.md)、[执行与验收](reviews/2026-10-22_skill_bd/05_execution.md)。新公式已切换，A阶段Core QA完成；旧数据TEST_ONLY归档，新技能正式树迁移尚未执行。
+- [技能BD交互规则](design/skill_bd_interactions.md)：G01～G06；[公式提案来源](design/combat_formula_vnext_proposal.md)、[迁移计划](technical/skill_bd_plan.md)、[用户裁决](reviews/2026-10-22_skill_bd/04_approval_requests.md)、[执行与验收](reviews/2026-10-22_skill_bd/05_execution.md)。新公式已切换；A阶段及B1光环/诅咒、B2独立召唤Core QA完成，均为隔离夹具，未投放正式技能树或玩家存档。旧数据TEST_ONLY归档，新技能正式树迁移尚未执行。
 
 - [战斗索敌、接敌容量与入场展开](design/combat_targeting.md)：稳定锁敌、溢出重评、无单位推挤及有怪房AI警觉；[字段合同](technical/targeting_config.md)、[来源与执行记录](reviews/2026-10-22_combat_targeting/Execution_Record.md)。
 

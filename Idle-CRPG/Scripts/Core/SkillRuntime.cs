@@ -24,12 +24,26 @@ public sealed partial class GameSession
         var hero=Heroes.Single(h=>h.SpecId==heroId);var ids=skillIds.ToArray();
         if(hero.SkillIds.Any(Config.Talents.Nodes.ContainsKey)||ids.Any(Config.Talents.Nodes.ContainsKey)){if(!SetTalentLoadout(heroId,ids,out var reason))throw new ArgumentException(reason);return;}
         if(ids.Distinct().Count()!=ids.Length||ids.Any(id=>!SkillConfig.Skills.TryGetValue(id,out var s)||s.Kind!="ActiveSkill"))throw new ArgumentException("技能引用重复或不是主动技能");
-        hero.SkillIds=ids;PruneAuraActivations();ResetSkillRoom();MarkChanged();
+        hero.SkillIds=ids;PruneSummons();PruneAuraActivations();ResetSkillRoom();MarkChanged();
     }
-    private IEnumerable<Actor> RoomActors=>Heroes.Concat(Floor.Rooms[CurrentRoom].Monsters);
-    private int CombatId(Actor actor)=>Heroes.Contains(actor)?Heroes.IndexOf(actor):Heroes.Count+Floor.Rooms[CurrentRoom].Monsters.IndexOf(actor);
-    private Actor? CombatActor(int id)=>id<0?null:id<Heroes.Count?Heroes[id]:Floor.Rooms[CurrentRoom].Monsters.ElementAtOrDefault(id-Heroes.Count);
-    private IEnumerable<Actor> Enemies(int owner)=>owner<Heroes.Count?Floor.Rooms[CurrentRoom].Monsters.Where(InCombatRoom):Heroes.Where(InCombatRoom);
+    private IEnumerable<Actor> RoomActors=>Heroes.Concat(Summons).Concat(Floor.Rooms[CurrentRoom].Monsters);
+    /// <summary>ID 顺序固定为英雄、当前房怪物、召唤物；召唤物追加在末尾以免旧存档怪物 ID 位移。</summary>
+    private int CombatId(Actor actor)
+    {
+        if(Heroes.Contains(actor))return Heroes.IndexOf(actor);
+        int monsters=Floor.Rooms[CurrentRoom].Monsters.IndexOf(actor);
+        if(monsters>=0)return Heroes.Count+monsters;
+        return Heroes.Count+Floor.Rooms[CurrentRoom].Monsters.Count+Summons.IndexOf(actor);
+    }
+    private Actor? CombatActor(int id)
+    {
+        if(id<0)return null;
+        if(id<Heroes.Count)return Heroes[id];
+        int monster=id-Heroes.Count;var room=Floor.Rooms[CurrentRoom];
+        return monster<room.Monsters.Count?room.Monsters[monster]:Summons.ElementAtOrDefault(monster-room.Monsters.Count);
+    }
+    /// <summary>敌对判定按 ID 区段：英雄与召唤物为友方，当前房怪物为敌方。</summary>
+    private IEnumerable<Actor> Enemies(int owner)=>IsFriendlyId(owner)?Floor.Rooms[CurrentRoom].Monsters.Where(InCombatRoom):Heroes.Concat(Summons).Where(InCombatRoom);
     private IEnumerable<SkillBuffState> ActorBuffs(int id)=>skillState.Buffs.Where(b=>b.Target==id&&b.Remaining>0)
         .GroupBy(b=>BuffGroup(b.Id)).SelectMany(group=>SkillConfig.Buffs[group.First().Id].Stacking=="Strongest"
             ?group.OrderByDescending(b=>SkillConfig.Buffs[b.Id].StackStrength).ThenBy(b=>b.Owner).ThenBy(b=>b.Instance).Take(1):group);
@@ -58,7 +72,7 @@ public sealed partial class GameSession
             if(!attr.Attribute.EndsWith("_damage_pct")||attr.Attribute.EndsWith("vulnerable_damage_pct"))continue;
             DamageType? type=attr.Attribute switch {"physical_damage_pct"=>DamageType.Physical,"fire_damage_pct"=>DamageType.Fire,"cold_damage_pct"=>DamageType.Cold,"lightning_damage_pct"=>DamageType.Lightning,"poison_damage_pct"=>DamageType.Poison,_=>null};
             // 技能/普攻资格用稳定技能 ID 标记；本批源配置尚未投放此类属性。
-            if(attr.Attribute=="basic_attack_damage_pct")result.Modifiers.Add(new(DamageBucket.General,attr.Value,Heroes.Contains(actor)?"basic_player":"basic_monster"));
+            if(attr.Attribute=="basic_attack_damage_pct")result.Modifiers.Add(new(DamageBucket.General,attr.Value,IsFriendlyActor(actor)?"basic_player":"basic_monster"));
             else if(attr.Attribute=="skill_damage_pct")foreach(string id in actor.SkillIds)result.Modifiers.Add(new(DamageBucket.General,attr.Value,id));
             else result.Modifiers.Add(new(DamageBucket.General,attr.Value,Type:type,RangedOnly:attr.Attribute=="ranged_damage_pct",BossOnly:attr.Attribute=="boss_damage_pct"));
         }
@@ -73,7 +87,7 @@ public sealed partial class GameSession
     }
     private void ResetSkillRoom()
     {
-        skillState=new();monsterLockIndex.Clear();foreach(var actor in Heroes)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
+        skillState=new();monsterLockIndex.Clear();foreach(var actor in Heroes.Concat(Summons))actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
         if(FloorIndex<Floors.Count&&CurrentRoom<Floors[FloorIndex].Rooms.Count)foreach(var actor in Floor.Rooms[CurrentRoom].Monsters)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
     }
 
@@ -81,7 +95,8 @@ public sealed partial class GameSession
     private DamageBreakdown? SettleDamage(Actor attacker,Actor target,string skill,double coefficient,DamageType type,bool ranged,SkillAttackSnapshot? snapshot=null,bool? critical=null,bool events=true,int depth=0,double powerBonus=0,DamagePortion[]? portions=null,long originCast=0,double baseScale=1)
     {
         if(!attacker.Alive||!target.Alive||!InCombatRoom(target))return null;
-        bool hero=Heroes.Contains(attacker);snapshot??=AttackSnapshot(attacker);
+        // 召唤物与英雄共用玩家侧伤害缩放；只有英雄受 GM 无敌保护。
+        bool friendly=IsFriendlyActor(attacker),hero=Heroes.Contains(attacker);snapshot??=AttackSnapshot(attacker);
         var debuffs=ActorBuffs(CombatId(target)).Select(b=>b.Id).ToHashSet();
         var attributes=snapshot.Attributes.Copy();
         foreach(var buff in ActorBuffs(CombatId(target)))foreach(var attr in SkillConfig.Buffs[buff.Id].Attributes.Where(a=>a.Attribute.EndsWith("vulnerable_damage_pct")))
@@ -91,10 +106,10 @@ public sealed partial class GameSession
         }
         if(powerBonus!=0)attributes.Modifiers.Add(new(DamageBucket.Power,powerBonus));
         if(!double.IsFinite(baseScale)||baseScale<0)throw new InvalidDataException("伤害本体比例无效");
-        var input=new DamageInput(skill,snapshot.Attack*(hero?1:Gm.MonsterAttack)*baseScale,EffectiveValue(target,"armor",target.Defense),coefficient,type,ranged,target.Boss,attributes,EffectiveAttributes(target),debuffs,snapshot.Level,portions);
+        var input=new DamageInput(skill,snapshot.Attack*(friendly?1:Gm.MonsterAttack)*baseScale,EffectiveValue(target,"armor",target.Defense),coefficient,type,ranged,target.Boss,attributes,EffectiveAttributes(target),debuffs,snapshot.Level,portions);
         var result=DamagePipeline.Resolve(input,Config.CombatRules,combatRandom,critical) with {OriginCast=originCast};LastDamage=result;HitCount++;
-        double amount=result.FinalDamage/(hero?Gm.MonsterHp:1);
-        if(!hero&&Gm.Invincible)amount=0;
+        double amount=result.FinalDamage/(friendly?Gm.MonsterHp:1);
+        if(!friendly&&Gm.Invincible)amount=0;
         if(amount>0)foreach(var shield in ActorBuffs(CombatId(target)).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="shield").ToArray())
         {double absorbed=Math.Min(amount,shield.Value);shield.Value-=absorbed;amount-=absorbed;if(shield.Value<=0)skillState.Buffs.Remove(shield);}
         float before=target.Hp;target.Hp=(float)Math.Max(0,target.Hp-amount);bool killed=!target.Alive;
@@ -110,6 +125,9 @@ public sealed partial class GameSession
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}
         }
         if(killed){if(target.ActiveAuraSkills.Count>0&&Heroes.Contains(target))MarkChanged();target.ActiveAuraSkills.Clear();skillState.Buffs.RemoveAll(b=>b.Target==CombatId(target)||b.Owner==CombatId(target)&&b.AuraSkill!="");ReleaseCombatTargets(CombatId(target));}
+        // 召唤物死亡只移除自身，不产尸、不进入怪物奖励或经验路径；主人死亡立即撤销其召唤。
+        if(killed&&Summons.Contains(target))MarkChanged();
+        if(killed&&Heroes.Contains(target))RemoveSummonsOf(Heroes.IndexOf(target));
         if(events)
         {
             if(!result.Dmg2.Dodged)React("OnHit",CombatId(attacker),CombatId(target),skill,coefficient,depth,originCast:originCast);
@@ -241,6 +259,7 @@ public sealed partial class GameSession
                 case "MaintainAura":if(!owner.ActiveAuraSkills.Contains(work.Skill)){owner.ActiveAuraSkills.Add(work.Skill);MarkChanged();}SynchronizeAuras(work.Owner,work.Skill,work.OriginCast);break;
                 case "AbilityCast":CastAbility(work,SkillConfig.Abilities[fx.MechanicId]);break;
                 case "AbilityAttack":case "AbilityDot":case "AbilityCooldown":case "AbilityMirror":BuffEffect(work,fx);break;
+                case "Summon":SummonEffect(work,fx);break;
                 case "SpawnEntity":case "SpawnProjectile":SpawnGeneric(work,fx);break;
                 default:throw new InvalidDataException("未知 Effect 类型");
             }

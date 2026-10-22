@@ -27,11 +27,12 @@ DamageInput可携带最多五个类型唯一的DamagePortion(Type,Weight)，权�
 | 表 | 字段 |
 |---|---|
 | skill/skill.csv | id；role来源分类；kind=BasicAttack/ActiveSkill；cooldown_ticks正整数；windup_ticks/recovery_ticks非负；coefficient非负伤害本体系数；range正世界单位；effect_ids非空效果列表；name；cast_sound_id/hit_sound_id仅保留来源元数据 |
-| skill/effect.csv | id,role,kind；damage_type=Physical/Fire/Cold/Lightning/Poison；share伤害分配系数；extent范围、speed速度；impact_effect碰撞效果；behavior弹道行为；spawn_tick；buff_id；entity_kind；lifetime_ticks；resolve_effect_ids生命周期结束效果；mechanic_id能力路由引用 |
+| skill/effect.csv | id,role,kind；damage_type=Physical/Fire/Cold/Lightning/Poison；share伤害分配系数；extent范围、speed速度；impact_effect碰撞效果；behavior弹道行为；spawn_tick；buff_id；entity_kind；lifetime_ticks；resolve_effect_ids生命周期结束效果；mechanic_id能力/召唤路由引用 |
+| skill/summon.csv | id；name显示名；max_count同一主人同原型存活上限1～5；hp_ratio/attack_ratio/defense_ratio按主人施法时基础生命/攻击/防御的比例，生命与攻击须为正、防御非负；speed/range/cooldown_seconds为召唤物自身移动、攻击距离与普攻冷却；engagement_capacity非负，仍可被有效属性聚合修正。当前仅QA切片填写，正式表保持空表不投放玩家召唤 |
 | skill/buff.csv | id；duration_ticks正时长；stacking_policy=NonStacking/RefreshDuration；attributes为attribute:operation:value分号列表，必须注册且操作合法；periodic_effect；periodic_interval_ticks；trigger_ids；mechanic,value,extra,target为已实现机制参数 |
 | skill/trigger.csv | id,event_kind,effect_id,owner_buff,origin_filter；引用有效，owner_buff与Buff.trigger_ids双向一致；事件和过滤仅允许已实现组合 |
 
-Effect 的 kind 决定允许字段：Damage使用damage_type/share；ApplyBuff使用buff_id；SpawnProjectile使用extent/speed/impact_effect/behavior/spawn_tick；SpawnEntity使用entity_kind/lifetime_ticks/resolve_effect_ids；Ability路由使用mechanic_id。无关字段非空会拒绝，避免配置看似有效却无作用。Effect/Buff/Trigger引用缺失、执行环均拒绝。
+Effect 的 kind 决定允许字段：Damage使用damage_type/share；ApplyBuff使用buff_id；SpawnProjectile使用extent/speed/impact_effect/behavior/spawn_tick；SpawnEntity使用entity_kind/lifetime_ticks/resolve_effect_ids；Ability路由使用mechanic_id；Summon也仅使用mechanic_id并必须引用summon.csv。无关字段非空会拒绝，避免配置看似有效却无作用。Effect/Buff/Trigger引用缺失、执行环均拒绝。
 
 Effect新增必填表头damage_parts，仅Damage允许非空，格式如Physical:0.6;Fire:0.4。类型枚举严格匹配且不重复，权重有限非负且合计1，首类型与damage_type一致；空表示原单类型。所有生产旧行已补空列，归档副本保留原schema。该字段只改变单次伤害实例的分量，不新增Effect/奖励入口。
 

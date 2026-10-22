@@ -14,6 +14,8 @@ public record BuffAttributeSpec(string Attribute,string Operation,double Value);
 public record BuffDefinition(string Id,int Duration,string Stacking,BuffAttributeSpec[] Attributes,string Periodic,int Interval,string[] Triggers,string Mechanic,double Value,double Extra,string Target,string StackGroup="",double StackStrength=0);
 public record TriggerDefinition(string Id,string Event,string Effect,string OwnerBuff,string Filter);
 public record AbilityDefinition(string Id,string Form,string Targeting,string Hits,double Root,int Level,int MaxLevel,string[] Effects,string[] Buffs);
+/// <summary>QA/B2 独立召唤原型：属性按主人施法时的基础值快照继承，不继承临时光环或装备现场。</summary>
+public record SummonDefinition(string Id,string Name,int MaxCount,double HpRatio,double AttackRatio,double DefenseRatio,float Speed,float Range,double Cooldown,int EngagementCapacity);
 /// <summary>迁移 Idle-Diablo AbilityEffect 的机制参数；距离与速度在加载时从原像素统一换算为世界单位。</summary>
 public record AbilityEffectDefinition(string Id,string Type,string Condition,double ConditionValue,double Power,double Duration,double Delay,double Interval,float Range,string Trajectory,int Count,double Hold,float ArcMin,float ArcMax,float Speed,float Spread,double VolleyInterval,double VolleyJitter,float SpawnJitter,double Pierce,float Radius,bool All,float Band,float Knockback,float Gather,string BuffId);
 
@@ -26,6 +28,7 @@ public sealed class SkillConfiguration
     public Dictionary<string,TriggerDefinition> Triggers { get; }=new(StringComparer.Ordinal);
     public Dictionary<string,AbilityDefinition> Abilities { get; }=new(StringComparer.Ordinal);
     public Dictionary<string,AbilityEffectDefinition> AbilityEffects { get; }=new(StringComparer.Ordinal);
+    public Dictionary<string,SummonDefinition> Summons { get; }=new(StringComparer.Ordinal);
     public Dictionary<string,double> Settings { get; }=new(StringComparer.Ordinal);
     public int TickRate { get; private set; }
     public int EffectBudget { get; private set; }
@@ -36,6 +39,7 @@ public sealed class SkillConfiguration
     private static readonly string[] SkillColumns="id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id,target_policy,cast_condition".Split(',');
     private static readonly string[] EffectColumns="id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees".Split(',');
     private static readonly string[] BuffColumns="id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target,stack_group,stack_strength".Split(',');
+    private static readonly string[] SummonColumns="id,name,max_count,hp_ratio,attack_ratio,defense_ratio,speed,range,cooldown_seconds,engagement_capacity".Split(',');
     private static readonly string[] AbilityEffectColumns="id,name,effect_type,condition,condition_value,power,skill_flat,duration,delay,tick_interval,range,trajectory,projectile_count,hover_time,arc_min,arc_max,speed,spread,volley_interval,volley_jitter,spawn_jitter,pierce_chance,aoe_radius,aoe_all,band,knockback,gather,buff_id".Split(',');
     public static SkillConfiguration Load(string directory,FightAttributeCatalog? attributes=null)
     {
@@ -66,6 +70,7 @@ public sealed class SkillConfiguration
                 "SpawnProjectile"=>new[]{"extent","speed","impact_effect","behavior","spawn_tick","projectile_count","spread_degrees"},
                 "SpawnEntity"=>new[]{"entity_kind","lifetime_ticks","resolve_effect_ids"},
                 "AbilityCast" or "AbilityAttack" or "AbilityDot" or "AbilityCooldown" or "AbilityMirror"=>new[]{"mechanic_id"},
+                "Summon"=>new[]{"mechanic_id"},
                 _=>throw r.Error("kind","未实现的效果类型")};
             foreach(string column in EffectColumns.Skip(3))if(!allowed.Contains(column)&&r[column]!="")throw r.Error(column,"字段不适用于此效果类型");
             if(kind=="SpawnProjectile"&&(r["behavior"]!="HitAllOnPathThenExpire"||r["spawn_tick"]!="HoldOnSpawnTick"))throw r.Error("behavior","未实现的弹道策略");
@@ -91,6 +96,13 @@ public sealed class SkillConfiguration
                 def=def with {ProjectileCount=count,SpreadDegrees=spread};
             }
             c.Effects.Add(def.Id,def);
+        }
+        foreach(var r in Table("summon",SummonColumns).Rows)
+        {
+            var def=new SummonDefinition(r.Id,r.Required("name"),r.Integer("max_count"),r.Number("hp_ratio"),r.Number("attack_ratio"),r.Number("defense_ratio"),(float)r.Number("speed"),(float)r.Number("range"),r.Number("cooldown_seconds"),r.Integer("engagement_capacity"));
+            if(string.IsNullOrWhiteSpace(def.Name)||def.MaxCount is <1 or >5||def.HpRatio<=0||def.AttackRatio<=0||def.DefenseRatio<0||!float.IsFinite(def.Speed)||def.Speed<=0||!float.IsFinite(def.Range)||def.Range<=0||!double.IsFinite(def.Cooldown)||def.Cooldown<=0||def.EngagementCapacity<0)throw r.Error("max_count","召唤原型属性/数量/接敌容量无效");
+            attributes?.ValidateValue("engagement_capacity",def.EngagementCapacity);
+            c.Summons.Add(def.Id,def);
         }
         foreach(var r in Table("buff",BuffColumns).Rows)
         {
@@ -146,6 +158,7 @@ public sealed class SkillConfiguration
             if(e.Kind=="MaintainAura")Need(Buffs[e.BuffId].Stacking=="Strongest"&&Buffs[e.BuffId].Target is "ally" or "enemy",e.Id+"光环须声明独立来源择强及友敌范围");
             if(e.Kind=="SpawnProjectile")Need(Effects.ContainsKey(e.Impact),e.Id);
             foreach(var id in e.ResolveEffects)Need(Effects.ContainsKey(id),e.Id);
+            if(e.Kind=="Summon")Need(Summons.ContainsKey(e.MechanicId),e.Id+" → "+e.MechanicId);
             if(e.Kind=="AbilityCast")Need(Abilities.ContainsKey(e.MechanicId),e.Id);
             if(e.Kind is "AbilityAttack" or "AbilityCooldown" or "AbilityMirror")Need(AbilityEffects.ContainsKey(e.MechanicId),e.Id);
             if(e.Kind=="AbilityDot")Need(Buffs.TryGetValue(e.MechanicId,out var buff)&&buff.Mechanic=="dot",e.Id);

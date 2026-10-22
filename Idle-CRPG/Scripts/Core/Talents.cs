@@ -103,7 +103,7 @@ public sealed partial class GameSession
         else if(World?.Stage!=CampaignStage.Village||World.PortalPhase!=PortalPhase.None)reason="请在城镇且传送结束后洗点";
         else if(TalentInvestment(h)==0)reason="没有需要重置的天赋";
         else if(Gold<TalentResetCost(h))reason="洗点金币不足";
-        else {Gold-=TalentResetCost(h);h.Talents.Clear();h.SkillIds=h.SkillIds.Where(id=>!Config.Talents.Nodes.ContainsKey(id)).ToArray();h.SkillSwapLocks.Clear();PruneAuraActivations();Note("天赋已重置："+h.Name);reason="";return true;}return false;
+        else {Gold-=TalentResetCost(h);h.Talents.Clear();h.SkillIds=h.SkillIds.Where(id=>!Config.Talents.Nodes.ContainsKey(id)).ToArray();h.SkillSwapLocks.Clear();PruneSummons();PruneAuraActivations();Note("天赋已重置："+h.Name);reason="";return true;}return false;
     }
     /// <summary>供装备/强化来源替换贡献；同一来源幂等更新，卸下传空列表。</summary>
     public void SetTalentBonuses(string heroId,string source,IEnumerable<TalentBonus> bonuses)
@@ -120,7 +120,7 @@ public sealed partial class GameSession
         bool fighting=(World==null||World.Stage==CampaignStage.Dungeon)&&Floors.Count>0&&!Floor.Rooms[CurrentRoom].Clear;
         foreach(string id in next.Except(h.SkillIds))if(fighting)h.SkillSwapLocks[id]=Math.Max(h.SkillSwapLocks.GetValueOrDefault(id),Config.Skills.Skills[id].Cooldown/20d);
         if(Floors.Count>0){var a=skillState.Actions.FirstOrDefault(a=>a.Owner==Heroes.IndexOf(h));if(a!=null&&!next.Contains(a.Active)){a.Active="";a.Windup=0;}}
-        h.SkillIds=next;PruneAuraActivations();MarkChanged();reason="";return true;
+        h.SkillIds=next;PruneSummons();PruneAuraActivations();MarkChanged();reason="";return true;
     }
     public double SkillCooldown(Actor h,string id)=>Math.Max(h.SkillSwapLocks.GetValueOrDefault(id),skillState.Actions.FirstOrDefault(a=>a.Owner==CombatId(h))?.Cooldowns.GetValueOrDefault(id)??0);
     private void AdvanceSwapLocks(float dt)

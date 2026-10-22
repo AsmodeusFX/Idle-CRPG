@@ -26,6 +26,9 @@ public sealed class Actor
     public Dictionary<string,double> SkillSwapLocks=new();
     public int RewardXp;
     public float DropMultiplier=1, ValueMultiplier=1;
+    /// <summary>非空表示独立召唤物；主人索引指向当前上阵英雄，召唤技能用于卸槽清理。</summary>
+    public string SummonDefinitionId="",SummonSkill="";
+    public int SummonOwner=-1;
     public bool Alive => Hp > 0;
     /// <summary>角色字段均为值类型或不可变字符串，复制后可独立用于检查点，不共享可变战斗状态。</summary>
     public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.ActiveAuraSkills=new(ActiveAuraSkills);a.SkillLevels=new(SkillLevels);a.Talents=new(Talents);a.TalentBonuses=new(TalentBonuses);a.SkillSwapLocks=new(SkillSwapLocks);return a;}
@@ -50,6 +53,8 @@ public sealed partial class GameSession
     internal void MarkChanged() => Revision++;
     private int dungeonSeed;
     public List<Actor> Heroes { get; } = new();
+    /// <summary>玩家侧独立召唤物；不并入 Heroes 或当前房间怪物列表，跨房保留数量与实际 HP。</summary>
+    public List<Actor> Summons { get; } = new();
     public List<string> Log { get; } = new();
     public int FloorIndex { get; private set; }
     public int CurrentRoom { get; private set; }
@@ -70,6 +75,7 @@ public sealed partial class GameSession
     public Actor Leader => Heroes.Where(h=>h.Alive).OrderBy(h=>destination<0?0:Vector2.DistanceSquared(h.Position,phase==0?Floor.Rooms[CurrentRoom].DoorTowards(Floor.Rooms[destination]):Floor.Rooms[destination].DoorTowards(Floor.Rooms[CurrentRoom]))).FirstOrDefault()??Heroes[0];
     private float regroup;
     private List<PartyEntry> roomEntry=new();
+    private List<Actor> roomEntrySummons=new();
     private uint roomEntryLootState;
 
     public GameSession(Config config, int seed, IEnumerable<string> ids)
@@ -238,7 +244,7 @@ public sealed partial class GameSession
     private void RespawnParty()
     {
         World?.RecordFailure(this);
-        ResetSkillRoom();
+        ClearSummons();ResetSkillRoom();
         Retries++;
         int region=World?.CurrentRegion??ActiveDungeon?.RegionId??Config.StartRegionId;
         Floors.Clear();ActiveDungeon=null;Won=false;
@@ -333,9 +339,11 @@ public sealed partial class GameSession
             return;
         }
         effectBudgetRemaining=SkillConfig.EffectBudget;
+        PruneSummons();
         AdvanceSkills(dt);
         DrainEffects();
         foreach(var h in Heroes.Where(h=>h.Alive)) Act(h,room.Monsters,dt,room);
+        foreach(var s in Summons.Where(s=>s.Alive)) Act(s,room.Monsters,dt,room);
         PrepareMonsterTargets(dt);
         foreach(var m in room.Monsters.Where(m=>m.Alive)) Act(m,Heroes,dt,room);
         DrainEffects();
@@ -347,7 +355,7 @@ public sealed partial class GameSession
         actor.Timer=Math.Max(0,actor.Timer-dt*(float)(1+EffectiveAttributes(actor).AttackSpeed));
         if(RunRetreat(actor,dt,room))return;
         if(RunActiveSkill(actor))return;
-        var target=Heroes.Contains(actor)?opponents.Where(InCombatRoom).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault():OrdinaryMonsterTarget(actor);
+        var target=IsFriendlyActor(actor)?opponents.Where(InCombatRoom).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault():OrdinaryMonsterTarget(actor);
         if(target==null||!InCombatRoom(target)) return;
         double engagementRange=EffectiveValue(actor,"attack_range",actor.Range);
         // 已装配近战主动就绪时先接近其施放距离，避免远程普攻射程使至圣斩永远无法使用。
@@ -361,7 +369,8 @@ public sealed partial class GameSession
         }
         if(actor.Timer>0) return;
         actor.Timer=(float)EffectiveValue(actor,"basic_cooldown",actor.Cooldown);
-        string basic=Heroes.Contains(actor)?"basic_player":"basic_monster";
+        // 召唤物复用玩家侧普攻与伤害缩放；其战斗力由召唤定义快照决定，不读取怪物技能。
+        string basic=IsFriendlyActor(actor)?"basic_player":"basic_monster";
         long originCast=++skillState.NextId;
         foreach(string effect in SkillConfig.Skills[basic].Effects)Enqueue(new(){Effect=effect,Skill=basic,Owner=CombatId(actor),Target=CombatId(target),Coefficient=SkillConfig.Skills[basic].Coefficient,OriginCast=originCast});
         DrainEffects();
@@ -390,8 +399,13 @@ public sealed partial class GameSession
     }
     private void CaptureRoomEntry()
     {
-        ResetSkillRoom();roomEntryCombatState=combatRandom.State;
-        roomEntry=Heroes.Select(h=>new PartyEntry(h.Position,h.Hp)).ToList();roomEntryLootState=lootRandom.State;
+        // 进房检查点先淘汰上一房已死亡召唤，再按队伍落位并记录实际 HP；房内新召唤不进入检查点。
+        RemoveDeadSummonsAtRoomEntry();
+        ResetSkillRoom();
+        PlaceSummonsNearParty(Floor.Rooms[CurrentRoom]);
+        roomEntryCombatState=combatRandom.State;
+        roomEntry=Heroes.Select(h=>new PartyEntry(h.Position,h.Hp)).ToList();
+        CaptureSummonEntry();roomEntryLootState=lootRandom.State;
     }
     /// <summary>清房后先救援，再逐份战利品走近领取，最后处理房间事件。掉落金币和物品在领取时入账。</summary>
     private bool CollectLoot(Room room,float dt)

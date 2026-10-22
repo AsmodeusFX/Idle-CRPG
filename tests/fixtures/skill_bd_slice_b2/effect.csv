@@ -1,0 +1,2 @@
+id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees
+QA_SUMMON_EFFECT,qa,Summon,,,,,,,,,,,,QA_SKELETON,,,

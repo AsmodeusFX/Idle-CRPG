@@ -43,6 +43,7 @@ public sealed partial class GameSession
         var town=Config.Town??throw new InvalidOperationException("缺少编队城镇");var npc=town.Npc("formation");
         if(World?.Stage!=CampaignStage.Village||World.PortalPhase!=PortalPhase.None||World.TownPhase!=TownVisitPhase.Formation||World.TradeElapsed+.00001f<town.ServiceSeconds||Heroes.Any(h=>Vector2.Distance(h.Position,npc.Position)>town.InteractionRange))throw new InvalidOperationException("必须到达凯恩并完成编队交互");
         if(!ValidFormation(pendingFormation,PartyCapacity))throw new InvalidOperationException("编队计划已失效");
+        ClearSummons();
         var pool=Heroes.Concat(reserveHeroes).ToDictionary(h=>h.SpecId);var next=pendingFormation.Select(id=>pool.TryGetValue(id,out var hero)?hero:CreateFormationHero(id)).ToArray();
         reserveHeroes.Clear();reserveHeroes.AddRange(pool.Values.Where(h=>!pendingFormation.Contains(h.SpecId)));
         Heroes.Clear();Heroes.AddRange(next);foreach(var h in Heroes){h.Position=npc.Position;h.Timer=0;}

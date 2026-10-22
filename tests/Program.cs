@@ -10,6 +10,7 @@ if(args.Contains("--formula-only")){DamageFormulaChecks.Run();return;}
 if(args.Contains("--formula-checks")){DamageFormulaChecks.Run();DamageFormulaChecks.RunSession(root);return;}
 if(args.Contains("--skill-bd-a-checks")){SkillBdSliceAChecks.Run(root);return;}
 if(args.Contains("--skill-bd-support-checks")){SkillBdSupportChecks.Run(root);return;}
+if(args.Contains("--skill-bd-summon-checks")){SkillBdSummonChecks.Run(root);return;}
 if(args.Contains("--config-benchmark"))
 {
     for(int i=0;i<3;i++){var clock=System.Diagnostics.Stopwatch.StartNew();var loaded=Config.Load(Path.Combine(root,"Idle-CRPG/config"));Console.WriteLine($"CONFIG_LOAD_MS {i}: {clock.Elapsed.TotalMilliseconds:F1}; POI={loaded.ChapterMaps.Sum(m=>m.Dungeons.Count)}");}
@@ -272,6 +273,7 @@ GmChecks.Run(root);
 DamageFormulaChecks.Run();DamageFormulaChecks.RunSession(root);CombatSkillChecks.Run(root);
 SkillBdSliceAChecks.Run(root);
 SkillBdSupportChecks.Run(root);
+SkillBdSummonChecks.Run(root);
 AttributeLevelChecks.Run(root);
 ChapterChecks.Run(root);
 TerrainGateChecks.Run(root);

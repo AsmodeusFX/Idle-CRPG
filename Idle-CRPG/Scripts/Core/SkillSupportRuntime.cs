@@ -7,7 +7,7 @@ namespace IdleCrpg.Core;
 
 public sealed partial class GameSession
 {
-    private IEnumerable<Actor> Allies(int owner)=>owner<Heroes.Count?Heroes.Where(InCombatRoom):Floor.Rooms[CurrentRoom].Monsters.Where(InCombatRoom);
+    private IEnumerable<Actor> Allies(int owner)=>IsFriendlyId(owner)?Heroes.Concat(Summons).Where(InCombatRoom):Floor.Rooms[CurrentRoom].Monsters.Where(InCombatRoom);
     private Actor? ChooseSkillTarget(Actor actor,SkillDefinition skill)
     {
         if(skill.Condition=="nearby_melee"&&!Enemies(CombatId(actor)).Any(e=>!e.Ranged&&Vector2.Distance(e.Position,actor.Position)<=skill.Range))return null;

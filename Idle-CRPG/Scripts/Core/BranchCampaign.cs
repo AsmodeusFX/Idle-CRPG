@@ -41,7 +41,7 @@ public sealed partial class GameSession
     }
     private void ClearMapScene()
     {
-        ResetSkillRoom();Floors.Clear();FloorIndex=CurrentRoom=0;ActiveDungeon=null;Won=false;destination=-1;phase=0;regroup=0;ResetRescue();roomEntry.Clear();
+        ClearSummons();ResetSkillRoom();Floors.Clear();FloorIndex=CurrentRoom=0;ActiveDungeon=null;Won=false;destination=-1;phase=0;regroup=0;ResetRescue();roomEntry.Clear();
         for(int i=0;i<Heroes.Count;i++)Heroes[i].Position=new(0,i*.2f);
     }
     private void RestoreBranchState(SessionSnapshot s)

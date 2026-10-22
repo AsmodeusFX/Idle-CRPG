@@ -11,8 +11,11 @@ public sealed partial class GameSession
         var state=snapshot.SkillState;
         if(state==null||state.Actions==null||state.Buffs==null||state.Flights==null||state.Pending==null||state.NextId<0||state.Flights.Count>config.Skills.Setting("max_flights")||state.Pending.Count>config.Skills.MaxPending||state.Actions.Count>1003||state.Buffs.Count>1003*config.Skills.Buffs.Count)throw new InvalidDataException("技能现场数量或字段无效");
         bool inRoom=(snapshot.World==null||snapshot.World.Stage==CampaignStage.Dungeon)&&snapshot.FloorIndex>=0&&snapshot.FloorIndex<snapshot.Floors.Count&&snapshot.CurrentRoom>=0&&snapshot.CurrentRoom<snapshot.Floors[snapshot.FloorIndex].Rooms.Count;
-        int count=inRoom?snapshot.Heroes.Count+snapshot.Floors[snapshot.FloorIndex].Rooms[snapshot.CurrentRoom].Monsters.Count:0;
+        int monsters=inRoom?snapshot.Floors[snapshot.FloorIndex].Rooms[snapshot.CurrentRoom].Monsters.Count:0;
+        int friendlies=inRoom?snapshot.Heroes.Count+snapshot.Summons!.Count:0;
+        int count=inRoom?friendlies+monsters:0;
         bool Owner(int id)=>id>=0&&id<count;
+        bool Friendly(int id)=>id>=0&&(id<snapshot.Heroes.Count||id>=snapshot.Heroes.Count+monsters&&id<friendlies+monsters);
         bool Time(double value)=>double.IsFinite(value)&&value>=0;
         bool Point(System.Numerics.Vector2 point)=>float.IsFinite(point.X)&&float.IsFinite(point.Y);
         bool Origin(long id)=>id>=0&&id<=state.NextId;
@@ -26,9 +29,9 @@ public sealed partial class GameSession
         if(targeting!=null&&(targeting.DeployedMask<0||targeting.DeployedMask>=(1<<snapshot.Heroes.Count)))throw new InvalidDataException("入场展开成员掩码无效");
         if(snapshot.RoomCheckpoint&&targeting?.DeployedMask!=0)throw new InvalidDataException("正式检查点不得保存展开现场");
         if(targeting!=null&&(targeting.FloorIndex< -1||targeting.RoomIndex< -1||(targeting.Locks?.Count>0||targeting.EntryPrepared)&&(targeting.FloorIndex!=snapshot.FloorIndex||targeting.RoomIndex!=snapshot.CurrentRoom)))throw new InvalidDataException("普通索敌现场房间归属无效");
-        if(targeting==null||targeting.Locks==null||targeting.Capacities==null||!Time(targeting.Clock)||targeting.Cursor<0||targeting.Cursor>1000||targeting.CandidateMask<0||targeting.CandidateMask>=(1<<snapshot.Heroes.Count)||targeting.Capacities.Length!=0&&targeting.Capacities.Length!=snapshot.Heroes.Count||targeting.Capacities.Any(v=>v<0||v>100000)||targeting.Locks.Count>1000||targeting.Locks.Select(l=>l?.Owner).Distinct().Count()!=targeting.Locks.Count)throw new InvalidDataException("普通索敌现场或预约数量无效");
+        if(targeting==null||targeting.Locks==null||targeting.Capacities==null||!Time(targeting.Clock)||targeting.Cursor<0||targeting.Cursor>1000||targeting.CandidateMask<0||targeting.CandidateMask>=(1<<friendlies)||targeting.Capacities.Length!=0&&targeting.Capacities.Length!=friendlies||targeting.Capacities.Any(v=>v<0||v>100000)||targeting.Locks.Count>1000||targeting.Locks.Select(l=>l?.Owner).Distinct().Count()!=targeting.Locks.Count)throw new InvalidDataException("普通索敌现场或预约数量无效");
         foreach(var locked in targeting.Locks)
-            if(locked==null||!inRoom||locked.Owner<snapshot.Heroes.Count||!Owner(locked.Owner)||locked.Target<0||locked.Target>=snapshot.Heroes.Count||!Enum.IsDefined(locked.Kind)||!Time(locked.NextEvaluation))throw new InvalidDataException("普通目标引用或锁定类型无效");
+            if(locked==null||!inRoom||locked.Owner<snapshot.Heroes.Count||locked.Owner>=snapshot.Heroes.Count+monsters||locked.Target<0||locked.Target>=friendlies||!Enum.IsDefined(locked.Kind)||!Time(locked.NextEvaluation))throw new InvalidDataException("普通目标引用或锁定类型无效");
         if(snapshot.RoomCheckpoint&&(targeting.Locks.Count!=0||targeting.Capacities.Length!=0||targeting.Clock!=0||targeting.CandidateMask!=0||targeting.Cursor!=0||targeting.FloorIndex!=-1||targeting.RoomIndex!=-1||targeting.EntryPrepared||targeting.EntryElapsed!=0||targeting.EntryAnchor!=System.Numerics.Vector2.Zero||targeting.EntryDirection!=System.Numerics.Vector2.Zero))throw new InvalidDataException("正式检查点不得保存普通索敌战斗现场");
         void Flight(SkillFlightState f,bool allowExpired)
         {
@@ -38,7 +41,7 @@ public sealed partial class GameSession
         }
         foreach(var a in state.Actions)
         {
-            if(!Time(a.RetreatCooldown)||!Point(a.RetreatGoal)||a.RetreatThreat< -1||a.RetreatThreat>=0&&(!Owner(a.RetreatThreat)||(a.Owner<snapshot.Heroes.Count)==(a.RetreatThreat<snapshot.Heroes.Count)))throw new InvalidDataException("退让现场无效");
+            if(!Time(a.RetreatCooldown)||!Point(a.RetreatGoal)||a.RetreatThreat< -1||a.RetreatThreat>=0&&(!Owner(a.RetreatThreat)||Friendly(a.Owner)==Friendly(a.RetreatThreat)))throw new InvalidDataException("退让现场无效");
             if(!Owner(a.Owner)||a.Active!=""&&!config.Skills.Skills.ContainsKey(a.Active)||!Time(a.Windup)||!Time(a.Recovery)||a.Cooldowns==null||a.Cooldowns.Any(p=>!config.Skills.Skills.ContainsKey(p.Key)||!Time(p.Value)))throw new InvalidDataException("技能时间轴无效");
         }
         if(state.Actions.Select(a=>a.Owner).Distinct().Count()!=state.Actions.Count)throw new InvalidDataException("角色动作槽重复");
@@ -48,7 +51,13 @@ public sealed partial class GameSession
             if(b.Cause!=null)Flight(b.Cause,true);
             if(!Origin(b.OriginCast)||b.AuraSkill==null||b.AuraSkill!=""&&(!ActorFor(b.Owner).ActiveAuraSkills.Contains(b.AuraSkill)||b.Ability!=b.AuraSkill||!config.Skills.Skills[b.AuraSkill].Effects.Any(id=>config.Skills.Effects[id].Kind=="MaintainAura"&&config.Skills.Effects[id].BuffId==b.Id)))throw new InvalidDataException("光环来源/激活状态无效");
         }
-        Actor ActorFor(int id)=>id<snapshot.Heroes.Count?snapshot.Heroes[id]:snapshot.Floors[snapshot.FloorIndex].Rooms[snapshot.CurrentRoom].Monsters[id-snapshot.Heroes.Count];
+        Actor ActorFor(int id)
+        {
+            if(id<snapshot.Heroes.Count)return snapshot.Heroes[id];
+            int index=id-snapshot.Heroes.Count;
+            if(index<monsters)return snapshot.Floors[snapshot.FloorIndex].Rooms[snapshot.CurrentRoom].Monsters[index];
+            return snapshot.Summons![index-monsters];
+        }
         if(state.Buffs.GroupBy(b=>(b.Id,b.Target)).Any(group=>config.Skills.Buffs[group.Key.Id].Stacking=="Strongest"?group.Select(b=>(b.Owner,b.Ability,b.AuraSkill)).Distinct().Count()!=group.Count():group.Count()!=1)||state.Buffs.Select(b=>b.Instance).Distinct().Count()!=state.Buffs.Count)throw new InvalidDataException("Buff 实例或同源贡献重复");
         foreach(var f in state.Flights)Flight(f,false);
         foreach(var work in state.Pending)

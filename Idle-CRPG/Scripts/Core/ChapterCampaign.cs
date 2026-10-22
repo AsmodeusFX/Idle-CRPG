@@ -40,7 +40,7 @@ public sealed partial class GameSession
         // 星图定义由全程共享；GM发布后的新定义不能在跨章时退回旧配置副本。
         foreach(var map in Config.ChapterMaps)map.Stars=Config.Stars;
         int next=current+1;LatestMapIndex=next;DifficultyIndex=next/5;Config=Config.ChapterMaps[next%5];
-        ResetSkillRoom();Floors.Clear();FloorIndex=CurrentRoom=0;ActiveDungeon=null;Won=false;destination=-1;phase=0;regroup=0;ResetRescue();roomEntry.Clear();
+        ClearSummons();ResetSkillRoom();Floors.Clear();FloorIndex=CurrentRoom=0;ActiveDungeon=null;Won=false;destination=-1;phase=0;regroup=0;ResetRescue();roomEntry.Clear();
         World=new WorldCampaign(Config,DifficultyIndex);
         World.StartTownDeparture(this);
         Note($"已进入{Config.Difficulties[DifficultyIndex].Name} · {Config.Chapters[ChapterIndex].Name}");

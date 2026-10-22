@@ -29,6 +29,9 @@ public sealed class SessionSnapshot
     public string Status="", ActiveDungeonId="";
     public List<Actor> ReserveHeroes=new();public string[] PendingFormation=Array.Empty<string>();public int FormationCapacityFloor;
     public List<Actor> Heroes=new();
+    /// <summary>玩家侧独立召唤物；ID 追加在当前房怪物之后，正式检查点按进房快照恢复。</summary>
+    public List<Actor> Summons=new();
+    public List<Actor> RoomEntrySummons=new();
     public List<Floor> Floors=new();
     public List<InventoryEntry> Inventory=new();
     public List<string> Log=new();
@@ -89,7 +92,7 @@ public sealed partial class GameSession
         Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=2,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
-        ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Floors=Floors,
+        ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
         Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
     };
     /// <summary>正式存档只保留房间检查点。未完成战斗从进房位置重开，已领取资源与奖励标志一并保留。</summary>
@@ -111,7 +114,11 @@ public sealed partial class GameSession
         }).ToList();
         s.RoomCheckpoint=true;
         bool inDungeon=s.World==null||s.World.Stage==CampaignStage.Dungeon;
-        if(inDungeon&&!s.Floors[s.FloorIndex].Rooms[s.CurrentRoom].ContentCleared)
+        bool unclearedRoom=inDungeon&&!s.Floors[s.FloorIndex].Rooms[s.CurrentRoom].ContentCleared;
+        // 未清房从进房快照恢复召唤；已清房保留存活召唤的实际 HP，死亡记录不写入正式存档。
+        s.Summons=(unclearedRoom?roomEntrySummons:Summons.Where(a=>a.Alive)).Select(a=>a.Copy()).ToList();
+        s.RoomEntrySummons=unclearedRoom?s.Summons.Select(a=>a.Copy()).ToList():new();
+        if(unclearedRoom)
         {
             for(int i=0;i<s.Heroes.Count;i++)
             {
@@ -162,13 +169,13 @@ public sealed partial class GameSession
         ValidateSnapshot(config,s);
         var game=new GameSession(config,s.Seed,s.Heroes.Select(h=>h.SpecId));
         game.RestoreChapters(s);
-        game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
+        game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.Summons.AddRange(s.Summons);game.roomEntrySummons.AddRange(s.RoomEntrySummons);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
         game.Floors=s.Floors;game.dungeonSeed=s.DungeonSeed;game.FloorIndex=s.FloorIndex;game.CurrentRoom=s.CurrentRoom;
         game.Kills=s.Kills;game.Retries=s.Retries;game.Gold=s.Gold;game.Revision=s.Revision;game.HitCount=s.HitCount;
         game.lootRandom.State=s.LootRandomState;game.Won=s.Won;game.destination=s.Destination;game.phase=s.Phase;game.regroup=s.Regroup;
         if(s.CombatRandomState!=0)game.combatRandom.State=s.CombatRandomState;
         game.roomEntryCombatState=s.RoomEntryCombatState==0?game.combatRandom.State:s.RoomEntryCombatState;game.skillState=s.SkillState;
-        foreach(var actor in game.Heroes.Concat(game.reserveHeroes).Concat(game.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
+        foreach(var actor in game.Heroes.Concat(game.Summons).Concat(game.reserveHeroes).Concat(game.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
             config.ReconcileCombatMetadata(actor);
         game.ReviveElapsed=s.ReviveElapsed;game.ReviveTarget=s.ReviveTarget<0?null:game.Heroes[s.ReviveTarget];game.Rescuer=s.Rescuer<0?null:game.Heroes[s.Rescuer];
         game.Status=s.Status;game.ActiveDungeon=s.ActiveDungeonId==""?null:config.Dungeons.Single(d=>d.Id==s.ActiveDungeonId);
@@ -209,7 +216,7 @@ public sealed partial class GameSession
         static bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y);
         Need(s.CombatVersion==2,"战斗存档版本");
         Need(s.CampaignVersion is 0 or 2,"远征存档版本");
-        Need(s.ReserveHeroes!=null&&s.PendingFormation!=null&&s.Heroes!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null,"缺少状态字段");
+        Need(s.ReserveHeroes!=null&&s.PendingFormation!=null&&s.Heroes!=null&&s.Summons!=null&&s.RoomEntrySummons!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null,"缺少状态字段");
         Need(s.Heroes!.Count is >=1 and <=5&&s.Heroes.Select(h=>h.SpecId).Distinct().Count()==s.Heroes.Count&&s.Heroes.All(h=>c.Heroes.Any(t=>t.Id==h.SpecId)),"队伍引用");
         Need(s.Gold>=0&&s.Experience>=0&&s.Kills>=0&&s.Retries>=0&&s.Revision>=0&&s.HitCount>=0&&s.LootRandomState!=0,"资源/随机源");
         Need(s.Log!.Count<=40&&s.ReviveTarget>=-1&&s.ReviveTarget<s.Heroes.Count&&s.Rescuer>=-1&&s.Rescuer<s.Heroes.Count&&Finite(s.ReviveElapsed)&&s.ReviveElapsed>=0&&s.ReviveElapsed<=c.ReviveSeconds&&Finite(s.Regroup)&&s.Regroup>=0,"行动计时");
@@ -224,17 +231,21 @@ public sealed partial class GameSession
         double AllowedMaximum(Actor actor)
         {
             if(s.SkillState?.Buffs==null||s.FloorIndex<0||s.FloorIndex>=s.Floors!.Count||s.CurrentRoom<0||s.CurrentRoom>=s.Floors[s.FloorIndex].Rooms.Count)return actor.MaxHp;
-            int index=s.Heroes.IndexOf(actor);if(index<0){int monster=s.Floors[s.FloorIndex].Rooms[s.CurrentRoom].Monsters.IndexOf(actor);if(monster<0)return actor.MaxHp;index=s.Heroes.Count+monster;}
+            var room=s.Floors[s.FloorIndex].Rooms[s.CurrentRoom];int index=s.Heroes.IndexOf(actor);
+            if(index<0){int monster=room.Monsters.IndexOf(actor);if(monster>=0)index=s.Heroes.Count+monster;else {int summon=s.Summons!.IndexOf(actor);if(summon<0)return actor.MaxHp;index=s.Heroes.Count+room.Monsters.Count+summon;}}
             var buffs=s.SkillState.Buffs.Where(b=>b.Target==index&&b.Remaining>0&&c.Skills.Buffs.ContainsKey(b.Id)).GroupBy(b=>c.Skills.Buffs[b.Id].StackGroup==""?b.Id:c.Skills.Buffs[b.Id].StackGroup).SelectMany(group=>c.Skills.Buffs[group.First().Id].Stacking=="Strongest"?group.OrderByDescending(b=>c.Skills.Buffs[b.Id].StackStrength).ThenBy(b=>b.Owner).ThenBy(b=>b.Instance).Take(1):group);
             return c.Attributes.Aggregate("hp",actor.MaxHp,buffs.SelectMany(b=>c.Skills.Buffs[b.Id].Attributes).Where(a=>a.Attribute=="hp"));
         }
-        foreach(var a in s.Heroes.Concat(s.ReserveHeroes).Concat(s.Floors!.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
+        foreach(var a in s.Heroes.Concat(s.ReserveHeroes).Concat(s.Summons).Concat(s.RoomEntrySummons).Concat(s.Floors!.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
         {
             Need(Point(a.Position)&&Finite(a.Hp)&&Finite(a.MaxHp)&&Finite(a.Attack)&&Finite(a.Defense)&&Finite(a.Speed)&&Finite(a.Range)&&Finite(a.Cooldown)&&Finite(a.Timer)&&Finite(a.DropMultiplier)&&Finite(a.ValueMultiplier)&&a.MaxHp>0&&a.Hp>=0&&a.Hp<=AllowedMaximum(a)&&a.Level>0&&a.Attack>=0&&a.Defense>=0&&a.Speed>0&&a.Range>0&&a.Cooldown>0&&a.Timer>=0&&a.DropMultiplier>=0&&a.ValueMultiplier>0,"角色属性");
             Need(a.Experience>=0&&a.ExperienceFraction is >=0 and <100,"角色经验无效");
             Need(a.Battle!=null&&a.SkillIds!=null&&a.SkillLevels!=null,"战斗属性/技能缺失");a.Battle.Validate();
+            bool summon=a.SummonDefinitionId!="";
+            if(summon)Need(c.Skills.Summons.ContainsKey(a.SummonDefinitionId)&&a.SummonOwner>=0&&a.SummonOwner<s.Heroes.Count&&s.Heroes[a.SummonOwner].SkillIds.Contains(a.SummonSkill),"召唤定义/主人引用无效");
+            else Need(a.SummonOwner<0&&a.SummonSkill=="","非召唤物不得携带召唤来源");
             Need(a.ActiveAuraSkills!=null&&a.ActiveAuraSkills.Count<=a.SkillIds.Length&&a.ActiveAuraSkills.Distinct().Count()==a.ActiveAuraSkills.Count&&a.ActiveAuraSkills.All(id=>a.SkillIds.Contains(id)&&c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Effects.Any(e=>c.Skills.Effects[e].Kind=="MaintainAura")),"激活光环缺失、重复或未装配");
-            Need(a.Level<=(s.Heroes.Contains(a)||s.ReserveHeroes.Contains(a)?c.MaxHeroLevel:c.MaxMonsterLevel),"等级超过等级表表尾；请补齐配置，禁止静默降级");
+            Need(a.Level<=(s.Heroes.Contains(a)||s.ReserveHeroes.Contains(a)||summon?c.MaxHeroLevel:c.MaxMonsterLevel),"等级超过等级表表尾；请补齐配置，禁止静默降级");
             ValidateTalents(c,a);
             Need(a.SkillIds.Distinct().Count()==a.SkillIds.Length&&a.SkillIds.All(id=>c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Kind=="ActiveSkill")&&a.SkillLevels.All(p=>c.Skills.Abilities.TryGetValue(p.Key,out var ability)&&p.Value>=1&&p.Value<=ability.MaxLevel),"装备技能/等级引用");
         }
