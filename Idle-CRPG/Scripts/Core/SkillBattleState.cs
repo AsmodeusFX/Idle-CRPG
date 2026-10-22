@@ -18,16 +18,25 @@ public sealed class SkillActionState
     public int Owner,Target;
     public string Active="";
     public double Windup,Recovery;
+    // 退让独立计时；请求等到动作安全边界，不取消已提交技能。
+    public double RetreatCooldown;
+    public int RetreatThreat=-1;
+    public bool RetreatMoving;
+    public Vector2 RetreatGoal;
     public Dictionary<string,double> Cooldowns=new();
 }
 public sealed class SkillAttackSnapshot
 {
     public double Attack;
+    // 与攻方属性同时快照，弹道飞行中升级不改旧攻击的护甲K等级。
+    public int Level=1;
     public BattleAttributes Attributes=new();
 }
 public sealed class SkillBuffState
 {
     public long Instance;
+    public long OriginCast;
+    public string AuraSkill="";
     public string Id="",Ability="";
     public int Owner,Target;
     public double Remaining,Periodic,Value,Coefficient;
@@ -36,6 +45,7 @@ public sealed class SkillBuffState
 public sealed class SkillFlightState
 {
     public long Id;
+    public long OriginCast;
     public string Skill="",Effect="",Form="",Attribution="";
     public int Owner,Target,Depth,Reacquired;
     public Vector2 Position,Previous,Start,TargetPoint,Direction;
@@ -54,5 +64,7 @@ public sealed class SkillEffectWork
     public int Owner,Target,Depth;
     public double Coefficient=1;
     public long BuffInstance;
+    public long OriginCast;
+    public SkillAttackSnapshot? Snapshot;
     public SkillFlightState? Flight;
 }

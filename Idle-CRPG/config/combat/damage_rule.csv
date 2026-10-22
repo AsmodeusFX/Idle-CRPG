@@ -1,3 +1,4 @@
 id,value
-minimum_base_damage,1
 base_critical_multiplier,1.5
+resistance_minimum,-1
+resistance_maximum,0.75

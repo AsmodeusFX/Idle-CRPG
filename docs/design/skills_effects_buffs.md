@@ -1,5 +1,7 @@
 # Skill / Effect / Buff / Trigger 迁移运行规则
 
+2026-10-22技能BD补充：[G01～G06规则](skill_bd_interactions.md)及[新技能迁移计划](../technical/skill_bd_plan.md)已归档。下文15技能与现有职业原型是当前实现及旧回归基线；旧CSV已有TEST_ONLY快照，尚未退出生产引用。新技能单独设计迁移，不默认沿用旧ID/数值/树；多光环、多诅咒、Proc资格、独立召唤及尸体消费存在已审计缺口，不能因本文有Buff/SpawnEntity即视为已支持。现有唯一伤害、Buff与队列继续复用。
+
 更新及确认：2026-10-18。源为 `E:/Git/Idle-Diablo` 当前代码和 `idle-diablo/config/skill/`，以实际代码和本次用户裁定优先于源文档中的过时说明。来源哈希与差异见 `docs/reviews/2026-10-18/combat_skill_migration.md`。
 
 ## 1. 投放范围

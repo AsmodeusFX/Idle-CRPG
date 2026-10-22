@@ -1,5 +1,7 @@
 # 文档索引
 
+- [技能BD交互规则](design/skill_bd_interactions.md)：G01～G06；[公式提案来源](design/combat_formula_vnext_proposal.md)、[迁移计划](technical/skill_bd_plan.md)、[用户裁决](reviews/2026-10-22_skill_bd/04_approval_requests.md)、[执行与验收](reviews/2026-10-22_skill_bd/05_execution.md)。新公式已切换，A阶段Core QA完成；旧数据TEST_ONLY归档，新技能正式树迁移尚未执行。
+
 - [战斗索敌、接敌容量与入场展开](design/combat_targeting.md)：稳定锁敌、溢出重评、无单位推挤及有怪房AI警觉；[字段合同](technical/targeting_config.md)、[来源与执行记录](reviews/2026-10-22_combat_targeting/Execution_Record.md)。
 
 - [五章正式配置与V0.2补丁](design/campaign_five_acts.md)：五章地图、并行AND、来源与用户规则冲突裁定、迁移及原型边界。
@@ -17,7 +19,7 @@
 
 - [难度、章节与独立地图](design/world_chapters.md)：3档难度、5章地图、顺序解锁、自动推进及旧档兼容。
 
-- [三阶段战斗公式](design/combat_formula.md)：DMG1/2/3、事件瀑布、五类乘区及手算验收。
+- [现行三阶段战斗公式](design/combat_formula.md)：攻击者等级护甲K、四元素抗性、加算4+1、共享事件的混合伤害及手算验收。
 - [技能、效果与增益](design/skills_effects_buffs.md)：15技能迁移、二维/20Hz适配、生命周期与保存边界。
 - [属性注册与等级成长](design/attributes_levels.md)：统一属性目录、英雄/怪物等级表、表尾上限。
 - [战斗配置字段](technical/combat_config.md)：属性、等级及Skill/Effect/Buff相关CSV合同。

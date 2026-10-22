@@ -25,6 +25,31 @@ public static class CombatTargetingChecks
             return g;
         }
         void Tick(GameSession g,int n=1){for(int t=0;t<n;t++)g.Tick(.05f);}
+        // 真实近战伤害提交请求，下一安全步才移动；CD、锁定与完整快照均独立保留。
+        var retreatGame=Battle("mage");var retreatRoom=retreatGame.Floor.Rooms[retreatGame.CurrentRoom];
+        var rear=retreatGame.Heroes[0];rear.Position=retreatRoom.Center;rear.Speed=2;
+        foreach(var enemy in retreatRoom.Monsters)enemy.Position=retreatRoom.Center-Vector2.UnitX;
+        retreatRoom.Monsters[0].Timer=0;retreatRoom.Monsters[0].Attack=10;
+        Tick(retreatGame);var retreatAction=retreatGame.Capture().SkillState.Actions.Single(a=>a.Owner==0);
+        Need(retreatAction.RetreatThreat>=0&&rear.Position==retreatRoom.Center,"退让应由真实受击请求而非立即传送");
+        retreatAction.Recovery=.15;Tick(retreatGame);Need(rear.Position==retreatRoom.Center,"恢复期间不得退让");
+        Tick(retreatGame,4);Need(rear.Position.X>retreatRoom.Center.X&&retreatAction.RetreatCooldown>0,"安全边界后应远离近战威胁");
+        Need(retreatGame.MonsterTargets.All(l=>l.Target==0),"退让不改敌方锁定");
+        var retreatCopy=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=retreatGame.Capture()})).Session!);
+        Tick(retreatGame,20);Tick(retreatCopy,20);
+        Need(SaveStore.Encode(new(){Session=retreatGame.Capture()})==SaveStore.Encode(new(){Session=retreatCopy.Capture()}),"退让中快照续行不一致");
+        Need(!retreatAction.RetreatMoving&&Math.Abs(rear.Position.X-retreatRoom.Center.X-1.2f)<.001,"退让距离及结束恢复");
+        Need(retreatGame.CaptureProgress().SkillState.Actions.Count==0,"正式存档不得保存退让现场");
+        retreatRoom.Monsters[0].Timer=0;Tick(retreatGame);
+        Need(retreatAction.RetreatThreat==-1&&!retreatAction.RetreatMoving,"CD期间再次受击不得触发退让");
+        var rangedHit=Battle("mage");var rangedRoom=rangedHit.Floor.Rooms[rangedHit.CurrentRoom];
+        rangedRoom.Monsters[0].Ranged=true;rangedRoom.Monsters[0].Timer=0;rangedRoom.Monsters[0].Attack=10;Tick(rangedHit,2);
+        Need(rangedHit.Capture().SkillState.Actions.All(a=>a.Owner!=0||a.RetreatThreat==-1&&!a.RetreatMoving),"远程伤害不得触发退让");
+        var blocked=Battle("mage");var blockedRoom=blocked.Floor.Rooms[blocked.CurrentRoom];var blockedHero=blocked.Heroes[0];
+        blockedHero.Position=blockedRoom.Center+new Vector2(blockedRoom.HalfWidth-.3f,0);
+        foreach(var enemy in blockedRoom.Monsters)enemy.Position=blockedHero.Position-Vector2.UnitX;
+        blockedRoom.Monsters[0].Timer=0;blockedRoom.Monsters[0].Attack=10;Tick(blocked,2);
+        Need(blocked.Capture().SkillState.Actions.Single(a=>a.Owner==0).RetreatCooldown==0,"墙边无完整退让空间不得消耗CD");
         MonsterTargetLock[] Locks(GameSession g)=>g.Capture().SkillState.Targeting.Locks.ToArray();
         var g=Battle("warrior","mage");var room=g.Floor.Rooms[g.CurrentRoom];
         g.Heroes[1].Position=room.Center+new Vector2(room.HalfWidth+5,0);Tick(g);

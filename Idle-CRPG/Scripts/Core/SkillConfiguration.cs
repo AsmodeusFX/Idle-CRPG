@@ -8,10 +8,10 @@ namespace IdleCrpg.Core;
 
 public enum DamageType { Physical,Fire,Cold,Lightning,Poison }
 /// <summary>动作定义与运行状态分离；所有时间轴均为本项目 20Hz 逻辑 Tick。</summary>
-public record SkillDefinition(string Id,string Kind,int Cooldown,int Windup,int Recovery,double Coefficient,float Range,string[] Effects,string Name);
-public record EffectDefinition(string Id,string Kind,DamageType DamageType,double Share,string BuffId,string MechanicId,string Impact,float Speed,float Extent,string[] ResolveEffects,int Lifetime);
+public record SkillDefinition(string Id,string Kind,int Cooldown,int Windup,int Recovery,double Coefficient,float Range,string[] Effects,string Name,string TargetPolicy="enemy",string Condition="");
+public record EffectDefinition(string Id,string Kind,DamageType DamageType,double Share,string BuffId,string MechanicId,string Impact,float Speed,float Extent,string[] ResolveEffects,int Lifetime,DamagePortion[]? Portions=null,int ProjectileCount=1,float SpreadDegrees=0);
 public record BuffAttributeSpec(string Attribute,string Operation,double Value);
-public record BuffDefinition(string Id,int Duration,string Stacking,BuffAttributeSpec[] Attributes,string Periodic,int Interval,string[] Triggers,string Mechanic,double Value,double Extra,string Target);
+public record BuffDefinition(string Id,int Duration,string Stacking,BuffAttributeSpec[] Attributes,string Periodic,int Interval,string[] Triggers,string Mechanic,double Value,double Extra,string Target,string StackGroup="",double StackStrength=0);
 public record TriggerDefinition(string Id,string Event,string Effect,string OwnerBuff,string Filter);
 public record AbilityDefinition(string Id,string Form,string Targeting,string Hits,double Root,int Level,int MaxLevel,string[] Effects,string[] Buffs);
 /// <summary>迁移 Idle-Diablo AbilityEffect 的机制参数；距离与速度在加载时从原像素统一换算为世界单位。</summary>
@@ -33,9 +33,9 @@ public sealed class SkillConfiguration
     public int MaxPending { get; private set; }
     public float CollisionRadius { get; private set; }
     public double Setting(string id)=>Settings[id];
-    private static readonly string[] SkillColumns="id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id".Split(',');
-    private static readonly string[] EffectColumns="id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id".Split(',');
-    private static readonly string[] BuffColumns="id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target".Split(',');
+    private static readonly string[] SkillColumns="id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id,target_policy,cast_condition".Split(',');
+    private static readonly string[] EffectColumns="id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees".Split(',');
+    private static readonly string[] BuffColumns="id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target,stack_group,stack_strength".Split(',');
     private static readonly string[] AbilityEffectColumns="id,name,effect_type,condition,condition_value,power,skill_flat,duration,delay,tick_interval,range,trajectory,projectile_count,hover_time,arc_min,arc_max,speed,spread,volley_interval,volley_jitter,spawn_jitter,pierce_chance,aoe_radius,aoe_all,band,knockback,gather,buff_id".Split(',');
     public static SkillConfiguration Load(string directory,FightAttributeCatalog? attributes=null)
     {
@@ -52,7 +52,8 @@ public sealed class SkillConfiguration
         if(pixels<=0||c.Setting("skill_level_bonus")<0||c.Setting("self_buff_heal_fraction") is <0 or >1||c.Setting("buff_cooldown_per_level")<0||c.Setting("buff_cooldown_floor_ratio")<1||c.Setting("mirror_delay")<0||c.Setting("fallback_radius")<0||c.Setting("cooldown_reduction_cap")<0||c.Setting("max_flights")<1||c.Setting("max_flights")%1!=0||c.Setting("max_reacquire")<0||c.Setting("max_reacquire")%1!=0)throw new InvalidDataException("Ability 设置无效");
         foreach(var r in Table("skill",SkillColumns).Rows)
         {
-            var def=new SkillDefinition(r.Id,r.Required("kind"),r.Integer("cooldown_ticks"),r.Integer("windup_ticks"),r.Integer("recovery_ticks"),r.Number("coefficient"),(float)r.Number("range"),r.List("effect_ids"),r.Required("name"));
+            var def=new SkillDefinition(r.Id,r.Required("kind"),r.Integer("cooldown_ticks"),r.Integer("windup_ticks"),r.Integer("recovery_ticks"),r.Number("coefficient"),(float)r.Number("range"),r.List("effect_ids"),r.Required("name"),r.Required("target_policy"),r["cast_condition"]);
+            if(def.TargetPolicy is not ("enemy" or "self" or "ally_lowest_hp")||def.Condition is not ("" or "nearby_melee" or "missing_buff"))throw r.Error("target_policy","技能目标或释放条件无效");
             if(def.Kind is not ("BasicAttack" or "ActiveSkill")||def.Cooldown<1||def.Windup<0||def.Recovery<0||def.Coefficient<0||def.Range<=0||def.Effects.Length==0)throw r.Error("kind","技能时间轴或效果无效");
             c.Skills.Add(def.Id,def);
         }
@@ -60,16 +61,35 @@ public sealed class SkillConfiguration
         {
             string kind=r.Required("kind");
             string[] allowed=kind switch {
-                "Damage"=>new[]{"damage_type","share"},"ApplyBuff"=>new[]{"buff_id"},
-                "SpawnProjectile"=>new[]{"extent","speed","impact_effect","behavior","spawn_tick"},
+                "Damage"=>new[]{"damage_type","share","damage_parts","extent"},"ApplyBuff"=>new[]{"buff_id","extent"},
+                "Heal"=>new[]{"share"},"MaintainAura"=>new[]{"buff_id","extent"},
+                "SpawnProjectile"=>new[]{"extent","speed","impact_effect","behavior","spawn_tick","projectile_count","spread_degrees"},
                 "SpawnEntity"=>new[]{"entity_kind","lifetime_ticks","resolve_effect_ids"},
                 "AbilityCast" or "AbilityAttack" or "AbilityDot" or "AbilityCooldown" or "AbilityMirror"=>new[]{"mechanic_id"},
                 _=>throw r.Error("kind","未实现的效果类型")};
             foreach(string column in EffectColumns.Skip(3))if(!allowed.Contains(column)&&r[column]!="")throw r.Error(column,"字段不适用于此效果类型");
             if(kind=="SpawnProjectile"&&(r["behavior"]!="HitAllOnPathThenExpire"||r["spawn_tick"]!="HoldOnSpawnTick"))throw r.Error("behavior","未实现的弹道策略");
             DamageType damage=kind=="Damage"?r.Enum<DamageType>("damage_type"):DamageType.Physical;
-            var def=new EffectDefinition(r.Id,kind,damage,kind=="Damage"?r.Number("share"):0,r["buff_id"],r["mechanic_id"],r["impact_effect"],kind=="SpawnProjectile"?(float)r.Number("speed"):0,kind=="SpawnProjectile"?(float)r.Number("extent"):0,r.List("resolve_effect_ids"),kind=="SpawnEntity"?r.Integer("lifetime_ticks"):0);
+            var def=new EffectDefinition(r.Id,kind,damage,kind is "Damage" or "Heal"?r.Number("share"):0,r["buff_id"],r["mechanic_id"],r["impact_effect"],kind=="SpawnProjectile"?(float)r.Number("speed"):0,r["extent"]!=""?(float)r.Number("extent"):0,r.List("resolve_effect_ids"),kind=="SpawnEntity"?r.Integer("lifetime_ticks"):0);
+            if(kind=="Damage"&&r["damage_parts"]!="")
+            {
+                var parts=r.List("damage_parts").Select(value=>
+                {
+                    var pair=value.Split(':');
+                    if(pair.Length!=2||!Enum.TryParse<DamageType>(pair[0],out var type)||!Enum.IsDefined(type)||!double.TryParse(pair[1],NumberStyles.Float,CultureInfo.InvariantCulture,out double weight)||!double.IsFinite(weight)||weight<0)throw r.Error("damage_parts","分量须为合法伤害类型:非负权重");
+                    return new DamagePortion(type,weight);
+                }).ToArray();
+                if(parts.Length is <1 or >5||parts.Select(p=>p.Type).Distinct().Count()!=parts.Length||Math.Abs(parts.Sum(p=>p.Weight)-1)>.000001||parts[0].Type!=damage)throw r.Error("damage_parts","分量须类型唯一、合计1，首项与damage_type一致");
+                def=def with {Portions=parts};
+            }
             if(def.Share<0||kind=="SpawnProjectile"&&(def.Speed<=0||def.Extent<0)||kind=="SpawnEntity"&&def.Lifetime<1)throw r.Error("kind","效果参数无效");
+            if(!float.IsFinite(def.Extent)||def.Extent<0||kind=="Heal"&&def.Share>1||kind=="MaintainAura"&&def.Extent<=0)throw r.Error("extent","效果范围/治疗比例无效");
+            if(kind=="SpawnProjectile")
+            {
+                int count=r.Integer("projectile_count");float spread=(float)r.Number("spread_degrees");
+                if(count is <1 or >64||!float.IsFinite(spread)||spread<0||spread>180||count==1&&spread!=0)throw r.Error("projectile_count","扇形弹数1～64、夹角0～180度；单发夹角须为0");
+                def=def with {ProjectileCount=count,SpreadDegrees=spread};
+            }
             c.Effects.Add(def.Id,def);
         }
         foreach(var r in Table("buff",BuffColumns).Rows)
@@ -81,8 +101,8 @@ public sealed class SkillConfiguration
                 attributes?.ValidateContribution(new(parts[0],parts[1],value));
                 return new BuffAttributeSpec(parts[0],parts[1],value);
             }).ToArray();
-            var def=new BuffDefinition(r.Id,r.Integer("duration_ticks"),r.Required("stacking_policy"),attrs,r["periodic_effect"],r["periodic_interval_ticks"]==""?0:r.Integer("periodic_interval_ticks"),r.List("trigger_ids"),r["mechanic"],r["value"]==""?0:r.Number("value"),r["extra"]==""?0:r.Number("extra"),r["target"]);
-            if(def.Duration<1||def.Stacking is not ("NonStacking" or "RefreshDuration")||def.Periodic!=""&&def.Interval<1||def.Periodic==""&&def.Interval!=0||!new[]{"","haste","shield","dot","chill","stun","crit_reduce","mirror"}.Contains(def.Mechanic)||def.Target is not ("" or "self" or "enemy")||def.Value<0||def.Extra<0||def.Mechanic=="chill"&&def.Value>1)throw r.Error("mechanic","Buff 生命周期或机制无效");
+            var def=new BuffDefinition(r.Id,r.Integer("duration_ticks"),r.Required("stacking_policy"),attrs,r["periodic_effect"],r["periodic_interval_ticks"]==""?0:r.Integer("periodic_interval_ticks"),r.List("trigger_ids"),r["mechanic"],r["value"]==""?0:r.Number("value"),r["extra"]==""?0:r.Number("extra"),r["target"],r["stack_group"],r["stack_strength"]==""?0:r.Number("stack_strength"));
+            if(def.Duration<1||def.Stacking is not ("NonStacking" or "RefreshDuration" or "Strongest")||def.Periodic!=""&&def.Interval<1||def.Periodic==""&&def.Interval!=0||!new[]{"","haste","shield","dot","chill","stun","crit_reduce","mirror","forced"}.Contains(def.Mechanic)||def.Target is not ("" or "self" or "enemy" or "ally")||def.Value<0||def.Extra<0||def.StackStrength<0||def.Mechanic=="chill"&&def.Value>1||def.Stacking!="Strongest"&&(def.StackGroup!=""||r["stack_strength"]!=""))throw r.Error("mechanic","Buff 生命周期或机制无效");
             c.Buffs.Add(def.Id,def);
         }
         foreach(var r in Table("trigger","id","event_kind","effect_id","owner_buff","origin_filter").Rows)
@@ -110,13 +130,20 @@ public sealed class SkillConfiguration
         void Need(bool ok,string value){if(!ok)throw new InvalidDataException("技能配置引用或机制不匹配："+value);}
         Need(Skills.ContainsKey("basic_player")&&Skills.ContainsKey("basic_monster"),"缺少普攻定义");
         foreach(var s in Skills.Values)foreach(var id in s.Effects)Need(Effects.ContainsKey(id),s.Id+" → "+id);
+        foreach(var group in Buffs.Values.GroupBy(b=>b.StackGroup==""?b.Id:b.StackGroup))Need(group.Select(b=>b.Stacking).Distinct().Count()==1,group.Key+"同组Buff策略冲突");
+        foreach(var skill in Skills.Values)
+        {
+            if(skill.Condition=="missing_buff")Need(skill.Effects.Any(id=>Effects[id].Kind=="ApplyBuff"),skill.Id+"缺少待检查Buff");
+            if(skill.TargetPolicy=="self")Need(!skill.Effects.Any(id=>Effects[id].Kind=="Damage"&&Effects[id].Extent<=0),skill.Id+"自身中心伤害必须声明范围");
+        }
         foreach(var a in Abilities.Values){Need(Skills.ContainsKey(a.Id),a.Id);foreach(var id in a.Effects)Need(AbilityEffects.ContainsKey(id),id);foreach(var id in a.Buffs)Need(Buffs.ContainsKey(id),id);if(a.Root>0)Need(Buffs.TryGetValue("buff_stun",out var stun)&&stun.Mechanic=="stun",a.Id);}
         foreach(var fx in AbilityEffects.Values)if(fx.BuffId!="")Need(Buffs.ContainsKey(fx.BuffId),fx.Id);
         foreach(var b in Buffs.Values){if(b.Periodic!="")Need(Effects.ContainsKey(b.Periodic),b.Id);foreach(var id in b.Triggers)Need(Triggers.TryGetValue(id,out var t)&&t.OwnerBuff==b.Id,b.Id);}
         foreach(var t in Triggers.Values)Need(Effects.ContainsKey(t.Effect)&&Buffs.TryGetValue(t.OwnerBuff,out var b)&&b.Triggers.Contains(t.Id),t.Id);
         foreach(var e in Effects.Values)
         {
-            if(e.Kind=="ApplyBuff")Need(Buffs.ContainsKey(e.BuffId),e.Id);
+            if(e.Kind is "ApplyBuff" or "MaintainAura")Need(Buffs.ContainsKey(e.BuffId),e.Id);
+            if(e.Kind=="MaintainAura")Need(Buffs[e.BuffId].Stacking=="Strongest"&&Buffs[e.BuffId].Target is "ally" or "enemy",e.Id+"光环须声明独立来源择强及友敌范围");
             if(e.Kind=="SpawnProjectile")Need(Effects.ContainsKey(e.Impact),e.Id);
             foreach(var id in e.ResolveEffects)Need(Effects.ContainsKey(id),e.Id);
             if(e.Kind=="AbilityCast")Need(Abilities.ContainsKey(e.MechanicId),e.Id);
@@ -130,7 +157,7 @@ public sealed class SkillConfiguration
             if(!visited.Add(id))return;active.Add(id);
             if(id.StartsWith("e:"))
             {
-                var e=Effects[id[2..]];if(e.Kind=="ApplyBuff")Visit("b:"+e.BuffId);
+                var e=Effects[id[2..]];if(e.Kind is "ApplyBuff" or "MaintainAura")Visit("b:"+e.BuffId);
                 if(e.Kind=="SpawnProjectile")Visit("e:"+e.Impact);foreach(var next in e.ResolveEffects)Visit("e:"+next);
                 if(e.Kind=="AbilityCast"){var a=Abilities[e.MechanicId];foreach(var buff in a.Buffs)Visit("b:"+buff);foreach(var fx in a.Effects)if(AbilityEffects[fx].BuffId!="")Visit("b:"+AbilityEffects[fx].BuffId);}
             }

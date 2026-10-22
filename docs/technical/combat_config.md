@@ -12,10 +12,15 @@
 | combat/fightattr_rules.csv | id引用属性；baseline等于default_value；min_value/max_value允许空，非空为有限值且下界≤基线≤上界；必须与注册表一一对应 |
 | hero/herolevel.csv | id从1连续有序；exp正整数；attack_bonus、hp_bonus非负有限累计加值、不递减，1级为0 |
 | monster/monsterlevel.csv | id从1连续有序；hp_multiplier、attack_multiplier正有限、不递减，1级为1 |
-| combat/damage_rule.csv | id,value；minimum_base_damage当前1；base_critical_multiplier当前1.5 |
+| combat/damage_rule.csv | 恰有3条id,value：base_critical_multiplier原型1.5（≥1）、resistance_minimum原型-1（<0）、resistance_maximum原型0.75（≥0且<1）；无minimum_base_damage |
+| combat/armor_curve.csv | id为严格递增的攻击者等级控制点、k为正有限且不递减；从1级覆盖英雄/怪物最高等级，点间线性插值。原型两点1→5、10000→10004，即K(L)=L+4；缺表/不覆盖/非法K拒绝 |
 | combat/unit_attributes.csv | id模板ID；side=hero/monster；dodge_rate、crit_rate、crit_damage、block_rate、block_reduction为已注册属性值；留空使用规则基线；ranged为0/1。每个模板必须有对应配置 |
 
 注册表规则是实际校验输入，概率还必须满足伤害模型数学范围。基础模板属性也通过属性目录校验。等级两表末行决定各自最高等级。spawn_rule 不再包含 hp_per_level、attack_per_level、defense_per_level。
+
+2026-10-22公式迁移：unit_attributes新增必填列fire_resistance/cold_resistance/lightning_resistance/poison_resistance，当前均0，允许负值且必须有限；同名属性为add聚合，基线0，属性注册不提前截断，伤害解析合并全部来源后按damage_rule截断一次。旧damage_multiplier从正式注册表替换为power_damage_pct，add聚合、基线0、允许add贡献，数值为额外比例（+50%填0.5）；下界-1用于有限减益及旧小于1倍率兼容，最终P=1+Σ贡献不得为负。旧字段及multiply输入只保留在TEST_ONLY归档，不同时维持两个生产威能字段。
+
+DamageInput可携带最多五个类型唯一的DamagePortion(Type,Weight)，权重非负且合计1；AttackerLevel必须落在K曲线覆盖范围。DamageBreakdown.Components记录逐分量防御与伤害，FinalDamage合计后一次应用HP。SkillAttackSnapshot新增Level；CombatVersion=2负责旧倍率语义及缺等级快照的一次性转换，正式存档版本仍为4，房间重开边界不变。
 
 ## Skill / Effect / Buff / Trigger
 
@@ -27,6 +32,12 @@
 | skill/trigger.csv | id,event_kind,effect_id,owner_buff,origin_filter；引用有效，owner_buff与Buff.trigger_ids双向一致；事件和过滤仅允许已实现组合 |
 
 Effect 的 kind 决定允许字段：Damage使用damage_type/share；ApplyBuff使用buff_id；SpawnProjectile使用extent/speed/impact_effect/behavior/spawn_tick；SpawnEntity使用entity_kind/lifetime_ticks/resolve_effect_ids；Ability路由使用mechanic_id。无关字段非空会拒绝，避免配置看似有效却无作用。Effect/Buff/Trigger引用缺失、执行环均拒绝。
+
+Effect新增必填表头damage_parts，仅Damage允许非空，格式如Physical:0.6;Fire:0.4。类型枚举严格匹配且不重复，权重有限非负且合计1，首类型与damage_type一致；空表示原单类型。所有生产旧行已补空列，归档副本保留原schema。该字段只改变单次伤害实例的分量，不新增Effect/奖励入口。
+
+SpawnProjectile新增必填表头projectile_count（整数1～64）、spread_degrees（有限0～180度）；仅该kind可非空，单发夹角必须0。多发以目标方向为中轴在总夹角内等角分布；每箭自己的Hit列表只过滤本箭重复扫掠，同次施法其他箭仍可命中同目标。默认现有单发为1/0，天赋运行时生成的单发也保持1/0；5箭20度仅存在A阶段QA数据，不进入正式技能数值。
+
+SkillFlightState与SkillEffectWork新增OriginCast，正数对应本房NextId范围内的同一次施法/普攻；旧现场0表示未知来源。泛用箭携带SkillAttackSnapshot，碰撞后的Damage Work继承Snapshot/OriginCast，防止命中时重新读取已变动的攻击。该关联不等于已支持完整Proc ICD或每Cast限制。
 
 ## Ability 和机制参数
 

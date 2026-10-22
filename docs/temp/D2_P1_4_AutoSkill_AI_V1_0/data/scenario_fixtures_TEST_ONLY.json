@@ -1,0 +1,21 @@
+{
+  "notice": "Illustrative World Snapshot inputs for mapping to existing Game.Core.Tests; not current engine schema or a production config",
+  "convention": {
+    "logical_tick": "integer from Game.Core FixedTick",
+    "main_target": "Existing TargetLock; never edited by skill temporary targeting",
+    "range_legality": "input fact; actual legality is rechecked by existing Runtime",
+    "status": "All values only for isolated tests; not production thresholds"
+  },
+  "fixtures": [
+    {"id":"F01", "test":"AI01", "loadout":"L_BAR", "tick":100, "actor":{"action":"Ready","hp":200,"max_hp":200}, "nearby":{"enemy_melee_threatening_ally":0,"enemies_in_effect_area":1,"main_target_legal":true,"main_target_in_melee_range":true}, "cooldowns":{"BAR_TAUNT":"Ready","BAR_WHIRLWIND":"Ready","BAR_BASH":"Ready"}, "expected":"CastSkill BAR_BASH (taunt condition false, whirlwind group threshold injected as 2)"},
+    {"id":"F02", "test":"AI02", "loadout":"L_SOR", "tick":100, "actor":{"action":"Ready"}, "nearby":{"enemy_melee_threat_near_self":1,"enemies_in_effect_area":2,"main_target_legal":true}, "cooldowns":{"SOR_FROST_NOVA":"Cooldown","SOR_FIREBALL":"Ready","SOR_CHAIN_LIGHTNING":"Ready"}, "expected":"CastSkill SOR_FIREBALL"},
+    {"id":"F03", "test":"AI03", "loadout":"L_SOR", "tick":100, "actor":{"action":"Ready"}, "nearby":{"main_target_legal":true,"main_target_in_basic_range":true}, "cooldowns":{"SOR_FROST_NOVA":"Cooldown","SOR_FIREBALL":"Cooldown","SOR_CHAIN_LIGHTNING":"Cooldown"}, "expected":"BasicAttack"},
+    {"id":"F04", "test":"AI05", "loadout":"L_NEC", "tick":100, "actor":{"action":"Recovery"}, "expected":"Defer (zero new ActionRequests)"},
+    {"id":"F05", "test":"AI08", "loadout":"L_RAN", "tick":100, "actor":{"action":"Windup","current_skill":"RAN_GUIDED_ARROW","commit_attempt":true}, "original_target":{"alive":false,"in_world":false}, "expected":"Cancel before Commit; no cooldown, no projectile (existing S2 contract)"},
+    {"id":"F06", "test":"AI13", "loadout":"L_SOR", "tick":100, "actor":{"action":"Ready"}, "nearby":{"enemy_melee_threat_near_self":0,"enemies_in_effect_area":3,"main_target_legal":true}, "cooldowns":{"SOR_FROST_NOVA":"Ready","SOR_FIREBALL":"Ready"}, "expected":"Skip Frost Nova, CastSkill SOR_FIREBALL"},
+    {"id":"F07", "test":"AI16", "loadout":"L_PAL", "tick":100, "actor":{"action":"Ready"}, "aura_state":{"PAL_PRAYER":"Active","PAL_FANATICISM":"Active","PAL_CONVICTION":"Active"}, "expected":"Maintain all 3 independent active auras; no repeated cast spam"},
+    {"id":"F08", "test":"AI20", "loadout":"L_NEC", "tick":100, "actor":{"action":"Ready"}, "summons":{"skill":"NEC_RAISE_SKELETON","alive_count":3,"cap":3}, "expected":"SkipSummon"},
+    {"id":"F09", "test":"AI21", "loadout":"L_NEC", "tick":100, "actor":{"action":"Ready"}, "summons":{"skill":"NEC_RAISE_SKELETON","alive_count":2,"cap":3,"valid_spawn_point":true}, "cooldowns":{"NEC_RAISE_SKELETON":"Ready"}, "expected":"CastSkill NEC_RAISE_SKELETON without corpses, subject to approved priority"},
+    {"id":"F10", "test":"AI28", "loadout":"L_RAN", "tick":100, "actor":{"action":"Recovery","retreat_pending":true}, "nearby":{"melee_hit_confirmed":true,"valid_retreat_destination":true}, "expected":"Do not cast from busy action; existing retreat runtime executes at approved safe movement boundary"}
+  ]
+}

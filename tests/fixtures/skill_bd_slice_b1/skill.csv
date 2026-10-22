@@ -1,0 +1,9 @@
+id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id,target_policy,cast_condition
+QA_PRAYER,qa,ActiveSkill,100,3,3,1,4,QA_PRAYER_AURA,QA_PRAYER,,,self,
+QA_FANATICISM,qa,ActiveSkill,100,3,3,1,4,QA_FAN_AURA,QA_FANATICISM,,,self,
+QA_FAN_STRONG,qa,ActiveSkill,100,3,3,1,4,QA_FAN_STRONG_AURA,QA_FAN_STRONG,,,self,
+QA_AMPLIFY,qa,ActiveSkill,100,3,3,1,4,QA_AMPLIFY_APPLY,QA_AMPLIFY,,,enemy,missing_buff
+QA_LOWER_RESIST,qa,ActiveSkill,100,3,3,1,4,QA_LOWER_APPLY,QA_LOWER_RESIST,,,enemy,missing_buff
+QA_TAUNT,qa,ActiveSkill,100,3,3,1,4,QA_TAUNT_APPLY,QA_TAUNT,,,self,
+QA_FROST_NOVA,qa,ActiveSkill,100,3,3,1,4,QA_COLD_AOE;QA_CHILL_APPLY,QA_FROST_NOVA,,,self,nearby_melee
+QA_GUIDED_ARROW,qa,ActiveSkill,100,3,3,1,4,QA_GUIDED_CAST,QA_GUIDED_ARROW,,,enemy,

@@ -33,3 +33,7 @@
 内部Capture保留完整状态；正式CaptureProgress清空SkillState，包括锁、容量快照、入场时钟和Scope。正式Restore以已有RoomEntry位置及当前房间最近入口推导入场方向，重开警觉，不增加正式存档版本或保存怪物现场。旧缺Targeting字段按空临时态兼容；旧CombatVersion=0仍从模板初始化攻击元数据，当前完整快照保留Ranged攻击方式，避免近远程切换被模板覆盖。
 
 `MotionPresentation`只缓存本房模型偏移，房间或会话变化时清空；它不参与Core命中。QA入口`--capture --capture-targeting=intro|tank-first|rear-entry|crowd|ranged`仅构造隔离检查场景，不定义正式怪物配置。
+
+## 受击退让V0.1配置
+
+system/config.csv新增必填整数规则，范围1～100000：ranged_retreat_distance_milli=1200（千分之一世界单位）、ranged_retreat_cooldown_milli=4000（毫秒）。均为原型值。SkillActionState新增RetreatCooldown、RetreatThreat（默认-1）、RetreatMoving、RetreatGoal；内部快照拒绝非法时间、坐标及敌方引用，旧档字段缺省兼容，正式进度不保存。

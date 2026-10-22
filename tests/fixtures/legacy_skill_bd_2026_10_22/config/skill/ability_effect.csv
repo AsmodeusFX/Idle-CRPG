@@ -1,0 +1,15 @@
+id,name,effect_type,condition,condition_value,power,skill_flat,duration,delay,tick_interval,range,trajectory,projectile_count,hover_time,arc_min,arc_max,speed,spread,volley_interval,volley_jitter,spawn_jitter,pierce_chance,aoe_radius,aoe_all,band,knockback,gather,buff_id
+e_01_sword,幽魂骨矛效果,attack,,0,3.5,0,0.8,0,0,0,line_shot,1,0.12,0,0,1500,0,0,0.03,0,0,0,0,0,0,0,
+e_11_arc,追魂飞刃效果,attack,,0,1.45,0,0.9,0,0,0,arc_homing,3,0,-50,140,1200,0,0.1,0.02,0,0,0,0,0,0,0,
+e_06_rain,刀锋之雨效果,attack,,0,1.19,0,0.5,0,0,0,sky_drop,5,0.25,0,0,0,40,0.06,0.05,40,0,60,0,0,0,0,
+e_17_sweep,死亡横扫效果,attack,target_hp_below,0.3,5.24,0,3,0,0,0,line_pierce,1,0.25,0,0,900,0,0,0,0,0,0,0,0,0,0,
+e_02_meteor,陨石火雨效果,attack,,0,2.52,0,0.5,0,0.6,0,sky_drop,1,0.25,0,0,0,0,0,0,40,0,120,0,0,0,0,buff_burn
+e_12_cyclone,冰霜漩涡效果,attack,,0,2.51,0,4,0,0.6,0,,1,0,0,0,0,0,0,0,0,0,240,0,0,0,60,buff_chill
+e_07_thunder,雷霆审判效果,attack,,0,137,0,0,0.6,0,0,,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,buff_stun
+e_18_meteor,末日陨星效果,attack,,0,29.4,0,0.25,0,0,0,sky_drop,3,0.4,0,0,0,0,0.12,0.06,0,0,150,0,1200,0,0,
+e_05_wall,震荡裂地波效果,attack,,0,17.9,0,4,0,0,0,line_pierce,1,0.5,0,0,700,0,0,0,0,0,0,0,0,160,0,
+e_10_slash,灵魂收割效果,attack,target_has_state,0.3,279,0,0,0.9,0,0,,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+e_15_array,天启剑阵效果,attack,,0,41.1,0,0.5,0,0,0,sky_drop,4,1,0,0,0,420,0,0,30,0,700,1,0,0,0,
+e_guard,骨甲反击,auto_attack,,0,1.2,0,0,0,0,400,,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+e_shorten_cd,杀戮冷却返还,shorten_cooldown,,0,0,0,0,0,0,0,,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+e_mirror_cast,暗影复制,mirror_cast,,0,0,0,0,0,0,0,,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

@@ -149,6 +149,7 @@ public partial class Main : Node2D
         {var heroArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-hero="));if(heroArg!=null)captureView="heroes-"+heroArg.Substring("--qa-hero=".Length);}
         var targetingCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-targeting="));
         if(capture&&targetingCapture!=null)PrepareTargetingCapture(targetingCapture.Substring("--capture-targeting=".Length));
+        if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-bd-a"))PrepareSkillBdCapture();
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();

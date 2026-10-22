@@ -9,10 +9,10 @@ public static class AttributeLevelChecks
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("ATTRIBUTE_LEVEL_CHECK: "+why);}
         var config=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));var attrs=config.Attributes;
-        Check(attrs.Definitions.Count==attrs.Rules.Count&&attrs.Definitions.ContainsKey("dodge_rate")&&attrs.Definitions.ContainsKey("damage_multiplier"),"属性与规则没有一一注册");
+        Check(attrs.Definitions.Count==attrs.Rules.Count&&attrs.Definitions.ContainsKey("dodge_rate")&&attrs.Definitions.ContainsKey("power_damage_pct"),"属性与规则没有一一注册");
         Check(attrs.Aggregate("atk",100,new[]{new BuffAttributeSpec("atk","flat",20),new("atk","pct",.5)})==180,"基础/固定/百分比聚合");
         Check(attrs.Aggregate("crit_rate",.8,new[]{new BuffAttributeSpec("crit_rate","add",.5)})==1,"概率规则上限");
-        Check(attrs.Aggregate("damage_multiplier",1,new[]{new BuffAttributeSpec("damage_multiplier","multiply",1.5),new("damage_multiplier","multiply",2)})==3,"倍率操作没有叠乘");
+        Check(attrs.Aggregate("power_damage_pct",0,new[]{new BuffAttributeSpec("power_damage_pct","add",.5),new("power_damage_pct","add",1)})==1.5,"威能贡献没有同池加算");
         bool rejected=false;try{attrs.ValidateContribution(new("not_registered","add",1));}catch(InvalidDataException){rejected=true;}Check(rejected,"未注册属性未拒绝");
         rejected=false;try{attrs.ValidateContribution(new("atk","add",1));}catch(InvalidDataException){rejected=true;}Check(rejected,"非法属性操作未拒绝");
         var game=GameSession.CreateWorld(config,345,new[]{"warrior","ranger","mage"});

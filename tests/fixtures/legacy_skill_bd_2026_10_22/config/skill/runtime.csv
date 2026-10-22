@@ -1,0 +1,6 @@
+id,value
+ticks_per_second,20
+effect_budget,64
+max_depth,4
+max_pending,1024
+collision_radius,0.3

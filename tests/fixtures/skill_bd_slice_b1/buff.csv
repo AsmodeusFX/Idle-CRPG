@@ -1,0 +1,8 @@
+id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target,stack_group,stack_strength
+QA_PRAYER_BUFF,120,Strongest,,QA_HEAL,10,,,0,0,ally,QA_PRAYER_GROUP,1
+QA_FAN_BUFF,120,Strongest,attack_speed_pct:add:0.25,,,,haste,0.25,0,ally,QA_FAN_GROUP,1
+QA_FAN_STRONG_BUFF,120,Strongest,attack_speed_pct:add:0.5,,,,haste,0.5,0,ally,QA_FAN_GROUP,2
+QA_AMPLIFY_BUFF,200,RefreshDuration,physical_vulnerable_damage_pct:add:0.5,,,,,0,0,enemy,,
+QA_LOWER_BUFF,200,RefreshDuration,fire_resistance:add:-0.2;cold_resistance:add:-0.2;lightning_resistance:add:-0.2;poison_resistance:add:-0.2,,,,,0,0,enemy,,
+QA_TAUNT_BUFF,40,RefreshDuration,,,,,forced,0,0,enemy,,
+QA_CHILL_BUFF,40,RefreshDuration,,,,,chill,0.25,0,enemy,,

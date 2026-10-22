@@ -14,6 +14,9 @@ public static class GmChecks
             var game=new GameSession(c,123,new[]{"warrior","ranger","mage"});
             for(int i=0;i<10000&&game.CurrentRoom==0;i++)game.Tick(.05f);
             while(game.CombatEntryRemaining>0)game.Tick(.05f);
+            game.Capture().SkillState.Targeting.DeployedMask=(1<<game.Heroes.Count)-1;
+            // 隔离倍率测试，丢弃进入夹具前已经发生的受击退让请求。
+            foreach(var action in game.Capture().SkillState.Actions){action.RetreatThreat=-1;action.RetreatMoving=false;action.RetreatCooldown=0;}
             var room=game.Floor.Rooms[game.CurrentRoom];
             Check(room.Monsters.Any(),"battle fixture");
             foreach(var hero in game.Heroes){hero.Hp=hero.MaxHp=10000;hero.Attack=10;hero.Defense=0;hero.Range=100;hero.Cooldown=.05f;hero.Timer=0;hero.Position=room.Center;}
@@ -28,7 +31,7 @@ public static class GmChecks
         Check(immune.Heroes.All(h=>h.Hp==h.MaxHp)&&immune.HitCount>0,"invincibility skipped combat or lost health");
         float normalDamage=10000-normal.Floor.Rooms[normal.CurrentRoom].Monsters[0].Hp;
         float scaledDamage=10000-scaled.Floor.Rooms[scaled.CurrentRoom].Monsters[0].Hp;
-        Check(normalDamage==30&&scaledDamage==15,"effective health scale");
+        Check(normalDamage==30&&scaledDamage==15,$"effective health scale {normalDamage}/{scaledDamage}");
         immune.SetGmBattle(new());immune.Tick(.05f);
         Check(immune.Heroes.Sum(h=>h.Hp)<30000,"invincibility did not switch off");
 

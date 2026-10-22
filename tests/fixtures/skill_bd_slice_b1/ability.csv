@@ -1,0 +1,2 @@
+id,source_id,form,targeting,hits,cast_root,level,max_level,effect_ids,buff_ids
+QA_GUIDED_ARROW,QA_GUIDED_ARROW,projectile,nearest,,0,1,1,QA_GUIDED_ARC,

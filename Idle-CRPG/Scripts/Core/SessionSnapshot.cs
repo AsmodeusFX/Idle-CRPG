@@ -87,7 +87,7 @@ public sealed partial class GameSession
         CampaignVersion=2,LatestMapIndex=LatestMapIndex,ActiveBranch=ActiveBranch,BranchQueue=branchQueue.ToList(),SuspendedWorld=suspendedWorld?.Capture(),
         DifficultyIndex=DifficultyIndex,ChapterIndex=ChapterIndex,CompletedMaps=CaptureChapters(),
         Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
-        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
+        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=2,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Floors=Floors,
         Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
@@ -158,6 +158,7 @@ public sealed partial class GameSession
                     }
             }
         }
+        MigrateCombatFormula(config,s);
         ValidateSnapshot(config,s);
         var game=new GameSession(config,s.Seed,s.Heroes.Select(h=>h.SpecId));
         game.RestoreChapters(s);
@@ -168,7 +169,7 @@ public sealed partial class GameSession
         if(s.CombatRandomState!=0)game.combatRandom.State=s.CombatRandomState;
         game.roomEntryCombatState=s.RoomEntryCombatState==0?game.combatRandom.State:s.RoomEntryCombatState;game.skillState=s.SkillState;
         foreach(var actor in game.Heroes.Concat(game.reserveHeroes).Concat(game.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
-        {if(s.CombatVersion==0)config.ApplyCombatProfile(actor);else config.ReconcileCombatMetadata(actor);}
+            config.ReconcileCombatMetadata(actor);
         game.ReviveElapsed=s.ReviveElapsed;game.ReviveTarget=s.ReviveTarget<0?null:game.Heroes[s.ReviveTarget];game.Rescuer=s.Rescuer<0?null:game.Heroes[s.Rescuer];
         game.Status=s.Status;game.ActiveDungeon=s.ActiveDungeonId==""?null:config.Dungeons.Single(d=>d.Id==s.ActiveDungeonId);
         game.SpawnModifiers=s.Modifiers;game.Log.Clear();game.Log.AddRange(s.Log);
@@ -206,7 +207,7 @@ public sealed partial class GameSession
         static void Need([DoesNotReturnIf(false)] bool value,string reason) {if(!value)throw new InvalidDataException("存档无效："+reason);}
         static bool Finite(float n)=>float.IsFinite(n);
         static bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y);
-        Need(s.CombatVersion is 0 or 1,"战斗存档版本");
+        Need(s.CombatVersion==2,"战斗存档版本");
         Need(s.CampaignVersion is 0 or 2,"远征存档版本");
         Need(s.ReserveHeroes!=null&&s.PendingFormation!=null&&s.Heroes!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null,"缺少状态字段");
         Need(s.Heroes!.Count is >=1 and <=5&&s.Heroes.Select(h=>h.SpecId).Distinct().Count()==s.Heroes.Count&&s.Heroes.All(h=>c.Heroes.Any(t=>t.Id==h.SpecId)),"队伍引用");
@@ -224,13 +225,15 @@ public sealed partial class GameSession
         {
             if(s.SkillState?.Buffs==null||s.FloorIndex<0||s.FloorIndex>=s.Floors!.Count||s.CurrentRoom<0||s.CurrentRoom>=s.Floors[s.FloorIndex].Rooms.Count)return actor.MaxHp;
             int index=s.Heroes.IndexOf(actor);if(index<0){int monster=s.Floors[s.FloorIndex].Rooms[s.CurrentRoom].Monsters.IndexOf(actor);if(monster<0)return actor.MaxHp;index=s.Heroes.Count+monster;}
-            return c.Attributes.Aggregate("hp",actor.MaxHp,s.SkillState.Buffs.Where(b=>b.Target==index&&b.Remaining>0&&c.Skills.Buffs.ContainsKey(b.Id)).SelectMany(b=>c.Skills.Buffs[b.Id].Attributes).Where(a=>a.Attribute=="hp"));
+            var buffs=s.SkillState.Buffs.Where(b=>b.Target==index&&b.Remaining>0&&c.Skills.Buffs.ContainsKey(b.Id)).GroupBy(b=>c.Skills.Buffs[b.Id].StackGroup==""?b.Id:c.Skills.Buffs[b.Id].StackGroup).SelectMany(group=>c.Skills.Buffs[group.First().Id].Stacking=="Strongest"?group.OrderByDescending(b=>c.Skills.Buffs[b.Id].StackStrength).ThenBy(b=>b.Owner).ThenBy(b=>b.Instance).Take(1):group);
+            return c.Attributes.Aggregate("hp",actor.MaxHp,buffs.SelectMany(b=>c.Skills.Buffs[b.Id].Attributes).Where(a=>a.Attribute=="hp"));
         }
         foreach(var a in s.Heroes.Concat(s.ReserveHeroes).Concat(s.Floors!.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
         {
             Need(Point(a.Position)&&Finite(a.Hp)&&Finite(a.MaxHp)&&Finite(a.Attack)&&Finite(a.Defense)&&Finite(a.Speed)&&Finite(a.Range)&&Finite(a.Cooldown)&&Finite(a.Timer)&&Finite(a.DropMultiplier)&&Finite(a.ValueMultiplier)&&a.MaxHp>0&&a.Hp>=0&&a.Hp<=AllowedMaximum(a)&&a.Level>0&&a.Attack>=0&&a.Defense>=0&&a.Speed>0&&a.Range>0&&a.Cooldown>0&&a.Timer>=0&&a.DropMultiplier>=0&&a.ValueMultiplier>0,"角色属性");
             Need(a.Experience>=0&&a.ExperienceFraction is >=0 and <100,"角色经验无效");
             Need(a.Battle!=null&&a.SkillIds!=null&&a.SkillLevels!=null,"战斗属性/技能缺失");a.Battle.Validate();
+            Need(a.ActiveAuraSkills!=null&&a.ActiveAuraSkills.Count<=a.SkillIds.Length&&a.ActiveAuraSkills.Distinct().Count()==a.ActiveAuraSkills.Count&&a.ActiveAuraSkills.All(id=>a.SkillIds.Contains(id)&&c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Effects.Any(e=>c.Skills.Effects[e].Kind=="MaintainAura")),"激活光环缺失、重复或未装配");
             Need(a.Level<=(s.Heroes.Contains(a)||s.ReserveHeroes.Contains(a)?c.MaxHeroLevel:c.MaxMonsterLevel),"等级超过等级表表尾；请补齐配置，禁止静默降级");
             ValidateTalents(c,a);
             Need(a.SkillIds.Distinct().Count()==a.SkillIds.Length&&a.SkillIds.All(id=>c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Kind=="ActiveSkill")&&a.SkillLevels.All(p=>c.Skills.Abilities.TryGetValue(p.Key,out var ability)&&p.Value>=1&&p.Value<=ability.MaxLevel),"装备技能/等级引用");

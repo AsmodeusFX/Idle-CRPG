@@ -17,6 +17,8 @@ public sealed class Actor
     public bool Ranged;
     public BattleAttributes Battle=new();
     public string[] SkillIds=Array.Empty<string>();
+    /// <summary>已成功激活的持续光环；跨房保留，来源死亡或卸槽撤销，范围Buff仍属于短期战斗现场。</summary>
+    public List<string> ActiveAuraSkills=new();
     public Dictionary<string,int> SkillLevels=new();
     public Dictionary<string,int> Talents=new();
     public bool StartingSkillGranted;
@@ -26,7 +28,7 @@ public sealed class Actor
     public float DropMultiplier=1, ValueMultiplier=1;
     public bool Alive => Hp > 0;
     /// <summary>角色字段均为值类型或不可变字符串，复制后可独立用于检查点，不共享可变战斗状态。</summary>
-    public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.SkillLevels=new(SkillLevels);a.Talents=new(Talents);a.TalentBonuses=new(TalentBonuses);a.SkillSwapLocks=new(SkillSwapLocks);return a;}
+    public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.ActiveAuraSkills=new(ActiveAuraSkills);a.SkillLevels=new(SkillLevels);a.Talents=new(Talents);a.TalentBonuses=new(TalentBonuses);a.SkillSwapLocks=new(SkillSwapLocks);return a;}
     public static Actor From(UnitSpec s) => new() { SpecId=s.Id, Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
 }
 
@@ -337,12 +339,13 @@ public sealed partial class GameSession
         PrepareMonsterTargets(dt);
         foreach(var m in room.Monsters.Where(m=>m.Alive)) Act(m,Heroes,dt,room);
         DrainEffects();
-        if(room.Clear)ResetSkillRoom();
+        if(room.Clear)ResetSkillRoom();else SynchronizeAuras();
     }
     private void Act(Actor actor,List<Actor> opponents,float dt,Room room)
     {
         if(!InCombatRoom(actor)||entryMoved.Contains(actor)||Stunned(actor))return;
         actor.Timer=Math.Max(0,actor.Timer-dt*(float)(1+EffectiveAttributes(actor).AttackSpeed));
+        if(RunRetreat(actor,dt,room))return;
         if(RunActiveSkill(actor))return;
         var target=Heroes.Contains(actor)?opponents.Where(InCombatRoom).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault():OrdinaryMonsterTarget(actor);
         if(target==null||!InCombatRoom(target)) return;
@@ -359,7 +362,8 @@ public sealed partial class GameSession
         if(actor.Timer>0) return;
         actor.Timer=(float)EffectiveValue(actor,"basic_cooldown",actor.Cooldown);
         string basic=Heroes.Contains(actor)?"basic_player":"basic_monster";
-        foreach(string effect in SkillConfig.Skills[basic].Effects)Enqueue(new(){Effect=effect,Skill=basic,Owner=CombatId(actor),Target=CombatId(target),Coefficient=SkillConfig.Skills[basic].Coefficient});
+        long originCast=++skillState.NextId;
+        foreach(string effect in SkillConfig.Skills[basic].Effects)Enqueue(new(){Effect=effect,Skill=basic,Owner=CombatId(actor),Target=CombatId(target),Coefficient=SkillConfig.Skills[basic].Coefficient,OriginCast=originCast});
         DrainEffects();
     }
     internal static void Move(Actor a,Vector2 target,float dt,float? speed=null)

@@ -1,0 +1,2 @@
+id,name,effect_type,condition,condition_value,power,skill_flat,duration,delay,tick_interval,range,trajectory,projectile_count,hover_time,arc_min,arc_max,speed,spread,volley_interval,volley_jitter,spawn_jitter,pierce_chance,aoe_radius,aoe_all,band,knockback,gather,buff_id
+QA_GUIDED_ARC,QA_GUIDED_ARC,attack,,0,1.45,0,2,0,0,0,arc_homing,1,0,0,0,300,0,0,0,0,0,0,0,0,0,0,

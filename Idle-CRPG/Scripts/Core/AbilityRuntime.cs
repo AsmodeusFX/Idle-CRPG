@@ -36,7 +36,7 @@ public sealed partial class GameSession
                 var target=candidates[i%candidates.Length];var direction=Unit(target.Position-owner.Position);var side=new Vector2(-direction.Y,direction.X);
                 float jitter=(float)(combatRandom.NextDouble()*2-1)*fx.SpawnJitter;
                 Vector2 start=owner.Position+(mirror?direction*(float)(SkillConfig.Setting("mirror_offset")/SkillConfig.Setting("pixels_per_unit")):Vector2.Zero)+side*jitter;
-                var f=new SkillFlightState{Id=++skillState.NextId,Skill=ability.Id,Effect=id,Form=ability.Form,Attribution=work.Skill,Owner=work.Owner,Target=CombatId(target),Depth=work.Depth,Start=start,Position=start,Previous=start,
+                var f=new SkillFlightState{Id=++skillState.NextId,OriginCast=work.OriginCast,Skill=ability.Id,Effect=id,Form=ability.Form,Attribution=work.Skill,Owner=work.Owner,Target=CombatId(target),Depth=work.Depth,Start=start,Position=start,Previous=start,
                     TargetPoint=fx.Band>0?target.Position:selected.Position+side*((i-(fx.Count-1)/2f)*fx.Spread),Direction=direction,
                     Life=Quantize(fx.Type=="auto_attack"?SkillConfig.Setting("counter_lifetime"):fx.Duration),MaxLife=Quantize(fx.Type=="auto_attack"?SkillConfig.Setting("counter_lifetime"):fx.Duration),Hold=Quantize(fx.Hold),
                     Delay=Quantize((mirror?SkillConfig.Setting("mirror_delay"):0)+i*fx.VolleyInterval+combatRandom.NextDouble()*fx.VolleyJitter),
@@ -76,13 +76,22 @@ public sealed partial class GameSession
                 {var target=Choose(owner,original,SkillConfig.Skills[original.Id].Range);if(target!=null)EmitAbility(withValues(original.Id),original,target,true,buff.Value);}
                 break;
         }
-        SkillEffectWork withValues(string id)=>new(){Owner=buff.Owner,Target=work.Target,Skill=id,Coefficient=SkillConfig.Skills[id].Coefficient,Depth=work.Depth};
+        SkillEffectWork withValues(string id)=>new(){Owner=buff.Owner,Target=work.Target,Skill=id,Coefficient=SkillConfig.Skills[id].Coefficient,Depth=work.Depth,OriginCast=work.OriginCast};
     }
     private void SpawnGeneric(SkillEffectWork work,EffectDefinition effect)
     {
         var owner=CombatActor(work.Owner)!;var target=CombatActor(work.Target);if(target==null)return;
-        if(skillState.Flights.Count>=SkillConfig.Setting("max_flights"))throw new InvalidDataException("投射物预算超限");
-        skillState.Flights.Add(new(){Id=++skillState.NextId,Owner=work.Owner,Target=work.Target,Skill=work.Skill,Depth=work.Depth,Coefficient=work.Coefficient,Position=owner.Position,Start=owner.Position,Previous=owner.Position,TargetPoint=target.Position,Direction=Unit(target.Position-owner.Position),Form=effect.Kind=="SpawnEntity"?"entity":"generic",GenericEffect=effect.Id,GenericRadius=effect.Extent,GenericSpeed=effect.Speed,Life=effect.Kind=="SpawnEntity"?effect.Lifetime/(double)SkillConfig.TickRate:Math.Max(1d/SkillConfig.TickRate,SkillConfig.Skills[work.Skill].Range/effect.Speed)});
+        int count=effect.Kind=="SpawnEntity"?1:effect.ProjectileCount;
+        if(skillState.Flights.Count+count>SkillConfig.Setting("max_flights"))throw new InvalidDataException("投射物预算超限");
+        var forward=Unit(target.Position-owner.Position);var snapshot=work.Snapshot??AttackSnapshot(owner);
+        if(work.OriginCast==0)work.OriginCast=++skillState.NextId;
+        for(int i=0;i<count;i++)
+        {
+            // 固定角度扇形，权威二维扫掠；每箭自己的Hit列表允许同一次施法多箭命中同一目标。
+            float angle=count==1?0:(i/(float)(count-1)-.5f)*effect.SpreadDegrees*MathF.PI/180;
+            var direction=new Vector2(forward.X*MathF.Cos(angle)-forward.Y*MathF.Sin(angle),forward.X*MathF.Sin(angle)+forward.Y*MathF.Cos(angle));
+            skillState.Flights.Add(new(){Id=++skillState.NextId,OriginCast=work.OriginCast,Owner=work.Owner,Target=work.Target,Skill=work.Skill,Depth=work.Depth,Coefficient=work.Coefficient,Position=owner.Position,Start=owner.Position,Previous=owner.Position,TargetPoint=target.Position,Direction=direction,Form=effect.Kind=="SpawnEntity"?"entity":"generic",GenericEffect=effect.Id,GenericRadius=effect.Extent,GenericSpeed=effect.Speed,Snapshot=snapshot,Life=effect.Kind=="SpawnEntity"?effect.Lifetime/(double)SkillConfig.TickRate:Math.Max(1d/SkillConfig.TickRate,SkillConfig.Skills[work.Skill].Range/effect.Speed)});
+        }
     }
     private void AdvanceFlights(float dt)
     {
@@ -101,7 +110,7 @@ public sealed partial class GameSession
             {
                 var def=SkillConfig.Effects[f.GenericEffect];f.Life-=dt;
                 if(f.Form=="entity")
-                {if(f.Life<=.000001){foreach(var next in def.ResolveEffects)Enqueue(new(){Effect=next,Skill=f.Skill,Owner=f.Owner,Target=f.Target,Coefficient=f.Coefficient,Depth=f.Depth+1});f.Active=false;}continue;}
+                {if(f.Life<=.000001){foreach(var next in def.ResolveEffects)Enqueue(new(){Effect=next,Skill=f.Skill,Owner=f.Owner,Target=f.Target,Coefficient=f.Coefficient,Depth=f.Depth+1,OriginCast=f.OriginCast,Snapshot=f.Snapshot});f.Active=false;}continue;}
                 f.Previous=f.Position;f.Position+=f.Direction*f.GenericSpeed*dt;
                 if(Config.Talents.Nodes.TryGetValue(f.Skill,out var talent)&&talent.Effect=="shot")
                 {
@@ -109,13 +118,13 @@ public sealed partial class GameSession
                     if(victim is {Alive:true}&&SegmentDistance(victim.Position,f.Previous,f.Position)<=f.GenericRadius+SkillConfig.CollisionRadius)
                     {
                         var victims=talent.Radius>0?Enemies(f.Owner).Where(e=>Vector2.Distance(e.Position,victim.Position)<=talent.Radius).ToArray():new[]{victim};
-                        foreach(var hit in victims)Enqueue(new(){Effect=def.Impact,Skill=f.Skill,Owner=f.Owner,Target=CombatId(hit),Coefficient=f.Coefficient,Depth=f.Depth+1});
+                        foreach(var hit in victims)Enqueue(new(){Effect=def.Impact,Skill=f.Skill,Owner=f.Owner,Target=CombatId(hit),Coefficient=f.Coefficient,Depth=f.Depth+1,OriginCast=f.OriginCast,Snapshot=f.Snapshot});
                         f.Active=false;
                     }
                     if(f.Life<=0)f.Active=false;continue;
                 }
                 foreach(var target in Enemies(f.Owner).Where(e=>!f.Hit.Contains(CombatId(e))&&SegmentDistance(e.Position,f.Previous,f.Position)<=f.GenericRadius+SkillConfig.CollisionRadius).OrderBy(e=>Vector2.DistanceSquared(e.Position,f.Previous)).ToArray())
-                {f.Hit.Add(CombatId(target));Enqueue(new(){Effect=def.Impact,Skill=f.Skill,Owner=f.Owner,Target=CombatId(target),Coefficient=f.Coefficient,Depth=f.Depth+1});}
+                {f.Hit.Add(CombatId(target));Enqueue(new(){Effect=def.Impact,Skill=f.Skill,Owner=f.Owner,Target=CombatId(target),Coefficient=f.Coefficient,Depth=f.Depth+1,OriginCast=f.OriginCast,Snapshot=f.Snapshot});}
                 if(f.Life<=0)f.Active=false;continue;
             }
             var fx=SkillConfig.AbilityEffects[f.Effect];
@@ -177,13 +186,14 @@ public sealed partial class GameSession
     private void HitAbility(SkillFlightState flight,Actor target,double ratio=1,bool applyState=true)
     {
         var owner=CombatActor(flight.Owner);if(owner is not {Alive:true}||!target.Alive)return;
-        var fx=SkillConfig.AbilityEffects[flight.Effect];double extra=flight.PowerScale*ratio;
+        var fx=SkillConfig.AbilityEffects[flight.Effect];double extra=0;
         if(applyState)
         {
-            if(fx.Condition=="target_hp_below"&&target.Hp/CombatMaximumHp(target)<fx.ConditionValue)extra*=SkillConfig.Setting("execute_multiplier");
-            if(fx.Condition=="target_has_state"&&ActorBuffs(CombatId(target)).Any())extra*=1+fx.ConditionValue;
+            if(fx.Condition=="target_hp_below"&&target.Hp/CombatMaximumHp(target)<fx.ConditionValue)extra+=SkillConfig.Setting("execute_multiplier")-1;
+            if(fx.Condition=="target_has_state"&&ActorBuffs(CombatId(target)).Any())extra+=fx.ConditionValue;
         }
-        var result=SettleDamage(owner,target,flight.Skill,flight.Coefficient,DamageType.Physical,true,flight.Snapshot,flight.Critical,false,flight.Depth,extra);
+        // 分身强度与周期比例缩放本体；斩杀/状态条件是威能贡献，不能将二者混成独立乘区。
+        var result=SettleDamage(owner,target,flight.Skill,flight.Coefficient,DamageType.Physical,true,flight.Snapshot,flight.Critical,false,flight.Depth,extra,originCast:flight.OriginCast,baseScale:flight.PowerScale*ratio);
         if(result==null)return;
         if(!result.Dmg2.Dodged)flight.Critical??=result.Dmg2.Critical;
         if(applyState&&flight.PrimaryFirst&&!flight.CriticalNotified&&result.Dmg2.Critical){flight.CriticalNotified=true;React("OnCritical",flight.Owner,CombatId(target),flight.Skill,flight.Coefficient,flight.Depth,flight);}

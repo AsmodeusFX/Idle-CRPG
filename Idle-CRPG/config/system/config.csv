@@ -18,3 +18,5 @@ combat_entry_front_depth_milli,2800
 combat_entry_back_depth_milli,1800
 combat_entry_spread_milli,850
 dungeon_queue_spacing_milli,650
+ranged_retreat_distance_milli,1200
+ranged_retreat_cooldown_milli,4000

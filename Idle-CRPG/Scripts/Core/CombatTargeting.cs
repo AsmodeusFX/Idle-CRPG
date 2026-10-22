@@ -6,7 +6,7 @@ using System.Numerics;
 namespace IdleCrpg.Core;
 
 /// <summary>普通近战的优先预约、可攻击溢出与远程主锁；不表示受击人数上限。</summary>
-public enum MonsterLockKind { Normal, Overflow, Ranged }
+public enum MonsterLockKind { Normal, Overflow, Ranged, Forced }
 public sealed class MonsterTargetLock
 {
     public int Owner,Target;
@@ -99,8 +99,20 @@ public sealed partial class GameSession
         bool changed=state.CandidateMask!=mask||!state.Capacities.SequenceEqual(capacities);
         state.CandidateMask=mask;state.Capacities=capacities;
         int before=state.Locks.Count;
-        state.Locks.RemoveAll(l=>l.Owner<count||l.Owner>=count+room.Monsters.Count||!room.Monsters[l.Owner-count].Alive||l.Target<0||l.Target>=count||(mask&(1<<l.Target))==0||room.Monsters[l.Owner-count].Ranged!=(l.Kind==MonsterLockKind.Ranged));
+        state.Locks.RemoveAll(l=>l.Owner<count||l.Owner>=count+room.Monsters.Count||!room.Monsters[l.Owner-count].Alive||l.Target<0||l.Target>=count||(mask&(1<<l.Target))==0||l.Kind!=MonsterLockKind.Forced&&room.Monsters[l.Owner-count].Ranged!=(l.Kind==MonsterLockKind.Ranged));
         changed|=before!=state.Locks.Count;
+        int ForcedTarget(int owner)=>ActorBuffs(owner).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="forced"&&b.Owner<count&&(mask&(1<<b.Owner))!=0).OrderByDescending(b=>b.Instance).Select(b=>b.Owner).FirstOrDefault(-1);
+        foreach(var locked in state.Locks.ToArray())
+        {
+            if(busy.Contains(locked.Owner))continue;
+            int forced=ForcedTarget(locked.Owner);
+            if(forced>=0)
+            {
+                if(locked.Kind!=MonsterLockKind.Forced||locked.Target!=forced)changed=true;
+                locked.Target=forced;locked.Kind=MonsterLockKind.Forced;locked.NeedsReevaluation=false;
+            }
+            else if(locked.Kind==MonsterLockKind.Forced){state.Locks.Remove(locked);changed=true;}
+        }
         var occupied=new int[count];
         foreach(var locked in state.Locks.OrderBy(l=>l.Owner))
         {
@@ -114,6 +126,7 @@ public sealed partial class GameSession
         double interval=Config.Talents.Rule("targeting_reevaluate_milli")/1000d;
         MonsterTargetLock? Select(int owner)
         {
+            int forced=ForcedTarget(owner);if(forced>=0)return new(){Owner=owner,Target=forced,Kind=MonsterLockKind.Forced};
             var actor=room.Monsters[owner-count];int target=-1;float distance=float.MaxValue;
             bool ranged=actor.Ranged;
             if(!ranged)

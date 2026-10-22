@@ -23,7 +23,7 @@ public sealed class TalentConfiguration
         if(c.Rule("talent_leap_ticks")<1||c.Rule("talent_windup_ticks")<1)throw new InvalidDataException("技能前摇必须大于0");
         if(c.Rule("active_skill_max_slots") is <1 or >5||c.Rule("active_skill_initial_slots")>c.Rule("active_skill_max_slots"))throw new InvalidDataException("主动槽位须在0～5内");
         if(c.Rule("world_follow_spacing_milli") is <1 or >1000)throw new InvalidDataException("世界跟随间距无效");
-        foreach(string key in new[]{"targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_front_depth_milli","combat_entry_back_depth_milli","combat_entry_spread_milli","dungeon_queue_spacing_milli"})
+        foreach(string key in new[]{"ranged_retreat_distance_milli","ranged_retreat_cooldown_milli","targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_front_depth_milli","combat_entry_back_depth_milli","combat_entry_spread_milli","dungeon_queue_spacing_milli"})
             if(!c.Rules.TryGetValue(key,out int value)||value<1||value>100000)throw new InvalidDataException("索敌规则缺失或越界："+key);
         string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed".Split(',');
         foreach(var r in CsvTable.Load("skill/talent.csv",File.ReadAllText(Path.Combine(root,"skill/talent.csv")),columns).Rows)
@@ -103,7 +103,7 @@ public sealed partial class GameSession
         else if(World?.Stage!=CampaignStage.Village||World.PortalPhase!=PortalPhase.None)reason="请在城镇且传送结束后洗点";
         else if(TalentInvestment(h)==0)reason="没有需要重置的天赋";
         else if(Gold<TalentResetCost(h))reason="洗点金币不足";
-        else {Gold-=TalentResetCost(h);h.Talents.Clear();h.SkillIds=h.SkillIds.Where(id=>!Config.Talents.Nodes.ContainsKey(id)).ToArray();h.SkillSwapLocks.Clear();Note("天赋已重置："+h.Name);reason="";return true;}return false;
+        else {Gold-=TalentResetCost(h);h.Talents.Clear();h.SkillIds=h.SkillIds.Where(id=>!Config.Talents.Nodes.ContainsKey(id)).ToArray();h.SkillSwapLocks.Clear();PruneAuraActivations();Note("天赋已重置："+h.Name);reason="";return true;}return false;
     }
     /// <summary>供装备/强化来源替换贡献；同一来源幂等更新，卸下传空列表。</summary>
     public void SetTalentBonuses(string heroId,string source,IEnumerable<TalentBonus> bonuses)
@@ -120,7 +120,7 @@ public sealed partial class GameSession
         bool fighting=(World==null||World.Stage==CampaignStage.Dungeon)&&Floors.Count>0&&!Floor.Rooms[CurrentRoom].Clear;
         foreach(string id in next.Except(h.SkillIds))if(fighting)h.SkillSwapLocks[id]=Math.Max(h.SkillSwapLocks.GetValueOrDefault(id),Config.Skills.Skills[id].Cooldown/20d);
         if(Floors.Count>0){var a=skillState.Actions.FirstOrDefault(a=>a.Owner==Heroes.IndexOf(h));if(a!=null&&!next.Contains(a.Active)){a.Active="";a.Windup=0;}}
-        h.SkillIds=next;MarkChanged();reason="";return true;
+        h.SkillIds=next;PruneAuraActivations();MarkChanged();reason="";return true;
     }
     public double SkillCooldown(Actor h,string id)=>Math.Max(h.SkillSwapLocks.GetValueOrDefault(id),skillState.Actions.FirstOrDefault(a=>a.Owner==CombatId(h))?.Cooldowns.GetValueOrDefault(id)??0);
     private void AdvanceSwapLocks(float dt)
@@ -144,10 +144,10 @@ public sealed partial class GameSession
         if(Heroes.Concat(reserveHeroes).Any(h=>h.SkillIds.Count(id=>Config.Talents.Nodes.ContainsKey(id))>cap))throw new InvalidOperationException("星图变更不能锁住已装配的主动技能槽");
     }
     private static int TalentSlotCapacity(Config c,StarProgression stars)=>Math.Min(c.Talents.Rule("active_skill_max_slots"),c.Talents.Rule("active_skill_initial_slots")+(int)stars.Configuration.Nodes.Values.Where(n=>n.Attribute=="skill_slots").Sum(n=>n.ValuePerLevel*stars.Level(n.Id)));
-    private void CastTalent(Actor owner,Actor target,TalentNode n)
+    private void CastTalent(Actor owner,Actor target,TalentNode n,long originCast)
     {
         double value=TalentValue(owner,n);
-        if(n.Effect=="shot"){SpawnGeneric(new(){Owner=CombatId(owner),Target=CombatId(target),Skill=n.Id,Coefficient=value},SkillConfig.Effects[n.Id+"_projectile"]);return;}
+        if(n.Effect=="shot"){SpawnGeneric(new(){Owner=CombatId(owner),Target=CombatId(target),Skill=n.Id,Coefficient=value,OriginCast=originCast},SkillConfig.Effects[n.Id+"_projectile"]);return;}
         if(n.Effect is "shout" or "weaken")
         {
             string buff=n.Effect=="shout"?"talent_battle_shout":"talent_weaken";
@@ -156,7 +156,7 @@ public sealed partial class GameSession
             return;
         }
         var victims=n.Effect=="bash"?new[]{target}:Enemies(CombatId(owner)).Where(e=>Vector2.Distance(e.Position,n.Effect is "leap" or "nova"?target.Position:owner.Position)<=n.Radius).ToArray();
-        foreach(var victim in victims)SettleDamage(owner,victim,n.Id,value,n.DamageType,n.Effect=="nova");
+        foreach(var victim in victims)SettleDamage(owner,victim,n.Id,value,n.DamageType,n.Effect=="nova",originCast:originCast);
     }
     /// <summary>恢复时拒绝非法投入、外职业节点、越界加成和未学习装配；旧档空集合自然补齐可用点数。</summary>
     private static void ValidateTalents(Config c,Actor h)

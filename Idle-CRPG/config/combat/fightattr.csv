@@ -23,6 +23,15 @@ poison_damage_pct,??????,general_damage,ratio,add,add,0,percentage,true
 ranged_damage_pct,??????,general_damage,ratio,add,add,0,percentage,true
 boss_damage_pct,???????,general_damage,ratio,add,add,0,percentage,true
 skill_coefficient_bonus,??????,skill_damage,ratio,add,add,0,percentage,true
-damage_multiplier,??????,multiplier,ratio,multiply,multiply,1,number,true
+power_damage_pct,威能伤害加成,power,ratio,add,add,0,percentage,true
 vulnerable_damage_pct,????????,vulnerable,ratio,add,add,0,percentage,true
 engagement_capacity,接敌容量,base,number,base_flat_pct,base;flat;pct,0,integer,true
+fire_resistance,火焰抗性,defense,ratio,add,add,0,percentage,true
+cold_resistance,冰霜抗性,defense,ratio,add,add,0,percentage,true
+lightning_resistance,闪电抗性,defense,ratio,add,add,0,percentage,true
+poison_resistance,毒素抗性,defense,ratio,add,add,0,percentage,true
+physical_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true
+fire_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true
+cold_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true
+lightning_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true
+poison_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true

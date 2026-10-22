@@ -35,7 +35,7 @@ public sealed class FightAttributeCatalog
         if(rules.Count!=definitions.Count)throw new InvalidDataException("属性注册和规则表必须一一对应");
         var catalog=new FightAttributeCatalog(definitions,rules);
         foreach(var def in definitions.Values){catalog.ValidateValue(def.Id,def.Default);if(def.Default!=rules[def.Id].Baseline)throw new InvalidDataException("属性默认值与基线不一致："+def.Id);}
-        foreach(string required in new[]{"atk","hp","armor","move_speed","attack_range","basic_cooldown","dodge_rate","crit_rate","crit_damage","block_rate","block_reduction","attack_speed_pct","cooldown_reduction_pct","all_damage_pct","skill_damage_pct","basic_attack_damage_pct","physical_damage_pct","fire_damage_pct","cold_damage_pct","lightning_damage_pct","poison_damage_pct","ranged_damage_pct","boss_damage_pct","skill_coefficient_bonus","damage_multiplier","vulnerable_damage_pct"})catalog.Require(required);
+        foreach(string required in new[]{"atk","hp","armor","move_speed","attack_range","basic_cooldown","dodge_rate","crit_rate","crit_damage","block_rate","block_reduction","attack_speed_pct","cooldown_reduction_pct","all_damage_pct","skill_damage_pct","basic_attack_damage_pct","physical_damage_pct","fire_damage_pct","cold_damage_pct","lightning_damage_pct","poison_damage_pct","ranged_damage_pct","boss_damage_pct","skill_coefficient_bonus","power_damage_pct","fire_resistance","cold_resistance","lightning_resistance","poison_resistance","vulnerable_damage_pct"})catalog.Require(required);
         return catalog;
     }
     public FightAttributeDefinition Require(string id)=>Definitions.TryGetValue(id,out var definition)?definition:throw new InvalidDataException("未注册属性："+id);

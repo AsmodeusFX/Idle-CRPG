@@ -1,0 +1,11 @@
+id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees
+QA_PRAYER_AURA,qa,MaintainAura,,,1.2,,,,,QA_PRAYER_BUFF,,,,,,,
+QA_FAN_AURA,qa,MaintainAura,,,1.2,,,,,QA_FAN_BUFF,,,,,,,
+QA_FAN_STRONG_AURA,qa,MaintainAura,,,1.2,,,,,QA_FAN_STRONG_BUFF,,,,,,,
+QA_HEAL,qa,Heal,,0.1,,,,,,,,,,,,,
+QA_AMPLIFY_APPLY,qa,ApplyBuff,,,,,,,,QA_AMPLIFY_BUFF,,,,,,,
+QA_LOWER_APPLY,qa,ApplyBuff,,,,,,,,QA_LOWER_BUFF,,,,,,,
+QA_TAUNT_APPLY,qa,ApplyBuff,,,4,,,,,QA_TAUNT_BUFF,,,,,,,
+QA_COLD_AOE,qa,Damage,Cold,1,2,,,,,,,,,,,,
+QA_CHILL_APPLY,qa,ApplyBuff,,,2,,,,,QA_CHILL_BUFF,,,,,,,
+QA_GUIDED_CAST,qa,AbilityCast,,,,,,,,,,,,QA_GUIDED_ARROW,,,

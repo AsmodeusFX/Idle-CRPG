@@ -1,0 +1,5 @@
+id,prototype_id,projectile_count,spread_degrees
+QA_BAR_BASH,barb_bash,1,0
+QA_PAL_SMITE,paladin_smite,1,0
+QA_SOR_FIREBALL,mage_fireball,1,0
+QA_RAN_MULTISHOT,ranger_shot,5,20
