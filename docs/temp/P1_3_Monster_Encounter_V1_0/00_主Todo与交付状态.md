@@ -50,3 +50,6 @@ Claude Code审计：未开始/已报告+来源路径
 ```
 
 **声明：** 不能访问Claude当前运行结果或Windows Godot工程，故所有“代码与验收”均采用“未知/未提供”口径。
+
+## 2026-10-22 E1执行更新
+用户已批准E1。M01–M04/T01–T04隔离Core夹具已实现，专项检查通过、Godot工程编译通过；Godot/Mini视觉验收NOT RUN，E2/E3未实施。详见 ../../reviews/2026-10-22_monster_encounter_e1.md。未执行Git提交。

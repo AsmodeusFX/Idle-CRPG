@@ -1,5 +1,7 @@
 # 文档索引
 
+- [怪物实验遭遇E1实施与验收](reviews/2026-10-22_monster_encounter_e1.md)：M01–M04、T01–T04隔离Core夹具；实机视觉验收待完成。
+
 - [召唤物跟随与入场部署](technical/summon_follow.md)：非战斗跟随当前跑图领队（近战靠前、远程靠后，领队速度×100%追赶）、无跨房瞬移、进入有怪房间时近战/远程/支援入场展开、150%临时入场加速与战斗交接、`duration_seconds`生命周期（0永续/正数限时）与永续召唤脱战补员；归属仍绑定原召唤者，规则数值均为原型。
 - [技能BD交互规则](design/skill_bd_interactions.md)：G01～G06；[公式提案来源](design/combat_formula_vnext_proposal.md)、[迁移计划](technical/skill_bd_plan.md)、[用户裁决](reviews/2026-10-22_skill_bd/04_approval_requests.md)、[执行与验收](reviews/2026-10-22_skill_bd/05_execution.md)、[迁移前置清单](reviews/2026-10-22_skill_bd/06_migration_inventory.md)、[验收报告](reviews/2026-10-22_skill_bd/07_acceptance.md)、[旧内容退役备案](reviews/2026-10-22_skill_bd/08_retired_content.md)。新公式已切换；A、B1、B2、C1、C2、C3 Core QA完成。正式五职业技能配置已完成迁移与退役清理（38节点、16个正式主动、`skill_id`绑定、新初始技能），新数值均为原型；正式技能已有临时几何表现；M5的23个旧主动节点与M7的15个`skill_XX`及无引用配套行已从正式表删除，旧回归数据隔离在TEST_ONLY夹具，预览仅展示16个正式主动。最终平衡由用户后续统一重算，Proc ICD V1.0已实现并通过专项检查；D4已确认镜像沿用现有全局弹体预算、原生命周期及不可递归规则，见[Proc ICD审计与实现](technical/proc_icd.md)。
 

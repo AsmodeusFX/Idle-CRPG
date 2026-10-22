@@ -1,6 +1,6 @@
-﻿todo_id,title,design_status,handoff_document_status,implementation_status,next_action
+todo_id,title,design_status,handoff_document_status,implementation_status,next_action
 P0-1,角色属性与护甲公式,RULES_CONFIRMED,ARMOR_PATCH_DELIVERY_TO_VERIFY,UNKNOWN,专项迁移审计审批
-P0-2,怪物行为与实验遭遇,RULES_CONFIRMED,V1_0_DELIVERED,NOT_CONFIRMED,Claude_G0只读审计
+P0-2,怪物行为与实验遭遇,RULES_CONFIRMED,V1_0_DELIVERED,E1_CORE_PASS_VISUAL_NOT_RUN,E1视觉验收待完成_E2_E3未实施
 P0-3,五职业技能及BD,DESIGN_DRAFT_COMPLETE,FIRST_SLICE_DELIVERED_TO_CLAUDE,USER_ASSIGNED_UNKNOWN_RESULT,等待实机报告
 P1-4,角色自动技能AI,PARTIAL_RULES_CONFIRMED,FULL_EXEC_SPEC_PENDING,RETREAT_RESULT_UNKNOWN,下一份完整开发执行文件
 P1-5,装备属性接口与BD,PARTIAL_DESIGN,SPEC_PENDING,UNKNOWN,后续专项开发执行文件

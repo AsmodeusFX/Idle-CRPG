@@ -1,0 +1,5 @@
+﻿id,template,hp,attack,speed,range,cooldown,ranged
+M01,rat,120,8,2,0.7,1.1,false
+M02,rat,70,5,3,0.7,0.8,false
+M03,guard,450,18,1,0.85,2.2,false
+M04,guard,100,7,1.7,5,1.3,true
