@@ -27,6 +27,6 @@ summon_follow_distance_milli,2000
 summon_catchup_speed_pct,100
 summon_blink_distance_milli,8000
 summon_blink_delay_milli,500
-summon_entry_speed_pct,200
+summon_entry_speed_pct,150
 ranged_retreat_distance_milli,1200
 ranged_retreat_cooldown_milli,4000

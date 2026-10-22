@@ -97,32 +97,82 @@ public static class SkillBdSummonChecks
         var reopened=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=compact})).Session!);
         Need(Live(reopened).Length==1&&Math.Abs(Live(reopened)[0].Hp-20)<.0001f,"正式检查点重开丢失召唤");
 
-        // 跟随三档：正常距离内不动、超距按主人速度×1.2追赶、持续脱队0.5秒才闪现；闪现保留HP/数量且无奖励。
+        // 非战斗跟随锚点为当前跑图领队，不再跟随召唤者；超距追赶与异常闪现同样以领队为锚点。
         var trail=Battle();Summon(trail);
         var trailRoom=trail.Floor.Rooms[trail.CurrentRoom];
         foreach(var monster in trailRoom.Monsters)monster.Hp=0;
         trailRoom.ContentCleared=true;trailRoom.EventUsed=true;trailRoom.Loot.Clear();
         trailRoom.HalfWidth=trailRoom.HalfHeight=20;
-        var follower=Live(trail)[0];var trailOwner=trail.Heroes[0];
-        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(1.5f,0);
-        var parked=follower.Position;Tick(trail);
-        Need(Vector2.Distance(follower.Position,parked)<.0001f,"跟随距离内召唤物仍在移动");
-        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(6,0);
+        var follower=Live(trail)[0];var trailOwner=trail.Heroes[0];var trailLeader=trail.Heroes.Single(h=>h.SpecId=="warrior");
+        Need(trailLeader.Speed>trailOwner.Speed,"跟随锚点用例前提：领队不是召唤者");
+        // 主人远在后方，召唤物紧贴领队：移动后应继续靠近领队而不是折返主人。
+        trailOwner.Position=trailRoom.Center+new Vector2(10,0);
+        trailLeader.Position=trailRoom.Center;follower.Position=trailLeader.Position+new Vector2(0,-1f);
+        Tick(trail);
+        Need(ReferenceEquals(trail.TravelLeader,trailLeader),"跟随锚点没有使用当前跑图领队");
+        Need(Vector2.Distance(follower.Position,trailLeader.Position)<2.5f,"召唤物没有跟随领队");
+        Need(Vector2.Distance(follower.Position,trailOwner.Position)>6f,"召唤物仍在跟随召唤者而不是领队");
+        trailLeader.Position=trailRoom.Center;follower.Position=trailLeader.Position+new Vector2(6,0);
         var chaseFrom=follower.Position;Tick(trail);
         float chase=Vector2.Distance(chaseFrom,follower.Position);
-        float chaseLimit=Math.Max(follower.Speed,trailOwner.Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.0001f;
+        float chaseLimit=Math.Max(follower.Speed,trailLeader.Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.001f;
         Need(chase>follower.Speed*.05f+.0001f&&chase<=chaseLimit,"脱队追赶未提速或超出速度上限");
-        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(14,0);
-        Need(Vector2.Distance(follower.Position,trailOwner.Position)>8,"闪现用例起始距离不足");
+        trailLeader.Position=trailRoom.Center;follower.Position=trailLeader.Position+new Vector2(14,0);
+        Need(Vector2.Distance(follower.Position,trailLeader.Position)>8,"闪现用例起始距离不足");
         follower.Hp=12;int trailCount=Live(trail).Length;int trailKills=trail.Kills;long trailXp=trail.Experience;int trailLoot=trailRoom.Loot.Count;
         bool teleported=false;
         for(int i=0;i<40&&!teleported;i++)
         {
             var from=follower.Position;Tick(trail);
-            teleported=Vector2.Distance(from,follower.Position)>Math.Max(follower.Speed,trailOwner.Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.001f;
+            teleported=Vector2.Distance(from,follower.Position)>Math.Max(follower.Speed,trailLeader.Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.001f;
         }
-        Need(teleported&&Vector2.Distance(follower.Position,trailOwner.Position)<=1,"持续脱队0.5秒后未闪现或落点不在主人附近");
+        Need(teleported&&Vector2.Distance(follower.Position,trailLeader.Position)<=1,"持续脱队0.5秒后未闪现或落点不在领队附近");
         Need(Live(trail).Length==trailCount&&Math.Abs(follower.Hp-12)<.0001f&&trail.Kills==trailKills&&trail.Experience==trailXp&&trailRoom.Loot.Count==trailLoot,"闪现改变了HP/数量或产生了击杀经验掉落");
+
+        // 领队锚点与角色站位：近战在领队前方、远程在后方；多只近战横向分散；换领队不瞬移，归属仍为原召唤者。
+        c.Skills.Summons["QA_RANGED"]=c.Skills.Summons["QA_SKELETON"] with {Id="QA_RANGED",Role="ranged",MaxCount=1};
+        c.Skills.Effects["QA_RANGED_EFFECT"]=c.Skills.Effects["QA_SUMMON_EFFECT"] with {Id="QA_RANGED_EFFECT",MechanicId="QA_RANGED"};
+        c.Skills.Skills["QA_SUMMON_RANGED"]=c.Skills.Skills["QA_SUMMON_SKELETON"] with {Id="QA_SUMMON_RANGED",Effects=new[]{"QA_RANGED_EFFECT"}};
+        var roles=Battle();roles.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON","QA_SUMMON_RANGED"};
+        for(int i=0;i<800&&!(Live(roles).Any(s=>s.SummonDefinitionId=="QA_SKELETON")&&Live(roles).Any(s=>s.SummonDefinitionId=="QA_RANGED"));i++)Tick(roles);
+        Need(Live(roles).Any(s=>s.SummonDefinitionId=="QA_SKELETON")&&Live(roles).Any(s=>s.SummonDefinitionId=="QA_RANGED"),"近战/远程召唤未同时生成");
+        var rolesRoom=roles.Floor.Rooms[roles.CurrentRoom];
+        foreach(var monster in rolesRoom.Monsters)monster.Hp=0;
+        rolesRoom.ContentCleared=true;rolesRoom.EventUsed=true;rolesRoom.Loot.Clear();rolesRoom.HalfWidth=rolesRoom.HalfHeight=20;
+        roles.Tick(.05f);
+        var rolesLeader=roles.TravelLeader!;var rolesForward=Vector2.Normalize(roles.Floor.Rooms[roles.Capture().Destination].Center-rolesRoom.Center);
+        var melee=Live(roles).Single(s=>s.SummonDefinitionId=="QA_SKELETON");var ranged=Live(roles).Single(s=>s.SummonDefinitionId=="QA_RANGED");
+        rolesLeader.Position=rolesRoom.Center;
+        melee.Position=rolesRoom.Center+rolesForward*.55f;ranged.Position=rolesRoom.Center-rolesForward*.65f;
+        Tick(roles);
+        Need(Vector2.Dot(melee.Position-rolesLeader.Position,rolesForward)>0&&Vector2.Dot(ranged.Position-rolesLeader.Position,rolesForward)<0,"近战/远程跟随位置没有前后区分");
+        Need(melee.SummonOwner==0&&ranged.SummonOwner==0,"跟随领队改变了召唤归属");
+        // 三只近战召唤物沿不同横向车道分散在领队前方。
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=3,Role="melee"};
+        var spread=Battle();spread.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON"};
+        for(int i=0;i<1200&&Live(spread).Length<3;i++)Tick(spread);
+        Need(Live(spread).Length==3,"三只近战召唤未生成");
+        var spreadRoom=spread.Floor.Rooms[spread.CurrentRoom];
+        foreach(var monster in spreadRoom.Monsters)monster.Hp=0;
+        spreadRoom.ContentCleared=true;spreadRoom.EventUsed=true;spreadRoom.Loot.Clear();spreadRoom.HalfWidth=spreadRoom.HalfHeight=20;
+        spread.Tick(.05f);
+        var spreadLeader=spread.TravelLeader!;var spreadForward=Vector2.Normalize(spread.Floor.Rooms[spread.Capture().Destination].Center-spreadRoom.Center);
+        var spreadSide=new Vector2(-spreadForward.Y,spreadForward.X);
+        spreadLeader.Position=spreadRoom.Center;
+        var pack=Live(spread);
+        for(int i=0;i<pack.Length;i++){int lane=i==0?0:(i+1)/2*(i%2==1?-1:1);pack[i].Position=spreadRoom.Center+spreadForward*.55f+spreadSide*(lane*.32f);}
+        Tick(spread);
+        for(int a=0;a<pack.Length;a++)
+        {
+            Need(Vector2.Dot(pack[a].Position-spreadLeader.Position,spreadForward)>-.1f,"多只近战没有分布在领队前方");
+            for(int b=a+1;b<pack.Length;b++)Need(Vector2.Distance(pack[a].Position,pack[b].Position)>.2f,"多只近战跟随位置重叠");
+        }
+        // 有效速度变化换领队时，召唤物连续改追新领队，不瞬移。
+        var beforeSwitch=melee.Position;var newLeader=roles.Heroes.Single(h=>h.SpecId=="mage");newLeader.Speed=10;
+        Tick(roles);
+        Need(ReferenceEquals(roles.TravelLeader,newLeader),"有效速度变化后召唤跟随锚点未切换");
+        Need(Vector2.Distance(beforeSwitch,melee.Position)<=Math.Max(melee.Speed,newLeader.Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.01f,"换领队时召唤物瞬移");
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
 
         // 未清房且召唤物在本房时不跟随、不闪现；战斗结束后才重新按距离判定。
         var combat=Battle();Summon(combat);
@@ -220,7 +270,7 @@ public static class SkillBdSummonChecks
         var engagedFrom=engagedSummon.Position;Tick(engage);
         Need(Vector2.Distance(engagedFrom,engagedSummon.Position)<=engagedSummon.Speed*.05f+.01f,"进入有效战斗后仍享受入场加速");
 
-        // 同主人多只召唤物闪现时使用不同虚拟站位，不能全部叠在同一点。
+        // 同主人多只召唤物跟随同一领队并闪现时使用不同虚拟站位，不能全部叠在同一点。
         c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=2};
         var pair=Battle();pair.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON"};
         for(int i=0;i<400&&Live(pair).Length<2;i++)Tick(pair);
@@ -229,11 +279,14 @@ public static class SkillBdSummonChecks
         foreach(var monster in pairRoom.Monsters)monster.Hp=0;
         pairRoom.ContentCleared=true;pairRoom.EventUsed=true;pairRoom.Loot.Clear();
         pairRoom.HalfWidth=pairRoom.HalfHeight=20;
-        var pairOwner=pair.Heroes[0];pairOwner.Position=pairRoom.Center;
+        pair.Tick(.05f);
+        var pairLeader=pair.TravelLeader!;
+        Need(pairLeader is {Alive:true},"未确定跑图领队");
+        pairLeader.Position=pairRoom.Center;
         var pairSummons=Live(pair);
-        for(int i=0;i<pairSummons.Length;i++)pairSummons[i].Position=pairOwner.Position+new Vector2(12+i*.1f,0);
-        for(int i=0;i<40&&Vector2.Distance(pairSummons[0].Position,pairOwner.Position)>1;i++)Tick(pair);
-        Need(pairSummons.All(s=>Vector2.Distance(s.Position,pairOwner.Position)<=1)&&Vector2.Distance(pairSummons[0].Position,pairSummons[1].Position)>.2f,"多只召唤物闪现落点重叠或未同步");
+        for(int i=0;i<pairSummons.Length;i++)pairSummons[i].Position=pairLeader.Position+new Vector2(12+i*.1f,0);
+        for(int i=0;i<40&&Vector2.Distance(pairSummons[0].Position,pairLeader.Position)>1;i++)Tick(pair);
+        Need(pairSummons.All(s=>Vector2.Distance(s.Position,pairLeader.Position)<=1)&&Vector2.Distance(pairSummons[0].Position,pairSummons[1].Position)>.2f,"多只召唤物闪现落点重叠或未同步到领队");
 
         // 永续召唤脱战补员：没有敌人也按原前摇/冷却逐只补齐，到达上限后不再施放。
         // 每一步都强制清空当前房，确保补员发生在非战斗状态，而不是由战斗AI完成。
@@ -294,6 +347,6 @@ public static class SkillBdSummonChecks
         Need(world.World.Stage==CampaignStage.Dungeon&&world.Heroes.All(h=>h.Timer==0&&h.SkillSwapLocks.Count==0&&h.SkillIds.All(id=>world.SkillCooldown(h,id)==0)),"进副本未重置全部战斗CD");
 
         Need(!LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Summons.ContainsKey("QA_SKELETON"),"QA召唤定义泄漏生产配置");
-        Console.WriteLine("PASS: B2 summon stats/cap/rewards, permanent out-of-combat refill to cap and timed expiry without recast, production nec_skeleton permanent x3 / ran_valkyrie 5s, continuous door/corridor following, normal/catch-up/blink follow tiers with HP/count/reward preservation, room entry without summon teleports and continuous door-path deployment, melee/ranged/support entry deployment at capped 200% acceleration without timeout snap, engagement handover to normal combat speed, combat no-blink and distinct blink slots, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
+        Console.WriteLine("PASS: B2 summon stats/cap/rewards, permanent out-of-combat refill to cap and timed expiry without recast, production nec_skeleton permanent x3 / ran_valkyrie 5s, non-combat follow anchored to the travel leader with melee-front/ranged-rear and owner attribution preserved, continuous door/corridor following, leader-anchored catch-up/blink tiers with HP/count/reward preservation, room entry without summon teleports and continuous door-path deployment, melee/ranged/support entry deployment at capped 150% acceleration without timeout snap, engagement handover to normal combat speed, combat no-blink and distinct blink slots, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
     }
 }

@@ -10,6 +10,8 @@ public sealed partial class GameSession
 {
     /// <summary>脱队计时只服务于非战斗跟随，不属于战斗现场；读档或重开房间从0重新累积。</summary>
     private readonly Dictionary<Actor,float> summonOffTimer=new();
+    /// <summary>当前非战斗跟随锚点（跑图领队）；切换锚点时清空脱队计时，避免因换领队触发闪现。</summary>
+    private Actor? summonFollowLeader;
     /// <summary>本次逻辑步发生瞬时位移（仅异常恢复的脱队闪现）的召唤物，仅供表现层跳过插值；不属于存档数据。</summary>
     private readonly HashSet<Actor> summonBlinkTick=new();
     /// <summary>本次入场窗口为每只召唤物分配的落点；只服务当前房间，换房、清房或重置技能现场即清空。</summary>
@@ -123,7 +125,7 @@ public sealed partial class GameSession
             }
         }
         foreach(var summon in Summons){summon.Hp=0;summon.Timer=0;}
-        Summons.Clear();roomEntrySummons.Clear();summonOffTimer.Clear();summonBlinkTick.Clear();summonDeployGoals.Clear();summonDeployed.Clear();MarkChanged();
+        Summons.Clear();roomEntrySummons.Clear();summonOffTimer.Clear();summonBlinkTick.Clear();summonDeployGoals.Clear();summonDeployed.Clear();summonFollowLeader=null;MarkChanged();
     }
     /// <summary>所有回城入口统一撤销召唤及进房副本；死亡不产生经验、掉落或怪物击杀。</summary>
     internal void ClearTownSummons()=>ClearSummons();
@@ -275,79 +277,105 @@ public sealed partial class GameSession
         effectBudgetRemaining=SkillConfig.EffectBudget;
         DrainEffects();
     }
-    /// <summary>清房后跟随主人：正常跟随距离内按原速、超出则按主人当前行走速度的配置倍率追赶；持续脱队且落点合法时闪现。
-    /// 入场部署本步已取得移动权的召唤物不参与跟随；战斗房间内不跟随、不闪现。</summary>
+    /// <summary>非战斗跟随锚点为当前跑图领队，不再跟随召唤者：近战在前、远程在后、支援略靠后，
+    /// 横向车道按召唤物顺序错开。跟随距离内按原速，超出后按领队行走速度的配置倍率追赶；
+    /// 入场部署本步已取得移动权的召唤物不参与跟随，战斗房间内不跟随、不闪现。</summary>
     private void FollowDungeonSummons(float dt)
     {
         AdvanceSummonLifetimes(dt);
         PruneSummons();
         if(CombatEntryRemaining>0)return;
         var current=Floor.Rooms[CurrentRoom];
+        // 只在非战斗跑图或清房阶段刷新领队；战斗中沿用缓存，不重新选举。
+        if(current.Clear||MovingBetweenRooms)RefreshTravelLeader(false);
+        var leader=travelLeader is {Alive:true}?travelLeader:Heroes.FirstOrDefault(h=>h.Alive);
+        if(leader==null)return;
+        // 领队切换时清空脱队计时，让召唤物平滑改追新领队，不因换锚点触发闪现。
+        if(!ReferenceEquals(summonFollowLeader,leader)){summonFollowLeader=leader;summonOffTimer.Clear();}
+        var leaderRoom=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,leader.Position));
+        Vector2 forward=Vector2.Zero;
+        if(destination>=0&&phase==0)
+        {
+            var target=Floor.Rooms[destination];
+            forward=Vector2.Normalize(target.Center-current.Center);
+            if(!float.IsFinite(forward.X))forward=Vector2.Zero;
+        }
         float follow=Config.Talents.Rule("summon_follow_distance_milli")/1000f;
         float blink=Config.Talents.Rule("summon_blink_distance_milli")/1000f;
         float blinkDelay=Config.Talents.Rule("summon_blink_delay_milli")/1000f;
         float catchup=Config.Talents.Rule("summon_catchup_speed_pct")/100f;
         foreach(var summon in Summons.Where(s=>s.Alive))
         {
-            // 门前开门先锋由跑图逻辑独占移动，跟随不得把它拉回主人身边。
+            // 门前开门先锋由跑图逻辑独占移动，跟随不得把它拉回领队身边。
             if(destination>=0&&phase==1&&ReferenceEquals(summon,doorOpener))continue;
             // 入场部署在本步已取得移动权（可能仍在走廊或上一房间），跟随不得再改写其位置。
             if(entryMoved.Contains(summon))continue;
             if(!MovingBetweenRooms&&!current.Clear&&InCombatRoom(summon))continue;
-            var owner=Heroes[summon.SummonOwner];
-            if(!owner.Alive)continue;
-            var ownerRoom=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,owner.Position));
-            float distance=Vector2.Distance(summon.Position,owner.Position);
-            // 闪现只在当前房间已清理、主人位于合法房间且召唤物未参与接敌/施法时累积。
-            if(distance>blink&&current.Clear&&ownerRoom!=null&&!SummonEngaged(summon))
+            var summonRoom=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,summon.Position));
+            float distance=Vector2.Distance(summon.Position,leader.Position);
+            // 闪现只在当前房间已清理、领队位于合法房间且召唤物未参与接敌/施法时累积。
+            if(distance>blink&&current.Clear&&leaderRoom!=null&&!SummonEngaged(summon))
             {
                 summonOffTimer[summon]=summonOffTimer.GetValueOrDefault(summon)+dt;
                 if(summonOffTimer[summon]+.00001f>=blinkDelay)
                 {
-                    BlinkSummon(summon,owner,ownerRoom);
+                    BlinkSummon(summon,leader,leaderRoom);
                     summonOffTimer.Remove(summon);
                     continue;
                 }
             }
             else summonOffTimer.Remove(summon);
-            var summonRoom=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,summon.Position));
-            if(ownerRoom!=null&&ReferenceEquals(summonRoom,ownerRoom)&&distance<=follow)continue;
-            float speed=distance>follow?Math.Max(summon.Speed,OwnerWalkSpeed(owner)*catchup):summon.Speed;
+            var goal=SummonFollowGoal(summon,leader,leaderRoom,forward);
+            // 已站在领队附近自己的角色位置时不移动，避免每步微调造成抖动。
+            if(leaderRoom!=null&&ReferenceEquals(summonRoom,leaderRoom)&&Vector2.Distance(summon.Position,goal)<=.12f)continue;
+            float speed=distance>follow?Math.Max(summon.Speed,TravelWalkSpeed(leader)*catchup):summon.Speed;
             float budget=speed*dt;
             for(int step=0;step<8&&budget>.00001f;step++)
             {
-                var targetRoom=ownerRoom??Floor.Rooms.OrderBy(r=>Vector2.DistanceSquared(r.Center,owner.Position)).First();
+                var targetRoom=leaderRoom??Floor.Rooms.OrderBy(r=>Vector2.DistanceSquared(r.Center,leader.Position)).First();
                 var from=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,summon.Position));
-                // 同房时追到主人身后 follow 距离的落点：等距尾随，避免每步在3单位边界启停造成顿挫。
-                Vector2 goal=owner.Position;
-                if(from!=null&&from.Id==targetRoom.Id&&distance>follow)
-                    goal=owner.Position-Vector2.Normalize(owner.Position-summon.Position)*follow;
+                Vector2 waypoint=goal;
                 if(from!=null&&from.Id!=targetRoom.Id)
                 {
                     var next=Floor.Rooms[FirstStep(from.Id,targetRoom.Id)];
                     var exit=from.DoorTowards(next);
-                    goal=Vector2.Distance(summon.Position,exit)>.001f?exit:next.DoorTowards(from);
+                    waypoint=Vector2.Distance(summon.Position,exit)>.001f?exit:next.DoorTowards(from);
                 }
                 else if(from==null)
                 {
-                    // 走廊内只沿所属门段前进；禁止朝主人直线切穿房墙。
-                    goal=CorridorWaypointTowards(summon.Position,targetRoom);
+                    // 走廊内只沿所属门段前进；禁止朝领队直线切穿房墙。
+                    waypoint=CorridorWaypointTowards(summon.Position,targetRoom);
                 }
-                else if(ownerRoom==null)
+                else if(leaderRoom==null)
                 {
-                    var next=from!.Neighbors.Select(n=>Floor.Rooms[n]).OrderBy(r=>SegmentDistance(owner.Position,from.DoorTowards(r),r.DoorTowards(from))).First();
+                    var next=from!.Neighbors.Select(n=>Floor.Rooms[n]).OrderBy(r=>SegmentDistance(leader.Position,from.DoorTowards(r),r.DoorTowards(from))).First();
                     var exit=from.DoorTowards(next);
-                    goal=Vector2.Distance(summon.Position,exit)>.001f?exit:owner.Position;
+                    waypoint=Vector2.Distance(summon.Position,exit)>.001f?exit:leader.Position;
                 }
-                else if(Vector2.Distance(summon.Position,goal)<=.00001f)break;
-                float distanceToGoal=Vector2.Distance(summon.Position,goal);
+                else if(Vector2.Distance(summon.Position,waypoint)<=.00001f)break;
+                float distanceToGoal=Vector2.Distance(summon.Position,waypoint);
                 if(distanceToGoal<.00001f)break;
-                Move(summon,goal,1,Math.Min(budget,distanceToGoal));budget-=Math.Min(budget,distanceToGoal);
+                Move(summon,waypoint,1,Math.Min(budget,distanceToGoal));budget-=Math.Min(budget,distanceToGoal);
             }
         }
     }
-    /// <summary>主人当前行走速度；装备/被动加成走统一属性聚合，不吃寒缓以外的临时加速，也不改写基础Speed。</summary>
-    private float OwnerWalkSpeed(Actor owner)=>Math.Max(owner.Speed,(float)EffectiveValue(owner,"move_speed",owner.Speed));
+    /// <summary>领队附近的角色站位：近战在前、远程在后；横向车道沿用既有奇偶公式，多只召唤物不重叠。</summary>
+    private Vector2 SummonFollowGoal(Actor summon,Actor leader,Room? leaderRoom,Vector2 forward)
+    {
+        // 领队在走廊等无房间坐标的位置时只沿门段追赶，不套用房间内前后站位，避免把召唤物挤进墙里。
+        if(leaderRoom==null)return leader.Position;
+        var side=forward.LengthSquared()>.0001f?new Vector2(-forward.Y,forward.X):new Vector2(0,1);
+        (float ahead,float lateral)=SummonRole(summon) switch
+        {
+            "ranged"=>(-.65f,.38f),
+            "support"=>(-.35f,.28f),
+            _=>(.55f,.32f)
+        };
+        int index=Summons.IndexOf(summon);
+        int lane=index==0?0:(index+1)/2*(index%2==1?-1:1);
+        var goal=leader.Position+forward*ahead+side*(lane*lateral);
+        return leaderRoom!=null?ClampToRoom(leaderRoom,goal):goal;
+    }
     /// <summary>正在施法、接敌或被怪物锁定的召唤物视为战斗中，不能通过跟随闪现脱离。</summary>
     private bool SummonEngaged(Actor summon)
     {
@@ -356,16 +384,16 @@ public sealed partial class GameSession
         int index=FriendlyIndex(summon);
         return skillState.Targeting.Locks.Any(l=>l.Owner==id||l.Target==index);
     }
-    /// <summary>脱队闪现只同步坐标并释放旧接敌占用；保留HP/Buff/数量，不重新召唤、不产生伤害或奖励事件。</summary>
-    private void BlinkSummon(Actor summon,Actor owner,Room room)
+    /// <summary>严重脱队的异常恢复：只同步到当前领队附近并释放旧接敌占用；保留HP/Buff/数量，
+    /// 不重新召唤、不产生伤害或奖励事件，也不改变召唤归属。</summary>
+    private void BlinkSummon(Actor summon,Actor leader,Room room)
     {
-        int slot=0;
-        for(int i=0;i<Summons.IndexOf(summon);i++)if(Summons[i].Alive&&Summons[i].SummonOwner==summon.SummonOwner)slot++;
-        // 黄金角螺旋给同主人的多只召唤物分配不同虚拟站位，避免全部叠在一点。
+        int slot=Summons.IndexOf(summon);
+        // 黄金角螺旋给跟随同一领队的多只召唤物分配不同虚拟站位，避免全部叠在一点。
         float angle=slot*2.399963f,radius=.35f+.15f*(slot%3);
         var offset=new Vector2(MathF.Cos(angle)*radius,MathF.Sin(angle)*radius);
         ReleaseCombatTargets(CombatId(summon));
-        summon.Position=Vector2.Clamp(owner.Position+offset,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
+        summon.Position=Vector2.Clamp(leader.Position+offset,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
         summonBlinkTick.Add(summon);
     }
     /// <summary>进房检查点只保留进房时已存在的召唤；房内新召唤随战斗重开消失。</summary>

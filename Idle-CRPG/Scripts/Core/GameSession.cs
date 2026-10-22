@@ -82,7 +82,7 @@ public sealed partial class GameSession
     /// <summary>已改为领队直接开门（无近战先锋或等待超时），不再重新挑选先锋。</summary>
     private bool doorFallback;
     public bool MovingBetweenRooms => destination>=0;
-    /// <summary>当前非战斗跑图领队；不在跑图或已进入战斗时为 null。只读诊断入口，不进入存档。</summary>
+    /// <summary>当前跑图领队；战斗期间沿用缓存但不再重新选举。只读诊断入口，不进入存档。</summary>
     public Actor? TravelLeader=>travelLeader;
     /// <summary>当前门前等待的开门先锋；没有等待时为 null。只读诊断入口，不进入存档。</summary>
     public Actor? DoorOpener=>doorOpener;
@@ -301,11 +301,12 @@ public sealed partial class GameSession
 
     /// <summary>领队实际移动速度：装备/被动加成走统一属性聚合，不读取战斗中的临时寒缓。</summary>
     private float TravelWalkSpeed(Actor hero)=>Math.Max(hero.Speed,(float)EffectiveValue(hero,"move_speed",hero.Speed));
-    /// <summary>召唤物开门先锋沿用非战斗跟随速度；真正的入场加速只在房间开启后由部署逻辑接管。</summary>
+    /// <summary>召唤物开门先锋沿用非战斗跟随速度（锚点为当前领队）；入场加速只在房间开启后由部署逻辑接管。</summary>
     private float SummonTravelSpeed(Actor summon)
     {
-        var owner=OwnerOf(summon);float catchup=Config.Talents.Rule("summon_catchup_speed_pct")/100f;
-        return owner is {Alive:true}?Math.Max(summon.Speed,OwnerWalkSpeed(owner)*catchup):summon.Speed;
+        float catchup=Config.Talents.Rule("summon_catchup_speed_pct")/100f;
+        var leader=travelLeader is {Alive:true}?travelLeader:Heroes.FirstOrDefault(h=>h.Alive);
+        return leader!=null?Math.Max(summon.Speed,TravelWalkSpeed(leader)*catchup):summon.Speed;
     }
     /// <summary>只在进入跑图、队伍组成变化或有效速度变化（超过0.01）时重选领队，避免每步抖动。</summary>
     private void RefreshTravelLeader(bool force)
@@ -441,7 +442,8 @@ public sealed partial class GameSession
         CurrentRoom=room.Id; destination=-1;
         // 召唤物不再随跨房瞬移：入场部署会让仍在旧房间或走廊的存活召唤物沿真实房门加速进入。
         // 进房检查点仍按当前存活召唤物记录实际坐标，读档后继续同一段连续移动。
-        ResetTravelState();
+        // 保留领队缓存：战斗期间不重新选举，清房后召唤物仍以同一领队为跟随锚点。
+        ResetDoorWait();
         CaptureRoomEntry();
         StartCombatEntry(room,entry);
     }
