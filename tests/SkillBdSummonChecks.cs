@@ -69,7 +69,10 @@ public static class SkillBdSummonChecks
         {
             var before=Live(crossing)[0].Position;Tick(crossing);var after=Live(crossing)[0].Position;
             followed|=Vector2.Distance(before,after)>.0001f;
-            Need(Vector2.Distance(before,after)<=Live(crossing)[0].Speed*.05f+.001f,"召唤物跨门发生瞬移或超速");
+            // 落后时允许按 max(基础, 主人速度×1.2) 追赶；更大的位移只能是闪现，且落点必须紧贴主人。
+            float limit=Math.Max(Live(crossing)[0].Speed,crossing.Heroes[0].Speed*1.2f)*.05f+.001f;
+            bool blinked=Vector2.Distance(before,after)>limit;
+            if(blinked)Need(Vector2.Distance(after,crossing.Heroes[0].Position)<=1,"脱队闪现落点不在主人附近");
             bool onFloor=crossing.Floor.Rooms.Any(r=>Math.Abs(after.X-r.Center.X)<=r.HalfWidth+.001f&&Math.Abs(after.Y-r.Center.Y)<=r.HalfHeight+.001f);
             bool onPassage=crossing.Floor.Passages.Any(p=>
             {
@@ -85,6 +88,63 @@ public static class SkillBdSummonChecks
         var compact=crossing.CaptureProgress();Need(compact.Summons.Count==1&&Math.Abs(compact.Summons[0].Hp-20)<.0001f,"进房检查点未保留召唤实际HP");
         var reopened=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=compact})).Session!);
         Need(Live(reopened).Length==1&&Math.Abs(Live(reopened)[0].Hp-20)<.0001f,"正式检查点重开丢失召唤");
+
+        // 跟随三档：正常距离内不动、超距按主人速度×1.2追赶、持续脱队0.5秒才闪现；闪现保留HP/数量且无奖励。
+        var trail=Battle();Summon(trail);
+        var trailRoom=trail.Floor.Rooms[trail.CurrentRoom];
+        foreach(var monster in trailRoom.Monsters)monster.Hp=0;
+        trailRoom.ContentCleared=true;trailRoom.EventUsed=true;trailRoom.Loot.Clear();
+        trailRoom.HalfWidth=trailRoom.HalfHeight=20;
+        var follower=Live(trail)[0];var trailOwner=trail.Heroes[0];
+        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(2,0);
+        var parked=follower.Position;Tick(trail);
+        Need(Vector2.Distance(follower.Position,parked)<.0001f,"跟随距离内召唤物仍在移动");
+        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(6,0);
+        var chaseFrom=follower.Position;Tick(trail);
+        float chase=Vector2.Distance(chaseFrom,follower.Position);
+        float chaseLimit=Math.Max(follower.Speed,trailOwner.Speed*1.2f)*.05f+.0001f;
+        Need(chase>follower.Speed*.05f+.0001f&&chase<=chaseLimit,"脱队追赶未提速或超出速度上限");
+        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(14,0);
+        Need(Vector2.Distance(follower.Position,trailOwner.Position)>8,"闪现用例起始距离不足");
+        follower.Hp=12;int trailCount=Live(trail).Length;int trailKills=trail.Kills;long trailXp=trail.Experience;int trailLoot=trailRoom.Loot.Count;
+        bool teleported=false;
+        for(int i=0;i<40&&!teleported;i++)
+        {
+            var from=follower.Position;Tick(trail);
+            teleported=Vector2.Distance(from,follower.Position)>Math.Max(follower.Speed,trailOwner.Speed*1.2f)*.05f+.001f;
+        }
+        Need(teleported&&Vector2.Distance(follower.Position,trailOwner.Position)<=1,"持续脱队0.5秒后未闪现或落点不在主人附近");
+        Need(Live(trail).Length==trailCount&&Math.Abs(follower.Hp-12)<.0001f&&trail.Kills==trailKills&&trail.Experience==trailXp&&trailRoom.Loot.Count==trailLoot,"闪现改变了HP/数量或产生了击杀经验掉落");
+
+        // 未清房且召唤物在本房时不跟随、不闪现；战斗结束后才重新按距离判定。
+        var combat=Battle();Summon(combat);
+        var combatRoom=combat.Floor.Rooms[combat.CurrentRoom];
+        combatRoom.HalfWidth=combatRoom.HalfHeight=20;
+        var combatSummon=Live(combat)[0];var combatOwner=combat.Heroes[0];
+        combatOwner.Position=combatRoom.Center;combatSummon.Position=combatOwner.Position+new Vector2(14,0);
+        bool escaped=false;
+        for(int i=0;i<30;i++)
+        {
+            var from=combatSummon.Position;Tick(combat);
+            // 战斗 AI 自身走位仍受基础速度限制，超过该预算只能来自跟随闪现。
+            if(Vector2.Distance(from,combatSummon.Position)>combatSummon.Speed*.05f+.001f)escaped=true;
+        }
+        Need(!combatRoom.Clear&&!escaped,"未清房时召唤物离队闪现");
+
+        // 同主人多只召唤物闪现时使用不同虚拟站位，不能全部叠在同一点。
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=2};
+        var pair=Battle();pair.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON"};
+        for(int i=0;i<400&&Live(pair).Length<2;i++)Tick(pair);
+        Need(Live(pair).Length==2,"上限2只时未召唤出第二只");
+        var pairRoom=pair.Floor.Rooms[pair.CurrentRoom];
+        foreach(var monster in pairRoom.Monsters)monster.Hp=0;
+        pairRoom.ContentCleared=true;pairRoom.EventUsed=true;pairRoom.Loot.Clear();
+        pairRoom.HalfWidth=pairRoom.HalfHeight=20;
+        var pairOwner=pair.Heroes[0];pairOwner.Position=pairRoom.Center;
+        var pairSummons=Live(pair);
+        for(int i=0;i<pairSummons.Length;i++)pairSummons[i].Position=pairOwner.Position+new Vector2(12+i*.1f,0);
+        for(int i=0;i<40&&Vector2.Distance(pairSummons[0].Position,pairOwner.Position)>1;i++)Tick(pair);
+        Need(pairSummons.All(s=>Vector2.Distance(s.Position,pairOwner.Position)<=1)&&Vector2.Distance(pairSummons[0].Position,pairSummons[1].Position)>.2f,"多只召唤物闪现落点重叠或未同步");
 
         // 主人卸槽/死亡立即撤销；全灭清除全部召唤记录。
         var unslot=Battle();Summon(unslot);unslot.EquipSkills("priest",Array.Empty<string>());Need(Live(unslot).Length==0,"主人卸槽后召唤仍存活");
@@ -109,6 +169,6 @@ public static class SkillBdSummonChecks
         Need(world.World.Stage==CampaignStage.Dungeon&&world.Heroes.All(h=>h.Timer==0&&h.SkillSwapLocks.Count==0&&h.SkillIds.All(id=>world.SkillCooldown(h,id)==0)),"进副本未重置全部战斗CD");
 
         Need(!LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Summons.ContainsKey("QA_SKELETON"),"QA召唤定义泄漏生产配置");
-        Console.WriteLine("PASS: B2 summon stats/cap/rewards, continuous door/corridor following without teleport/wall crossing, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
+        Console.WriteLine("PASS: B2 summon stats/cap/rewards, continuous door/corridor following, normal/catch-up/blink follow tiers with HP/count/reward preservation, combat no-blink and distinct blink slots, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
     }
 }

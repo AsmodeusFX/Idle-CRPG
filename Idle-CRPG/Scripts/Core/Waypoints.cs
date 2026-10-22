@@ -70,10 +70,12 @@ public sealed partial class WorldCampaign
         if(PortalPhase==PortalPhase.Using)
         {
             bool arrived=true;
+            // 固定城镇内沿用该章的步行配速；旧村庄与地牢回城门仍用世界村的通用速度。
+            float speed=Stage==CampaignStage.Village&&config.Town is {} town?town.WalkSpeed:config.VillageSpeed;
             foreach(var hero in game.Heroes)
             {
                 if(Vector2.Distance(hero.Position,PortalOrigin)<=config.PortalRange)continue;
-                GameSession.Move(hero,PortalOrigin,dt,config.VillageSpeed);arrived=false;
+                GameSession.Move(hero,PortalOrigin,dt,speed);arrived=false;
             }
             if(!arrived){Status="小队进入传送门";return true;}
         }

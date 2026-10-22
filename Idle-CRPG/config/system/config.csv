@@ -19,5 +19,9 @@ combat_entry_ranged_depth_milli,900
 combat_entry_melee_spread_milli,1100
 combat_entry_ranged_spread_milli,450
 dungeon_queue_spacing_milli,650
+summon_follow_distance_milli,3000
+summon_catchup_speed_pct,120
+summon_blink_distance_milli,8000
+summon_blink_delay_milli,500
 ranged_retreat_distance_milli,1200
 ranged_retreat_cooldown_milli,4000

@@ -34,7 +34,7 @@
 
 | CSV | 字段 |
 |---|---|
-| village/town_scene.csv | id,chapter_id,name,width,height,entry_x,entry_y,exit_x,exit_y,interaction_range,service_seconds；每章独立ID，入口/出口及服务时间 |
+| village/town_scene.csv | id,chapter_id,name,width,height,entry_x,entry_y,exit_x,exit_y,interaction_range,service_seconds,walk_speed；每章独立ID，入口/出口、服务时间及城镇步行速度 |
 | village/town_npc.csv | scene_id,id,name,role,x,y,description；每场景六个唯一角色：heal/mercenary/sell/gamble/travel/identify；目前仅heal/sell有自动服务 |
 | village/town_prop.csv | scene_id,id,kind,x,y,width,height,blocks；tent/wagon/forge/fire/stash等原型物件，矩形共用绘制和导航 |
 | village/portal_rule.csv | phase_seconds,town_x,town_y,waypoint_x,waypoint_y,use_range；三个阶段各自时长、中心回城落点、固定出发阵位置、全队使用距离 |
@@ -49,6 +49,8 @@ GM“关卡测试”同排两按钮：瞬间通关开关、通关本章。后者
 ## 2026-10-19：按需补给与跳过补给
 
 城镇移动、服务读条及传送共用全局 1/2/4 倍速固定时钟；移动消耗完整距离预算，不在半格路径点丢失剩余移动距离。
+
+2026-10-22 步行速度：城镇镜头按场景尺寸固定缩放，五章尺寸差异大，统一`village_speed`会让大场景的屏幕移动明显偏慢。town_scene新增`walk_speed`按章配速（第一章12.49、第二章21.13、第三/五章14.41、第四章10.57，原型值），使各章屏幕步速都约为220像素/秒：典型地牢房间`hw+hh≈7`时缩放约58，英雄平均速度3.78，约220像素/秒。该值只用于城镇场景内的移动与走向固定出发阵；旧村庄与地牢回城门仍用`village_speed`。这是镜头缩放的配速补偿，不是用降速掩盖渲染压力，静态背景缓存与视口裁切保持不变。
 
 全队 HP 满且无负面效果时跳过治疗；否则走近治疗 NPC 后恢复 HP、清除负面效果。MP 当前尚未实现，接入后必须纳入满值判断和恢复。背包没有 AutoSell 配置物品时跳过铁匠；有则走近售卖后到账。装备尚未投放，当前以现有物品配置为准。服务保持治疗→售卖顺序和原有阶段保存边界。
 

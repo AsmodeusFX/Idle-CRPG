@@ -34,6 +34,13 @@ public static class TownLayoutChecks
             if(chapter==2)Need(!town.Walkable(new(14,5))&&town.Walkable(new(18,10)),"第三章水道可走或栈桥不可走");
             if(chapter==3)Need(town.Npcs.Count==4&&ReferenceEquals(town.Npc("heal"),town.Npc("gamble"))&&!town.Npcs.Any(n=>n.HasRole("travel")),"第四章功能未合并或虚构旅行NPC");
             if(chapter==4)Need(town.Npcs.Any(n=>n.Id=="anya")&&!town.Npcs.Any(n=>n.Id=="nihlathak"),"第五章固定NPC策略不符");
+            // 城镇镜头按场景尺寸固定缩放为 (558-100)/((W+H)*0.5)=916/(W+H)；地牢镜头取 min(62,930/(2*(hw+hh)),408/(hw+hh))。
+            // 配速须让各章屏幕步行速度接近典型地牢房间，而不是按同一世界速度配不同缩放。
+            float typicalHalf=(map.RoomWidthMin+map.RoomWidthMax)*.25f+(map.RoomHeightMin+map.RoomHeightMax)*.25f;
+            float dungeonZoom=Math.Min(map.CameraMaxZoom,Math.Min(930f/(2*typicalHalf),408f/typicalHalf));
+            float dungeonPixels=(float)map.Heroes.Average(h=>h.Speed)*dungeonZoom;
+            float townPixels=town.WalkSpeed*916f/(town.Width+town.Height);
+            Need(Math.Abs(townPixels-dungeonPixels)<=dungeonPixels*.08f,"城镇行走屏幕速度与地牢明显不一致");
             var snapshot=game.CaptureProgress();snapshot.World!.TownPhase=TownVisitPhase.Heal;
             foreach(var hero in snapshot.Heroes){hero.Hp=hero.MaxHp/2;hero.Position=map.TownPortal;}
             snapshot.Inventory.Add(new(junk.Id,5,3));
@@ -42,7 +49,7 @@ public static class TownLayoutChecks
             {
                 var before=visit.Heroes.Select(h=>h.Position).ToArray();visit.Tick(.05f);
                 Need(visit.Heroes.All(h=>town.Walkable(h.Position)),"补给寻路穿越水面/建筑");
-                Need(visit.Heroes.Select((h,index)=>Vector2.Distance(h.Position,before[index])).All(d=>d<=map.VillageSpeed*.05f+.0001f),"城镇移动超出固定步距离预算");
+                Need(visit.Heroes.Select((h,index)=>Vector2.Distance(h.Position,before[index])).All(d=>d<=town.WalkSpeed*.05f+.0001f),"城镇移动超出固定步距离预算");
             }
             Need(visit.World!.TownPhase==TownVisitPhase.Sell&&visit.Heroes.All(h=>h.Hp==h.MaxHp)&&visit.Gold==game.Gold,"未在治疗后再进入售卖");
             visit=Restore(visit.CaptureProgress());

@@ -23,6 +23,8 @@ public sealed class TownScene
     public string Theme="camp",ExitName="唯一出入口";
     public int LayoutVersion;
     public float Width,Height,InteractionRange,ServiceSeconds;
+    /// <summary>城镇内行走速度（本地格/秒）。城镇镜头按场景尺寸固定缩放，各章差别很大，故按章配速让屏幕速度与地牢一致。</summary>
+    public float WalkSpeed;
     public Vector2 Entry,Exit;
     public List<TownNpc> Npcs=new();
     public List<TownProp> Props=new();
@@ -75,13 +77,13 @@ public sealed partial class Config
         if(PortalRange<=0||PortalRange>1)throw new InvalidDataException("传送门使用距离必须为0～1");
         if(PortalSeconds<=0||PortalSeconds>10)throw new InvalidDataException("传送阶段时间必须为0～10秒");
         var row=Read(Path.Combine(root,"town_scene.csv")).Single(r=>r["chapter_id"]=="act"+(chapter+1));
-        Town=new(){Id=row["id"],Name=row["name"],Theme=row["theme"],LayoutVersion=Integer(row,"layout_version"),ExitName=row["exit_name"],Width=Number(row,"width"),Height=Number(row,"height"),Entry=new(Number(row,"entry_x"),Number(row,"entry_y")),Exit=new(Number(row,"exit_x"),Number(row,"exit_y")),InteractionRange=Number(row,"interaction_range"),ServiceSeconds=Number(row,"service_seconds")};
+        Town=new(){Id=row["id"],Name=row["name"],Theme=row["theme"],LayoutVersion=Integer(row,"layout_version"),ExitName=row["exit_name"],Width=Number(row,"width"),Height=Number(row,"height"),Entry=new(Number(row,"entry_x"),Number(row,"entry_y")),Exit=new(Number(row,"exit_x"),Number(row,"exit_y")),InteractionRange=Number(row,"interaction_range"),ServiceSeconds=Number(row,"service_seconds"),WalkSpeed=Number(row,"walk_speed")};
         TownPortal=new(Number(row,"return_x"),Number(row,"return_y"));TownWaypoint=new(Number(row,"waypoint_x"),Number(row,"waypoint_y"));
         Town.Zones=Read(Path.Combine(root,"town_zone.csv")).Where(r=>r["scene_id"]==Town.Id).Select(r=>new TownZone(r["id"],r["kind"],Number(r,"x"),Number(r,"y"),Number(r,"width"),Number(r,"height"))).ToList();
         Town.Npcs=Read(Path.Combine(root,"town_npc.csv")).Where(r=>r["scene_id"]==Town.Id).Select(r=>new TownNpc(r["id"],r["name"],r["role"],new(Number(r,"x"),Number(r,"y")),r["description"])).ToList();
         Town.Props=Read(Path.Combine(root,"town_prop.csv")).Where(r=>r["scene_id"]==Town.Id).Select(r=>new TownProp(r["id"],r["kind"],Number(r,"x"),Number(r,"y"),Number(r,"width"),Number(r,"height"),Boolean(r,"blocks"))).ToList();
         string[] roles={"heal","mercenary","sell","gamble","travel","identify","magic","dialogue","formation"};
-        if(Town.Width<16||Town.Width>64||Town.Height<16||Town.Height>64||Town.InteractionRange<=0||Town.InteractionRange>1||Town.ServiceSeconds<=0||Town.LayoutVersion<0||!new[]{"camp","sand","docks","sanctum","snow"}.Contains(Town.Theme)||string.IsNullOrWhiteSpace(Town.ExitName)||Town.Npcs.Count<4||Town.Npcs.Select(n=>n.Id).Distinct().Count()!=Town.Npcs.Count||Town.Npcs.Any(n=>n.Role.Split(';').Distinct().Count()!=n.Role.Split(';').Length||n.Role.Split(';').Any(r=>!roles.Contains(r)))||roles.Take(6).Any(role=>Town.Npcs.Count(n=>n.HasRole(role))>1)||new[]{"heal","mercenary","sell","gamble","identify","formation"}.Any(role=>Town.Npcs.Count(n=>n.HasRole(role))!=1)||Town.Props.Select(p=>p.Id).Distinct().Count()!=Town.Props.Count||Town.Props.Any(p=>p.Width<=0||p.Height<=0||p.X<0||p.Y<0||p.X+p.Width>Town.Width||p.Y+p.Height>Town.Height)||Town.Zones.Select(z=>z.Id).Distinct().Count()!=Town.Zones.Count||Town.Zones.Any(z=>z.Width<1||z.Height<1||z.X<0||z.Y<0||z.X+z.Width>Town.Width||z.Y+z.Height>Town.Height||!new[]{"stone","wood","bridge","stairs","sand","snow"}.Contains(z.Kind))||Town.Theme!="camp"&&Town.Zones.Count==0)throw new InvalidDataException("固定城镇尺寸、职能映射或场景几何配置非法");
+        if(Town.Width<16||Town.Width>64||Town.Height<16||Town.Height>64||Town.InteractionRange<=0||Town.InteractionRange>1||Town.ServiceSeconds<=0||Town.WalkSpeed is <1 or >40||Town.LayoutVersion<0||!new[]{"camp","sand","docks","sanctum","snow"}.Contains(Town.Theme)||string.IsNullOrWhiteSpace(Town.ExitName)||Town.Npcs.Count<4||Town.Npcs.Select(n=>n.Id).Distinct().Count()!=Town.Npcs.Count||Town.Npcs.Any(n=>n.Role.Split(';').Distinct().Count()!=n.Role.Split(';').Length||n.Role.Split(';').Any(r=>!roles.Contains(r)))||roles.Take(6).Any(role=>Town.Npcs.Count(n=>n.HasRole(role))>1)||new[]{"heal","mercenary","sell","gamble","identify","formation"}.Any(role=>Town.Npcs.Count(n=>n.HasRole(role))!=1)||Town.Props.Select(p=>p.Id).Distinct().Count()!=Town.Props.Count||Town.Props.Any(p=>p.Width<=0||p.Height<=0||p.X<0||p.Y<0||p.X+p.Width>Town.Width||p.Y+p.Height>Town.Height)||Town.Zones.Select(z=>z.Id).Distinct().Count()!=Town.Zones.Count||Town.Zones.Any(z=>z.Width<1||z.Height<1||z.X<0||z.Y<0||z.X+z.Width>Town.Width||z.Y+z.Height>Town.Height||!new[]{"stone","wood","bridge","stairs","sand","snow"}.Contains(z.Kind))||Town.Theme!="camp"&&Town.Zones.Count==0)throw new InvalidDataException("固定城镇尺寸、职能映射或场景几何配置非法");
         Town.FindPath(Town.Entry,Town.Exit);
         if(Vector2.Distance(TownPortal,TownWaypoint)<=1)throw new InvalidDataException("回城落点与固定出发阵必须分离");
         string[] propKinds={"tent","wagon","forge","fire","stash","palace","sand_house","market","tower","water","pier","ship","sewer","hut","ruin","shrine","palm","column","angel","holy_fire","keep","snow_house","sealed_gate"};
@@ -126,8 +128,8 @@ public sealed partial class WorldCampaign
             if(Vector2.Distance(hero.Position,target)<=town.InteractionRange)continue;
             arrived=false;
             if(!villagePaths.TryGetValue(hero.SpecId,out var path)){path=new(town.FindPath(hero.Position,target));villagePaths[hero.SpecId]=path;}
-            // 消耗完整步长的距离预算；倍速由 UI 增加固定步数量，不能在此重复乘倍速。
-            float remaining=dt*config.VillageSpeed;
+            // 消耗完整步长的距离预算；倍速由 UI 增加固定步数量，不能在此重复乘倍速。速度按章配置，补偿固定城镇缩放。
+            float remaining=dt*town.WalkSpeed;
             while(path.Count>0&&remaining>0)
             {
                 var point=path.Peek();float distance=Vector2.Distance(hero.Position,point);

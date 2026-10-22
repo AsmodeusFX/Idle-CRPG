@@ -23,8 +23,11 @@ public sealed class TalentConfiguration
         if(c.Rule("talent_leap_ticks")<1||c.Rule("talent_windup_ticks")<1)throw new InvalidDataException("技能前摇必须大于0");
         if(c.Rule("active_skill_max_slots") is <1 or >5||c.Rule("active_skill_initial_slots")>c.Rule("active_skill_max_slots"))throw new InvalidDataException("主动槽位须在0～5内");
         if(c.Rule("world_follow_spacing_milli") is <1 or >1000)throw new InvalidDataException("世界跟随间距无效");
-        foreach(string key in new[]{"ranged_retreat_distance_milli","ranged_retreat_cooldown_milli","targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_melee_depth_milli","combat_entry_ranged_depth_milli","combat_entry_melee_spread_milli","combat_entry_ranged_spread_milli","dungeon_queue_spacing_milli"})
+        foreach(string key in new[]{"ranged_retreat_distance_milli","ranged_retreat_cooldown_milli","targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_melee_depth_milli","combat_entry_ranged_depth_milli","combat_entry_melee_spread_milli","combat_entry_ranged_spread_milli","dungeon_queue_spacing_milli","summon_follow_distance_milli","summon_catchup_speed_pct","summon_blink_distance_milli","summon_blink_delay_milli"})
             if(!c.Rules.TryGetValue(key,out int value)||value<1||value>100000)throw new InvalidDataException("索敌规则缺失或越界："+key);
+        // 召唤物跟随：追赶倍率不得低于100%（否则落后反而减速），闪现距离必须大于正常跟随距离，否则边界处会互斥抖动。
+        if(c.Rule("summon_catchup_speed_pct")<100)throw new InvalidDataException("召唤物追赶倍率不得低于100%");
+        if(c.Rule("summon_blink_distance_milli")<=c.Rule("summon_follow_distance_milli"))throw new InvalidDataException("召唤物闪现距离必须大于跟随距离");
         if(c.Rule("combat_entry_melee_depth_milli")<=c.Rule("combat_entry_ranged_depth_milli")||c.Rule("combat_entry_melee_spread_milli")<=c.Rule("combat_entry_ranged_spread_milli"))throw new InvalidDataException("近战入场深入距离及横向间距必须大于远程/法系");
         string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed,skill_id".Split(',');
         foreach(var r in CsvTable.Load("skill/talent.csv",File.ReadAllText(Path.Combine(root,"skill/talent.csv")),columns).Rows)
