@@ -82,6 +82,8 @@ public sealed partial class GameSession
             if(deploying&&Vector2.DistanceSquared(hero.Position,goal)<.04f)skillState.Targeting.DeployedMask|=1<<heroIndex;
             entryMoved.Add(hero);
         }
+        // 召唤物与英雄共用同一入场窗口；入场逻辑独占其移动权，完成后交回正式战斗 AI。
+        if(spread)AdvanceEntrySummons(room,dt);
     }
     private void ReleaseCombatTargets(int id)
     {

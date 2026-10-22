@@ -68,11 +68,18 @@ public static class SkillBdSummonChecks
         for(int i=0;i<20000&&crossing.CurrentRoom==oldRoom;i++)
         {
             var before=Live(crossing)[0].Position;Tick(crossing);var after=Live(crossing)[0].Position;
+            bool switched=crossing.CurrentRoom!=oldRoom;
             followed|=Vector2.Distance(before,after)>.0001f;
-            // 落后时允许按 max(基础, 主人速度×1.2) 追赶；更大的位移只能是闪现，且落点必须紧贴主人。
-            float limit=Math.Max(Live(crossing)[0].Speed,crossing.Heroes[0].Speed*1.2f)*.05f+.001f;
+            // 落后时允许按 max(基础, 主人速度×配置追赶倍率) 追赶；更大的位移只能是闪现或正式跨房同步。
+            float limit=Math.Max(Live(crossing)[0].Speed,crossing.Heroes[0].Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.001f;
             bool blinked=Vector2.Distance(before,after)>limit;
-            if(blinked)Need(Vector2.Distance(after,crossing.Heroes[0].Position)<=1,"脱队闪现落点不在主人附近");
+            if(blinked&&!switched)Need(Vector2.Distance(after,crossing.Heroes[0].Position)<=1,"脱队闪现落点不在主人附近");
+            if(switched)
+            {
+                // 跨房切换不依赖原脱队距离，存活召唤物须直接落在新房间内。
+                var now=crossing.Floor.Rooms[crossing.CurrentRoom];
+                Need(Math.Abs(after.X-now.Center.X)<=now.HalfWidth+.001f&&Math.Abs(after.Y-now.Center.Y)<=now.HalfHeight+.001f,"跨房切换后召唤物未同步到新房间");
+            }
             bool onFloor=crossing.Floor.Rooms.Any(r=>Math.Abs(after.X-r.Center.X)<=r.HalfWidth+.001f&&Math.Abs(after.Y-r.Center.Y)<=r.HalfHeight+.001f);
             bool onPassage=crossing.Floor.Passages.Any(p=>
             {
@@ -102,7 +109,7 @@ public static class SkillBdSummonChecks
         trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(6,0);
         var chaseFrom=follower.Position;Tick(trail);
         float chase=Vector2.Distance(chaseFrom,follower.Position);
-        float chaseLimit=Math.Max(follower.Speed,trailOwner.Speed*1.2f)*.05f+.0001f;
+        float chaseLimit=Math.Max(follower.Speed,trailOwner.Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.0001f;
         Need(chase>follower.Speed*.05f+.0001f&&chase<=chaseLimit,"脱队追赶未提速或超出速度上限");
         trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(14,0);
         Need(Vector2.Distance(follower.Position,trailOwner.Position)>8,"闪现用例起始距离不足");
@@ -111,7 +118,7 @@ public static class SkillBdSummonChecks
         for(int i=0;i<40&&!teleported;i++)
         {
             var from=follower.Position;Tick(trail);
-            teleported=Vector2.Distance(from,follower.Position)>Math.Max(follower.Speed,trailOwner.Speed*1.2f)*.05f+.001f;
+            teleported=Vector2.Distance(from,follower.Position)>Math.Max(follower.Speed,trailOwner.Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.001f;
         }
         Need(teleported&&Vector2.Distance(follower.Position,trailOwner.Position)<=1,"持续脱队0.5秒后未闪现或落点不在主人附近");
         Need(Live(trail).Length==trailCount&&Math.Abs(follower.Hp-12)<.0001f&&trail.Kills==trailKills&&trail.Experience==trailXp&&trailRoom.Loot.Count==trailLoot,"闪现改变了HP/数量或产生了击杀经验掉落");
@@ -131,6 +138,57 @@ public static class SkillBdSummonChecks
         }
         Need(!combatRoom.Clear&&!escaped,"未清房时召唤物离队闪现");
 
+        // 入场部署：近战前压、远程靠后、支援贴身；同角色多只使用不同车道，入场加速不超过独立临时上限。
+        (GameSession Game,Vector2 Anchor,Actor[] Live) DeployScene(string role,int count=1)
+        {
+            c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=count,Role=role};
+            var game=Battle();game.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON"};
+            for(int i=0;i<1200&&Live(game).Length<count;i++)Tick(game);
+            Need(Live(game).Length==count,"入场部署用例未召出足量召唤物："+role);
+            var room=game.Floor.Rooms[game.CurrentRoom];room.HalfWidth=room.HalfHeight=6;
+            foreach(var monster in room.Monsters){monster.Attack=0;monster.Hp=monster.MaxHp=100000;monster.Position=room.Center+new Vector2(0,4.5f);monster.Timer=999;}
+            var anchor=room.Center+new Vector2(0,-5);
+            var state=game.Capture().SkillState.Targeting;
+            state.EntryPrepared=true;state.EntryElapsed=0;state.EntryAnchor=anchor;state.EntryDirection=new(0,1);state.DeployedMask=0;
+            var summons=Live(game);
+            for(int i=0;i<summons.Length;i++)summons[i].Position=anchor+new Vector2((i-.5f)*.15f,.45f);
+            game.Heroes[0].Position=anchor+new Vector2(0,1f);
+            return (game,anchor,summons);
+        }
+        void DeployCheck((GameSession Game,Vector2 Anchor,Actor[] Live) scene)
+        {
+            float cap=Math.Max(scene.Live[0].Speed*c.Talents.Rule("summon_entry_speed_pct")/100f,scene.Game.Heroes[0].Speed*c.Talents.Rule("summon_entry_owner_pct")/100f)*.05f+.001f;
+            for(int i=0;i<10;i++)
+            {
+                var from=scene.Live.Select(s=>s.Position).ToArray();Tick(scene.Game);
+                for(int s=0;s<scene.Live.Length;s++)Need(Vector2.Distance(from[s],scene.Live[s].Position)<=cap,"入场部署超出临时加速上限");
+            }
+        }
+        float Depth((GameSession Game,Vector2 Anchor,Actor[] Live) scene,Actor actor)=>Vector2.Dot(actor.Position-scene.Anchor,scene.Game.Capture().SkillState.Targeting.EntryDirection);
+        var meleeScene=DeployScene("melee");DeployCheck(meleeScene);
+        var rangedScene=DeployScene("ranged");DeployCheck(rangedScene);
+        Need(Depth(meleeScene,meleeScene.Live[0])>Depth(rangedScene,rangedScene.Live[0])+.5f,"近战召唤物没有比远程展开得更远");
+        var supportScene=DeployScene("support");DeployCheck(supportScene);
+        Need(Vector2.Distance(supportScene.Live[0].Position,supportScene.Game.Heroes[0].Position)<.7f,"支援型召唤物未贴近主人");
+        var pairScene=DeployScene("melee",2);DeployCheck(pairScene);
+        Need(Math.Abs(pairScene.Live[0].Position.X-pairScene.Live[1].Position.X)>.5f&&pairScene.Live.All(s=>Depth(pairScene,s)>.8f),"多只近战召唤物入场落点重叠或未前压");
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
+
+        // 敌人 AI 启动时，未到位且未接敌的召唤物兜底同步到站位；不延长警觉、不改 HP/数量、不产生奖励。
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
+        var snap=Battle();Summon(snap);
+        var snapRoom=snap.Floor.Rooms[snap.CurrentRoom];snapRoom.HalfWidth=snapRoom.HalfHeight=6;
+        foreach(var monster in snapRoom.Monsters){monster.Attack=0;monster.Hp=monster.MaxHp=100000;monster.Position=snapRoom.Center+new Vector2(0,4.5f);monster.Timer=999;}
+        var snapAnchor=snapRoom.Center+new Vector2(0,-5);
+        var snapState=snap.Capture().SkillState.Targeting;
+        snapState.EntryPrepared=true;snapState.EntryElapsed=c.Talents.Rule("combat_entry_delay_milli")/1000f-.05f;snapState.EntryAnchor=snapAnchor;snapState.EntryDirection=new(0,1);snapState.DeployedMask=0;snapState.Locks.Clear();
+        snap.Capture().SkillState.Actions.Clear();
+        var snapSummon=Live(snap)[0];snapSummon.Position=snapRoom.Center+new Vector2(-5,5);snapSummon.Hp=7;
+        int snapKills=snap.Kills;long snapXp=snap.Experience;int snapLoot=snapRoom.Loot.Count;
+        Tick(snap);
+        Need(Math.Abs(Vector2.Dot(snapSummon.Position-snapAnchor,snapState.EntryDirection)-c.Talents.Rule("combat_entry_melee_depth_milli")/1000f)<.35f,"入场超时未兜底同步到站位");
+        Need(Math.Abs(snapSummon.Hp-7)<.0001f&&Live(snap).Length==1&&snap.Kills==snapKills&&snap.Experience==snapXp&&snapRoom.Loot.Count==snapLoot,"兜底同步改变HP/数量或产生奖励");
+
         // 同主人多只召唤物闪现时使用不同虚拟站位，不能全部叠在同一点。
         c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=2};
         var pair=Battle();pair.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON"};
@@ -145,6 +203,42 @@ public static class SkillBdSummonChecks
         for(int i=0;i<pairSummons.Length;i++)pairSummons[i].Position=pairOwner.Position+new Vector2(12+i*.1f,0);
         for(int i=0;i<40&&Vector2.Distance(pairSummons[0].Position,pairOwner.Position)>1;i++)Tick(pair);
         Need(pairSummons.All(s=>Vector2.Distance(s.Position,pairOwner.Position)<=1)&&Vector2.Distance(pairSummons[0].Position,pairSummons[1].Position)>.2f,"多只召唤物闪现落点重叠或未同步");
+
+        // 永续召唤脱战补员：没有敌人也按原前摇/冷却逐只补齐，到达上限后不再施放。
+        // 每一步都强制清空当前房，确保补员发生在非战斗状态，而不是由战斗AI完成。
+        void ClearCurrent(GameSession game)
+        {
+            var room=game.Floor.Rooms[game.CurrentRoom];
+            foreach(var monster in room.Monsters)monster.Hp=0;
+            room.ContentCleared=true;room.EventUsed=true;room.Loot.Clear();
+        }
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=3,Role="melee",Duration=0};
+        var refill=Battle();refill.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON"};
+        for(int i=0;i<400&&Live(refill).Length<3;i++){ClearCurrent(refill);Tick(refill);}
+        Need(Live(refill).Length==3,"永续召唤未在无敌人房间自动补满上限");
+        for(int i=0;i<320;i++){ClearCurrent(refill);Tick(refill);}
+        Need(Live(refill).Length==3,"永续召唤超过数量上限");
+        // 战斗外损失一只后继续补员。
+        Live(refill)[0].Hp=0;ClearCurrent(refill);Tick(refill);
+        Need(Live(refill).Length==2,"阵亡召唤物未从存活列表移除");
+        for(int i=0;i<400&&Live(refill).Length<3;i++){ClearCurrent(refill);Tick(refill);}
+        Need(Live(refill).Length==3,"非战斗阶段阵亡召唤物未补员");
+
+        // 限时召唤：按固定逻辑步到期撤销，不产生奖励，也不会在脱战时重新施放。
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Duration=.5};
+        var timed=Battle();Summon(timed);
+        var timedRoom=timed.Floor.Rooms[timed.CurrentRoom];
+        foreach(var monster in timedRoom.Monsters)monster.Hp=0;
+        timedRoom.ContentCleared=true;timedRoom.EventUsed=true;timedRoom.Loot.Clear();
+        int timedKills=timed.Kills;long timedXp=timed.Experience;
+        Need(Live(timed).Length==1,"限时召唤用例未生成召唤物");
+        for(int i=0;i<30&&Live(timed).Length>0;i++){ClearCurrent(timed);Tick(timed);}
+        Need(Live(timed).Length==0,"限时召唤到期未撤销");
+        for(int i=0;i<20;i++){ClearCurrent(timed);Tick(timed);}
+        Need(Live(timed).Length==0&&timed.Kills==timedKills&&timed.Experience==timedXp,"限时召唤到期后脱战重新施放或产生奖励");
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Duration=0};
+        Need(c.Skills.Summons["nec_skeleton"] is {Permanent:true,MaxCount:3},"生产骷髅未配置为上限3的永续召唤");
+        Need(c.Skills.Summons["ran_valkyrie"] is {Permanent:false}&&Math.Abs(c.Skills.Summons["ran_valkyrie"].Duration-5)<.0001f,"生产女武神未配置为5秒限时召唤");
 
         // 主人卸槽/死亡立即撤销；全灭清除全部召唤记录。
         var unslot=Battle();Summon(unslot);unslot.EquipSkills("priest",Array.Empty<string>());Need(Live(unslot).Length==0,"主人卸槽后召唤仍存活");
@@ -169,6 +263,6 @@ public static class SkillBdSummonChecks
         Need(world.World.Stage==CampaignStage.Dungeon&&world.Heroes.All(h=>h.Timer==0&&h.SkillSwapLocks.Count==0&&h.SkillIds.All(id=>world.SkillCooldown(h,id)==0)),"进副本未重置全部战斗CD");
 
         Need(!LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Summons.ContainsKey("QA_SKELETON"),"QA召唤定义泄漏生产配置");
-        Console.WriteLine("PASS: B2 summon stats/cap/rewards, continuous door/corridor following, normal/catch-up/blink follow tiers with HP/count/reward preservation, combat no-blink and distinct blink slots, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
+        Console.WriteLine("PASS: B2 summon stats/cap/rewards, permanent out-of-combat refill to cap and timed expiry without recast, production nec_skeleton permanent x3 / ran_valkyrie 5s, continuous door/corridor following, normal/catch-up/blink follow tiers with HP/count/reward preservation, room-switch sync, melee/ranged/support entry deployment with capped acceleration and timeout snap, combat no-blink and distinct blink slots, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
     }
 }

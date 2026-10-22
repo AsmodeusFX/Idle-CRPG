@@ -29,6 +29,8 @@ public sealed class Actor
     /// <summary>非空表示独立召唤物；主人索引指向当前上阵英雄，召唤技能用于卸槽清理。</summary>
     public string SummonDefinitionId="",SummonSkill="";
     public int SummonOwner=-1;
+    /// <summary>限时召唤剩余秒数，按固定20Hz逻辑步递减；0且定义为永续时表示不限期。属于召唤生命周期现场，随检查点保存。</summary>
+    public float SummonRemaining;
     public bool Alive => Hp > 0;
     /// <summary>角色字段均为值类型或不可变字符串，复制后可独立用于检查点，不共享可变战斗状态。</summary>
     public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.ActiveAuraSkills=new(ActiveAuraSkills);a.SkillLevels=new(SkillLevels);a.Talents=new(Talents);a.TalentBonuses=new(TalentBonuses);a.SkillSwapLocks=new(SkillSwapLocks);return a;}
@@ -137,6 +139,8 @@ public sealed partial class GameSession
     public void Tick(float dt)
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
+        // 瞬时位移标记按逻辑步重置：脱队闪现、跨房同步和入场兜底共用同一步的表现跳过。
+        summonBlinkTick.Clear();
         AdvanceSwapLocks(dt);World?.ObserveApprovalWait();
         if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);if(World.InDungeonScene&&Floors.Count>0)FollowDungeonSummons(dt);return;}
         var tickFloor=Floor;bool fighting=!Floor.Rooms[CurrentRoom].Clear&&Floor.Rooms[CurrentRoom].Generated;
@@ -144,7 +148,8 @@ public sealed partial class GameSession
         TickDungeon(dt);
         if(Floors.Count>0&&(World==null||World.InDungeonScene))FollowDungeonSummons(dt);
         if(fighting)tickFloor.BattleTicks++;else if(Heroes.Where((h,i)=>h.Position!=positions[i]).Any())tickFloor.WalkTicks++;
-        if(World!=null&&Won)World.CompleteDungeon(this);
+        // 通关后立即清空房间技能现场：返村途中不再属于地牢房间，残留动作会让正式快照校验失败。
+        if(World!=null&&Won){World.CompleteDungeon(this);ResetSkillRoom();}
     }
     private void TickDungeon(float dt)
     {
@@ -165,6 +170,8 @@ public sealed partial class GameSession
             if (!Heroes.Any(h=>h.Alive)) RespawnParty();
             return;
         }
+        // 脱战补员：只有永续召唤会在无敌人时自动施放；不影响救援、拾取和赶路的优先级。
+        AutoSummonPermanent(dt);
         // 清房后救援优先于事件、探索、换层和最终通关。
         if (Rescue(dt)) return;
         if(CollectLoot(room,dt))return;
@@ -300,6 +307,9 @@ public sealed partial class GameSession
         {
             Reveal(b);
             CurrentRoom=b.Id; destination=-1;
+            // 正式跨房切换时，仍在上一房间或走廊的存活召唤物先并入新房间入口；不依赖脱队闪现距离。
+            // 先同步再记录进房检查点，读档重开房间时召唤物位于同一合法入口位置。
+            SyncSummonsToRoom(b,entry);
             CaptureRoomEntry();
             StartCombatEntry(b,entry);
         }
@@ -340,7 +350,10 @@ public sealed partial class GameSession
     {
         if(CombatEntryRemaining>0)
         {
-            skillState.Targeting.EntryElapsed+=dt;Status=$"入场展开 · 敌人警觉 {CombatEntryRemaining:0.0}秒";
+            skillState.Targeting.EntryElapsed+=dt;
+            // 警觉窗口结束的这一步，把仍未到位的召唤物兜底同步到站位；不延长敌人 AI 延迟。
+            if(CombatEntryRemaining<=0)SnapEntrySummons();
+            Status=$"入场展开 · 敌人警觉 {CombatEntryRemaining:0.0}秒";
             return;
         }
         effectBudgetRemaining=SkillConfig.EffectBudget;

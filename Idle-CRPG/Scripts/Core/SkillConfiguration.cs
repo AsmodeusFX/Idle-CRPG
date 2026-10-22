@@ -14,8 +14,16 @@ public record BuffAttributeSpec(string Attribute,string Operation,double Value);
 public record BuffDefinition(string Id,int Duration,string Stacking,BuffAttributeSpec[] Attributes,string Periodic,int Interval,string[] Triggers,string Mechanic,double Value,double Extra,string Target,string StackGroup="",double StackStrength=0);
 public record TriggerDefinition(string Id,string Event,string Effect,string OwnerBuff,string Filter,double Chance=1);
 public record AbilityDefinition(string Id,string Form,string Targeting,string Hits,double Root,int Level,int MaxLevel,string[] Effects,string[] Buffs);
-/// <summary>QA/B2 独立召唤原型：属性按主人施法时的基础值快照继承，不继承临时光环或装备现场。</summary>
-public record SummonDefinition(string Id,string Name,int MaxCount,double HpRatio,double AttackRatio,double DefenseRatio,float Speed,float Range,double Cooldown,int EngagementCapacity);
+/// <summary>QA/B2 独立召唤原型：属性按主人施法时的基础值快照继承，不继承临时光环或装备现场。
+/// role 显式声明近战/远程/支援战斗定位，用于入场部署，不按显示名或职业推断；支援仅影响落位，不新增战斗行为。
+/// duration_seconds 是唯一生命周期定义：0为永续召唤，正数按20Hz固定逻辑步限时；不另设并行字段。</summary>
+public record SummonDefinition(string Id,string Name,int MaxCount,double HpRatio,double AttackRatio,double DefenseRatio,float Speed,float Range,double Cooldown,int EngagementCapacity,string Role,double Duration=0)
+{
+    /// <summary>只有显式 ranged 角色参与远程展开与远程承伤标签；支援不会因射程被误判为远程。</summary>
+    public bool RangedCombat=>Role=="ranged";
+    /// <summary>0秒即永续；只有永续召唤获得脱战自动补员资格。</summary>
+    public bool Permanent=>Duration<=0;
+}
 /// <summary>QA/C1 有界链原型：max_targets 含链根，逐跳系数乘以 damage_decay；仅显式 Chain Effect 获得连锁资格。</summary>
 public record ChainDefinition(string Id,string Name,int MaxTargets,float JumpRange,double DamageDecay);
 /// <summary>QA/C3 Proc 限次原型：0 表示不限；限次按一次根源施法（OriginCast）与目标计数，不改变既有无限次触发。</summary>
@@ -47,7 +55,7 @@ public sealed class SkillConfiguration
     private static readonly string[] SkillColumns="id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id,target_policy,cast_condition".Split(',');
     private static readonly string[] EffectColumns="id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees".Split(',');
     private static readonly string[] BuffColumns="id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target,stack_group,stack_strength".Split(',');
-    private static readonly string[] SummonColumns="id,name,max_count,hp_ratio,attack_ratio,defense_ratio,speed,range,cooldown_seconds,engagement_capacity".Split(',');
+    private static readonly string[] SummonColumns="id,name,max_count,hp_ratio,attack_ratio,defense_ratio,speed,range,cooldown_seconds,engagement_capacity,role,duration_seconds".Split(',');
     private static readonly string[] ChainColumns="id,name,max_targets,jump_range,damage_decay".Split(',');
     private static readonly string[] ProcLimitColumns="id,max_per_cast,max_per_target".Split(',');
     private static readonly string[] AbilityEffectColumns="id,name,effect_type,condition,condition_value,power,skill_flat,duration,delay,tick_interval,range,trajectory,projectile_count,hover_time,arc_min,arc_max,speed,spread,volley_interval,volley_jitter,spawn_jitter,pierce_chance,aoe_radius,aoe_all,band,knockback,gather,buff_id".Split(',');
@@ -112,8 +120,10 @@ public sealed class SkillConfiguration
         }
         foreach(var r in Table("summon",SummonColumns).Rows)
         {
-            var def=new SummonDefinition(r.Id,r.Required("name"),r.Integer("max_count"),r.Number("hp_ratio"),r.Number("attack_ratio"),r.Number("defense_ratio"),(float)r.Number("speed"),(float)r.Number("range"),r.Number("cooldown_seconds"),r.Integer("engagement_capacity"));
-            if(string.IsNullOrWhiteSpace(def.Name)||def.MaxCount is <1 or >5||def.HpRatio<=0||def.AttackRatio<=0||def.DefenseRatio<0||!float.IsFinite(def.Speed)||def.Speed<=0||!float.IsFinite(def.Range)||def.Range<=0||!double.IsFinite(def.Cooldown)||def.Cooldown<=0||def.EngagementCapacity<0)throw r.Error("max_count","召唤原型属性/数量/接敌容量无效");
+            var def=new SummonDefinition(r.Id,r.Required("name"),r.Integer("max_count"),r.Number("hp_ratio"),r.Number("attack_ratio"),r.Number("defense_ratio"),(float)r.Number("speed"),(float)r.Number("range"),r.Number("cooldown_seconds"),r.Integer("engagement_capacity"),r.Required("role"),r.Number("duration_seconds"));
+            if(string.IsNullOrWhiteSpace(def.Name)||def.MaxCount is <1 or >5||def.HpRatio<=0||def.AttackRatio<=0||def.DefenseRatio<0||!float.IsFinite(def.Speed)||def.Speed<=0||!float.IsFinite(def.Range)||def.Range<=0||!double.IsFinite(def.Cooldown)||def.Cooldown<=0||def.EngagementCapacity<0||def.Role is not ("melee" or "ranged" or "support"))throw r.Error("max_count","召唤原型属性/数量/接敌容量/战斗定位无效");
+            // 生命周期只有这一列：0永续、正数限时，负值或非有限值拒绝，避免“未配置”被当成限时0秒。
+            if(!double.IsFinite(def.Duration)||def.Duration<0)throw r.Error("duration_seconds","召唤持续时间必须是非负有限秒数（0=永续）");
             attributes?.ValidateValue("engagement_capacity",def.EngagementCapacity);
             c.Summons.Add(def.Id,def);
         }

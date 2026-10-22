@@ -89,6 +89,8 @@ public sealed partial class GameSession
     }
     private void ResetSkillRoom()
     {
+        // 入场部署目标只属于本房间战斗现场；换房、清房或重置技能现场时一并清空，不进入存档。
+        summonDeployGoals.Clear();summonDeployed.Clear();
         skillState=new();ClearVisualEvents();monsterLockIndex.Clear();foreach(var actor in Heroes.Concat(Summons))actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
         if(FloorIndex<Floors.Count&&CurrentRoom<Floors[FloorIndex].Rooms.Count)foreach(var actor in Floor.Rooms[CurrentRoom].Monsters)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
     }
@@ -177,7 +179,9 @@ public sealed partial class GameSession
         // 目标在前摇期间死亡则取消，不扣冷却；尸体目标例外，但尸体已被竞争消费时同样取消。
         bool corpseTarget=skill.TargetPolicy=="corpse";
         bool validCorpse=corpseTarget&&target is {Alive:false}&&CorpseInRoom(target)&&CorpseExists(action.Target);
-        if(actor is not {Alive:true}||target==null||!InCombatRoom(actor)||(!InCombatRoom(target)&&!validCorpse)||Stunned(actor)){action.Active="";return;}
+        // 永续召唤的脱战补员是唯一允许在房间外完成的自身施放；其它技能仍要求施放者在本房。
+        bool offCombatSummon=skill.TargetPolicy=="self"&&PermanentSummonOf(id)!=null;
+        if(actor is not {Alive:true}||target==null||(!InCombatRoom(actor)&&!offCombatSummon)||(!InCombatRoom(target)&&!offCombatSummon&&!validCorpse)||Stunned(actor)){action.Active="";return;}
         double cooldown=skill.Cooldown/(double)SkillConfig.TickRate;
         if(SkillConfig.Abilities.TryGetValue(id,out var ability)&&ability.Form=="buff")
             cooldown=Math.Max(ability.Buffs.Max(b=>SkillConfig.Buffs[b].Duration)/(double)SkillConfig.TickRate*SkillConfig.Setting("buff_cooldown_floor_ratio"),cooldown*(1-SkillConfig.Setting("buff_cooldown_per_level")*(LevelOf(actor,id)-1)));
@@ -277,6 +281,13 @@ public sealed partial class GameSession
             buff.Periodic+=dt;double interval=def.Interval/(double)SkillConfig.TickRate;
             while(buff.Periodic+.000001>=interval){buff.Periodic-=interval;Enqueue(new(){Effect=def.Periodic,Skill=buff.Ability,Owner=buff.Owner,Target=buff.Target,BuffInstance=buff.Instance,Coefficient=buff.Coefficient,Flight=buff.Cause,OriginCast=buff.Cause?.OriginCast??buff.OriginCast});}
         }
+        AdvanceActions(dt);
+        foreach(var actor in RoomActors)actor.Hp=Math.Min(actor.Hp,CombatMaximumHp(actor));
+        AdvanceFlights(dt);
+    }
+    /// <summary>推进前摇、冷却与恢复的共用时序；战斗技能循环和脱战永续召唤补员使用同一份实现。</summary>
+    private void AdvanceActions(float dt)
+    {
         foreach(var action in skillState.Actions.ToArray())
         {
             var owner=CombatActor(action.Owner);if(owner is not {Alive:true}){action.Active="";continue;}
@@ -292,8 +303,6 @@ public sealed partial class GameSession
                 }
                 action.Windup-=dt;if(action.Windup<=.000001)Commit(action);}
         }
-        foreach(var actor in RoomActors)actor.Hp=Math.Min(actor.Hp,CombatMaximumHp(actor));
-        AdvanceFlights(dt);
     }
     private void DrainEffects()
     {

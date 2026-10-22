@@ -1,2 +1,2 @@
-id,name,max_count,hp_ratio,attack_ratio,defense_ratio,speed,range,cooldown_seconds,engagement_capacity
-QA_SKELETON,QA_SKELETON,1,0.5,0.5,0.5,2.5,0.9,3,0
+id,name,max_count,hp_ratio,attack_ratio,defense_ratio,speed,range,cooldown_seconds,engagement_capacity,role,duration_seconds
+QA_SKELETON,QA_SKELETON,1,0.5,0.5,0.5,2.5,0.9,3,0,melee,0

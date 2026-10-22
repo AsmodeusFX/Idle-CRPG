@@ -151,6 +151,8 @@ public partial class Main : Node2D
         var targetingCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-targeting="));
         if(capture&&targetingCapture!=null)PrepareTargetingCapture(targetingCapture.Substring("--capture-targeting=".Length));
         if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-bd-a"))PrepareSkillBdCapture();
+        string? summonCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-summon="));
+        if(capture&&summonCapture!=null)PrepareSummonCapture(summonCapture.Substring("--capture-summon=".Length));
         string? bdSkillCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-bd-skill="));
         if(capture&&bdSkillCapture!=null)PrepareSkillBdSkillCapture(bdSkillCapture.Substring("--capture-bd-skill=".Length));
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();

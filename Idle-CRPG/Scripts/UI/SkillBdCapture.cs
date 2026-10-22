@@ -7,6 +7,99 @@ using V=System.Numerics.Vector2;
 
 public partial class Main
 {
+    /// <summary>召唤物跟随/入场 QA 截图：只构造隔离会话与内存定义，不写配置或玩家进度。
+    /// follow/fast 验证非战斗追赶，entry/pair 验证入场分类展开与多召唤物车道，pre 验证永续召唤脱战补员。</summary>
+    private void PrepareSummonCapture(string scene)
+    {
+        if(scene=="pre"){PreparePreSummonCapture();return;}
+        // QA 远程定义复用同一骷髅原型，只改 role/range，证明展开分类来自定义而不是显示名。
+        var skeleton=config.Skills.Summons["nec_skeleton"];
+        config.Skills.Summons["nec_skeleton"]=skeleton with {MaxCount=scene=="pair"?2:1,Role="melee"};
+        var ranged=skeleton with {Id="summon_qa_ranged",Name="QA远程骷髅",MaxCount=1,Role="ranged",Range=3.4f};
+        config.Skills.Summons[ranged.Id]=ranged;
+        var raise=config.Skills.Skills["nec_raise_skeleton"];
+        var summonEffect=config.Skills.Effects[raise.Effects[0]];
+        config.Skills.Effects["summon_qa_ranged_effect"]=summonEffect with {Id="summon_qa_ranged_effect",MechanicId=ranged.Id};
+        config.Skills.Skills["nec_raise_ranged_qa"]=raise with {Id="nec_raise_ranged_qa",Effects=new[]{"summon_qa_ranged_effect"}};
+        session=GameSession.CreateWorld(config,787,new[]{"necromancer"});
+        for(int i=0;i<10000&&(session.World!.Stage!=CampaignStage.Dungeon||session.CurrentRoom==0);i++)session.Tick(.05f);
+        var room=session.Floor.Rooms[session.CurrentRoom];var state=session.Capture().SkillState;
+        state.Targeting=new();state.Actions.Clear();state.Pending.Clear();state.Buffs.Clear();state.Flights.Clear();room.ContentCleared=false;
+        var hero=session.Heroes[0];hero.Position=room.Center;hero.Hp=hero.MaxHp=10000;hero.Attack=10;hero.Timer=999;hero.Range=100;
+        hero.SkillIds=scene=="entry"?new[]{"nec_raise_skeleton","nec_raise_ranged_qa"}:new[]{"nec_raise_skeleton"};
+        for(int i=0;i<room.Monsters.Count;i++){var m=room.Monsters[i];m.Position=room.Center+new V(0,2.6f+(i-room.Monsters.Count/2f)*.4f);m.Hp=m.MaxHp=100000;m.Range=100;m.Attack=0;m.Timer=999;}
+        int expected=scene=="pair"?2:scene=="entry"?2:1;
+        for(int i=0;i<900&&session.Summons.Count(s=>s.Alive)<expected;i++)session.Tick(.05f);
+        if(session.Summons.Count(s=>s.Alive)<expected)throw new InvalidOperationException("QA 召唤物未按预期生成");
+        // 等待召唤期间怪物会自行接近，截图前恢复同一排布，保证场景可读。
+        for(int i=0;i<room.Monsters.Count;i++)room.Monsters[i].Position=room.Center+new V(0,2.6f+(i-room.Monsters.Count/2f)*.4f);
+        float startOwner=0,startSummon=0;
+        if(scene is "follow" or "fast")
+        {
+            // 清空当前房后让小队自然走向下一房间；召唤物放在前进方向后方5单位，按主人速度倍率追赶。
+            foreach(var m in room.Monsters)m.Hp=0;
+            room.ContentCleared=true;room.EventUsed=true;room.Loot.Clear();
+            var summon=session.Summons.First(s=>s.Alive);
+            session.Tick(.05f);
+            int next=session.Capture().Destination;
+            var travel=next>=0?V.Normalize(session.Floor.Rooms[next].Center-room.Center):V.UnitX;
+            hero.Position=room.Center;summon.Position=room.Center-travel*5;
+            if(scene=="fast")hero.Speed=9;
+            var ownerStart=hero.Position;var summonStart=summon.Position;
+            for(int i=0;i<(scene=="fast"?12:30);i++)session.Tick(.05f);
+            startOwner=V.Distance(ownerStart,hero.Position);startSummon=V.Distance(summonStart,summon.Position);
+            GD.Print($"SUMMON_QA {scene}: ownerSpeed={hero.Speed:0.00}; ownerMoved={startOwner:0.00}; summonMoved={startSummon:0.00}; distance={V.Distance(hero.Position,summon.Position):0.00}");
+        }
+        else
+        {
+            // 与正式跨房一致的入口方向；召唤物从入口内侧出发，由入场部署推进到各自站位。
+            var inward=new V(0,1);var entry=room.Center-new V(0,room.HalfHeight);
+            var targeting=session.Capture().SkillState.Targeting;
+            targeting.EntryPrepared=true;targeting.EntryElapsed=0;targeting.EntryAnchor=entry;targeting.EntryDirection=inward;targeting.DeployedMask=0;
+            var summons=session.Summons.Where(s=>s.Alive).ToArray();
+            for(int i=0;i<summons.Length;i++)summons[i].Position=entry+inward*.45f+new V((i-.5f)*.2f,0);
+            hero.Position=entry+inward*1f;
+            for(int i=0;i<9;i++)session.Tick(.05f);
+            GD.Print($"SUMMON_QA {scene}: summons={summons.Length}; roles={string.Join(',',summons.Select(s=>config.Skills.Summons[s.SummonDefinitionId].Role))}; depth={string.Join(',',summons.Select(s=>V.Dot(s.Position-entry,inward).ToString("0.00")))}; entry={session.CombatEntryRemaining:0.00}");
+        }
+        FinishSummonCapture("summon-"+scene);
+    }
+
+    /// <summary>永续召唤脱战补员 QA：空地牢内不借助敌人补齐骷髅上限，只使用隔离会话与内存定义。</summary>
+    private void PreparePreSummonCapture()
+    {
+        config.Skills.Summons["nec_skeleton"]=config.Skills.Summons["nec_skeleton"] with {MaxCount=3,Duration=0,Role="melee"};
+        session=GameSession.CreateWorld(config,791,new[]{"necromancer"});
+        for(int i=0;i<10000&&(session.World!.Stage!=CampaignStage.Dungeon||session.CurrentRoom==0);i++)session.Tick(.05f);
+        var room=session.Floor.Rooms[session.CurrentRoom];var state=session.Capture().SkillState;
+        state.Targeting=new();state.Actions.Clear();state.Pending.Clear();state.Buffs.Clear();state.Flights.Clear();
+        var hero=session.Heroes[0];hero.Position=room.Center;hero.Hp=hero.MaxHp=10000;hero.Timer=999;hero.SkillIds=new[]{"nec_raise_skeleton"};
+        // 每一步都清空当前房，证明补员发生在无敌人状态，而不是由战斗AI完成。
+        for(int i=0;i<400&&session.Summons.Count(s=>s.Alive)<3;i++)
+        {
+            var current=session.Floor.Rooms[session.CurrentRoom];
+            foreach(var monster in current.Monsters)monster.Hp=0;
+            current.ContentCleared=true;current.EventUsed=true;current.Loot.Clear();
+            session.Tick(.05f);
+        }
+        if(session.Summons.Count(s=>s.Alive)!=3)throw new InvalidOperationException("QA 永续召唤未在无敌人房间补满");
+        room=session.Floor.Rooms[session.CurrentRoom];hero.Position=room.Center;
+        // 队列排成一行便于截图核对数量；不修改任何战斗数值。
+        var live=session.Summons.Where(s=>s.Alive).ToArray();
+        for(int i=0;i<live.Length;i++)live[i].Position=room.Center+new V((i-(live.Length-1)/2f)*.9f,.9f);
+        var remaining=live.Select(s=>config.Skills.Summons[s.SummonDefinitionId].Permanent?"permanent":s.SummonRemaining.ToString("0.0"));
+        GD.Print($"SUMMON_QA pre: summons={live.Length}; roles={string.Join(',',live.Select(s=>config.Skills.Summons[s.SummonDefinitionId].Role))}; lifetime={string.Join(',',remaining)}");
+        FinishSummonCapture("summon-pre");
+    }
+
+    /// <summary>QA截图统一收尾：Mini窗口尺寸、暂停、镜头就绪与面板刷新。</summary>
+    private void FinishSummonCapture(string view)
+    {
+        bool mini=OS.GetCmdlineUserArgs().Contains("--qa-mini");
+        if(mini)GetWindow().Size=new Vector2I(960,600);
+        motion.UpdateCombatVisuals(session!,.1);viewMode=0;paused=true;cameraReady=false;motionAlpha=1;captureView=view+(mini?"-mini":"");Refresh();TickStarPanels();
+    }
+
     /// <summary>仅--capture显式入口加载TEST_ONLY参数；自动存档隔离在artifacts/qa，不替换正式树。</summary>
     private void PrepareSkillBdCapture()
     {

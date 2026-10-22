@@ -79,8 +79,10 @@ public static class ProcIcdChecks
 
         // 数量上限失败后不占ICD，下一次出现空位可立即成功。
         var savedTrigger=c.Skills.Triggers[A];c.Skills.Triggers[A]=savedTrigger with {Effect="nec_raise_skeleton_summon"};
+        // 用例只验证“上限失败”，与生产上限解耦：本地把骷髅上限压到1只，不能依赖生产数值。
+        var savedSkeleton=c.Skills.Summons["nec_skeleton"];c.Skills.Summons["nec_skeleton"]=savedSkeleton with {MaxCount=1};
         var summon=Battle();summon.Heroes[0].SkillIds=new[]{"nec_raise_skeleton"};Proc(summon,skill:"nec_raise_skeleton");Tick(summon);summon.Capture().SkillState.ProcIcds.Clear();
-        Proc(summon,skill:"nec_raise_skeleton");Tick(summon);Need(Count(summon)==0&&summon.Summons.Count(s=>s.Alive)==1,"召唤满额消耗ICD");c.Skills.Triggers[A]=savedTrigger;
+        Proc(summon,skill:"nec_raise_skeleton");Tick(summon);Need(Count(summon)==0&&summon.Summons.Count(s=>s.Alive)==1,"召唤满额消耗ICD");c.Skills.Triggers[A]=savedTrigger;c.Skills.Summons["nec_skeleton"]=savedSkeleton;
 
         // 镜像沿用既有弹体全局预算与生命周期，未新增专属数值。
         var mirror=Battle();AddBuff(mirror,"buff_mirror",0);var ms=mirror.Capture().SkillState;
