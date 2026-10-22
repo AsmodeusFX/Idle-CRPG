@@ -1,0 +1,122 @@
+[
+  {
+    "act": "ACT01",
+    "source_folder": "D2_Act1_Map_V0_5",
+    "source_files": {
+      "REGION": {
+        "file_name": "ACT01_REGION_V0.5.csv",
+        "sha256": "d68643050b040530ffda440f6f403b9fb372b761a612a8a841c91b4d9a6c8125"
+      },
+      "POI": {
+        "file_name": "ACT01_POI_V0.5.csv",
+        "sha256": "1da6a5dab1ec6818cd48cdca5f6c89feae3a73954326db1dead75f0642103940"
+      },
+      "FLOOR_PLAN": {
+        "file_name": "ACT01_FLOOR_PLAN_V0.5.csv",
+        "sha256": "3fb1e9976a2870e3f0de0b0a01751af15b55a14c3f19b021bc02d133f40b0f3e"
+      }
+    },
+    "region_count": 8,
+    "poi_count": 41,
+    "dungeon_count": 33,
+    "castle_count": 8,
+    "floor_count_all_difficulties": 207,
+    "source_note": "ACT01 map topology confirmed; ACT02-ACT05 data packages label proposal; runtime wins after audit"
+  },
+  {
+    "act": "ACT02",
+    "source_folder": "D2_Act2_Map_V0_1",
+    "source_files": {
+      "REGION": {
+        "file_name": "ACT02_REGION_V0.1.csv",
+        "sha256": "3c1c06ae980a40e99f82339f2d214f3f73b813893bf7dbaeed9551acf0e0fc8a"
+      },
+      "POI": {
+        "file_name": "ACT02_POI_V0.1.csv",
+        "sha256": "50fc50cfcf384ee05d54f2b440a292829442acb7ba1c17153e73286c9a79f188"
+      },
+      "FLOOR_PLAN": {
+        "file_name": "ACT02_FLOOR_PLAN_V0.1.csv",
+        "sha256": "3c181fdfde5b120fa98f251c2edc4b618c90c131ea2a7b24d265a0b825ed9508"
+      }
+    },
+    "region_count": 9,
+    "poi_count": 49,
+    "dungeon_count": 40,
+    "castle_count": 9,
+    "floor_count_all_difficulties": 231,
+    "source_note": "ACT01 map topology confirmed; ACT02-ACT05 data packages label proposal; runtime wins after audit"
+  },
+  {
+    "act": "ACT03",
+    "source_folder": "D2_Act3_Map_V0_1",
+    "source_files": {
+      "REGION": {
+        "file_name": "ACT03_REGION_V0.1.csv",
+        "sha256": "4e2af649dd55eee99c862646d28addaf7075d0d2933d01ff0d93f10d8229ade2"
+      },
+      "POI": {
+        "file_name": "ACT03_POI_V0.1.csv",
+        "sha256": "109c15df7b62dad81fa8affbf34fddaecd62e4fadac0037ee9a6cf6c7a39bffd"
+      },
+      "FLOOR_PLAN": {
+        "file_name": "ACT03_FLOOR_PLAN_V0.1.csv",
+        "sha256": "140943a4b37d13e62ae632118020ce5e6ab5b4466606c8a20eb5e929efbd0c93"
+      }
+    },
+    "region_count": 9,
+    "poi_count": 53,
+    "dungeon_count": 44,
+    "castle_count": 9,
+    "floor_count_all_difficulties": 273,
+    "source_note": "ACT01 map topology confirmed; ACT02-ACT05 data packages label proposal; runtime wins after audit"
+  },
+  {
+    "act": "ACT04",
+    "source_folder": "D2_Act4_Map_V0_1",
+    "source_files": {
+      "REGION": {
+        "file_name": "ACT04_REGION_V0.1.csv",
+        "sha256": "ae2b029fae0e6ff208453afd3eaa2a35588f3e569942f467cee298b83bb6c13d"
+      },
+      "POI": {
+        "file_name": "ACT04_POI_V0.1.csv",
+        "sha256": "5e6bfb9640342f62c089f59674ae3afcb2928ebd8df17e4c07cec75a9add3638"
+      },
+      "FLOOR_PLAN": {
+        "file_name": "ACT04_FLOOR_PLAN_V0.1.csv",
+        "sha256": "c3482d1bfec5c79c74fb75a0d59f1ef11c58595c2831e21cb8bd1fedac194c61"
+      }
+    },
+    "region_count": 5,
+    "poi_count": 24,
+    "dungeon_count": 19,
+    "castle_count": 5,
+    "floor_count_all_difficulties": 231,
+    "source_note": "ACT01 map topology confirmed; ACT02-ACT05 data packages label proposal; runtime wins after audit"
+  },
+  {
+    "act": "ACT05",
+    "source_folder": "D2_Act5_Map_V0_1",
+    "source_files": {
+      "REGION": {
+        "file_name": "ACT05_REGION_V0.1.csv",
+        "sha256": "b40fb1cf48f85848cf89e8ca88fb1f3cf3e3d3e7c12a3563360a1c6a1e3af5ac"
+      },
+      "POI": {
+        "file_name": "ACT05_POI_V0.1.csv",
+        "sha256": "e8494cf7df7e22f43779a8ed0d4b500675cdfd9c98d27a500a12471eca424836"
+      },
+      "FLOOR_PLAN": {
+        "file_name": "ACT05_FLOOR_PLAN_V0.1.csv",
+        "sha256": "d5b81734a31edc1743bee48e202774e108ee6f0af1329b142b4ea97c6cf27825"
+      }
+    },
+    "region_count": 11,
+    "poi_count": 64,
+    "dungeon_count": 53,
+    "castle_count": 11,
+    "floor_count_all_difficulties": 573,
+    "source_note": "ACT01 map topology confirmed; ACT02-ACT05 data packages label proposal; runtime wins after audit"
+  }
+]

@@ -1,0 +1,6 @@
+﻿party_preset_id,composition,party_size,notes,status
+Q1,Barbarian+Paladin+Sorceress+Ranger,4,TEST_ONLY legal 4 hero; stars must be unlocked; no duplicate classes required,PROPOSAL
+Q2,Barbarian+Sorceress+Necromancer+Ranger,4,TEST_ONLY legal 4 hero; stars must be unlocked; no duplicate classes required,PROPOSAL
+Q3,Paladin+Sorceress+Necromancer+Ranger,4,TEST_ONLY legal 4 hero; stars must be unlocked; no duplicate classes required,PROPOSAL
+Q4,Barbarian+Paladin+Necromancer+Ranger,4,TEST_ONLY legal 4 hero; stars must be unlocked; no duplicate classes required,PROPOSAL
+Q5,Paladin+Necromancer+Sorceress+Ranger(ElementalBow),4,TEST_ONLY legal 4 hero; stars must be unlocked; no duplicate classes required,PROPOSAL

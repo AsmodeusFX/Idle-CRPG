@@ -1,0 +1,4 @@
+item_def_id,slot_test_only,weapon_tag,allowed_class_tag,notes
+TEST_WPN_MELEE,Weapon,MELEE,ANY,仅作S4武器槽演示_职业武器资格以真实工程为准
+TEST_WPN_BOW,Weapon,BOW,RANGER,游侠仅弓_TEST_ONLY定义不批准所有角色装备限制
+TEST_ARM_BASIC,Armor,NONE,ANY,仅作S4防具槽演示
