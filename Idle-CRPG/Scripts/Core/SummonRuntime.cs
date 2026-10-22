@@ -162,7 +162,7 @@ public sealed partial class GameSession
                 goal=ClampToRoom(room,anchor+side*(Summons.IndexOf(summon)%2==0?.25f:-.25f));
                 summonDeployGoals[summon]=goal;
             }
-            Move(summon,SummonPathWaypoint(summon,room,goal),dt,summon.Speed*entrySpeedPct);
+            Move(summon,PartyDoorWaypoint(summon,room,goal),dt,summon.Speed*entrySpeedPct);
             entryMoved.Add(summon);
             // 走廊/旧房间的路径点不能当作落点：必须真正进入房间并站到目标附近才算部署完成。
             if(Vector2.DistanceSquared(summon.Position,goal)<.04f&&WithinRoom(room,summon.Position))
@@ -194,17 +194,17 @@ public sealed partial class GameSession
         return ClampToRoom(room,goal);
     }
     private static Vector2 ClampToRoom(Room room,Vector2 point)=>Vector2.Clamp(point,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
-    /// <summary>入场/跟随共用的房门路径点：同房直接朝落点；在上一房间先走到通往目标房间的门；
+    /// <summary>英雄与召唤物共用的房门路径点：同房直接朝落点；在上一房间先走到通往目标房间的门；
     /// 在走廊时沿最近门段前进。禁止朝目标直线穿墙，也不做瞬移。</summary>
-    private Vector2 SummonPathWaypoint(Actor summon,Room targetRoom,Vector2 roomGoal)
+    private Vector2 PartyDoorWaypoint(Actor actor,Room targetRoom,Vector2 roomGoal)
     {
-        var from=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,summon.Position));
-        if(from==null)return CorridorWaypointTowards(summon.Position,targetRoom);
+        var from=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,actor.Position));
+        if(from==null)return CorridorWaypointTowards(actor.Position,targetRoom);
         if(from.Id!=targetRoom.Id)
         {
             var next=Floor.Rooms[FirstStep(from.Id,targetRoom.Id)];
             var exit=from.DoorTowards(next);
-            return Vector2.Distance(summon.Position,exit)>.001f?exit:next.DoorTowards(from);
+            return Vector2.Distance(actor.Position,exit)>.001f?exit:next.DoorTowards(from);
         }
         return roomGoal;
     }
@@ -289,6 +289,8 @@ public sealed partial class GameSession
         float catchup=Config.Talents.Rule("summon_catchup_speed_pct")/100f;
         foreach(var summon in Summons.Where(s=>s.Alive))
         {
+            // 门前开门先锋由跑图逻辑独占移动，跟随不得把它拉回主人身边。
+            if(destination>=0&&phase==1&&ReferenceEquals(summon,doorOpener))continue;
             // 入场部署在本步已取得移动权（可能仍在走廊或上一房间），跟随不得再改写其位置。
             if(entryMoved.Contains(summon))continue;
             if(!MovingBetweenRooms&&!current.Clear&&InCombatRoom(summon))continue;

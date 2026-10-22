@@ -111,8 +111,11 @@ public static class CombatTargetingChecks
         var traversal=intro.Capture();var source=traversal.Floors[traversal.FloorIndex].Rooms[traversal.CurrentRoom];
         foreach(var m in source.Monsters)m.Hp=0;source.ContentCleared=true;source.EventUsed=true;source.Loot.Clear();
         int previous=source.Neighbors.First(i=>traversal.Floors[traversal.FloorIndex].Rooms[i].Clear);var cleared=traversal.Floors[traversal.FloorIndex].Rooms[previous];
-        traversal.SkillState=new();traversal.Destination=previous;traversal.Phase=1;traversal.Heroes[0].Position=cleared.DoorTowards(source);
-        foreach(var hero in traversal.Heroes.Skip(1))hero.Position=source.Center;
+        // 动态领队按实际速度选择；把最快英雄和最接近门的近战先锋都放在目标门外。
+        traversal.SkillState=new();traversal.Destination=previous;traversal.Phase=1;
+        traversal.Heroes[0].Position=cleared.DoorTowards(source);
+        traversal.Heroes.OrderByDescending(h=>h.Speed).First().Position=cleared.DoorTowards(source);
+        foreach(var hero in traversal.Heroes.Where(h=>h.Position!=cleared.DoorTowards(source)))hero.Position=source.Center;
         var passing=GameSession.Restore(c,traversal);Tick(passing);
         Need(passing.CurrentRoom==previous&&passing.CombatEntryRemaining==0,"已清理房间错误启动警觉或等待队尾");Tick(passing);
         Need(passing.MovingBetweenRooms,"已清理房间通过时仍在门口等待队尾");

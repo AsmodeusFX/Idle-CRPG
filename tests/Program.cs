@@ -24,6 +24,7 @@ if(args.Contains("--class-follow-checks")){ClassFollowingChecks.Run(root);return
 if(args.Contains("--talent-checks")){TalentChecks.Run(root);return;}
 if(args.Contains("--skill-migration-checks")){SkillMigrationChecks.Run(root);return;}
 if(args.Contains("--targeting-checks")){CombatTargetingChecks.Run(root);return;}
+if(args.Contains("--dungeon-travel-checks")){DungeonTravelChecks.Run(root);return;}
 SkillPreviewChecks.Run(root);
 ProcIcdChecks.Run(root);
 var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
@@ -296,3 +297,4 @@ SkillMigrationChecks.Run(root);
 ClassFollowingChecks.Run(root);
 HeroExperienceChecks.Run(root);
 CombatTargetingChecks.Run(root);
+DungeonTravelChecks.Run(root);

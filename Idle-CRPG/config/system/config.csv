@@ -19,6 +19,10 @@ combat_entry_ranged_depth_milli,900
 combat_entry_melee_spread_milli,1100
 combat_entry_ranged_spread_milli,450
 dungeon_queue_spacing_milli,650
+party_catchup_distance_milli,2000
+party_catchup_speed_pct,150
+dungeon_door_wait_offset_milli,600
+dungeon_door_wait_timeout_milli,3000
 summon_follow_distance_milli,2000
 summon_catchup_speed_pct,100
 summon_blink_distance_milli,8000

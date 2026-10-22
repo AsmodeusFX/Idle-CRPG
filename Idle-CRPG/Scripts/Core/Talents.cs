@@ -23,11 +23,15 @@ public sealed class TalentConfiguration
         if(c.Rule("talent_leap_ticks")<1||c.Rule("talent_windup_ticks")<1)throw new InvalidDataException("技能前摇必须大于0");
         if(c.Rule("active_skill_max_slots") is <1 or >5||c.Rule("active_skill_initial_slots")>c.Rule("active_skill_max_slots"))throw new InvalidDataException("主动槽位须在0～5内");
         if(c.Rule("world_follow_spacing_milli") is <1 or >1000)throw new InvalidDataException("世界跟随间距无效");
-        foreach(string key in new[]{"ranged_retreat_distance_milli","ranged_retreat_cooldown_milli","targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_melee_depth_milli","combat_entry_ranged_depth_milli","combat_entry_melee_spread_milli","combat_entry_ranged_spread_milli","dungeon_queue_spacing_milli","summon_follow_distance_milli","summon_catchup_speed_pct","summon_blink_distance_milli","summon_blink_delay_milli","summon_entry_speed_pct"})
+        foreach(string key in new[]{"ranged_retreat_distance_milli","ranged_retreat_cooldown_milli","targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_melee_depth_milli","combat_entry_ranged_depth_milli","combat_entry_melee_spread_milli","combat_entry_ranged_spread_milli","dungeon_queue_spacing_milli","party_catchup_distance_milli","party_catchup_speed_pct","dungeon_door_wait_offset_milli","dungeon_door_wait_timeout_milli","summon_follow_distance_milli","summon_catchup_speed_pct","summon_blink_distance_milli","summon_blink_delay_milli","summon_entry_speed_pct"})
             if(!c.Rules.TryGetValue(key,out int value)||value<1||value>100000)throw new InvalidDataException("索敌规则缺失或越界："+key);
         // 召唤物跟随：追赶倍率不得低于100%（否则落后反而减速），闪现距离必须大于正常跟随距离，否则边界处会互斥抖动。
         if(c.Rule("summon_catchup_speed_pct")<100)throw new InvalidDataException("召唤物追赶倍率不得低于100%");
         if(c.Rule("summon_blink_distance_milli")<=c.Rule("summon_follow_distance_milli"))throw new InvalidDataException("召唤物闪现距离必须大于跟随距离");
+        // 跑图追赶：触发距离必须大于队列间距，追赶倍率不得低于100%，门前等待必须有正超时。
+        if(c.Rule("party_catchup_distance_milli")<=c.Rule("dungeon_queue_spacing_milli"))throw new InvalidDataException("跑图追赶距离必须大于队列间距");
+        if(c.Rule("party_catchup_speed_pct")<100)throw new InvalidDataException("跑图追赶倍率不得低于100%");
+        if(c.Rule("dungeon_door_wait_timeout_milli")<100)throw new InvalidDataException("门前等待超时过短");
         // 入场部署加速同样只能高于正式战斗速度，不允许配置成低于100%变相减速。
         if(c.Rule("summon_entry_speed_pct")<100)throw new InvalidDataException("召唤物入场加速倍率不得低于100%");
         if(c.Rule("combat_entry_melee_depth_milli")<=c.Rule("combat_entry_ranged_depth_milli")||c.Rule("combat_entry_melee_spread_milli")<=c.Rule("combat_entry_ranged_spread_milli"))throw new InvalidDataException("近战入场深入距离及横向间距必须大于远程/法系");

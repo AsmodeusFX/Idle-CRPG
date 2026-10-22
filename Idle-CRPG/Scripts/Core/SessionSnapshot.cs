@@ -16,6 +16,10 @@ public sealed class SessionSnapshot
     public int DifficultyIndex,ChapterIndex;
     public List<ChapterProgressSave> CompletedMaps=new();
     public int Seed, DungeonSeed, FloorIndex, CurrentRoom, Experience, Kills, Retries, Destination=-1, Phase;
+    /// <summary>门前等待计时与先锋引用；只在Destination≥0且Phase==1时有效，其余状态必须为默认值。</summary>
+    public float DoorWait;
+    public bool DoorFallback;
+    public int DoorOpenerHero=-1,DoorOpenerSummon=-1;
     public long Gold, Revision, HitCount;
     public uint LootRandomState;
     public uint RoomEntryLootState;
@@ -92,7 +96,7 @@ public sealed partial class GameSession
         CampaignVersion=2,LatestMapIndex=LatestMapIndex,ActiveBranch=ActiveBranch,BranchQueue=branchQueue.ToList(),SuspendedWorld=suspendedWorld?.Capture(),
         DifficultyIndex=DifficultyIndex,ChapterIndex=ChapterIndex,CompletedMaps=CaptureChapters(),
         Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
-        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=2,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
+        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=2,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,DoorWait=destination>=0&&phase==1&&doorOpener is {Alive:true}?doorWait:0,DoorFallback=destination>=0&&phase==1&&doorOpener is {Alive:true}&&doorFallback,DoorOpenerHero=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Heroes.Contains(doorOpener)?Heroes.IndexOf(doorOpener):-1,DoorOpenerSummon=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Summons.Contains(doorOpener)?Summons.IndexOf(doorOpener):-1,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
         Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
@@ -178,6 +182,13 @@ public sealed partial class GameSession
         game.lootRandom.State=s.LootRandomState;game.Won=s.Won;game.destination=s.Destination;game.phase=s.Phase;game.regroup=s.Regroup;
         if(s.CombatRandomState!=0)game.combatRandom.State=s.CombatRandomState;
         game.roomEntryCombatState=s.RoomEntryCombatState==0?game.combatRandom.State:s.RoomEntryCombatState;game.skillState=s.SkillState;
+        // 门前等待只在跑图相位的等待子状态保存；读档沿用同一先锋与计时，避免重新挑选造成分叉。
+        if(game.destination>=0&&game.phase==1)
+        {
+            game.doorWait=s.DoorWait;game.doorFallback=s.DoorFallback;
+            game.doorOpener=s.DoorOpenerHero>=0?game.Heroes[s.DoorOpenerHero]:s.DoorOpenerSummon>=0?game.Summons[s.DoorOpenerSummon]:null;
+        }
+        game.RefreshTravelLeader(game.destination>=0);
         foreach(var actor in game.Heroes.Concat(game.Summons).Concat(game.reserveHeroes).Concat(game.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters)))
             config.ReconcileCombatMetadata(actor);
         game.ReviveElapsed=s.ReviveElapsed;game.ReviveTarget=s.ReviveTarget<0?null:game.Heroes[s.ReviveTarget];game.Rescuer=s.Rescuer<0?null:game.Heroes[s.Rescuer];
@@ -335,6 +346,13 @@ public sealed partial class GameSession
             Need(s.FloorIndex>=0&&s.FloorIndex<s.Floors.Count,"当前楼层");var f=s.Floors[s.FloorIndex];
             Need(s.CurrentRoom>=0&&s.CurrentRoom<f.Rooms.Count&&f.Rooms[s.CurrentRoom].Revealed&&s.Destination>=-1&&s.Destination<f.Rooms.Count&&s.Phase>=0&&s.Phase<=1,"当前房间/移动");
             Need(s.Destination<0||f.Rooms[s.CurrentRoom].Neighbors.Contains(s.Destination),"移动目标不相邻");
+            Need(float.IsFinite(s.DoorWait)&&s.DoorWait>=0&&s.DoorWait<=3600,"门前等待计时无效");
+            Need(s.DoorOpenerHero>=-1&&s.DoorOpenerHero<s.Heroes.Count&&s.DoorOpenerSummon>=-1&&s.DoorOpenerSummon<s.Summons.Count&&!(s.DoorOpenerHero>=0&&s.DoorOpenerSummon>=0),"开门先锋引用无效");
+            bool waiting=s.Destination>=0&&s.Phase==1&&(s.DoorOpenerHero>=0||s.DoorOpenerSummon>=0);
+            Need(!waiting||s.DoorOpenerHero<0||s.Heroes[s.DoorOpenerHero].Alive,"开门先锋已阵亡");
+            Need(!waiting||s.DoorOpenerSummon<0||s.Summons[s.DoorOpenerSummon].Alive,"开门召唤物已阵亡");
+            Need(waiting||s.DoorWait==0&&!s.DoorFallback&&s.DoorOpenerHero<0&&s.DoorOpenerSummon<0,"非门前等待状态残留先锋或计时");
+            Need(!s.DoorFallback||waiting,"超时兜底缺少开门先锋");
         }
         if(s.World!=null)
         {

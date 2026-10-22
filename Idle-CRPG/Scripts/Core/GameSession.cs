@@ -72,7 +72,20 @@ public sealed partial class GameSession
     public string CurrentFloorDisplayName=>ActiveDungeon==null?"":Config.FloorPlans.FirstOrDefault(p=>p.Poi==ActiveDungeon.Id&&p.Difficulty==DifficultyIndex&&p.Index==FloorIndex+1)?.Name??ActiveDungeon.Name;
     public string Status { get; private set; } = "探索";
     private int destination = -1, phase;
+    /// <summary>非战斗跑图领队缓存；只在进入跑图、队伍或有效速度变化时重选，战斗不使用。</summary>
+    private Actor? travelLeader;
+    private readonly List<(Actor Hero,float Speed)> travelSpeedSnapshot=new();
+    /// <summary>门前等待中的开门先锋（英雄或近战召唤物）；未等待或战斗时为 null。</summary>
+    private Actor? doorOpener;
+    /// <summary>门前等待累计秒数；只用于超时解除等待。</summary>
+    private float doorWait;
+    /// <summary>已改为领队直接开门（无近战先锋或等待超时），不再重新挑选先锋。</summary>
+    private bool doorFallback;
     public bool MovingBetweenRooms => destination>=0;
+    /// <summary>当前非战斗跑图领队；不在跑图或已进入战斗时为 null。只读诊断入口，不进入存档。</summary>
+    public Actor? TravelLeader=>travelLeader;
+    /// <summary>当前门前等待的开门先锋；没有等待时为 null。只读诊断入口，不进入存档。</summary>
+    public Actor? DoorOpener=>doorOpener;
     /// <summary>行进时取沿路径最接近下一道门的存活成员，战斗镜头不使用此位置追踪。</summary>
     public Actor Leader => Heroes.Where(h=>h.Alive).OrderBy(h=>destination<0?0:Vector2.DistanceSquared(h.Position,phase==0?Floor.Rooms[CurrentRoom].DoorTowards(Floor.Rooms[destination]):Floor.Rooms[destination].DoorTowards(Floor.Rooms[CurrentRoom]))).FirstOrDefault()??Heroes[0];
     private float regroup;
@@ -124,6 +137,7 @@ public sealed partial class GameSession
     private void EnterFloor()
     {
         ClearVisualEvents();
+        ResetTravelState();
         CurrentRoom = 0; destination = -1; phase = 0;
         var start = Floor.Rooms[0]; start.Revealed = true; start.Generated = true;
         var stairs=Floor.StairPosition(start);
@@ -213,6 +227,8 @@ public sealed partial class GameSession
         {
             var target = Floor.Clear ? Floor.BossRoom.Id : FindTarget();
             destination=FirstStep(CurrentRoom,target); phase=0;
+            // 进入跑图状态时强制刷新领队并清空上一段门前等待，避免沿用旧队伍或旧先锋。
+            ResetDoorWait();RefreshTravelLeader(true);
         }
         Travel(dt);
     }
@@ -260,7 +276,7 @@ public sealed partial class GameSession
         Retries++;
         int region=World?.CurrentRegion??ActiveDungeon?.RegionId??Config.StartRegionId;
         Floors.Clear();ActiveDungeon=null;Won=false;
-        FloorIndex=0; CurrentRoom=0; regroup=0; ResetRescue();
+        FloorIndex=0; CurrentRoom=0; regroup=0; ResetRescue();ResetTravelState();
         destination=-1;phase=0;
         foreach (var h in Heroes) { h.Hp=h.MaxHp; h.Timer=0; }
         World??=new WorldCampaign(Config);
@@ -283,35 +299,151 @@ public sealed partial class GameSession
         return to;
     }
 
+    /// <summary>领队实际移动速度：装备/被动加成走统一属性聚合，不读取战斗中的临时寒缓。</summary>
+    private float TravelWalkSpeed(Actor hero)=>Math.Max(hero.Speed,(float)EffectiveValue(hero,"move_speed",hero.Speed));
+    /// <summary>召唤物开门先锋沿用非战斗跟随速度；真正的入场加速只在房间开启后由部署逻辑接管。</summary>
+    private float SummonTravelSpeed(Actor summon)
+    {
+        var owner=OwnerOf(summon);float catchup=Config.Talents.Rule("summon_catchup_speed_pct")/100f;
+        return owner is {Alive:true}?Math.Max(summon.Speed,OwnerWalkSpeed(owner)*catchup):summon.Speed;
+    }
+    /// <summary>只在进入跑图、队伍组成变化或有效速度变化（超过0.01）时重选领队，避免每步抖动。</summary>
+    private void RefreshTravelLeader(bool force)
+    {
+        bool changed=force||travelLeader==null||!travelLeader.Alive||!Heroes.Contains(travelLeader)||travelSpeedSnapshot.Count!=Heroes.Count;
+        if(!changed)
+            for(int i=0;i<Heroes.Count;i++)
+                if(travelSpeedSnapshot[i].Hero!=Heroes[i]||Math.Abs(travelSpeedSnapshot[i].Speed-TravelWalkSpeed(Heroes[i]))>.01f){changed=true;break;}
+        if(!changed)return;
+        travelSpeedSnapshot.Clear();
+        foreach(var hero in Heroes)travelSpeedSnapshot.Add((hero,TravelWalkSpeed(hero)));
+        travelLeader=Heroes.Where(h=>h.Alive).OrderByDescending(TravelWalkSpeed).ThenBy(h=>Heroes.IndexOf(h)).FirstOrDefault()??Heroes.FirstOrDefault();
+    }
+    private Actor[] TravelOrder(Actor leader)=>new[]{leader}.Concat(Heroes.Where(h=>h.Alive&&!ReferenceEquals(h,leader))).ToArray();
+    private void ResetDoorWait(){doorOpener=null;doorWait=0;doorFallback=false;}
+    private void ResetTravelState(){travelLeader=null;travelSpeedSnapshot.Clear();ResetDoorWait();}
+    private bool IsTravelMember(Actor actor)=>Heroes.Contains(actor)||Summons.Contains(actor);
+    /// <summary>从存活、可行动且近战定位的己方单位中选离门最近者；可包含近战召唤物，不按职业名硬编码。</summary>
+    private Actor? SelectDoorOpener(Vector2 door)
+    {
+        Actor? best=null;float bestDistance=float.MaxValue;
+        foreach(var hero in Heroes)
+        {
+            if(!hero.Alive||hero.Ranged||Stunned(hero))continue;
+            float distance=Vector2.DistanceSquared(hero.Position,door);
+            if(distance<bestDistance){best=hero;bestDistance=distance;}
+        }
+        foreach(var summon in Summons)
+        {
+            if(!summon.Alive||SummonRole(summon)!="melee"||Stunned(summon))continue;
+            if(summon.SummonOwner<0||summon.SummonOwner>=Heroes.Count||!Heroes[summon.SummonOwner].Alive)continue;
+            float distance=Vector2.DistanceSquared(summon.Position,door);
+            if(distance<bestDistance){best=summon;bestDistance=distance;}
+        }
+        return best;
+    }
+    /// <summary>未到本房门时先走到门口，越过后才朝目标落点前进；领队、队员和先锋共用连续走门路径。</summary>
+    private static Vector2 DoorStep(Vector2 position,Vector2 exit,Vector2 goal,Vector2 dir)=>Vector2.Dot(position-exit,dir)>-.05f?goal:exit;
+    /// <summary>沿用既有队列间距；落后超过追赶距离的队员临时提速，但不改写 Actor.Speed。</summary>
+    private void MoveTravelOrder(Actor[] order,Vector2 goal,Vector2 exit,Vector2 dir,float dt,float spacing,float catchupDistance,float catchupPct,Actor? hold,Actor? exclude)
+    {
+        for(int i=0;i<order.Length;i++)
+        {
+            var actor=order[i];
+            if(!actor.Alive||ReferenceEquals(actor,hold)||ReferenceEquals(actor,exclude))continue;
+            float previousDistance=i>0?Vector2.Distance(actor.Position,order[i-1].Position):float.MaxValue;
+            if(i>0&&previousDistance<spacing)continue;
+            float speed=TravelWalkSpeed(actor);
+            if(i>0&&previousDistance>catchupDistance)speed*=catchupPct;
+            Move(actor,DoorStep(actor.Position,exit,goal,dir),dt,speed);
+        }
+    }
+
+    /// <summary>跑图：最快上阵英雄领队；抵达有内容房间门外后等待最近近战先锋开门，
+    /// 无先锋或超时才由领队直接开门。战斗期间不走这里，因此不会重选领队或干预战斗 AI。</summary>
     private void Travel(float dt)
     {
         var a=Floor.Rooms[CurrentRoom]; var b=Floor.Rooms[destination];
         var dir=Vector2.Normalize(b.Center-a.Center);
         var exit=a.DoorTowards(b); var entry=b.DoorTowards(a);
-        var goal=phase==0 ? exit : phase==1 ? entry : b.Center;
-        var party=Heroes.Where(h=>h.Alive).ToArray();
-        for(int i=0;i<party.Length;i++)
+        float spacing=Config.Talents.Rule("dungeon_queue_spacing_milli")/1000f;
+        float catchupDistance=Config.Talents.Rule("party_catchup_distance_milli")/1000f;
+        float catchupPct=Config.Talents.Rule("party_catchup_speed_pct")/100f;
+        RefreshTravelLeader(false);
+        var leader=travelLeader??Heroes.FirstOrDefault(h=>h.Alive);
+        if(leader==null){destination=-1;phase=0;ResetTravelState();return;}
+        var order=TravelOrder(leader);
+        if(phase==0)
         {
-            var actor=party[i];var waypoint=phase==1&&Vector2.Dot(actor.Position-exit,dir)<-.05f?exit:goal;
-            if(i>0&&Vector2.Distance(actor.Position,party[i-1].Position)<Config.Talents.Rule("dungeon_queue_spacing_milli")/1000f)continue;
-            Move(actor,waypoint,dt);
+            MoveTravelOrder(order,exit,exit,dir,dt,spacing,catchupDistance,catchupPct,null,null);
+            if(Vector2.Distance(leader.Position,exit)<=0.32f)
+            {
+                var passage=Floor.Passages.Single(p=>(p.A==a.Id&&p.B==b.Id)||(p.A==b.Id&&p.B==a.Id));
+                if(!passage.Revealed){passage.Revealed=true;MarkChanged();}
+                phase=1;ResetDoorWait();
+            }
+            return;
         }
-        // 玩家编队首位先穿门，队尾持续移动；不等全员集合再激活敌人。
-        if(phase==0 && Vector2.Distance(party[0].Position,exit)<=0.32f)
+        if(b.Clear)
         {
-            var passage=Floor.Passages.Single(p=>(p.A==a.Id&&p.B==b.Id)||(p.A==b.Id&&p.B==a.Id));
-            if(!passage.Revealed){passage.Revealed=true;MarkChanged();}
-            phase=1;
+            // 已清空房间没有开门剧情：全队直接连续通过，不等待先锋。
+            MoveTravelOrder(order,entry,exit,dir,dt,spacing,catchupDistance,catchupPct,null,null);
+            if(Vector2.Distance(leader.Position,entry)<=0.32f)EnterTargetRoom(b,entry);
+            return;
         }
-        else if(phase==1 && Vector2.Distance(party[0].Position,entry)<=0.32f)
+        float waitOffset=Config.Talents.Rule("dungeon_door_wait_offset_milli")/1000f;
+        var waitPoint=entry-dir*waitOffset;
+        if(doorOpener==null)
         {
-            Reveal(b);
-            CurrentRoom=b.Id; destination=-1;
-            // 召唤物不再随跨房瞬移：入场部署会让仍在旧房间或走廊的存活召唤物沿真实房门加速进入。
-            // 进房检查点仍按当前存活召唤物记录实际坐标，读档后继续同一段连续移动。
-            CaptureRoomEntry();
-            StartCombatEntry(b,entry);
+            // 领队走到门外等待位，其余队员继续靠拢；先锋只会在领队到位后选择一次。
+            MoveTravelOrder(order,waitPoint,exit,dir,dt,spacing,catchupDistance,catchupPct,null,null);
+            // 已在等待线上或更靠近门时同样视为到位，避免读档/手动构造场景倒退回等待位。
+            if(Vector2.Dot(leader.Position-waitPoint,dir)<-0.32f)return;
+            doorOpener=SelectDoorOpener(entry)??leader;
+            doorWait=0;doorFallback=ReferenceEquals(doorOpener,leader);
         }
+        if(!doorOpener.Alive||!IsTravelMember(doorOpener))
+        {
+            doorOpener=SelectDoorOpener(entry)??leader;
+            doorWait=0;doorFallback=ReferenceEquals(doorOpener,leader);
+        }
+        if(doorFallback)
+        {
+            // 无可用近战先锋或等待超时：领队直接开门，其余队员只靠拢不抢门。
+            doorOpener=leader;
+            MoveTravelOrder(order,waitPoint,exit,dir,dt,spacing,catchupDistance,catchupPct,null,leader);
+            Move(leader,DoorStep(leader.Position,exit,entry,dir),dt,TravelWalkSpeed(leader));
+        }
+        else
+        {
+            // 领队停在门外等待位；先锋独自走到门口并率先进入，不等其他近战集合。
+            MoveTravelOrder(order,waitPoint,exit,dir,dt,spacing,catchupDistance,catchupPct,leader,doorOpener);
+            float speed=Summons.Contains(doorOpener)?SummonTravelSpeed(doorOpener):TravelWalkSpeed(doorOpener);
+            Move(doorOpener,DoorStep(doorOpener.Position,exit,entry,dir),dt,speed);
+        }
+        if(Vector2.Distance(doorOpener.Position,entry)<=0.32f)
+        {
+            EnterTargetRoom(b,entry);
+            return;
+        }
+        if(!doorFallback)
+        {
+            doorWait+=dt;
+            if(doorWait*1000f>=Config.Talents.Rule("dungeon_door_wait_timeout_milli"))
+            {doorFallback=true;doorOpener=leader;doorWait=0;}
+        }
+    }
+
+    /// <summary>先锋/领队抵达门内后切换当前房间；保留连续移动，召唤物按实际坐标进入入场部署。</summary>
+    private void EnterTargetRoom(Room room,Vector2 entry)
+    {
+        Reveal(room);
+        CurrentRoom=room.Id; destination=-1;
+        // 召唤物不再随跨房瞬移：入场部署会让仍在旧房间或走廊的存活召唤物沿真实房门加速进入。
+        // 进房检查点仍按当前存活召唤物记录实际坐标，读档后继续同一段连续移动。
+        ResetTravelState();
+        CaptureRoomEntry();
+        StartCombatEntry(room,entry);
     }
 
     private void Reveal(Room room)

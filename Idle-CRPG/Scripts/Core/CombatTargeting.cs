@@ -64,22 +64,24 @@ public sealed partial class GameSession
         foreach(var hero in Heroes)
         {
             int heroIndex=Heroes.IndexOf(hero);
-            if(!hero.Alive||InCombatRoom(hero)&&(!spread||(skillState.Targeting.DeployedMask&(1<<heroIndex))!=0))continue;
-            Vector2 goal=hero.Position;
-            bool deploying=spread&&InCombatRoom(hero);
-            if(deploying)
+            bool inside=InCombatRoom(hero);
+            if(!hero.Alive||inside&&(!spread||(skillState.Targeting.DeployedMask&(1<<heroIndex))!=0))continue;
+            if(!spread)
             {
-                var state=skillState.Targeting;int index=Heroes.IndexOf(hero);var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
-                // 入场纵深/横向间距按攻击类型分组；接敌容量只决定怪物预约，不能把远程法系推入前排。
-                string role=hero.Ranged?"ranged":"melee";
-                float depth=Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
-                float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
-                int lane=index==0?0:(index+1)/2*(index%2==1?-1:1);
-                goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*spacing);
+                // 非入场窗口：房内成员已跳过，房外成员仍由跑图/跟随逻辑处理。
+                entryMoved.Add(hero);continue;
             }
+            // 即使仍在走廊或上一房间，也先计算房间内落点，再沿真实房门连续进入，不直线穿墙。
+            var state=skillState.Targeting;var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
+            // 入场纵深/横向间距按攻击类型分组；接敌容量只决定怪物预约，不能把远程法系推入前排。
+            string role=hero.Ranged?"ranged":"melee";
+            float depth=Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
+            float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
+            int lane=heroIndex==0?0:(heroIndex+1)/2*(heroIndex%2==1?-1:1);
+            var goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*spacing);
             goal=Vector2.Clamp(goal,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
-            Move(hero,goal,dt);
-            if(deploying&&Vector2.DistanceSquared(hero.Position,goal)<.04f)skillState.Targeting.DeployedMask|=1<<heroIndex;
+            Move(hero,inside?goal:PartyDoorWaypoint(hero,room,goal),dt);
+            if(inside&&Vector2.DistanceSquared(hero.Position,goal)<.04f)skillState.Targeting.DeployedMask|=1<<heroIndex;
             entryMoved.Add(hero);
         }
         // 召唤物与英雄共用同一入场窗口；入场逻辑独占其移动权，完成后交回正式战斗 AI。
