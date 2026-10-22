@@ -65,21 +65,14 @@ public static class SkillBdSummonChecks
         foreach(var m in crossingRoom.Monsters)m.Hp=0;crossingRoom.ContentCleared=true;crossingRoom.EventUsed=true;crossingRoom.Loot.Clear();
         int oldRoom=crossing.CurrentRoom;
         bool followed=false;
+        float entryStep=Live(crossing)[0].Speed*c.Talents.Rule("summon_entry_speed_pct")/100f;
         for(int i=0;i<20000&&crossing.CurrentRoom==oldRoom;i++)
         {
             var before=Live(crossing)[0].Position;Tick(crossing);var after=Live(crossing)[0].Position;
-            bool switched=crossing.CurrentRoom!=oldRoom;
             followed|=Vector2.Distance(before,after)>.0001f;
-            // 落后时允许按 max(基础, 主人速度×配置追赶倍率) 追赶；更大的位移只能是闪现或正式跨房同步。
-            float limit=Math.Max(Live(crossing)[0].Speed,crossing.Heroes[0].Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.001f;
-            bool blinked=Vector2.Distance(before,after)>limit;
-            if(blinked&&!switched)Need(Vector2.Distance(after,crossing.Heroes[0].Position)<=1,"脱队闪现落点不在主人附近");
-            if(switched)
-            {
-                // 跨房切换不依赖原脱队距离，存活召唤物须直接落在新房间内。
-                var now=crossing.Floor.Rooms[crossing.CurrentRoom];
-                Need(Math.Abs(after.X-now.Center.X)<=now.HalfWidth+.001f&&Math.Abs(after.Y-now.Center.Y)<=now.HalfHeight+.001f,"跨房切换后召唤物未同步到新房间");
-            }
+            // 走廊/已清空房间按追赶倍率，进入有怪房间后按入场倍率；超过两者上限的位移只能是异常闪现。
+            float limit=Math.Max(entryStep,crossing.Heroes[0].Speed*c.Talents.Rule("summon_catchup_speed_pct")/100f)*.05f+.01f;
+            Need(Vector2.Distance(before,after)<=limit,"召唤物跨房移动超出入场/追赶速度上限（疑似瞬移）");
             bool onFloor=crossing.Floor.Rooms.Any(r=>Math.Abs(after.X-r.Center.X)<=r.HalfWidth+.001f&&Math.Abs(after.Y-r.Center.Y)<=r.HalfHeight+.001f);
             bool onPassage=crossing.Floor.Passages.Any(p=>
             {
@@ -91,7 +84,15 @@ public static class SkillBdSummonChecks
             Need(onFloor||onPassage,"召唤物穿墙或偏离走廊");
         }
         Need(followed,"召唤物未随小队连续移动");
-        Need(crossing.CurrentRoom!=oldRoom&&Live(crossing).Length==1&&Math.Abs(Live(crossing)[0].Hp-20)<.0001f,"跨房丢失召唤或补满实际HP");
+        // 新房间有怪：召唤物不得跨房瞬移，必须沿真实房门在入场部署中走进房间。
+        bool entered=false;
+        for(int i=0;i<200&&!entered;i++)
+        {
+            Tick(crossing);
+            var now=crossing.Floor.Rooms[crossing.CurrentRoom];var p=Live(crossing)[0].Position;
+            entered=Math.Abs(p.X-now.Center.X)<=now.HalfWidth+.001f&&Math.Abs(p.Y-now.Center.Y)<=now.HalfHeight+.001f;
+        }
+        Need(entered&&Live(crossing).Length==1&&Math.Abs(Live(crossing)[0].Hp-20)<.0001f,"跨房后召唤物未沿真实路径进入新房间或丢失召唤");
         var compact=crossing.CaptureProgress();Need(compact.Summons.Count==1&&Math.Abs(compact.Summons[0].Hp-20)<.0001f,"进房检查点未保留召唤实际HP");
         var reopened=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=compact})).Session!);
         Need(Live(reopened).Length==1&&Math.Abs(Live(reopened)[0].Hp-20)<.0001f,"正式检查点重开丢失召唤");
@@ -157,7 +158,8 @@ public static class SkillBdSummonChecks
         }
         void DeployCheck((GameSession Game,Vector2 Anchor,Actor[] Live) scene)
         {
-            float cap=Math.Max(scene.Live[0].Speed*c.Talents.Rule("summon_entry_speed_pct")/100f,scene.Game.Heroes[0].Speed*c.Talents.Rule("summon_entry_owner_pct")/100f)*.05f+.001f;
+            // 入场速度上限只由召唤物基础 Speed 的配置倍率决定，不继承主人或其他临时加速。
+            float cap=scene.Live[0].Speed*c.Talents.Rule("summon_entry_speed_pct")/100f*.05f+.001f;
             for(int i=0;i<10;i++)
             {
                 var from=scene.Live.Select(s=>s.Position).ToArray();Tick(scene.Game);
@@ -174,20 +176,49 @@ public static class SkillBdSummonChecks
         Need(Math.Abs(pairScene.Live[0].Position.X-pairScene.Live[1].Position.X)>.5f&&pairScene.Live.All(s=>Depth(pairScene,s)>.8f),"多只近战召唤物入场落点重叠或未前压");
         c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
 
-        // 敌人 AI 启动时，未到位且未接敌的召唤物兜底同步到站位；不延长警觉、不改 HP/数量、不产生奖励。
+        // 警觉窗口结束后不再强制闪现：未接敌的召唤物继续以入场速度沿真实路径走向落点，敌人 AI 无需等待；
+        // 到达后立即恢复普通战斗速度，HP/数量/奖励不变。
         c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
-        var snap=Battle();Summon(snap);
-        var snapRoom=snap.Floor.Rooms[snap.CurrentRoom];snapRoom.HalfWidth=snapRoom.HalfHeight=6;
-        foreach(var monster in snapRoom.Monsters){monster.Attack=0;monster.Hp=monster.MaxHp=100000;monster.Position=snapRoom.Center+new Vector2(0,4.5f);monster.Timer=999;}
-        var snapAnchor=snapRoom.Center+new Vector2(0,-5);
-        var snapState=snap.Capture().SkillState.Targeting;
-        snapState.EntryPrepared=true;snapState.EntryElapsed=c.Talents.Rule("combat_entry_delay_milli")/1000f-.05f;snapState.EntryAnchor=snapAnchor;snapState.EntryDirection=new(0,1);snapState.DeployedMask=0;snapState.Locks.Clear();
-        snap.Capture().SkillState.Actions.Clear();
-        var snapSummon=Live(snap)[0];snapSummon.Position=snapRoom.Center+new Vector2(-5,5);snapSummon.Hp=7;
-        int snapKills=snap.Kills;long snapXp=snap.Experience;int snapLoot=snapRoom.Loot.Count;
-        Tick(snap);
-        Need(Math.Abs(Vector2.Dot(snapSummon.Position-snapAnchor,snapState.EntryDirection)-c.Talents.Rule("combat_entry_melee_depth_milli")/1000f)<.35f,"入场超时未兜底同步到站位");
-        Need(Math.Abs(snapSummon.Hp-7)<.0001f&&Live(snap).Length==1&&snap.Kills==snapKills&&snap.Experience==snapXp&&snapRoom.Loot.Count==snapLoot,"兜底同步改变HP/数量或产生奖励");
+        var march=Battle();Summon(march);
+        var marchRoom=march.Floor.Rooms[march.CurrentRoom];marchRoom.HalfWidth=marchRoom.HalfHeight=6;
+        foreach(var monster in marchRoom.Monsters){monster.Attack=0;monster.Hp=monster.MaxHp=100000;monster.Position=marchRoom.Center+new Vector2(0,4.5f);monster.Timer=999;}
+        var marchAnchor=marchRoom.Center+new Vector2(0,-5);
+        var marchState=march.Capture().SkillState.Targeting;
+        marchState.EntryPrepared=true;marchState.EntryElapsed=c.Talents.Rule("combat_entry_delay_milli")/1000f-.05f;marchState.EntryAnchor=marchAnchor;marchState.EntryDirection=new(0,1);marchState.DeployedMask=0;marchState.Locks.Clear();
+        march.Capture().SkillState.Actions.Clear();
+        var marchSummon=Live(march)[0];marchSummon.Position=marchRoom.Center+new Vector2(-5,-5);marchSummon.Hp=7;
+        int marchKills=march.Kills;long marchXp=march.Experience;int marchLoot=marchRoom.Loot.Count;
+        float marchEntrySpeed=marchSummon.Speed*c.Talents.Rule("summon_entry_speed_pct")/100f;
+        int marchLaneIndex=march.Heroes.Count;int marchLane=marchLaneIndex==0?0:(marchLaneIndex+1)/2*(marchLaneIndex%2==1?-1:1);
+        var marchGoal=marchAnchor+marchState.EntryDirection*(c.Talents.Rule("combat_entry_melee_depth_milli")/1000f)
+            +new Vector2(-marchState.EntryDirection.Y,marchState.EntryDirection.X)*(marchLane*c.Talents.Rule("combat_entry_melee_spread_milli")/1000f);
+        var marchStart=marchSummon.Position;
+        Tick(march); // 警觉窗口结束的这一步，敌人 AI 开始行动
+        Need(Vector2.Distance(marchStart,marchSummon.Position)>marchSummon.Speed*.05f+.001f,"入场窗口结束的这一步召唤物没有继续入场移动");
+        Need(Vector2.Distance(marchSummon.Position,marchGoal)>.35f,"窗口结束后仍把召唤物瞬移到部署点");
+        var marchMid=marchSummon.Position;Tick(march);
+        float marchStep=Vector2.Distance(marchMid,marchSummon.Position);
+        Need(marchStep>marchSummon.Speed*.05f+.001f&&marchStep<=marchEntrySpeed*.05f+.001f,"窗口结束后入场速度被提前终止或超限");
+        for(int i=0;i<80&&Vector2.Distance(marchSummon.Position,marchGoal)>.2f;i++)Tick(march);
+        Need(Vector2.Distance(marchSummon.Position,marchGoal)<=.2f,"窗口结束后召唤物没有沿真实路径走到部署点");
+        Need(Math.Abs(marchSummon.Hp-7)<.0001f&&Live(march).Length==1&&march.Kills==marchKills&&march.Experience==marchXp&&marchRoom.Loot.Count==marchLoot,"入场部署改变HP/数量或产生奖励");
+        var marchArrived=marchSummon.Position;Tick(march);
+        Need(Vector2.Distance(marchArrived,marchSummon.Position)<=marchSummon.Speed*.05f+.01f,"入场加速延续到了正常战斗");
+
+        // 部署途中被敌人锁定即结束入场部署，改由正式战斗 AI 以普通速度接管。
+        c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
+        var engage=Battle();Summon(engage);
+        var engageRoom=engage.Floor.Rooms[engage.CurrentRoom];engageRoom.HalfWidth=engageRoom.HalfHeight=6;
+        foreach(var monster in engageRoom.Monsters){monster.Attack=0;monster.Hp=monster.MaxHp=100000;monster.Position=engageRoom.Center+new Vector2(0,4.5f);monster.Timer=999;}
+        var engageState=engage.Capture().SkillState.Targeting;
+        engageState.EntryPrepared=true;engageState.EntryElapsed=c.Talents.Rule("combat_entry_delay_milli")/1000f-.05f;engageState.EntryAnchor=engageRoom.Center+new Vector2(0,-5);engageState.EntryDirection=new(0,1);engageState.DeployedMask=0;engageState.Locks.Clear();
+        engage.Capture().SkillState.Actions.Clear();
+        var engagedSummon=Live(engage)[0];engagedSummon.Position=engageRoom.Center+new Vector2(0,2.7f);engagedSummon.Hp=7;
+        int engagedIndex=engage.Heroes.Count+engage.Summons.IndexOf(engagedSummon);
+        for(int i=0;i<3&&!engage.MonsterTargets.Any(l=>l.Target==engagedIndex);i++)Tick(engage);
+        Need(engage.MonsterTargets.Any(l=>l.Target==engagedIndex),"部署途中未被怪物锁定（用例前提不成立）");
+        var engagedFrom=engagedSummon.Position;Tick(engage);
+        Need(Vector2.Distance(engagedFrom,engagedSummon.Position)<=engagedSummon.Speed*.05f+.01f,"进入有效战斗后仍享受入场加速");
 
         // 同主人多只召唤物闪现时使用不同虚拟站位，不能全部叠在同一点。
         c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=2};
@@ -263,6 +294,6 @@ public static class SkillBdSummonChecks
         Need(world.World.Stage==CampaignStage.Dungeon&&world.Heroes.All(h=>h.Timer==0&&h.SkillSwapLocks.Count==0&&h.SkillIds.All(id=>world.SkillCooldown(h,id)==0)),"进副本未重置全部战斗CD");
 
         Need(!LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Summons.ContainsKey("QA_SKELETON"),"QA召唤定义泄漏生产配置");
-        Console.WriteLine("PASS: B2 summon stats/cap/rewards, permanent out-of-combat refill to cap and timed expiry without recast, production nec_skeleton permanent x3 / ran_valkyrie 5s, continuous door/corridor following, normal/catch-up/blink follow tiers with HP/count/reward preservation, room-switch sync, melee/ranged/support entry deployment with capped acceleration and timeout snap, combat no-blink and distinct blink slots, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
+        Console.WriteLine("PASS: B2 summon stats/cap/rewards, permanent out-of-combat refill to cap and timed expiry without recast, production nec_skeleton permanent x3 / ran_valkyrie 5s, continuous door/corridor following, normal/catch-up/blink follow tiers with HP/count/reward preservation, room entry without summon teleports and continuous door-path deployment, melee/ranged/support entry deployment at capped 200% acceleration without timeout snap, engagement handover to normal combat speed, combat no-blink and distinct blink slots, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
     }
 }

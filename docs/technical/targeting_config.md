@@ -22,12 +22,11 @@
 | combat_entry_melee_spread_milli | 1100 | 千分之一世界单位，近战横向通道间距 |
 | combat_entry_ranged_spread_milli | 450 | 千分之一世界单位，远程/法系横向通道间距 |
 | dungeon_queue_spacing_milli | 650 | 千分之一世界单位，穿门行进队列间隔，不作为单位物理碰撞半径 |
-| summon_entry_speed_pct | 200 | 百分比，入场部署时召唤物基础Speed的临时倍率，须≥100 |
-| summon_entry_owner_pct | 150 | 百分比，入场部署时相对主人当前速度的临时倍率，须≥100 |
+| summon_entry_speed_pct | 200 | 百分比，入场部署时召唤物基础Speed的临时倍率上限，须≥100 |
 
 新增规则均为必填整数1～100000，禁止隐藏默认值；近战纵深、横向间距均须大于对应远程值。旧front/back/shared-spread三个键已被上述四键替代。角色分组使用combat/unit_attributes.csv既有ranged字段，不读取接敌容量；提高容量不会把法系推入前排。上述均为原型参数，可后续调参。角色位置仍使用已有二维世界坐标和固定步长，倍速不重复乘移动预算。
 
-召唤物入场复用同一警觉窗口与纵深/间距：`skill/summon.csv`必填`role`（melee/ranged/support）决定近战前压、远程靠后或贴近主人，不按显示名或主人职业推断。召唤物车道从英雄总数之后继续，临时加速取`max(基础×summon_entry_speed_pct%, 主人当前速度×summon_entry_owner_pct%)`；窗口结束时未到位且未接敌的召唤物兜底同步到站位，不延长敌人AI延迟。详见[召唤物跟随与入场部署](summon_follow.md)。
+召唤物入场复用同一警觉窗口与纵深/间距：`skill/summon.csv`必填`role`（melee/ranged/support）决定近战前压、远程靠后或贴近主人，不按显示名或主人职业推断。召唤物车道从英雄总数之后继续，临时加速取`基础×summon_entry_speed_pct%`（原型200%）；窗口结束不再兜底闪现，未接敌的召唤物继续沿真实房门走进房间，到达或进入有效战斗即交回战斗AI，不延长敌人AI延迟。该加速只在进入有活怪房间时触发，走廊与已清空房间仍按普通跟随/追赶。详见[召唤物跟随与入场部署](summon_follow.md)。
 
 ## 运行态和存档
 

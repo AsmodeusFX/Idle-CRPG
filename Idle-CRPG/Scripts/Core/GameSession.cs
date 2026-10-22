@@ -139,7 +139,7 @@ public sealed partial class GameSession
     public void Tick(float dt)
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
-        // 瞬时位移标记按逻辑步重置：脱队闪现、跨房同步和入场兜底共用同一步的表现跳过。
+        // 瞬时位移标记按逻辑步重置：只剩异常恢复的脱队闪现使用，正常入场部署不再瞬移。
         summonBlinkTick.Clear();
         AdvanceSwapLocks(dt);World?.ObserveApprovalWait();
         if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);if(World.InDungeonScene&&Floors.Count>0)FollowDungeonSummons(dt);return;}
@@ -307,9 +307,8 @@ public sealed partial class GameSession
         {
             Reveal(b);
             CurrentRoom=b.Id; destination=-1;
-            // 正式跨房切换时，仍在上一房间或走廊的存活召唤物先并入新房间入口；不依赖脱队闪现距离。
-            // 先同步再记录进房检查点，读档重开房间时召唤物位于同一合法入口位置。
-            SyncSummonsToRoom(b,entry);
+            // 召唤物不再随跨房瞬移：入场部署会让仍在旧房间或走廊的存活召唤物沿真实房门加速进入。
+            // 进房检查点仍按当前存活召唤物记录实际坐标，读档后继续同一段连续移动。
             CaptureRoomEntry();
             StartCombatEntry(b,entry);
         }
@@ -351,8 +350,7 @@ public sealed partial class GameSession
         if(CombatEntryRemaining>0)
         {
             skillState.Targeting.EntryElapsed+=dt;
-            // 警觉窗口结束的这一步，把仍未到位的召唤物兜底同步到站位；不延长敌人 AI 延迟。
-            if(CombatEntryRemaining<=0)SnapEntrySummons();
+            // 警觉窗口只限制敌人 AI 启动；召唤物未到位不会被强制闪现，继续由入场部署按真实路径推进。
             Status=$"入场展开 · 敌人警觉 {CombatEntryRemaining:0.0}秒";
             return;
         }

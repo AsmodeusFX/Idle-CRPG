@@ -10,11 +10,11 @@ public sealed partial class GameSession
 {
     /// <summary>脱队计时只服务于非战斗跟随，不属于战斗现场；读档或重开房间从0重新累积。</summary>
     private readonly Dictionary<Actor,float> summonOffTimer=new();
-    /// <summary>本次逻辑步发生瞬时位移（脱队闪现、跨房同步或入场兜底）的召唤物，仅供表现层跳过插值；不属于存档数据。</summary>
+    /// <summary>本次逻辑步发生瞬时位移（仅异常恢复的脱队闪现）的召唤物，仅供表现层跳过插值；不属于存档数据。</summary>
     private readonly HashSet<Actor> summonBlinkTick=new();
     /// <summary>本次入场窗口为每只召唤物分配的落点；只服务当前房间，换房、清房或重置技能现场即清空。</summary>
     private readonly Dictionary<Actor,Vector2> summonDeployGoals=new();
-    /// <summary>已完成入场落位（含超时兜底同步）的召唤物；同一入场窗口内不再由入场逻辑移动。</summary>
+    /// <summary>已完成入场部署（到达落点或已进入有效战斗）的召唤物；同一入场窗口内不再由入场逻辑移动。</summary>
     private readonly HashSet<Actor> summonDeployed=new();
     internal bool SummonBlinkedThisTick(Actor actor)=>summonBlinkTick.Contains(actor);
     private bool IsFriendlyActor(Actor actor)=>Heroes.Contains(actor)||Summons.Contains(actor);
@@ -128,89 +128,98 @@ public sealed partial class GameSession
     /// <summary>所有回城入口统一撤销召唤及进房副本；死亡不产生经验、掉落或怪物击杀。</summary>
     internal void ClearTownSummons()=>ClearSummons();
 
-    /// <summary>正式跨房切换：仍留在上一房间或走廊的存活召唤物直接并入新房间入口内侧的合法落点。
-    /// 只同步一次坐标并释放旧接敌占用；保留 HP、Buff、数量与既有寿命，不重新召唤、不产生伤害或奖励。</summary>
-    private void SyncSummonsToRoom(Room room,Vector2 entry)
-    {
-        if(Summons.Count==0)return;
-        var inward=Vector2.Normalize(room.Center-entry);
-        if(!float.IsFinite(inward.X)||inward.LengthSquared()<.0001f)inward=Vector2.UnitY;
-        var side=new Vector2(-inward.Y,inward.X);
-        int slot=0;
-        foreach(var summon in Summons.Where(s=>s.Alive))
-        {
-            if(!WithinRoom(room,summon.Position))
-            {
-                ReleaseCombatTargets(CombatId(summon));
-                summonOffTimer.Remove(summon);
-                // 入口内侧横向错位，避免多只召唤物完全重叠；落点仍夹取在房间战斗边界内。
-                float lane=slot==0?0:(slot+1)/2*(slot%2==1?-1:1);
-                var goal=entry+inward*.45f+side*(lane*.3f);
-                summon.Position=Vector2.Clamp(goal,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
-                summonBlinkTick.Add(summon);
-            }
-            slot++;
-        }
-    }
     /// <summary>入场部署：复用英雄的展开纵深/间距配置，近战召唤物前压、远程靠后、支援贴近主人。
-    /// 横向车道接在英雄序列之后，避免同纵深重叠；只在敌人警觉窗口内执行，并用独立临时加速。
-    /// 入场结束或到达后立即停止，不改写基础 Speed，也不参与正式战斗 AI 的移动权。</summary>
+    /// 横向车道接在英雄序列之后，避免同纵深重叠。召唤物可能仍在上一房间或走廊，必须沿真实房门连续移动，
+    /// 以基础 Speed 的配置倍率为上限推进；到达落点或进入有效战斗即结束部署，交回正式战斗 AI。
+    /// 入场加速只作用于移动执行，不改写基础属性，也不延长敌人 AI 启动延迟。</summary>
     private void AdvanceEntrySummons(Room room,float dt)
     {
         var state=skillState.Targeting;
-        if(!state.EntryPrepared||CombatEntryRemaining<=0)return;
-        float basePct=Config.Talents.Rule("summon_entry_speed_pct")/100f;
-        float ownerPct=Config.Talents.Rule("summon_entry_owner_pct")/100f;
-        var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
-        foreach(var summon in Summons.Where(s=>s.Alive))
+        if(!state.EntryPrepared)return;
+        bool entryWindow=CombatEntryRemaining>0;
+        float entrySpeedPct=Config.Talents.Rule("summon_entry_speed_pct")/100f;
+        foreach(var summon in Summons.Where(s=>s.Alive).ToArray())
         {
-            if(!InCombatRoom(summon)||summonDeployed.Contains(summon))continue;
-            var owner=summon.SummonOwner>=0&&summon.SummonOwner<Heroes.Count?Heroes[summon.SummonOwner]:null;
-            string role=SummonRole(summon);
-            Vector2 goal;
-            if(role=="support")
+            if(summonDeployed.Contains(summon))continue;
+            // 新目标只在本房警觉窗口内认领；窗口结束后继续推进已认领的部署，不给战斗中途的新召唤补部署。
+            if(!summonDeployGoals.ContainsKey(summon))
             {
-                // 支援型不承担前排展开，直接贴近主人当前站位；侧向小幅错位避免与主人重叠。
+                if(!entryWindow)continue;
+                summonDeployGoals[summon]=SummonDeployGoal(summon,room,state);
+            }
+            // 抵达落点前已进入有效战斗（施法、接敌或被锁定）时立即结束部署，交由正式战斗 AI 接管。
+            if(SummonEngaged(summon))
+            {
+                summonDeployGoals.Remove(summon);summonDeployed.Add(summon);continue;
+            }
+            var goal=summonDeployGoals[summon];
+            // 支援型始终贴近主人当前站位；其余角色沿用入场时分配的固定落点，避免每步重算产生抖动。
+            if(SummonRole(summon)=="support")
+            {
+                var owner=OwnerOf(summon);
                 var anchor=owner is {Alive:true}?owner.Position:state.EntryAnchor;
-                goal=anchor+side*(Summons.IndexOf(summon)%2==0?.25f:-.25f);
+                var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
+                goal=ClampToRoom(room,anchor+side*(Summons.IndexOf(summon)%2==0?.25f:-.25f));
+                summonDeployGoals[summon]=goal;
             }
-            else
-            {
-                float depth=Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
-                float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
-                // 车道序号沿用英雄的奇偶公式，但从英雄总数之后继续，保证与同纵深英雄错开。
-                int laneIndex=Heroes.Count+Summons.IndexOf(summon);
-                int lane=laneIndex==0?0:(laneIndex+1)/2*(laneIndex%2==1?-1:1);
-                goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*spacing);
-            }
-            goal=Vector2.Clamp(goal,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
-            summonDeployGoals[summon]=goal;
-            float speed=Math.Max(summon.Speed*basePct,OwnerWalkSpeed(owner??Heroes[0])*ownerPct);
-            Move(summon,goal,dt,speed);
+            Move(summon,SummonPathWaypoint(summon,room,goal),dt,summon.Speed*entrySpeedPct);
             entryMoved.Add(summon);
-            if(Vector2.DistanceSquared(summon.Position,goal)<.04f)summonDeployed.Add(summon);
+            // 走廊/旧房间的路径点不能当作落点：必须真正进入房间并站到目标附近才算部署完成。
+            if(Vector2.DistanceSquared(summon.Position,goal)<.04f&&WithinRoom(room,summon.Position))
+            {
+                summonDeployGoals.Remove(summon);summonDeployed.Add(summon);
+            }
         }
     }
-    /// <summary>敌人 AI 启动时，仍未到位且未接敌的召唤物兜底同步到已分配站位；不延长警觉时间，
-    /// 不改变怪物目标/接敌容量，也不给未参与入场的房内新召唤补瞬移。</summary>
-    private void SnapEntrySummons()
+    /// <summary>入场部署目标：近战前压、远程靠后、支援贴近主人；车道从英雄总数之后继续，保证多只召唤物不重叠。</summary>
+    private Vector2 SummonDeployGoal(Actor summon,Room room,CombatTargetingState state)
     {
-        if(summonDeployGoals.Count==0)return;
-        foreach(var (summon,goal) in summonDeployGoals.ToArray())
+        var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
+        Vector2 goal;
+        string role=SummonRole(summon);
+        if(role=="support")
         {
-            summonDeployed.Add(summon);
-            if(!summon.Alive||SummonEngaged(summon))continue;
-            ReleaseCombatTargets(CombatId(summon));
-            summon.Position=goal;
-            summonBlinkTick.Add(summon);
+            var owner=OwnerOf(summon);
+            var anchor=owner is {Alive:true}?owner.Position:state.EntryAnchor;
+            goal=anchor+side*(Summons.IndexOf(summon)%2==0?.25f:-.25f);
         }
-        summonDeployGoals.Clear();
+        else
+        {
+            float depth=Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
+            float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
+            int laneIndex=Heroes.Count+Summons.IndexOf(summon);
+            int lane=laneIndex==0?0:(laneIndex+1)/2*(laneIndex%2==1?-1:1);
+            goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*spacing);
+        }
+        return ClampToRoom(room,goal);
     }
+    private static Vector2 ClampToRoom(Room room,Vector2 point)=>Vector2.Clamp(point,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
+    /// <summary>入场/跟随共用的房门路径点：同房直接朝落点；在上一房间先走到通往目标房间的门；
+    /// 在走廊时沿最近门段前进。禁止朝目标直线穿墙，也不做瞬移。</summary>
+    private Vector2 SummonPathWaypoint(Actor summon,Room targetRoom,Vector2 roomGoal)
+    {
+        var from=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,summon.Position));
+        if(from==null)return CorridorWaypointTowards(summon.Position,targetRoom);
+        if(from.Id!=targetRoom.Id)
+        {
+            var next=Floor.Rooms[FirstStep(from.Id,targetRoom.Id)];
+            var exit=from.DoorTowards(next);
+            return Vector2.Distance(summon.Position,exit)>.001f?exit:next.DoorTowards(from);
+        }
+        return roomGoal;
+    }
+    /// <summary>走廊内只沿最近门段前进；门段通向目标房间一侧时取该侧房门。</summary>
+    private Vector2 CorridorWaypointTowards(Vector2 position,Room targetRoom)
+    {
+        var passage=Floor.Passages.OrderBy(p=>SegmentDistance(position,Floor.Rooms[p.A].DoorTowards(Floor.Rooms[p.B]),Floor.Rooms[p.B].DoorTowards(Floor.Rooms[p.A]))).First();
+        var a=Floor.Rooms[passage.A];var b=Floor.Rooms[passage.B];
+        bool towardA=targetRoom.Id==a.Id||targetRoom.Id!=b.Id&&FirstStep(a.Id,targetRoom.Id)!=b.Id;
+        return towardA?a.DoorTowards(b):b.DoorTowards(a);
+    }
+    private Actor? OwnerOf(Actor summon)=>summon.SummonOwner>=0&&summon.SummonOwner<Heroes.Count?Heroes[summon.SummonOwner]:null;
     private string SummonRole(Actor summon)=>SkillConfig.Summons.TryGetValue(summon.SummonDefinitionId,out var definition)?definition.Role:"melee";
     private static bool WithinRoom(Room room,Vector2 p){var d=Vector2.Abs(p-room.Center);return d.X<=room.HalfWidth+.00001f&&d.Y<=room.HalfHeight+.00001f;}
 
-    /// <summary>清房后跟随主人：正常跟随距离内按原速、超出则按主人当前行走速度的配置倍率追赶；持续脱队且落点合法时闪现。
-    /// 入场部署窗口由入场逻辑独占移动权，战斗房间内不跟随、不闪现。</summary>
     /// <summary>限时召唤按固定逻辑步递减剩余时间，归零即撤销；永续定义不受该计时影响。
     /// 计时不MarkChanged，避免每一步都触发存档；剩余时间随进房检查点保存。</summary>
     private void AdvanceSummonLifetimes(float dt)
@@ -266,6 +275,8 @@ public sealed partial class GameSession
         effectBudgetRemaining=SkillConfig.EffectBudget;
         DrainEffects();
     }
+    /// <summary>清房后跟随主人：正常跟随距离内按原速、超出则按主人当前行走速度的配置倍率追赶；持续脱队且落点合法时闪现。
+    /// 入场部署本步已取得移动权的召唤物不参与跟随；战斗房间内不跟随、不闪现。</summary>
     private void FollowDungeonSummons(float dt)
     {
         AdvanceSummonLifetimes(dt);
@@ -278,6 +289,8 @@ public sealed partial class GameSession
         float catchup=Config.Talents.Rule("summon_catchup_speed_pct")/100f;
         foreach(var summon in Summons.Where(s=>s.Alive))
         {
+            // 入场部署在本步已取得移动权（可能仍在走廊或上一房间），跟随不得再改写其位置。
+            if(entryMoved.Contains(summon))continue;
             if(!MovingBetweenRooms&&!current.Clear&&InCombatRoom(summon))continue;
             var owner=Heroes[summon.SummonOwner];
             if(!owner.Alive)continue;
@@ -316,10 +329,7 @@ public sealed partial class GameSession
                 else if(from==null)
                 {
                     // 走廊内只沿所属门段前进；禁止朝主人直线切穿房墙。
-                    var passage=Floor.Passages.OrderBy(p=>SegmentDistance(summon.Position,Floor.Rooms[p.A].DoorTowards(Floor.Rooms[p.B]),Floor.Rooms[p.B].DoorTowards(Floor.Rooms[p.A]))).First();
-                    var a=Floor.Rooms[passage.A];var b=Floor.Rooms[passage.B];
-                    bool towardA=targetRoom.Id==a.Id||targetRoom.Id!=b.Id&&FirstStep(a.Id,targetRoom.Id)!=b.Id;
-                    goal=towardA?a.DoorTowards(b):b.DoorTowards(a);
+                    goal=CorridorWaypointTowards(summon.Position,targetRoom);
                 }
                 else if(ownerRoom==null)
                 {
@@ -333,7 +343,6 @@ public sealed partial class GameSession
                 Move(summon,goal,1,Math.Min(budget,distanceToGoal));budget-=Math.Min(budget,distanceToGoal);
             }
         }
-        static float SegmentDistance(Vector2 p,Vector2 a,Vector2 b){var d=b-a;return Vector2.DistanceSquared(p,a+d*Math.Clamp(Vector2.Dot(p-a,d)/d.LengthSquared(),0,1));}
     }
     /// <summary>主人当前行走速度；装备/被动加成走统一属性聚合，不吃寒缓以外的临时加速，也不改写基础Speed。</summary>
     private float OwnerWalkSpeed(Actor owner)=>Math.Max(owner.Speed,(float)EffectiveValue(owner,"move_speed",owner.Speed));
