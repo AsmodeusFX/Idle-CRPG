@@ -112,3 +112,5 @@ Actor.StartingSkillGranted记录初始攻击节点是否已初始化，初始学
 2026-10-22用户授权删除M5/M7退役内容并允许不兼容账号重置：正式配置不再解释已删节点/skill_XX。兼容账号继续加载；已删引用在Restore校验时拒绝；主备份均不能恢复时，SaveStore保留.unreadable副本并重置进度及备份，客户端显示既有重置提示，settings.json不改。专项检查只对artifacts/qa合成的M5/M7旧档验证此流程，未自动覆盖玩家目录。
 
 2026-10-22 Proc ICD V1.0：ProcTick/ProcIcds与Pending.Trigger加入现有SkillBattleState，仅内部完整快照用于确定性重放并校验拥有者、TriggerID、到期Tick及唯一归属；缺字段的旧内部快照默认空ICD。CaptureProgress继续生成空技能战斗状态，换房/换层/房间重建清理，不新增长期存档版本或按触发保存。见proc_icd.md。
+
+2026-10-23 E3：敌方仆从来源/规则/激活事实只随完整Actor现场保存；正式检查点仍清现场，从Origins重建来源及有限单次槽位，保留已到帐成长资源。规则默认未投放正式怪物池。

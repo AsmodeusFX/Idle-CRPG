@@ -23,7 +23,8 @@ public partial class Main
     private void OpenSkillPreview()
     {
         if(PreviewOpen)return;
-        SaveNow(true);previewOriginal=session;previewConfig=config;previewView=viewMode;previewSpeed=speed;
+        SaveNow(true);previewOriginal=session;previewConfig=config;
+        config=Config.Load(ProjectSettings.GlobalizePath("res://config"));config.LoadMonsterPreviews(ProjectSettings.GlobalizePath("res://config"));previewView=viewMode;previewSpeed=speed;
         previewOriginalPaused=paused;previewOriginalAccumulator=accumulator;
         if(skillPreviewRoot==null)BuildSkillPreview();
         gmRoot.Hide();settingsRoot.Hide();viewMode=0;speed=1;paused=false;previewPaused=false;
@@ -48,6 +49,7 @@ public partial class Main
         previewSkill=Choice("技能（当前职业全部主动）",92);
         previewRank=Number("技能等级",174,1,100,1);
         previewMonster=Choice("怪物种类",226);foreach(var monster in config.Monsters)previewMonster.AddItem(monster.Name);
+        foreach(var monster in config.MonsterPreviews)previewMonster.AddItem(monster.Id+" · "+monster.Name);
         previewCount=Number("怪物数量",314,1,40,6);
         previewMonsterLevel=Number("怪物等级",366,1,config.MaxMonsterLevel,1);
         previewInvincible=new CheckBox {Text="测试英雄无敌",Position=new Vector2(16,420),ButtonPressed=true};side.AddChild(previewInvincible);
@@ -72,8 +74,10 @@ public partial class Main
     }
     private void RestartSkillPreview()
     {
+        config.EnemySummons.Clear();
         var node=previewNodes[previewSkill.Selected];
-        session=GameSession.CreateSkillPreview(config,config.Heroes[previewHero.Selected].Id,node.Id,(int)previewRank.Value,config.Monsters[previewMonster.Selected].Id,(int)previewCount.Value,(int)previewMonsterLevel.Value);
+        session=GameSession.CreateSkillPreview(config,config.Heroes[previewHero.Selected].Id,node.Id,(int)previewRank.Value,config.Monsters[Math.Min(previewMonster.Selected,config.Monsters.Count-1)].Id,(int)previewCount.Value,(int)previewMonsterLevel.Value);
+        if(previewMonster.Selected>=config.Monsters.Count)session.SetPreviewMonsters(config.MonsterPreviews[previewMonster.Selected-config.Monsters.Count].Id,(int)previewCount.Value,(int)previewMonsterLevel.Value,ProjectSettings.GlobalizePath("res://config"));
         session.SetGmBattle(new(Invincible:previewInvincible.ButtonPressed));
         previewAccumulator=0;previewReplayWait=0;cameraReady=false;motionAlpha=1;motion.BeforeTick(session);ResetSoundBaseline();
         UpdatePreviewInfo();
@@ -98,7 +102,7 @@ public partial class Main
             $"技能数值 {session.TalentValue(hero,node):0.###}　冷却 {node.Cooldown:0.##} 秒　范围 {node.Range:0.##}\n"+
             $"存活怪物 {session.Floor.Rooms[0].Monsters.Count(m=>m.Alive)}　召唤物 {session.Summons.Count(s=>s.Alive)}　命中 {session.HitCount}\n"+
             "复用正式战斗视角、索敌、技能及伤害；升级仅展示配置实际支持的变化。\n"+
-            (node.Id=="nec_corpse_explosion"?"试场提供一具可消费尸体。":"")+"独立沙盒不保存，不影响远征、资源或角色成长。";
+            (node.Id=="nec_corpse_explosion"?"试场提供一具可消费尸体。":"")+"独立沙盒不保存，不影响远征、资源或角色成长。\n右下为480×240原生Mini；圆环=前摇，连线=锁定，虚线=召唤来源。";
     }
     private void CloseSkillPreview()
     {
@@ -123,6 +127,8 @@ public partial class Main
                 for(int tick=0;tick<40;tick++)StepSkillPreview();
             }
         }
+        for(int index=config.Monsters.Count;index<previewMonster.ItemCount;index++)
+        {previewMonster.Select(index);previewCount.Value=2;RestartSkillPreview();for(int tick=0;tick<100;tick++)StepSkillPreview();if(!session!.Floor.Rooms[0].Monsters.Any(m=>m.Name.StartsWith("M")))throw new Exception("怪物原型未加载");}
         AutoSave(1);SaveNow();
         CloseSkillPreview();
         if(!ReferenceEquals(original,session)||session?.Revision!=revision||viewMode!=oldView||paused!=oldPaused)throw new Exception("退出试场未恢复原远征现场");

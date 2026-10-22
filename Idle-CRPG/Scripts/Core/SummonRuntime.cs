@@ -47,6 +47,7 @@ public sealed partial class GameSession
     /// <summary>召唤物属性在施法时按主人基础值快照；跨房连续行进，换层重建位置但不补满 HP。</summary>
     private void SummonEffect(SkillEffectWork work,EffectDefinition effect)
     {
+        if(Config.EnemySummons.TryGetValue(effect.MechanicId,out var enemyRule)&&!IsFriendlyId(work.Owner)){EnemySummonEffect(work,enemyRule);return;}
         var owner=CombatActor(work.Owner);
         if(owner is not {Alive:true}||!Heroes.Contains(owner)||!owner.SkillIds.Contains(work.Skill))return;
         if(!SkillConfig.Summons.TryGetValue(effect.MechanicId,out var definition))throw new InvalidDataException("召唤定义引用无效："+effect.MechanicId);

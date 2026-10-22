@@ -7,7 +7,7 @@ namespace IdleCrpg.Core;
 
 public sealed partial class GameSession
 {
-    /// <summary>每次本房怪物死亡只登记一条尸体权利；召唤物、英雄和跨房尸体不进入该列表。</summary>
+    /// <summary>每次本房怪物（含敌方仆从）死亡只登记一条尸体权利；我方召唤物、英雄和跨房尸体不进入该列表。</summary>
     private void RecordCorpse(Actor target)
     {
         int id=CombatId(target);

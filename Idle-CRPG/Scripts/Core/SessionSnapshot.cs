@@ -171,6 +171,7 @@ public sealed partial class GameSession
                     }
             }
         }
+        if(s.RoomCheckpoint)foreach(var floor in s.Floors)foreach(var room in floor.Rooms)if(room.Generated&&!room.ContentCleared)PrepareEnemySummons(config,room);
         MigrateCombatFormula(config,s);
         MigrateSkillTree(config,s);
         ValidateSnapshot(config,s);
@@ -308,6 +309,7 @@ public sealed partial class GameSession
         {
             Need(Point(a.Position)&&Finite(a.Hp)&&Finite(a.MaxHp)&&Finite(a.Attack)&&Finite(a.Defense)&&Finite(a.Speed)&&Finite(a.Range)&&Finite(a.Cooldown)&&Finite(a.Timer)&&Finite(a.DropMultiplier)&&Finite(a.ValueMultiplier)&&a.MaxHp>0&&a.Hp>=0&&a.Hp<=AllowedMaximum(a)&&a.Level>0&&a.Attack>=0&&a.Defense>=0&&a.Speed>0&&a.Range>0&&a.Cooldown>0&&a.Timer>=0&&a.DropMultiplier>=0&&a.ValueMultiplier>0,"角色属性");
             Need(a.Experience>=0&&a.ExperienceFraction is >=0 and <100,"角色经验无效");
+            Need(Enum.IsDefined(a.TargetPolicy),"怪物索敌策略无效");
             Need(a.Battle!=null&&a.SkillIds!=null&&a.SkillLevels!=null,"战斗属性/技能缺失");a.Battle.Validate();
             bool summon=a.SummonDefinitionId!="";
             if(summon)Need(c.Skills.Summons.ContainsKey(a.SummonDefinitionId)&&a.SummonOwner>=0&&a.SummonOwner<s.Heroes.Count&&s.Heroes[a.SummonOwner].SkillIds.Contains(a.SummonSkill),"召唤定义/主人引用无效");
@@ -329,6 +331,7 @@ public sealed partial class GameSession
                 Need(r.Neighbors.Distinct().Count()==r.Neighbors.Count&&r.Neighbors.All(n=>n>=0&&n<f.Rooms.Count&&n!=r.Id&&f.Rooms[n].Neighbors.Contains(r.Id)&&Math.Abs(r.X-f.Rooms[n].X)+Math.Abs(r.Y-f.Rooms[n].Y)==1),"房间连接");
                 Need(float.IsFinite(r.HalfWidth)&&float.IsFinite(r.HalfHeight)&&r.HalfWidth>=2&&r.HalfWidth<=5&&r.HalfHeight>=2&&r.HalfHeight<=5,"房间尺寸");
                 Need((!r.Generated||r.Revealed)&&(!r.EventUsed||r.Generated)&&new[]{"","营火","宝箱"}.Contains(r.Event)&&r.Monsters.Count<=1000&&(!r.Generated?r.Monsters.Count==0:true),"房间生成状态");
+                Need(r.Monsters.All(m=>m.EnemySummonSource>=-1&&(m.EnemySummonSource<0||m.EnemySummonSource<r.Monsters.Count&&m.EnemySummonSource!=r.Monsters.IndexOf(m)&&c.EnemySummons.ContainsKey(m.EnemySummonRule)&&(!m.Alive||m.EnemySummonActivated))),"敌方召唤来源无效");
                 Need(r.Monsters.All(m=>c.Monsters.Any(t=>t.Id==m.SpecId)&&m.RewardXp>=0),"怪物引用");
                 Need(r.Origins.Count<=1000&&r.Loot.Count<=1000&&(!r.ContentCleared||r.Generated),"房间检查点");
                 Need(!s.RoomCheckpoint||!r.Generated||r.ContentCleared||r.Origins.Count>0,"未清房缺少出生模板");

@@ -15,6 +15,8 @@ public sealed class Actor
     public int Experience,ExperienceFraction;
     public bool Boss;
     public bool Ranged;
+    /// <summary>显式特殊索敌；默认沿用普通容量规则，仅隔离原型启用。</summary>
+    public MonsterTargetPolicy TargetPolicy;
     public BattleAttributes Battle=new();
     public string[] SkillIds=Array.Empty<string>();
     /// <summary>已成功激活的持续光环；跨房保留，来源死亡或卸槽撤销，范围Buff仍属于短期战斗现场。</summary>
@@ -29,6 +31,10 @@ public sealed class Actor
     /// <summary>非空表示独立召唤物；主人索引指向当前上阵英雄，召唤技能用于卸槽清理。</summary>
     public string SummonDefinitionId="",SummonSkill="";
     public int SummonOwner=-1;
+    /// <summary>敌方预留槽来源为房内索引；激活一次后永不复用，死亡照常奖励。</summary>
+    public int EnemySummonSource=-1;
+    public string EnemySummonRule="";
+    public bool EnemySummonActivated;
     /// <summary>限时召唤剩余秒数，按固定20Hz逻辑步递减；0且定义为永续时表示不限期。属于召唤生命周期现场，随检查点保存。</summary>
     public float SummonRemaining;
     public bool Alive => Hp > 0;
@@ -475,7 +481,8 @@ public sealed partial class GameSession
             room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,modifiers));
         }
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
-        Floor.ActualSpawned+=room.Monsters.Count;
+        PrepareEnemySummons(Config,room);
+        Floor.ActualSpawned+=room.Monsters.Count(m=>m.Alive);
         Note($"进入房间 {room.Id+1}：{room.Monsters.Count} 敌人 · 等级 {levelMin}–{levelMax}"+(room.Boss?" · BOSS":""));
     }
 
@@ -489,13 +496,13 @@ public sealed partial class GameSession
             return;
         }
         effectBudgetRemaining=SkillConfig.EffectBudget;
-        PruneSummons();
+        PruneSummons();PruneEnemySummons();
         AdvanceSkills(dt);
         DrainEffects();
         foreach(var h in Heroes.Where(h=>h.Alive)) Act(h,room.Monsters,dt,room);
         foreach(var s in Summons.Where(s=>s.Alive)) Act(s,room.Monsters,dt,room);
         PrepareMonsterTargets(dt);
-        foreach(var m in room.Monsters.Where(m=>m.Alive)) Act(m,Heroes,dt,room);
+        foreach(var m in room.Monsters.Where(m=>m.Alive).ToArray()) Act(m,Heroes,dt,room);
         DrainEffects();
         if(room.Clear){if(!skillPreviewMode)ResetSkillRoom();}else SynchronizeAuras();
     }

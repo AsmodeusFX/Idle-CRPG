@@ -44,3 +44,9 @@
 - [角色技能与天赋树](design/talent_trees.md)：三系投入、技能装配与冷却、星图解锁/洗点、正式五职业三系与`skill_id`绑定、旧档`SkillTreeVersion`迁移；[字段字典](technical/talent_config.md)。
 
 - 五职业基础树、初始技能占点/可洗、室外队列跟随：见[天赋树](design/talent_trees.md)、[镜头与世界](design/camera_world_view.md)和[字段合同](technical/talent_config.md)。
+
+- [怪物实验遭遇E2](reviews/2026-10-22_monster_encounter_e2.md)：范围法师、显式后排猎手、Forced及隔离测试。
+
+- [怪物实验遭遇E3进展](reviews/2026-10-22_monster_encounter_e3.md)：敌方有限召唤、正常收益与产尸、配置死亡策略及支援Buff验证。
+
+- [怪物原型与实验遭遇最终归档](reviews/2026-10-23_monster_encounter/README.md)：M01–M08、有限召唤与收益裁定、GM技能预览和480×240 Mini、Core/Godot/实际渲染证据；正式五章投放另属P1_5。

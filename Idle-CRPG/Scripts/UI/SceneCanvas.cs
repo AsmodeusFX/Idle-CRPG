@@ -76,7 +76,7 @@ public partial class Main
             float z=cameraZoom-targetZoom,j=zoomVelocity+omega*z;
             cameraZoom=targetZoom+(z+j*step)*decay;zoomVelocity=(zoomVelocity-omega*j*step)*decay;
         }
-        zoom=cameraZoom;origin=SceneRect.GetCenter()+new Vector2(0,28)-new Vector2((cameraCenter.X-cameraCenter.Y)*zoom,(cameraCenter.X+cameraCenter.Y)*zoom*.5f);
+        zoom=PreviewOpen?cameraZoom*.55f:cameraZoom;origin=SceneRect.GetCenter()+new Vector2(PreviewOpen?-235:0,28)-new Vector2((cameraCenter.X-cameraCenter.Y)*zoom,(cameraCenter.X+cameraCenter.Y)*zoom*.5f);
     }
     public void RenderScene(CanvasItem context)
     {

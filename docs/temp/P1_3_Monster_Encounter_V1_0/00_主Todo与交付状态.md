@@ -53,3 +53,15 @@ Claude Code审计：未开始/已报告+来源路径
 
 ## 2026-10-22 E1执行更新
 用户已批准E1。M01–M04/T01–T04隔离Core夹具已实现，专项检查通过、Godot工程编译通过；Godot/Mini视觉验收NOT RUN，E2/E3未实施。详见 ../../reviews/2026-10-22_monster_encounter_e1.md。未执行Git提交。
+
+## 2026-10-22 E2更新
+用户已授权E2；范围法师/猎手及T04C/T05 Core隔离夹具已实施，专项PASS，编译PASS，视觉NOT RUN，E3未实施。见 ../../reviews/2026-10-22_monster_encounter_e2.md。
+
+## 2026-10-22 E3进展
+用户已要求推进E3。M08/T07隔离Core检查PASS，编译PASS；M07/T06因敌方召唤收益/死亡合同待明确而BLOCKED，T08及视觉NOT RUN。详见 ../../reviews/2026-10-22_monster_encounter_e3.md。E3未完成。
+
+## 2026-10-23 E3裁定与实施
+用户批准敌方仆从正常收益与产尸；来源死亡策略可配，敌方默认保留，我方统一撤销。临时存活3/每来源总9待正式数值接入。M07/T06与M08/T07专项PASS，编译PASS；Boss及视觉未验收。此前召唤收益待审批状态解除。
+
+## 2026-10-23最终归档
+M01–M08及已授权Core范围完成，GM技能预览已可加载；Core回归、工程编译、Godot冒烟与8类Mini实际渲染通过。T08为TEST_PROXY接口检查，真实五章Boss/正式投放转P1_5；可选冲刺/复活变体及最终数值不在本轮已完成范围。见 ../../reviews/2026-10-23_monster_encounter/README.md。

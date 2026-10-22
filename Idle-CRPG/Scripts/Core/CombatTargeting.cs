@@ -6,7 +6,9 @@ using System.Numerics;
 namespace IdleCrpg.Core;
 
 /// <summary>普通近战的优先预约、可攻击溢出与远程主锁；不表示受击人数上限。</summary>
-public enum MonsterLockKind { Normal, Overflow, Ranged, Forced }
+public enum MonsterLockKind { Normal, Overflow, Ranged, Forced, Special }
+/// <summary>后排优先只改变普通主锁选择，不占Normal容量；Forced仍优先。</summary>
+public enum MonsterTargetPolicy { Ordinary, BacklinePriority }
 public sealed class MonsterTargetLock
 {
     public int Owner,Target;
@@ -147,6 +149,14 @@ public sealed partial class GameSession
             int forced=ForcedTarget(owner);if(forced>=0)return new(){Owner=owner,Target=forced,Kind=MonsterLockKind.Forced};
             var actor=room.Monsters[owner-monsterBase];int target=-1;float distance=float.MaxValue;
             bool ranged=actor.Ranged;
+            if(!ranged&&actor.TargetPolicy==MonsterTargetPolicy.BacklinePriority)
+            {
+                // 候选限本房存活友方；远程职责优先，无后排则最近合法对象。
+                for(int pass=0;pass<2&&target<0;pass++)
+                    for(int i=0;i<count;i++)if((mask&(1<<i))!=0&&FriendlyAt(i) is { } friendly&&(pass==1||friendly.Ranged))
+                    {float d=Vector2.DistanceSquared(actor.Position,friendly.Position);if(d<distance){target=i;distance=d;}}
+                return target<0?null:new(){Owner=owner,Target=target,Kind=MonsterLockKind.Special};
+            }
             if(!ranged)
                 for(int i=0;i<count;i++)if((mask&(1<<i))!=0&&occupied[i]<capacities[i]&&FriendlyAt(i) is { } friendly)
                 {float d=Vector2.DistanceSquared(actor.Position,friendly.Position);if(d<=range*range&&d<distance){target=i;distance=d;}}

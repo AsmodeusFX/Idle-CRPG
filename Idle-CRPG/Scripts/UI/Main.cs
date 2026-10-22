@@ -144,7 +144,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-star-editor")){captureView="star-editor";viewMode=3;ToggleStarEditor();EditorClickNode("s_root");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-gm")){captureView="gm";ToggleGm();}
         if(OS.GetCmdlineUserArgs().Contains("--capture-formation")){captureView="formation";SelectStarView(4);OpenFormation(0);}if(OS.GetCmdlineUserArgs().Contains("--capture-heroes")){captureView="heroes";SelectStarView(4);}if(smoke){RunClassTalentSmoke();RunInteractionSmoke();RunTalentSmoke();RunHeroSmoke();RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunAct1UiSmoke();RunGmSmoke();RunStarSmoke();RunSkillPreviewSmoke();}
-        if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-skill-preview")){OpenSkillPreview();for(int i=0;i<35;i++)StepSkillPreview();previewPaused=true;captureView="skill-preview";}
+        if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-skill-preview")){OpenSkillPreview();var archetypeArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-monster="));if(archetypeArg!=null){previewMonster.Select(config.Monsters.Count+config.MonsterPreviews.FindIndex(d=>d.Id==archetypeArg.Substring(13)));previewCount.Value=2;RestartSkillPreview();}for(int i=0;i<35;i++)StepSkillPreview();previewPaused=true;captureView="skill-preview"+(archetypeArg==null?"":"-"+archetypeArg.Substring(13));}
         if(capture&&OS.GetCmdlineUserArgs().Any(a=>a is "--capture-talents" or "--capture-talent-editor" or "--capture-talent-hud" or "--capture-talent-drag"))PrepareTalentCapture(OS.GetCmdlineUserArgs().Contains("--capture-talent-editor"),OS.GetCmdlineUserArgs().Contains("--capture-talent-hud"));
         if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-heroes"))
         {var heroArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-hero="));if(heroArg!=null)captureView="heroes-"+heroArg.Substring("--qa-hero=".Length);}
@@ -308,6 +308,8 @@ public partial class Main : Node2D
         {
             bool summon=session.Summons.Contains(a);
             int index=session.Heroes.IndexOf(a); var color=index>=0?heroColors[index]:summon?new Color("9fc7b4"):a.Boss?new Color("ffc56b"):new Color("dc6b70");
+            if(PreviewOpen&&index<0&&!summon)
+            {var prototype=config.MonsterPreviews.FirstOrDefault(d=>a.Name.StartsWith(d.Id+" "));if(prototype!=null)color=new Color(prototype.Color);else if(a.EnemySummonSource>=0)color=new Color("91d99c");}
             var visualOffset=motion.CombatVisualOffset(a);
             DrawFighter(Project(VisualPosition(a))+new Vector2(visualOffset.X,visualOffset.Y)-new Vector2(0,index>=0?session.TalentLeapHeight(a):0),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
             if(index>=0&&session.CombatEntryRemaining<=0&&a.Timer<=a.Cooldown+.001f&&a.Timer>a.Cooldown-.14f)
@@ -316,6 +318,7 @@ public partial class Main : Node2D
                 if(target!=null)DrawLine(Project(VisualPosition(a))-new Vector2(0,18),Project(VisualPosition(target))-new Vector2(0,15),new Color(color.R,color.G,color.B,.6f),2,true);
             }
         }
+        if(PreviewOpen&&config.MonsterPreviews.Count>0)DrawMonsterMini();
         foreach(var flight in session.TalentProjectiles)
         {
             var color=flight.Type switch {DamageType.Fire=>new Color("ff9b48"),DamageType.Cold=>new Color("83daff"),DamageType.Lightning=>new Color("fff08d"),DamageType.Poison=>new Color("b5e47d"),_=>new Color("e2dcc9")};

@@ -1,0 +1,2 @@
+﻿id,caster_template,skill,child_template,alive_cap,total_cap,persist_after_owner_death,status
+nec_skeleton,guard,QA_E3_SUMMON,rat,3,9,true,TEST_ONLY_TEMPORARY_REPLACE_WITH_FORMAL_BALANCE
