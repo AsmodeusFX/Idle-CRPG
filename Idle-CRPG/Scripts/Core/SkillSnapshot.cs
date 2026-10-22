@@ -9,7 +9,7 @@ public sealed partial class GameSession
     private static void ValidateSkillSnapshot(Config config,SessionSnapshot snapshot)
     {
         var state=snapshot.SkillState;
-        if(state==null||state.Actions==null||state.Buffs==null||state.Flights==null||state.Pending==null||state.NextId<0||state.Flights.Count>config.Skills.Setting("max_flights")||state.Pending.Count>config.Skills.MaxPending||state.Actions.Count>1003||state.Buffs.Count>1003*config.Skills.Buffs.Count)throw new InvalidDataException("技能现场数量或字段无效");
+        if(state==null||state.Actions==null||state.Buffs==null||state.Flights==null||state.Pending==null||state.Corpses==null||state.ProcFires==null||state.NextId<0||state.Flights.Count>config.Skills.Setting("max_flights")||state.Pending.Count>config.Skills.MaxPending||state.Actions.Count>1003||state.Buffs.Count>1003*config.Skills.Buffs.Count)throw new InvalidDataException("技能现场数量或字段无效");
         bool inRoom=(snapshot.World==null||snapshot.World.Stage==CampaignStage.Dungeon)&&snapshot.FloorIndex>=0&&snapshot.FloorIndex<snapshot.Floors.Count&&snapshot.CurrentRoom>=0&&snapshot.CurrentRoom<snapshot.Floors[snapshot.FloorIndex].Rooms.Count;
         int monsters=inRoom?snapshot.Floors[snapshot.FloorIndex].Rooms[snapshot.CurrentRoom].Monsters.Count:0;
         int friendlies=inRoom?snapshot.Heroes.Count+snapshot.Summons!.Count:0;
@@ -19,6 +19,10 @@ public sealed partial class GameSession
         bool Time(double value)=>double.IsFinite(value)&&value>=0;
         bool Point(System.Numerics.Vector2 point)=>float.IsFinite(point.X)&&float.IsFinite(point.Y);
         bool Origin(long id)=>id>=0&&id<=state.NextId;
+        if(state.ProcTick<0||state.ProcIcds==null||state.ProcIcds.Any(p=>p==null)||state.ProcIcds.Count>(long)count*config.Skills.Triggers.Count||state.ProcIcds.Select(p=>(p.Owner,p.Trigger)).Distinct().Count()!=state.ProcIcds.Count)throw new InvalidDataException("Proc ICD时钟/数量或重复归属无效");
+        foreach(var icd in state.ProcIcds)
+            if(icd==null||!Owner(icd.Owner)||!config.Skills.Triggers.ContainsKey(icd.Trigger)||!config.Skills.ProcIcdSeconds.TryGetValue(icd.Trigger,out double seconds)||seconds<=0||icd.ReadyTick<0||icd.ReadyTick>state.ProcTick+(long)Math.Ceiling(seconds*config.Skills.TickRate))throw new InvalidDataException("Proc ICD现场引用或到期Tick无效");
+        if(snapshot.RoomCheckpoint&&(state.ProcTick!=0||state.ProcIcds.Count>0))throw new InvalidDataException("正式检查点不得保存Proc ICD");
         void Attack(SkillAttackSnapshot attack)
         {
             if(attack.Attributes==null||!Time(attack.Attack)||attack.Level<1||attack.Level>Math.Max(config.MaxHeroLevel,config.MaxMonsterLevel))throw new InvalidDataException("攻击属性/等级快照无效");
@@ -62,11 +66,22 @@ public sealed partial class GameSession
         foreach(var f in state.Flights)Flight(f,false);
         foreach(var work in state.Pending)
         {
+            if(work.Trigger==null||work.Trigger!=""&&(!config.Skills.Triggers.TryGetValue(work.Trigger,out var trigger)||trigger.Effect!=work.Effect))throw new InvalidDataException("Proc效果队列触发来源无效");
             if(!Owner(work.Owner)||!Owner(work.Target)||!config.Skills.Effects.ContainsKey(work.Effect)||!config.Skills.Skills.ContainsKey(work.Skill)||work.Depth<0||work.Depth>config.Skills.MaxDepth||!Time(work.Coefficient))throw new InvalidDataException("Effect 队列引用无效");
             if(work.Flight!=null)Flight(work.Flight,true);
             if(!Origin(work.OriginCast))throw new InvalidDataException("效果施法来源无效");
             if(work.Snapshot!=null)Attack(work.Snapshot);
         }
-        if(snapshot.RoomCheckpoint&&(state.Actions.Count>0||state.Buffs.Count>0||state.Flights.Count>0||state.Pending.Count>0))throw new InvalidDataException("正式检查点不应包含技能战斗现场");
+        // 尸体权利只属于当前房间的死亡事实：正式检查点不保存，读档由重开的房间战斗重新产生。
+        if(state.Corpses.Count>monsters||state.Corpses.Select(c=>c.ActorId).Distinct().Count()!=state.Corpses.Count)throw new InvalidDataException("尸体现场数量或重复");
+        foreach(var corpse in state.Corpses)
+        {
+            if(corpse==null||!inRoom||corpse.ActorId<snapshot.Heroes.Count||corpse.ActorId>=snapshot.Heroes.Count+monsters||!Point(corpse.Position)||ActorFor(corpse.ActorId).Alive)throw new InvalidDataException("尸体现场引用无效");
+        }
+        // Proc计数按根源施法与目标唯一；上限与运行时分片修剪一致，正式检查点不保存。
+        if(state.ProcFires.Count>4096||state.ProcFires.Select(f=>(f.OriginCast,f.Trigger,f.Target)).Distinct().Count()!=state.ProcFires.Count)throw new InvalidDataException("Proc限次现场数量或重复");
+        foreach(var fire in state.ProcFires)
+            if(fire==null||!config.Skills.Triggers.ContainsKey(fire.Trigger)||!Owner(fire.Target)||fire.OriginCast<0||fire.OriginCast>state.NextId||fire.Count<1||fire.Count>1000)throw new InvalidDataException("Proc限次现场引用无效");
+        if(snapshot.RoomCheckpoint&&(state.Actions.Count>0||state.Buffs.Count>0||state.Flights.Count>0||state.Pending.Count>0||state.Corpses.Count>0||state.ProcFires.Count>0))throw new InvalidDataException("正式检查点不应包含技能战斗现场");
     }
 }

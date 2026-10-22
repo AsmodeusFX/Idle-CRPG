@@ -1,0 +1,2 @@
+id,name,max_targets,jump_range,damage_decay
+sor_chain_lightning,连锁闪电,4,3.5,0.8

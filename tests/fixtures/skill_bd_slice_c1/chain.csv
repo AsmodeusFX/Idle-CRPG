@@ -1,0 +1,2 @@
+id,name,max_targets,jump_range,damage_decay
+QA_CHAIN,QA_CHAIN,3,0.5,0.5

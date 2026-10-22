@@ -1,0 +1,10 @@
+﻿id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees
+QA_C3_CHAIN_EFFECT,qa,Chain,Physical,1,,,,,,,,,,QA_C3_CHAIN,,,
+QA_SELF_PROC_CAST,qa,ApplyBuff,,,,,,,,QA_PROC_CAST_BUFF,,,,,,,
+QA_SELF_PROC_TARGET,qa,ApplyBuff,,,,,,,,QA_PROC_TARGET_BUFF,,,,,,,
+QA_SELF_WHIRLWIND,qa,ApplyBuff,,,,,,,,QA_WHIRLWIND_BUFF,,,,,,,
+QA_PROC_CAST_DAMAGE,qa,Damage,Physical,1,,,,,,,,,,,,,
+QA_PROC_TARGET_DAMAGE,qa,Damage,Physical,1,,,,,,,,,,,,,
+QA_HIT_DAMAGE_A,qa,Damage,Physical,1,,,,,,,,,,,,,
+QA_HIT_DAMAGE_B,qa,Damage,Physical,1,,,,,,,,,,,,,
+QA_WHIRLWIND_PULSE,qa,AreaPulse,Physical,0.5,2,,,,,,,,,,,,

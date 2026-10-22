@@ -9,7 +9,7 @@ public static class SkillBdSummonChecks
     public static void Run(string root)
     {
         void Need(bool ok,string why){if(!ok)throw new Exception("BD_SUMMON: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         string qa=Path.Combine(root,"artifacts/qa/bd-summon-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(qa,"skill"));
         foreach(var source in Directory.EnumerateFiles(Path.Combine(root,"Idle-CRPG/config/skill"),"*.csv"))File.Copy(source,Path.Combine(qa,"skill",Path.GetFileName(source)));
         foreach(var file in Directory.EnumerateFiles(Path.Combine(root,"tests/fixtures/skill_bd_slice_b2"),"*.csv"))
@@ -64,7 +64,23 @@ public static class SkillBdSummonChecks
         var inRoomCheckpoint=crossing.CaptureProgress();Need(inRoomCheckpoint.Summons.Count==0&&inRoomCheckpoint.RoomEntrySummons.Count==0,"房内新召唤错误进入正式检查点");
         foreach(var m in crossingRoom.Monsters)m.Hp=0;crossingRoom.ContentCleared=true;crossingRoom.EventUsed=true;crossingRoom.Loot.Clear();
         int oldRoom=crossing.CurrentRoom;
-        for(int i=0;i<20000&&crossing.CurrentRoom==oldRoom;i++)Tick(crossing);
+        bool followed=false;
+        for(int i=0;i<20000&&crossing.CurrentRoom==oldRoom;i++)
+        {
+            var before=Live(crossing)[0].Position;Tick(crossing);var after=Live(crossing)[0].Position;
+            followed|=Vector2.Distance(before,after)>.0001f;
+            Need(Vector2.Distance(before,after)<=Live(crossing)[0].Speed*.05f+.001f,"召唤物跨门发生瞬移或超速");
+            bool onFloor=crossing.Floor.Rooms.Any(r=>Math.Abs(after.X-r.Center.X)<=r.HalfWidth+.001f&&Math.Abs(after.Y-r.Center.Y)<=r.HalfHeight+.001f);
+            bool onPassage=crossing.Floor.Passages.Any(p=>
+            {
+                var a=crossing.Floor.Rooms[p.A];var b=crossing.Floor.Rooms[p.B];
+                var min=Vector2.Min(a.DoorTowards(b),b.DoorTowards(a))-new Vector2(.001f);
+                var max=Vector2.Max(a.DoorTowards(b),b.DoorTowards(a))+new Vector2(.001f);
+                return after.X>=min.X&&after.X<=max.X&&after.Y>=min.Y&&after.Y<=max.Y;
+            });
+            Need(onFloor||onPassage,"召唤物穿墙或偏离走廊");
+        }
+        Need(followed,"召唤物未随小队连续移动");
         Need(crossing.CurrentRoom!=oldRoom&&Live(crossing).Length==1&&Math.Abs(Live(crossing)[0].Hp-20)<.0001f,"跨房丢失召唤或补满实际HP");
         var compact=crossing.CaptureProgress();Need(compact.Summons.Count==1&&Math.Abs(compact.Summons[0].Hp-20)<.0001f,"进房检查点未保留召唤实际HP");
         var reopened=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=compact})).Session!);
@@ -75,7 +91,24 @@ public static class SkillBdSummonChecks
         var ownerDead=Battle();Summon(ownerDead);ownerDead.Heroes[0].Hp=0;Tick(ownerDead);Need(Live(ownerDead).Length==0,"主人死亡后召唤仍存活");
         var wipe=Battle();Summon(wipe);foreach(var h in wipe.Heroes)h.Hp=0;Tick(wipe);Need(wipe.Summons.Count==0&&wipe.Capture().Summons.Count==0,"全灭没有清除召唤记录");
 
-        Need(!Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Summons.ContainsKey("QA_SKELETON"),"QA召唤定义泄漏生产配置");
-        Console.WriteLine("PASS: B2 independent skeleton summon, owner-relative stats, single cap, auto-attack XP, no death rewards, cross-room HP, room checkpoint restore, unslot/death/wipe cleanup");
+        // 正常通关回城必须死亡并清理召唤；下一轮进入副本清普攻、技能及换入冷却。
+        var world=GameSession.CreateWorld(c,932,new[]{"priest","warrior","mage"});world.SetGmBattle(new(Invincible:true));
+        for(int i=0;i<20000&&(world.World!.Stage!=CampaignStage.Dungeon||world.CurrentRoom==0);i++)Tick(world);
+        foreach(var h in world.Heroes){h.Hp=h.MaxHp=100000;h.Timer=999;h.SkillIds=Array.Empty<string>();}
+        world.Heroes[0].SkillIds=new[]{"QA_SUMMON_SKELETON"};
+        for(int i=0;i<100&&Live(world).Length==0;i++)Tick(world);
+        var townSummon=Live(world).Single();
+        for(int i=0;i<50000&&world.World!.Stage!=CampaignStage.Village;i++)
+        {
+            if(world.World!.Stage==CampaignStage.Dungeon)foreach(var monster in world.Floor.Rooms[world.CurrentRoom].Monsters)monster.Hp=0;
+            Tick(world);
+        }
+        Need(world.World!.Stage==CampaignStage.Village&&!townSummon.Alive&&world.Summons.Count==0&&world.Capture().RoomEntrySummons.Count==0,"正常回城未死亡清除召唤及进房副本");
+        foreach(var h in world.Heroes){h.Timer=999;foreach(string id in h.SkillIds)h.SkillSwapLocks[id]=999;}
+        for(int i=0;i<20000&&world.World.Stage!=CampaignStage.Dungeon;i++)Tick(world);
+        Need(world.World.Stage==CampaignStage.Dungeon&&world.Heroes.All(h=>h.Timer==0&&h.SkillSwapLocks.Count==0&&h.SkillIds.All(id=>world.SkillCooldown(h,id)==0)),"进副本未重置全部战斗CD");
+
+        Need(!LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Summons.ContainsKey("QA_SKELETON"),"QA召唤定义泄漏生产配置");
+        Console.WriteLine("PASS: B2 summon stats/cap/rewards, continuous door/corridor following without teleport/wall crossing, cross-room HP/checkpoint, owner/wipe/town death cleanup and new-dungeon combat cooldown reset");
     }
 }

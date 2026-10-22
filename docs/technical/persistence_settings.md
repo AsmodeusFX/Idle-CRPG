@@ -1,8 +1,8 @@
 # 自动存档、设置与音频
 
-2026-10-22公式专项已执行：SessionSnapshot.CombatVersion=2，SaveDocument仍为4。旧0版按模板补元数据；旧1版将独立倍率x转为威能加值x−1且幂等转换，缺少出手等级的旧攻击快照按旧快照攻方等级补齐。新SkillAttackSnapshot保存Level；泛用在途/待命中效果保存攻方快照，OriginCast保存施法来源，完整快照校验等级/来源边界。正式CaptureProgress仍清SkillState、读档重开房间，不因此续存怪物现场。原学习记录、换入等待、个人成长与资源保持；召唤持久化尚未实现。
+2026-10-22公式专项已执行：SessionSnapshot.CombatVersion=2，SaveDocument仍为4。旧0版按模板补元数据；旧1版将独立倍率x转为威能加值x−1且幂等转换，缺少出手等级的旧攻击快照按旧快照攻方等级补齐。新SkillAttackSnapshot保存Level；泛用在途/待命中效果保存攻方快照，OriginCast保存施法来源，完整快照校验等级/来源边界。正式CaptureProgress仍清SkillState、读档重开房间，不因此续存怪物现场。原学习记录、换入等待、个人成长与资源保持。B2起召唤实体进入`SessionSnapshot.Summons`/`RoomEntrySummons`：正式检查点按进房快照保留未清房的召唤物实际HP与数量，清房后按存活列表保存；主人、召唤定义与技能引用在恢复时校验。
 
-2026-10-22技能BD迁移边界：当前正式进度仍按进房检查点重开，SkillBattleState不作为召唤跨房持久化的捷径。未来独立召唤需在现有SessionSnapshot内先定实体/主人/进房状态及卸槽、死亡、全灭、换队清理；本轮未新增存档字段。新技能替换旧原型时须迁移学习、装配、加成目标、换入等待和初始技能初始化标记，保留合法资源与星图。旧配置TEST_ONLY副本不含玩家进度，不被生产加载器引用。详见[迁移计划](skill_bd_plan.md)。
+2026-10-22技能BD迁移边界：当前正式进度仍按进房检查点重开，SkillBattleState只保存本房临时现场，不作为召唤跨房持久化的捷径。独立召唤的持久实体、主人与进房状态已在`SessionSnapshot.Summons`/`RoomEntrySummons`定义，卸槽、死亡、全灭、换队清理由召唤运行时执行。新技能替换旧原型时迁移学习、装配、加成目标、换入等待和初始技能初始化标记，保留合法资源与星图（见文末“正式三系天赋迁移”）。旧配置TEST_ONLY副本不含玩家进度，不被生产加载器引用。详见[迁移计划](skill_bd_plan.md)。
 
 2026-10-22索敌兼容：SkillBattleState.Targeting仅供完整内部快照保存本房Normal/Overflow/Ranged锁、重评时钟、层/房归属和入场警觉现场；正式CaptureProgress全部清空。正式Restore从原进房位置和房间几何重建警觉展开，不续接怪物战斗现场，不改变已获得的成长/资源及拾取边界。缺少该字段的旧档默认空临时态。详细合同及测试见[targeting_config.md](targeting_config.md)和[执行记录](../reviews/2026-10-22_combat_targeting/Execution_Record.md)。
 
@@ -52,6 +52,16 @@ Music/SFX 分总线，音量 0 静音，再调高立即恢复。音乐循环设�
 
 自动检查与截图使用忽略的 `artifacts/qa/` 专用存档，不加载或覆盖玩家 `user://` 进度。
 
+## 正式三系天赋迁移（2026-10-22）
+
+`SessionSnapshot.SkillTreeVersion`：缺字段为0（旧三系），当前写入1。SaveDocument仍为版本4，只追加字段。恢复顺序：战斗公式迁移→天赋树迁移→完整校验，避免旧档先因新布局被拒。
+
+- 版本0按当前`talent.csv`重排结果校验；同ID学习等级、`SkillIds`顺序、`SkillSwapLocks`剩余时间、`ActiveAuraSkills`和`TalentBonuses`只要仍合法就原样保留。
+- 仅退款前置/系内投入/总预算已不合法的节点：删除`Talents`键，同时清理该ID在`SkillIds`、`SkillSwapLocks`、`ActiveAuraSkills`及`TalentBonuses(node)`中的引用，按行高→列高→ID顺序处理，并记录一条迁移日志。点数按等级总额减已投入自然返还。
+- 未知节点ID、越界等级、外职业节点直接拒绝，不静默删除；残留的未学习装配引用只清理引用不退款。
+- `StartingSkillGranted=true` 的旧角色保留已学初始节点，不重复补发；版本1二次读档不再改变任何键值。
+- `SkillMigrationChecks` 覆盖合并树投入守恒、退款清理、未知ID拒绝、幂等、初始技能不重复赠点及绑定技能执行；全部使用`artifacts/qa`或内存编码。
+
 ## 镜头与寻路版本兼容
 
 统治区门禁采用 `WorldSnapshot.AreaPartAccessVersion=1`。解锁由城堡通关集合与 CSV 前置关联实时推导，不单独保存可过期的解锁布尔值。旧档缺字段为 0：若当前处于新规则锁定统治区，保留等级、经验、背包、金币和通关历史，放弃本轮地牢，回初始村庄交易后按新规则冒险；若仅当前赶路目标或路线越界，则保留合法的已安排目标并重建路线，否则重新选择可用目标。新版本档拒绝越界目标和路线，旧探索历史不授予解锁权。
@@ -96,3 +106,9 @@ Actor.StartingSkillGranted记录初始攻击节点是否已初始化，初始学
 个人经验迁移（2026-10-21）：SessionSnapshot.HeroExperienceVersion=1；Actor.Experience 保存当前级整数经验，ExperienceFraction 保存0～99的百分之一余数，等级仍存Actor.Level。旧档版本0将原共享经验余额迁移给已有上阵和候补英雄一次，保留原等级，此后各自成长。旧SessionSnapshot.Experience仅为排头经验兼容投影，不参与新结算。进房检查点重开仍保留每名英雄已获等级、经验及余数。
 
 编队回城仍放弃当前未完成地牢，不保留返场传送门或原房间恢复状态。清房、救援、拾取和事件完成后回城，完成换人、治疗和交易，再重新选择攻略目标；已获成长和资源按现有规则保留。
+
+2026-10-22召唤生命周期更新：普通跨房保留召唤连续移动的位置，进房检查点可记录仍在旧房或走廊的跟随单位，读档后继续沿房门赶上；换层才按入口重新放置。所有回城入口统一清空召唤及RoomEntrySummons，避免后续检查点重新带回已撤销召唤。新副本入口清除普攻计时和全部技能换入等待；战斗动作/冷却仍由既有ResetSkillRoom清空。无新增存档字段，房间重开及已到账资源边界不变。
+
+2026-10-22用户授权删除M5/M7退役内容并允许不兼容账号重置：正式配置不再解释已删节点/skill_XX。兼容账号继续加载；已删引用在Restore校验时拒绝；主备份均不能恢复时，SaveStore保留.unreadable副本并重置进度及备份，客户端显示既有重置提示，settings.json不改。专项检查只对artifacts/qa合成的M5/M7旧档验证此流程，未自动覆盖玩家目录。
+
+2026-10-22 Proc ICD V1.0：ProcTick/ProcIcds与Pending.Trigger加入现有SkillBattleState，仅内部完整快照用于确定性重放并校验拥有者、TriggerID、到期Tick及唯一归属；缺字段的旧内部快照默认空ICD。CaptureProgress继续生成空技能战斗状态，换房/换层/房间重建清理，不新增长期存档版本或按触发保存。见proc_icd.md。

@@ -9,7 +9,7 @@ public static class ChapterChecks
     public static void Run(string root)
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("CHAPTER_CHECK: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         Check(c.Difficulties.Count==3&&c.Chapters.Count==5&&c.ChapterMaps.Count==5,"难度章节数量");
         Check(c.ChapterMaps[0]==c&&c.WorldWidth==16&&c.WorldHeight==16,"第一章兼容");
         Check(c.ChapterMaps.Select(m=>(m.WorldWidth,m.WorldHeight)).Distinct().Count()>1,"独立地图尺寸");
@@ -67,9 +67,9 @@ public static class ChapterChecks
         }
         string chapterFile=Path.Combine(qa,"legacy/chapter.csv"),text=File.ReadAllText(chapterFile);
         File.WriteAllText(chapterFile,text.Replace("desert,10,8","desert,11,8"));rejected=false;
-        try{Config.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}Check(rejected,"章节尺寸不一致未拒绝");
+        try{LegacySkillConfig.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}Check(rejected,"章节尺寸不一致未拒绝");
         File.WriteAllText(chapterFile,text.Replace("act2,","act1,"));rejected=false;
-        try{Config.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}Check(rejected,"重复章节ID未拒绝");File.WriteAllText(chapterFile,text);
+        try{LegacySkillConfig.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}Check(rejected,"重复章节ID未拒绝");File.WriteAllText(chapterFile,text);
         Console.WriteLine("PASS: 3 difficulties, 5 independent maps, sequential unlock, trade-before-transition, 15-map progression, resource retention, isolated progress, final farming and chapter saves");
     }
 }

@@ -1,2 +1,2 @@
-gold_grant,experience_grant,monster_scale_steps,count_step,count_limit
-10000,10000,0.5;1;2;3;5;8;12;20;50,1,999
+gold_grant,experience_grant,kill_grant,monster_scale_steps,count_step,count_limit
+10000,10000,10000,0.5;1;2;3;5;8;12;20;50,1,999

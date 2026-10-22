@@ -9,7 +9,7 @@ public static class TalentChecks
     public static void Run(string root)
     {
         void Need(bool ok,string why){if(!ok)throw new Exception("TALENT: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         var auto=new GameSession(c,8,new[]{"warrior","mage"});var ah=auto.Heroes[0];
         Need(auto.LearnTalent("warrior","barb_bash",out _)&&ah.SkillIds.SequenceEqual(new[]{"barb_bash"}),"首次学习主动未自动填空槽");
         auto.GrantGmResources(10000,10000);auto.SetTalentLoadout("warrior",Array.Empty<string>(),out _);auto.LearnTalent("warrior","barb_bash",out _);
@@ -50,7 +50,9 @@ public static class TalentChecks
         g.SetTalentLoadout("warrior",Array.Empty<string>(),out _);g.SetGmBattle(new(Invincible:true));
         for(int i=0;i<10000&&g.CurrentRoom==0;i++)g.Tick(.05f);
         var room=g.Floor.Rooms[g.CurrentRoom];Need(room.Monsters.Any(m=>m.Alive),"战斗测试房间");
-        foreach(var m in room.Monsters){m.Hp=m.MaxHp=100000;m.Position=room.Center+new Vector2(1,0);m.Attack=1;}
+        // 本段验证技能换入/移动/施放时间，隔离进房展开；展开规则由CombatTargetingChecks单独覆盖。
+        g.Capture().SkillState.Targeting=new();
+        foreach(var m in room.Monsters){m.Hp=m.MaxHp=100000;m.Position=room.Center+new Vector2(1,0);m.Attack=1;m.Range=100;m.Timer=999;}
         h.Position=room.Center;h.Hp=h.MaxHp=100000;
         Need(g.SetTalentLoadout("warrior",new[]{"barb_bash"},out _)&&Math.Abs(g.SkillCooldown(h,"barb_bash")-3)<.001,"战斗换入未完整冷却");
         g.Tick(.05f);Need(g.Capture().SkillState.Actions.All(a=>a.Owner!=0||a.Active!="barb_bash"),"换入技能立刻释放");
@@ -64,7 +66,7 @@ public static class TalentChecks
         Need(g.SetTalentLoadout("warrior",new[]{"barb_leap","barb_whirlwind"},out _),"范围技能装配");
         h.Position=room.Center-new Vector2(3,0);var before=h.Position;
         for(int i=0;i<160;i++)g.Tick(.05f);
-        Need(Vector2.Distance(h.Position,before)>1&&g.Capture().SkillState.Actions.Any(a=>a.Owner==0&&a.Cooldowns.ContainsKey("barb_leap")&&a.Cooldowns.ContainsKey("barb_whirlwind")),"跳斩连续移动/旋风释放");
+        Need(Vector2.Distance(h.Position,before)>1&&g.Capture().SkillState.Actions.Any(a=>a.Owner==0&&a.Cooldowns.ContainsKey("barb_leap")&&a.Cooldowns.ContainsKey("barb_whirlwind")),"跳斩连续移动/旋风释放："+before+" -> "+h.Position+"; "+string.Join(";",g.Capture().SkillState.Actions.Where(a=>a.Owner==0).Select(a=>string.Join(',',a.Cooldowns.Keys))));
         for(int i=0;i<5;i++)Need(g.LearnTalent("warrior","barb_shout",out _),"战斗吼叫投入");
         Need(g.LearnTalent("warrior","barb_weaken",out _),"挫锐吼叫学习");
         g.SetTalentLoadout("warrior",new[]{"barb_shout","barb_weaken"},out _);
@@ -81,7 +83,7 @@ public static class TalentChecks
         long gold=town.Gold;Need(town.ResetTalents("warrior",out _)&&town.Gold==gold-cost&&th.Talents.Count==0&&th.SkillIds.Length==0&&town.TalentPoints(th)==th.Level,"洗点返还/卸技/扣费");
         var path=Path.Combine(root,"artifacts/qa/talent-save-"+Guid.NewGuid().ToString("N"),"progress.json");var store=new SaveStore(path);store.Save(town,1,false,0,-1);town.LearnTalent("warrior","barb_bash",out _);store.Save(town,1,false,0,-1);File.WriteAllText(path,"invalid");Need(store.Load(formal)?.Session?.Heroes[0].Talents.Count==0,"天赋备份恢复");
         var qa=Path.Combine(root,"artifacts/qa/talent-config-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(qa,"skill"));Directory.CreateDirectory(Path.Combine(qa,"system"));
-        string nodes=File.ReadAllText(Path.Combine(root,"Idle-CRPG/config/skill/talent.csv"));string rules=File.ReadAllText(Path.Combine(root,"Idle-CRPG/config/system/config.csv"));
+        string nodes=File.ReadAllText(Path.Combine(LegacySkillConfig.DirectoryFor(Path.Combine(root,"Idle-CRPG/config")),"skill/talent.csv"));string rules=File.ReadAllText(Path.Combine(root,"Idle-CRPG/config/system/config.csv"));
         void Reject(string nodeText,string ruleText,string why)
         {
             File.WriteAllText(Path.Combine(qa,"skill/talent.csv"),nodeText);File.WriteAllText(Path.Combine(qa,"system/config.csv"),ruleText);

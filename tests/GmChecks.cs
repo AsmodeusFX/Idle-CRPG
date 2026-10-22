@@ -8,7 +8,7 @@ public static class GmChecks
     public static void Run(string root)
     {
         void Check(bool ok,string message){if(!ok)throw new Exception("GM_CHECK: "+message);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         GameSession Battle()
         {
             var game=new GameSession(c,123,new[]{"warrior","ranger","mage"});
@@ -91,10 +91,10 @@ public static class GmChecks
         }
         string gmFile=Path.Combine(qa,"gm/gm.csv");
         File.WriteAllText(gmFile,"gold_grant,experience_grant,monster_scale_steps,count_step,count_limit\n10000,10000,0.5;1;1;2,1,999\n");
-        rejected=false;try{Config.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}
+        rejected=false;try{LegacySkillConfig.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}
         Check(rejected,"duplicate scale steps accepted");
         File.WriteAllText(gmFile,"gold_grant,experience_grant,monster_scale_steps,count_step,count_limit\n10000,10000,0.5;1;2,1000,999\n");
-        rejected=false;try{Config.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}
+        rejected=false;try{LegacySkillConfig.LoadLegacy(qa);}catch(InvalidDataException){rejected=true;}
         Check(rejected,"count step exceeds limit");
         Console.WriteLine("PASS: GM resources, shared growth, invincibility, immediate enemy scales, future room count, checkpoint reopen and transient debug settings");
     }

@@ -110,6 +110,8 @@ public sealed partial class GameSession
     }
     internal void BeginDungeon(DungeonSpec dungeon,int visit)
     {
+        // 每次开始新副本重置普攻及所有主动技能/换入冷却；跨房和换层不清换入等待。
+        foreach(var hero in Heroes.Concat(reserveHeroes)){hero.Timer=0;hero.SkillSwapLocks.Clear();}
         ActiveDungeon=dungeon;Won=false;FloorIndex=0;regroup=0;ResetRescue();
         dungeonSeed=unchecked(Seed*397^visit*104729^dungeon.RegionId*7919);
         Floors=Dungeon.Generate(dungeonSeed,Config,Config.PoiProfiles.TryGetValue(dungeon.Id,out var profile)?profile.Floors:null);EnterFloor();
@@ -119,12 +121,14 @@ public sealed partial class GameSession
 
     private void EnterFloor()
     {
+        ClearVisualEvents();
         CurrentRoom = 0; destination = -1; phase = 0;
         var start = Floor.Rooms[0]; start.Revealed = true; start.Generated = true;
         var stairs=Floor.StairPosition(start);
         var inward=Vector2.Normalize(start.Center-stairs);
         var side=new Vector2(-inward.Y,inward.X);
         for (int i=0;i<Heroes.Count;i++) Heroes[i].Position = stairs+inward*.4f+side*(PartyFormation.SideOffset(i,Heroes.Count));
+        PlaceSummonsNearParty(start);
         CaptureRoomEntry();
         Note($"抵达第 {FloorIndex+1} 层 · {Floor.Rooms.Count} 个房间");
     }
@@ -134,10 +138,11 @@ public sealed partial class GameSession
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
         AdvanceSwapLocks(dt);World?.ObserveApprovalWait();
-        if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);return;}
+        if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);if(World.InDungeonScene&&Floors.Count>0)FollowDungeonSummons(dt);return;}
         var tickFloor=Floor;bool fighting=!Floor.Rooms[CurrentRoom].Clear&&Floor.Rooms[CurrentRoom].Generated;
         var positions=Heroes.Select(h=>h.Position).ToArray();
         TickDungeon(dt);
+        if(Floors.Count>0&&(World==null||World.InDungeonScene))FollowDungeonSummons(dt);
         if(fighting)tickFloor.BattleTicks++;else if(Heroes.Where((h,i)=>h.Position!=positions[i]).Any())tickFloor.WalkTicks++;
         if(World!=null&&Won)World.CompleteDungeon(this);
     }
@@ -347,7 +352,7 @@ public sealed partial class GameSession
         PrepareMonsterTargets(dt);
         foreach(var m in room.Monsters.Where(m=>m.Alive)) Act(m,Heroes,dt,room);
         DrainEffects();
-        if(room.Clear)ResetSkillRoom();else SynchronizeAuras();
+        if(room.Clear){if(!skillPreviewMode)ResetSkillRoom();}else SynchronizeAuras();
     }
     private void Act(Actor actor,List<Actor> opponents,float dt,Room room)
     {
@@ -402,7 +407,6 @@ public sealed partial class GameSession
         // 进房检查点先淘汰上一房已死亡召唤，再按队伍落位并记录实际 HP；房内新召唤不进入检查点。
         RemoveDeadSummonsAtRoomEntry();
         ResetSkillRoom();
-        PlaceSummonsNearParty(Floor.Rooms[CurrentRoom]);
         roomEntryCombatState=combatRandom.State;
         roomEntry=Heroes.Select(h=>new PartyEntry(h.Position,h.Hp)).ToList();
         CaptureSummonEntry();roomEntryLootState=lootRandom.State;

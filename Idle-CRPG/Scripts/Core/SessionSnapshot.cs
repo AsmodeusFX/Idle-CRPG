@@ -22,6 +22,8 @@ public sealed class SessionSnapshot
     public uint CombatRandomState,RoomEntryCombatState;
     public int CombatVersion;
     public int HeroExperienceVersion;
+    /// <summary>0为旧三系布局；1为当前正式布局。迁移只做一次并按节点合法性退款，二次读档不再改键。</summary>
+    public int SkillTreeVersion;
     public SkillBattleState SkillState=new();
     public bool Won;
     public float Regroup, ReviveElapsed;
@@ -90,7 +92,7 @@ public sealed partial class GameSession
         CampaignVersion=2,LatestMapIndex=LatestMapIndex,ActiveBranch=ActiveBranch,BranchQueue=branchQueue.ToList(),SuspendedWorld=suspendedWorld?.Capture(),
         DifficultyIndex=DifficultyIndex,ChapterIndex=ChapterIndex,CompletedMaps=CaptureChapters(),
         Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
-        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=2,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
+        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=2,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
         Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
@@ -166,6 +168,7 @@ public sealed partial class GameSession
             }
         }
         MigrateCombatFormula(config,s);
+        MigrateSkillTree(config,s);
         ValidateSnapshot(config,s);
         var game=new GameSession(config,s.Seed,s.Heroes.Select(h=>h.SpecId));
         game.RestoreChapters(s);
@@ -209,6 +212,60 @@ public sealed partial class GameSession
         }
         return game;
     }
+    /// <summary>旧档切换到正式三系布局：同 ID 保留等级；仅退款重排后前置/系内投入已不合法的节点，SkillTreeVersion 保证幂等。</summary>
+    private static void MigrateSkillTree(Config c,SessionSnapshot s)
+    {
+        if(s.SkillTreeVersion is not (0 or 1))throw new InvalidDataException("不支持的天赋树版本");
+        if(s.SkillTreeVersion==1)return;
+        foreach(var hero in s.Heroes.Concat(s.ReserveHeroes))
+        {
+            if(hero.Talents==null)continue;
+            hero.SkillIds??=Array.Empty<string>();hero.ActiveAuraSkills??=new();hero.SkillSwapLocks??=new();hero.TalentBonuses??=new();
+            // 未知ID或越界等级说明存档被篡改或来自其他版本，直接拒绝而不是静默退款。
+            foreach(var pair in hero.Talents)
+                if(!c.Talents.Nodes.TryGetValue(pair.Key,out var node)||node.Hero!=hero.SpecId||pair.Value<1||pair.Value>node.MaxRank)
+                    throw new InvalidDataException("天赋树迁移遇到未知或非法节点："+pair.Key);
+            int refunded=0;
+            while(!TalentLayoutLegal(c,hero,out string? offender,out bool refund))
+            {
+                if(offender==null)throw new InvalidDataException("天赋树迁移无法定位不兼容节点");
+                if(refund&&hero.Talents.Remove(offender))refunded++;
+                // 装备、换入冷却与激活光环都跟随被移除节点一起清理，避免二次校验失败。
+                hero.SkillIds=hero.SkillIds.Where(id=>id!=offender).ToArray();
+                hero.SkillSwapLocks.Remove(offender);
+                hero.ActiveAuraSkills=hero.ActiveAuraSkills.Where(id=>id!=offender).ToList();
+                hero.TalentBonuses.RemoveAll(b=>b.Scope=="node"&&b.Target==offender);
+            }
+            if(refunded>0)
+            {
+                if(s.Log.Count>=40)s.Log.RemoveAt(0);
+                s.Log.Add($"天赋树迁移：{hero.Name} 退款 {refunded} 个与新布局不兼容的节点");
+            }
+        }
+        s.SkillTreeVersion=1;
+    }
+    /// <summary>迁移用只读合法性检查；失败时优先返回行号更高的待退款节点，装备引用问题只清理装配不退款。</summary>
+    private static bool TalentLayoutLegal(Config c,Actor h,out string? offender,out bool refund)
+    {
+        offender=null;refund=false;
+        foreach(var pair in h.Talents)
+            if(!c.Talents.Nodes.TryGetValue(pair.Key,out var node)||node.Hero!=h.SpecId||pair.Value<1||pair.Value>node.MaxRank){offender=pair.Key;refund=true;return false;}
+        int budget=c.Talents.Rule("talent_initial_points")+(h.Level-1)*c.Talents.Rule("talent_points_per_level");
+        if(h.Talents.Values.Sum()>budget){offender=HighestRowNode(c,h.Talents.Keys);refund=true;return false;}
+        var pending=h.Talents.Keys.ToHashSet();var accepted=new HashSet<string>();var invested=new int[3];
+        while(pending.Count>0)
+        {
+            string? ready=pending.FirstOrDefault(id=>{var node=c.Talents.Nodes[id];return invested[node.Tree]>=c.Talents.Required(node)&&(node.Prerequisite==""||accepted.Contains(node.Prerequisite)&&h.Talents[node.Prerequisite]>=node.RequiredRank);});
+            if(ready==null){offender=HighestRowNode(c,pending);refund=true;return false;}
+            var n=c.Talents.Nodes[ready];invested[n.Tree]+=h.Talents[ready];accepted.Add(ready);pending.Remove(ready);
+        }
+        foreach(string id in h.SkillIds)
+            if(c.Talents.Nodes.TryGetValue(id,out var n)&&(n.Hero!=h.SpecId||h.Talents.GetValueOrDefault(id)==0||n.Kind!="active")){offender=id;refund=false;return false;}
+        foreach(string id in h.ActiveAuraSkills)
+            if(!h.SkillIds.Contains(id)||!c.Skills.Skills.TryGetValue(id,out var skill)||!skill.Effects.Any(e=>c.Skills.Effects[e].Kind=="MaintainAura")){offender=id;refund=false;return false;}
+        return true;
+    }
+    private static string HighestRowNode(Config c,IEnumerable<string> ids)=>ids.Where(c.Talents.Nodes.ContainsKey).OrderByDescending(id=>c.Talents.Nodes[id].Row).ThenByDescending(id=>c.Talents.Nodes[id].Col).ThenBy(id=>id,StringComparer.Ordinal).First();
     private static void ValidateSnapshot(Config c,SessionSnapshot s)
     {
         static void Need([DoesNotReturnIf(false)] bool value,string reason) {if(!value)throw new InvalidDataException("存档无效："+reason);}

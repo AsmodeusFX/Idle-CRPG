@@ -54,8 +54,9 @@ public partial class Main
         var commands=GmPanelBox(panel,new Vector2(18,68),new Vector2(564,428),"101f2d");
         var heading=HudText(commands,"GM 指令 · 当局状态",new Vector2(16,10),17);heading.AddThemeColorOverride("font_color",new Color("8cc4b1"));
         HudText(commands,"资源",new Vector2(16,52),15);
-        GmButton(commands,"GmGold",$"金币 +{config.GmGoldGrant}",new Vector2(112,44),new Vector2(200,36),()=>session!.GrantGmResources(gold:config.GmGoldGrant));
-        GmButton(commands,"GmExperience",$"经验 +{config.GmExperienceGrant}",new Vector2(324,44),new Vector2(224,36),()=>session!.GrantGmResources(experience:config.GmExperienceGrant));
+        GmButton(commands,"GmGold",$"金币 +{config.GmGoldGrant}",new Vector2(112,44),new Vector2(136,36),()=>session!.GrantGmResources(gold:config.GmGoldGrant));
+        GmButton(commands,"GmExperience",$"经验 +{config.GmExperienceGrant}",new Vector2(258,44),new Vector2(136,36),()=>session!.GrantGmResources(experience:config.GmExperienceGrant));
+        GmButton(commands,"GmKills",$"击杀 +{config.GmKillGrant}",new Vector2(404,44),new Vector2(144,36),()=>session!.GrantGmResources(kills:config.GmKillGrant));
 
         HudText(commands,"怪物血量",new Vector2(16,104),15);
         GmButton(commands,"GmHpMinus","血量 −",new Vector2(112,96),new Vector2(100,36),()=>session!.SetGmBattle(session.Gm with {MonsterHp=StepGmScale(session.Gm.MonsterHp,-1)}));
@@ -88,7 +89,8 @@ public partial class Main
         HudText(tools,"配置工具",new Vector2(16,58),15);
         GmButton(tools,"StarEditorEntry","星图节点编辑器",new Vector2(112,48),new Vector2(200,38),()=>{gmRoot.Hide();viewMode=3;if(!_editingStars)ToggleStarEditor();else RefreshStarPage();TickStarPanels();},false);
         var future=new Button {Text="关卡编辑器 · 待实现",Position=new Vector2(324,48),Size=new Vector2(224,38),Disabled=true};tools.AddChild(future);
-        gmStatus=HudText(panel,"",new Vector2(28,640),13);gmStatus.Size=new Vector2(544,78);gmStatus.AutowrapMode=TextServer.AutowrapMode.WordSmart;
+        GmButton(panel,"SkillPreviewEntry","技能预览 · 战斗试场",new Vector2(130,628),new Vector2(424,36),OpenSkillPreview,false);
+        gmStatus=HudText(panel,"",new Vector2(28,674),13);gmStatus.Size=new Vector2(544,50);gmStatus.AutowrapMode=TextServer.AutowrapMode.WordSmart;
         gmButtons["GmHpPlus"].TooltipText=gmButtons["GmHpMinus"].TooltipText="有效血量倍率：承伤除以倍率，保持当前生命比例，立即影响场上及后续怪物。";
         gmButtons["GmAttackPlus"].TooltipText=gmButtons["GmAttackMinus"].TooltipText="怪物攻击在扣除队员防御前乘以倍率，立即生效。";
         gmButtons["GmCountPlus"].TooltipText=gmButtons["GmCountMinus"].TooltipText="在正常随机数量上增减，最终限制为 1–1000 只；仅影响后续首次生成的房间。";
@@ -129,9 +131,10 @@ public partial class Main
                 if(session.World!.Stage!=expected.World!.Stage||session.Heroes.Where((h,i)=>System.Numerics.Vector2.Distance(h.Position,expected.Heroes[i].Position)>.0001f).Any())throw new Exception("城镇倍速时钟未按固定步推进");
             }
             session=GameSession.CreateWorld(config,234,new[]{"warrior","ranger","mage"});
-            ToggleGm();long before=session.Gold;
+            ToggleGm();long before=session.Gold;int beforeKills=session.Kills;
             gmButtons["GmGold"].EmitSignal(Button.SignalName.Pressed);
             gmButtons["GmExperience"].EmitSignal(Button.SignalName.Pressed);
+            gmButtons["GmKills"].EmitSignal(Button.SignalName.Pressed);
             gmButtons["GmInvincible"].EmitSignal(Button.SignalName.Pressed);
             gmButtons["GmHpPlus"].EmitSignal(Button.SignalName.Pressed);
             gmButtons["GmAttackMinus"].EmitSignal(Button.SignalName.Pressed);
@@ -140,10 +143,10 @@ public partial class Main
             gmButtons["GmSkipSupplies"].EmitSignal(Button.SignalName.Pressed);
             if(!session.Gm.SkipSupplies||!gmSkipSupplies.Text.EndsWith("开"))throw new Exception("跳过补给按钮状态不同步");
             if(!session.Gm.InstantDungeonClear||!gmInstantClear.Text.EndsWith("开"))throw new Exception("进入瞬间通关按钮状态不同步");
-            if(!gmRoot.Visible||session.Gold!=before+10000||session.Heroes[0].Level<=1||!session.Gm.Invincible||session.Gm.MonsterHp!=2||session.Gm.MonsterAttack!=.5f||session.Gm.RoomCountBonus!=1)throw new Exception("GM 按钮未生效或意外关闭面板");
+            if(!gmRoot.Visible||session.Gold!=before+10000||session.Kills!=beforeKills+10000||session.Heroes[0].Level<=1||!session.Gm.Invincible||session.Gm.MonsterHp!=2||session.Gm.MonsterAttack!=.5f||session.Gm.RoomCountBonus!=1)throw new Exception("GM 按钮未生效或意外关闭面板");
             if(gmButtons["GmGold"].GetParent()==gmButtons["StarEditorEntry"].GetParent())throw new Exception("GM 指令与编辑器没有分区");
             gmButtons["GmResetBattle"].EmitSignal(Button.SignalName.Pressed);
-            if(session.Gm!=new GmBattleSettings()||session.Gold!=before+10000)throw new Exception("重置战斗调试清除了资源或没有重置开关");
+            if(session.Gm!=new GmBattleSettings()||session.Gold!=before+10000||session.Kills!=beforeKills+10000)throw new Exception("重置战斗调试清除了资源或没有重置开关");
             gmButtons["GmClearChapter"].EmitSignal(Button.SignalName.Pressed);
             if(session.World!.Progress.Cleared.Count!=session.Config.Dungeons.Count||session.World.Stage!=CampaignStage.Village)throw new Exception("通关本章按钮未清空当前章节或未返回城镇");
             session=null;RefreshGm();

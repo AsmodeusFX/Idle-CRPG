@@ -45,7 +45,7 @@
 | system/window.csv | width,height | 窗口尺寸预设，至少 800×500；等比缩放完整界面 |
 | system/client.csv | autosave_min_seconds,checkpoint_seconds | 关键变更保存最短间隔、周期检查点秒数，均为正且检查点不少于最短间隔；默认 0.5/5 |
 | system/camera.csv | follow_rate,transition_rate,dungeon_max_zoom,world_zoom,world_units | 跟随/入房指数响应、地牢缩放上限、世界缩放、每区场景单位，均为正，world_units≥12 |
-| gm/gm.csv | gold_grant,experience_grant | GM 单次金币及每名上阵英雄经验发放量，正整数且不超过 1000000；原型调试默认均为 10000 |
+| gm/gm.csv | gold_grant,experience_grant,kill_grant | GM 单次金币、每名上阵英雄经验及累计击杀发放量，正整数且不超过 1000000；原型调试默认均为 10000 |
 | gm/gm.csv | monster_scale_steps | 分号分隔倍率档位，至少两档，有限、严格递增，范围 0.5–50，必须包含正常倍率 1；当前 0.5;1;2;3;5;8;12;20;50 |
 | gm/gm.csv | count_step,count_limit | GM 数量增减正整数步长、额外数量绝对值上限；步长不得超过上限，上限不超过 999。实际每房总数仍限制在 1–1000 |
 | world/obstacle.csv | id,kind,x,y,width,height | 唯一 ID、水面 water/岩石 rock、全局区域坐标及正矩形尺寸；边界不得越出世界，不能阻挡地牢/村庄入口导航格 |

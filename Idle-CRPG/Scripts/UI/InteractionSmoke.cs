@@ -12,23 +12,24 @@ public partial class Main
         var previous=session;var oldConfig=config;int mode=viewMode;
         try
         {
-            session=GameSession.CreateNewWorld(config,20261017,"warrior");session.GrantGmResources(10000,10000);
-            session.BuyStar("s_root",out _);session.BuyStar("s_skill_1",out _);session.BuyStar("s_skill_2",out _);session.BuyStar("s_party_1",out _);
-            for(int i=0;i<5;i++)session.LearnTalent("warrior","barb_bash",out _);
-            foreach(var id in new[]{"barb_shout","barb_leap","barb_whirlwind"})session.LearnTalent("warrior",id,out _);
+            session=GameSession.CreateNewWorld(config,20261017,"warrior");session.GrantGmResources(10000,100000);
+            session.BuyStar("s_root",out _);session.BuyStar("s_skill_1",out _);session.BuyStar("s_party_1",out _);
+            for(int i=0;i<10;i++)session.LearnTalent("warrior","barb_bash",out _);
+            for(int i=0;i<10;i++)session.LearnTalent("warrior","barb_voice",out _);
+            // 嘲讽前置战斗吼叫、持续旋风前置旋风斩；恢复旧节点后按正式前置链学习。
+            foreach(var id in new[]{"barb_shout","barb_taunt","barb_whirlwind","barb_whirlwind_window"})session.LearnTalent("warrior",id,out _);
             session.SetTalentLoadout("warrior",new[]{"barb_bash"},out _);selectedHero="warrior";SelectStarView(4);OpenTalentEditor("warrior",0);
             Button Skill(string name)=>talentList.GetChildren().OfType<Button>().Single(b=>b.Text.StartsWith(name));
-            Skill("战斗吼叫").EmitSignal(Button.SignalName.Pressed);Need(talentDraft.SequenceEqual(new[]{"barb_bash","barb_shout"}),"有空槽时替换了已选中的猛击");
-            talentEditorSlots.GetChild<Button>(0).EmitSignal(Button.SignalName.Pressed);Skill("跳斩").EmitSignal(Button.SignalName.Pressed);
-            Need(talentDraft.SequenceEqual(new[]{"barb_bash","barb_shout","barb_leap"})&&session.Heroes[0].SkillIds.Length==1,"点击填空/草稿边界");
-            Skill("旋风斩").EmitSignal(Button.SignalName.Pressed);Need(!talentDraft.Contains("barb_whirlwind")&&talentEditorHint.Text.Contains("槽位已满"),"满槽未选择就覆盖技能");
-            var source=(InteractionButton)Skill("跳斩");var payload=source.DragData!();var first=talentEditorSlots.GetChild<InteractionButton>(0);
+            Skill("嘲讽").EmitSignal(Button.SignalName.Pressed);Need(talentDraft.SequenceEqual(new[]{"barb_bash","barb_taunt"}),"有空槽时替换了已选中的猛击");
+            Need(session.Heroes[0].SkillIds.Length==1,"草稿改变正式装配");
+            Skill("持续旋风").EmitSignal(Button.SignalName.Pressed);Need(!talentDraft.Contains("barb_whirlwind_window")&&talentEditorHint.Text.Contains("槽位已满"),"满槽未选择就覆盖技能");
+            var source=(InteractionButton)Skill("嘲讽");var payload=source.DragData!();var first=talentEditorSlots.GetChild<InteractionButton>(0);
             Need(source.Details!().Contains("冷却")&&first._CanDropData(Vector2.Zero,payload),"拖动缺说明或目标未接受已学技能");first._DropData(Vector2.Zero,payload);
-            Need(talentDraft.SequenceEqual(new[]{"barb_leap","barb_shout","barb_bash"}),"拖动已装配技能没有交换");
+            Need(talentDraft.SequenceEqual(new[]{"barb_taunt","barb_bash"}),"拖动已装配技能没有交换");
             var locked=talentEditorSlots.GetChild<InteractionButton>(4);Need(!locked._CanDropData(Vector2.Zero,payload),"锁定技能槽接受拖放");
             Need(!first._CanDropData(Vector2.Zero,InteractionButton.Payload("talent","mage","barb_bash"))&&!first._CanDropData(Vector2.Zero,InteractionButton.Payload("talent","warrior","barb_mastery")),"跨英雄或被动拖放未拒绝");
-            talentEditor.Hide();talentStamp="";RefreshTalentPage();var live=talentBar.GetChild<InteractionButton>(1);live._DropData(Vector2.Zero,InteractionButton.Payload("talent","warrior","barb_shout"));
-            Need(session.Heroes[0].SkillIds.SequenceEqual(new[]{"barb_bash","barb_shout"}),"树面板拖放未走装配命令");
+            talentEditor.Hide();talentStamp="";RefreshTalentPage();var live=talentBar.GetChild<InteractionButton>(1);live._DropData(Vector2.Zero,InteractionButton.Payload("talent","warrior","barb_taunt"));
+            Need(session.Heroes[0].SkillIds.SequenceEqual(new[]{"barb_bash","barb_taunt"}),"树面板拖放未走装配命令");
             OpenFormation(0);formationCandidates.GetNode<Button>("FormationHero_mage").EmitSignal(Button.SignalName.Pressed);
             Need(formationDraft[0]=="warrior"&&formationDraft[1]=="mage"&&session.Heroes.Count==1&&session.PendingFormation.Count==0,"英雄点击未优先填空或即刻改变队伍");
             var mage=formationCandidates.GetNode<InteractionButton>("FormationHero_mage");var seat=formationSeats.GetChild<InteractionButton>(0);seat._DropData(Vector2.Zero,mage.DragData!());

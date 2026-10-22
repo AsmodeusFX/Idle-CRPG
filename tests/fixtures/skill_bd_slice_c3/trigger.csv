@@ -1,0 +1,3 @@
+﻿id,event_kind,effect_id,owner_buff,origin_filter
+QA_PROC_CAST_TRIGGER,OnHit,QA_PROC_CAST_DAMAGE,QA_PROC_CAST_BUFF,direct
+QA_PROC_TARGET_TRIGGER,OnHit,QA_PROC_TARGET_DAMAGE,QA_PROC_TARGET_BUFF,direct

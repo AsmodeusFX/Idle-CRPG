@@ -1,0 +1,4 @@
+﻿id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees
+QA_CORPSE_BLAST,qa,CorpseExplosion,Physical,1,4,,,,,,,,,,,,
+QA_SUMMON_VALKYRIE_EFFECT,qa,Summon,,,,,,,,,,,,QA_VALKYRIE,,,
+QA_SUMMON_SKELETON_EFFECT,qa,Summon,,,,,,,,,,,,QA_SKELETON,,,

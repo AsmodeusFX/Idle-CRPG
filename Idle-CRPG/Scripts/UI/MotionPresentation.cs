@@ -30,7 +30,11 @@ public sealed class MotionPresentation
             var actor=room.Monsters[i];Vector2 goal=Vector2.Zero;
             if(actor.Alive&&locks.TryGetValue(game.Heroes.Count+i,out var target)&&target.Kind!=MonsterLockKind.Ranged)
             {
-                float distance=Vector2.Distance(actor.Position,game.Heroes[target.Target].Position);
+                // 怪物锁定索引包含召唤物；绘制偏移必须按友方总表取位，不能只索引Heroes。
+                var friendly=target.Target>=0&&target.Target<game.Heroes.Count?game.Heroes[target.Target]
+                    :target.Target>=game.Heroes.Count&&target.Target-game.Heroes.Count<game.Summons.Count?game.Summons[target.Target-game.Heroes.Count]:null;
+                if(friendly==null)continue;
+                float distance=Vector2.Distance(actor.Position,friendly.Position);
                 float proximity=Math.Clamp((actor.Range+2-distance)/2,0,1);
                 float angle=i*2.399963f+target.Target*.7f;
                 goal=new Vector2(MathF.Cos(angle)*(18+i%3*3),MathF.Sin(angle)*(13+i%4*3))*proximity;

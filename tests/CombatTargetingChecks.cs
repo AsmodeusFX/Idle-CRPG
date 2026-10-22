@@ -9,7 +9,7 @@ public static class CombatTargetingChecks
     public static void Run(string root)
     {
         void Need(bool value,string why){if(!value)throw new Exception("TARGETING: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         GameSession Battle(params string[] ids)
         {
             var g=new GameSession(c,785,ids);
@@ -127,7 +127,27 @@ public static class CombatTargetingChecks
         deployment.EntryPrepared=true;deployment.EntryElapsed=.8;deployment.EntryAnchor=anchor;deployment.EntryDirection=direction;deployment.FloorIndex=late.FloorIndex;deployment.RoomIndex=late.CurrentRoom;deployment.DeployedMask=1;
         late.Heroes[1].Position=anchor-direction*.5f;Tick(late,3);
         Need((deployment.DeployedMask&2)==0,"迟到队员跨门时被误标记为已完成室内展开");Tick(late,20);
-        Need((deployment.DeployedMask&2)!=0&&Vector2.Distance(late.Heroes[1].Position,anchor)>1.5f,"AI已启动后迟到的远程角色仍停在门口");
+        Need((deployment.DeployedMask&2)!=0&&Vector2.Dot(late.Heroes[1].Position-anchor,direction)>.6f&&Vector2.Dot(late.Heroes[1].Position-anchor,direction)<1.1f,"迟到远程角色未完成靠近入口的浅展开");
+        // 五职业实际展开：高容量远程也留在后排；分组不受接敌容量影响，四向入门均适用。
+        foreach(var inward in new[]{Vector2.UnitX,-Vector2.UnitX,Vector2.UnitY,-Vector2.UnitY})
+        {
+            var formation=Battle(c.Heroes.Select(h=>h.Id).ToArray());var arena=formation.Floor.Rooms[formation.CurrentRoom];arena.HalfWidth=arena.HalfHeight=5;
+            var doorway=arena.Center-inward*5;var lateral=new Vector2(-inward.Y,inward.X);var state=formation.Capture().SkillState.Targeting;
+            state.EntryPrepared=true;state.EntryAnchor=doorway;state.EntryDirection=inward;state.FloorIndex=formation.FloorIndex;state.RoomIndex=formation.CurrentRoom;
+            foreach(var h in formation.Heroes)h.Position=doorway+inward*.4f;
+            // QA将游侠切成近战类型验证横向间距；高容量圣骑士仍按远程类型使用浅展开。
+            formation.Heroes.Single(h=>h.SpecId=="ranger").Ranged=false;
+            Tick(formation,60);
+            for(int i=0;i<formation.Heroes.Count;i++)
+            {
+                var h=formation.Heroes[i];string role=h.Ranged?"ranged":"melee";int lane=i==0?0:(i+1)/2*(i%2==1?-1:1);
+                float depth=c.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
+                float spread=c.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
+                var expected=doorway+inward*depth+lateral*(lane*spread);
+                Need(Vector2.Distance(h.Position,expected)<=.21f,"职业展开未按独立纵深/横向配置落位："+h.SpecId);
+                Need(formation.InCombatRoom(h),"展开越出房间边界");
+            }
+        }
         var longRun=Battle("warrior","mage");var repeated=Battle("warrior","mage");
         foreach(var test in new[]{longRun,repeated})
         {
@@ -149,10 +169,14 @@ public static class CombatTargetingChecks
         string units=Path.Combine(qa,"combat/unit_attributes.csv"),unitText=File.ReadAllText(units);
         void RejectConfig(string text,string why)
         {
-            File.WriteAllText(units,text);bool failed=false;try{Config.LoadLegacy(qa);}catch(Exception error)when(error is InvalidDataException or CsvConfigurationException){failed=true;}Need(failed,why);
+            File.WriteAllText(units,text);bool failed=false;try{LegacySkillConfig.LoadLegacy(qa);}catch(Exception error)when(error is InvalidDataException or CsvConfigurationException){failed=true;}Need(failed,why);
         }
         RejectConfig(unitText.Replace("false,3","false,-1"),"TG-24 负容量配置未拒绝");
         RejectConfig(unitText.Replace("engagement_capacity","missing_capacity"),"TG-24 缺少容量字段未拒绝");
+        File.WriteAllText(units,unitText);
+        string rulesFile=Path.Combine(qa,"system/config.csv"),rulesText=File.ReadAllText(rulesFile);
+        foreach(string invalid in new[]{rulesText.Replace("combat_entry_ranged_depth_milli,900","combat_entry_ranged_depth_milli,0"),rulesText.Replace("combat_entry_melee_spread_milli,1100","combat_entry_melee_spread_milli,400"),rulesText.Replace("combat_entry_ranged_spread_milli","missing_entry_spread")})
+        {File.WriteAllText(rulesFile,invalid);bool failed=false;try{Config.Load(qa);}catch(Exception error)when(error is InvalidDataException or CsvConfigurationException){failed=true;}Need(failed,"入场距离缺失/非法或近远关系未拒绝");}
         Console.WriteLine("PASS: capacity/overflow/zero capacity, two tanks, ranged and mode switch, dynamic capacity, safe windup, exact snapshots, checkpoint intro delay and visual-only spreading");
     }
 }

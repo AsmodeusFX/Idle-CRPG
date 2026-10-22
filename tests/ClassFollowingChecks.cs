@@ -17,16 +17,22 @@ public static class ClassFollowingChecks
         foreach(var spec in c.Heroes)
         {
             var nodes=c.Talents.Nodes.Values.Where(n=>n.Hero==spec.Id).ToArray();
-            Need(nodes.Select(n=>n.Tree).Distinct().Count()==3&&nodes.Any(n=>n.Kind=="active")&&nodes.Any(n=>n.Kind=="passive"),"职业三系主动/被动："+spec.Id);
+            Need(nodes.All(n=>n.Tree is >=0 and <=2)&&nodes.Any(n=>n.Kind=="active")&&nodes.Any(n=>n.Kind=="passive"),"职业三系主动/被动："+spec.Id);
             var g=new GameSession(c,785,new[]{spec.Id});var h=g.Heroes.Single();string starter=c.Talents.StartingSkills[spec.Id];
             Need(h.Talents[starter]==1&&h.SkillIds.SequenceEqual(new[]{starter})&&g.TalentPoints(h)==0&&g.TreeInvestment(h,c.Talents.Nodes[starter].Tree)==1,"初始技能未消耗一级点数："+spec.Id);
             Need(!g.LearnTalent(spec.Id,starter,out _),"一级零剩余点可再升级");
             for(int i=0;i<10000&&g.CurrentRoom==0;i++)g.Tick(.05f);
             var room=g.Floor.Rooms[g.CurrentRoom];h.Position=room.Center-new Vector2(1,0);h.Timer=999;h.Hp=h.MaxHp=100000;
             foreach(var m in room.Monsters){m.Position=room.Center+new Vector2(1,0);m.Hp=m.MaxHp=100000;m.Timer=999;}
+            var starterNode=c.Talents.Nodes[starter];
+            // 绑定节点按 skill.csv 定义执行；召唤类初始技能不直接造成伤害，以召唤物存在作为生效判据。
+            bool bound=starterNode.SkillId!="";
+            bool summonStarter=bound&&c.Skills.Skills[starterNode.SkillId].Effects.Any(e=>c.Skills.Effects[e].Kind=="Summon");
+            bool projectileStarter=bound?c.Skills.Skills[starterNode.SkillId].Effects.Any(e=>c.Skills.Effects[e].Kind is "SpawnProjectile" or "AbilityCast"):starterNode.Effect=="shot";
             bool projectile=false;for(int i=0;i<40;i++){g.Tick(.05f);projectile|=g.ActiveFlightCount>0;}
-            Need(room.Monsters.Any(m=>m.Hp<100000)&&g.Capture().SkillState.Actions.Any(a=>a.Cooldowns.ContainsKey(starter)),"初始主动未造成伤害："+spec.Id);
-            if(c.Talents.Nodes[starter].Effect=="shot")Need(projectile,"远程初始攻击没有投射物");
+            bool acted=room.Monsters.Any(m=>m.Hp<100000)||(summonStarter&&g.Summons.Count>0);
+            Need(acted&&g.Capture().SkillState.Actions.Any(a=>a.Cooldowns.ContainsKey(starter)),"初始主动未生效："+spec.Id);
+            if(projectileStarter)Need(projectile,"远程初始攻击没有投射物");
         }
         GameSession Reopen(GameSession g)=>GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=g.CaptureProgress()})).Session!);
         var player=GameSession.CreateNewWorld(c,17,"warrior");player.GrantGmResources(10000,0);player.BuyStar("s_root",out _);player.BuyStar("s_respec",out _);

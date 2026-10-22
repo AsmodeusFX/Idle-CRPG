@@ -9,7 +9,7 @@ public static class TerrainGateChecks
     public static void Run(string root)
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("TERRAIN_GATE_CHECK: "+why);}
-        Config Map()=>Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).ChapterMaps[3];
+        Config Map()=>LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).ChapterMaps[3];
         var c=Map();var blocked=c.Regions.Where(r=>!r.Enterable).ToArray();
         Check(blocked.Length>0&&blocked.Any(r=>r.Terrain=="mountain")&&blocked.Any(r=>r.Terrain=="ocean"),"缺少阻断地形实例");
         foreach(var r in blocked)

@@ -1,0 +1,3 @@
+id,role,kind,damage_type,share,extent,speed,impact_effect,behavior,spawn_tick,buff_id,entity_kind,lifetime_ticks,resolve_effect_ids,mechanic_id,damage_parts,projectile_count,spread_degrees
+QA_CHAIN_EFFECT,qa,Chain,Lightning,1,,,,,,,,,,QA_CHAIN,,,
+QA_CONVICTION_AURA,qa,MaintainAura,,,3,,,,,QA_CONVICTION_BUFF,,,,,,,

@@ -1,0 +1,17 @@
+id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target,stack_group,stack_strength
+buff_haste,120,RefreshDuration,attack_speed_pct:add:0.25,,,,haste,0.25,0,self,,
+buff_shield,120,RefreshDuration,,ability_guard,18,,shield,2,0,self,,
+buff_burn,100,RefreshDuration,,ability_burn_tick,3,,dot,0.25,0,enemy,,
+buff_chill,100,RefreshDuration,,,,,chill,0.25,0,enemy,,
+buff_stun,30,RefreshDuration,,,,,stun,0,0,enemy,,
+buff_crit,160,RefreshDuration,crit_rate:add:0.4,,,tr_crit_shorten,crit_reduce,0.4,1,self,,
+buff_mirror,200,RefreshDuration,,,,tr_skill_mirror,mirror,0.7,0,self,,
+talent_battle_shout,120,RefreshDuration,,,,,haste,0,0,self,,
+talent_weaken,120,RefreshDuration,,,,,crit_reduce,0,0,enemy,,
+barb_taunt_buff,40,RefreshDuration,,,,,forced,0,0,enemy,,
+barb_whirlwind_buff,101,NonStacking,,barb_whirlwind_pulse,20,,,,,self,,
+pal_prayer_buff,121,Strongest,,pal_prayer_heal,20,,,0,0,ally,pal_prayer_group,1
+pal_fanaticism_buff,121,Strongest,attack_speed_pct:add:0.25,,,,,0,0,ally,pal_fanaticism_group,1
+pal_conviction_buff,121,Strongest,fire_resistance:add:-0.15;cold_resistance:add:-0.15;lightning_resistance:add:-0.15;poison_resistance:add:-0.15,,,,,0,0,enemy,pal_conviction_group,1
+nec_amplify_buff,200,RefreshDuration,physical_vulnerable_damage_pct:add:0.3,,,,,0,0,enemy,,
+nec_lower_resist_buff,200,RefreshDuration,fire_resistance:add:-0.2;cold_resistance:add:-0.2;lightning_resistance:add:-0.2;poison_resistance:add:-0.2,,,,,0,0,enemy,,

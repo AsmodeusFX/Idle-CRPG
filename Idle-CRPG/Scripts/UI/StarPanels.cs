@@ -42,10 +42,10 @@ public partial class Main
         bool show=viewMode==3;
         bool global=viewMode==1||show||viewMode==4;TickHeroPage();
         bool openCastle=viewMode==1&&!castlePage.Visible;
-        gameHud.Visible=!global&&session!=null;partySetup.Visible=!global&&session==null;
+        gameHud.Visible=!PreviewOpen&&!global&&session!=null;partySetup.Visible=!PreviewOpen&&!global&&session==null;
         ((Control)sceneCanvas.GetParent()).Size=SceneRect.Size;castlePage.Visible=viewMode==1;
-        rateButton.Visible=!global&&session!=null;
-        summary.Visible=!global;
+        rateButton.Visible=!PreviewOpen&&!global&&session!=null;
+        summary.Visible=!PreviewOpen&&!global;
         if(openCastle){OpenCurrentChapter();RefreshWorldPage();if(selectedRegion>=0&&MapConfig.Rulers.TryGetValue(selectedRegion,out var ruler))castleListScroll.EnsureControlVisible(castleRows[ruler]);}
         if(viewMode==1)castleMap.QueueRedraw();
         if(show&&(!starPage.Visible||!ReferenceEquals(starUiSession,session)))RefreshStarPage();

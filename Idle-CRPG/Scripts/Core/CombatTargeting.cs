@@ -70,9 +70,12 @@ public sealed partial class GameSession
             if(deploying)
             {
                 var state=skillState.Targeting;int index=Heroes.IndexOf(hero);var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
-                float depth=Config.Talents.Rule(EngagementCapacity(hero)>0?"combat_entry_front_depth_milli":"combat_entry_back_depth_milli")/1000f;
+                // 入场纵深/横向间距按攻击类型分组；接敌容量只决定怪物预约，不能把远程法系推入前排。
+                string role=hero.Ranged?"ranged":"melee";
+                float depth=Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
+                float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
                 int lane=index==0?0:(index+1)/2*(index%2==1?-1:1);
-                goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*Config.Talents.Rule("combat_entry_spread_milli")/1000f);
+                goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*spacing);
             }
             goal=Vector2.Clamp(goal,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
             Move(hero,goal,dt);

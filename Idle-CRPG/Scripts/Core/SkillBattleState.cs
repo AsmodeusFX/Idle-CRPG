@@ -10,8 +10,35 @@ public sealed class SkillBattleState
     public List<SkillBuffState> Buffs=new();
     public List<SkillFlightState> Flights=new();
     public List<SkillEffectWork> Pending=new();
+    // 本房死亡事实产生的可消费尸体权利；正式检查点清空，跨房不携带。
+    public List<CorpseState> Corpses=new();
+    // 按(根源施法,触发,目标)累计的Proc次数；仅proc_limit.csv显式声明的触发使用。
+    public List<ProcFireState> ProcFires=new();
+    public long ProcTick;
+    public List<ProcIcdState> ProcIcds=new();
     public long NextId;
     public CombatTargetingState Targeting=new();
+}
+/// <summary>当前房间内OwnerID+TriggerID独立的下次可触发Tick，仅完整内部快照保留。</summary>
+public sealed class ProcIcdState
+{
+    public int Owner;
+    public string Trigger="";
+    public long ReadyTick;
+}
+/// <summary>尸体 token 与怪物 Actor 分离：Actor 提供位置，消费权利只在本房技能现场中原子移除一次。</summary>
+public sealed class CorpseState
+{
+    public int ActorId;
+    public Vector2 Position;
+}
+/// <summary>一次根源施法内的Proc计数；OriginCast只作关联键，不改变事件资格。</summary>
+public sealed class ProcFireState
+{
+    public long OriginCast;
+    public string Trigger="";
+    public int Target;
+    public int Count;
 }
 public sealed class SkillActionState
 {
@@ -61,6 +88,7 @@ public sealed class SkillFlightState
 public sealed class SkillEffectWork
 {
     public string Effect="",Skill="";
+    public string Trigger="";
     public int Owner,Target,Depth;
     public double Coefficient=1;
     public long BuffInstance;

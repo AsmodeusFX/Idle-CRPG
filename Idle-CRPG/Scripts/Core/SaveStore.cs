@@ -46,7 +46,8 @@ public sealed class SaveStore(string path)
                 if(candidate!=path){LastWarning="主存档无法读取，已恢复备份进度";protectBackup=true;}
                 return result;
             }
-            catch(Exception e) when(e is IOException or UnauthorizedAccessException or JsonException or ArgumentException or InvalidOperationException or NullReferenceException or OverflowException)
+            // 配置删除导致的非法技能/天赋引用也进入备份恢复和自动重置，不能让旧账号启动时直接抛错。
+            catch(Exception e) when(e is InvalidDataException or IOException or UnauthorizedAccessException or JsonException or ArgumentException or InvalidOperationException or NullReferenceException or OverflowException)
             {LastWarning="存档读取失败，原文件保留："+e.Message;}
         }
         if(existed)

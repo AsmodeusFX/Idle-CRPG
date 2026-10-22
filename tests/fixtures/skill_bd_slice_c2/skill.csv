@@ -1,0 +1,4 @@
+id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id,target_policy,cast_condition
+QA_CORPSE_EXPLOSION,qa,ActiveSkill,100,0,0,1,4,QA_CORPSE_BLAST,QA_CORPSE_EXPLOSION,,,corpse,
+QA_RAISE_VALKYRIE,qa,ActiveSkill,100,3,3,1,4,QA_SUMMON_VALKYRIE_EFFECT,QA_RAISE_VALKYRIE,,,self,
+QA_SUMMON_SKELETON,qa,ActiveSkill,100,3,3,1,4,QA_SUMMON_SKELETON_EFFECT,QA_SUMMON_SKELETON,,,self,

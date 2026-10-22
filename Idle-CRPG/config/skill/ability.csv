@@ -1,16 +1,2 @@
 id,source_id,form,targeting,hits,cast_root,level,max_level,effect_ids,buff_ids
-skill_01,skill_01,projectile,,,0,1,50,e_01_sword,
-skill_04,skill_04,buff,,,0,1,50,,buff_haste
-skill_11,skill_11,projectile,lowest_hp,,0,1,50,e_11_arc,
-skill_06,skill_06,projectile,,,0,1,50,e_06_rain,
-skill_17,skill_17,projectile,,,0,1,50,e_17_sweep,
-skill_14,skill_14,buff,,,0,1,50,,buff_shield
-skill_02,skill_02,projectile,farthest,ground,0,1,50,e_02_meteor,
-skill_12,skill_12,ground,,,0,1,50,e_12_cyclone,
-skill_07,skill_07,target,,,0,1,50,e_07_thunder,
-skill_18,skill_18,projectile,,,0,1,50,e_18_meteor,
-skill_09,skill_09,buff,,,0,1,50,,buff_crit
-skill_05,skill_05,projectile,,ground,1,1,50,e_05_wall,
-skill_19,skill_19,buff,,,0,1,50,,buff_mirror
-skill_10,skill_10,target,highest_hp,,0,1,50,e_10_slash,
-skill_15,skill_15,projectile,,,0,1,50,e_15_array,
+ran_guided_arrow,ran_guided_arrow,projectile,nearest,,0,1,1,ran_guided_arc,

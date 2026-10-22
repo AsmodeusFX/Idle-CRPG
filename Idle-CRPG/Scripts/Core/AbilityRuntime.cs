@@ -7,13 +7,30 @@ namespace IdleCrpg.Core;
 
 public sealed partial class GameSession
 {
+    /// <summary>触发效果预检既有弹体总预算；满额不执行、不掷随机、不消费ICD或限次，不新增镜像专属数值。</summary>
+    private bool ProcHasFlightCapacity(SkillEffectWork work,EffectDefinition effect)
+    {
+        long count=effect.Kind switch {"SpawnProjectile"=>effect.ProjectileCount,"SpawnEntity"=>1,_=>0};
+        AbilityDefinition? ability=null;bool mirror=false;
+        if(effect.Kind=="AbilityCast")ability=SkillConfig.Abilities[effect.MechanicId];
+        if(effect.Kind is "AbilityMirror" or "AbilityAttack")
+        {
+            var buff=skillState.Buffs.FirstOrDefault(b=>b.Instance==work.BuffInstance&&b.Remaining>0);
+            if(buff==null)return false;
+            if(effect.Kind=="AbilityMirror")
+            {if(work.Flight==null||!SkillConfig.Abilities.TryGetValue(work.Flight.Skill,out ability)||ability.Form=="buff")return false;mirror=true;}
+            else {if(!SkillConfig.AbilityEffects.TryGetValue(effect.MechanicId,out var attack))return false;count=attack.Count;}
+        }
+        if(ability!=null&&ability.Form!="buff")count=(mirror?ability.Effects.Take(1):ability.Effects).Sum(id=>(long)SkillConfig.AbilityEffects[id].Count);
+        return skillState.Flights.Count+count<=SkillConfig.Setting("max_flights");
+    }
     private void CastAbility(SkillEffectWork work,AbilityDefinition ability)
     {
         var owner=CombatActor(work.Owner)!;var target=Choose(owner,ability,SkillConfig.Skills[ability.Id].Range);if(target==null)return;
         if(ability.Form=="buff")
         {
             foreach(string id in ability.Buffs)ApplyBuff(id,work.Owner,work.Owner,ability.Id,work.Coefficient,null);
-            float maximum=CombatMaximumHp(owner);owner.Hp=(float)Math.Min(maximum,owner.Hp+maximum*SkillConfig.Setting("self_buff_heal_fraction"));return;
+            float maximum=CombatMaximumHp(owner),before=owner.Hp;owner.Hp=(float)Math.Min(maximum,owner.Hp+maximum*SkillConfig.Setting("self_buff_heal_fraction"));if(owner.Hp>before)effectiveEffectVersion++;return;
         }
         var first=EmitAbility(work,ability,target,false,1);
         if(first!=null)React("OnSkillCommit",work.Owner,CombatId(target),ability.Id,work.Coefficient,work.Depth,first);
@@ -45,6 +62,7 @@ public sealed partial class GameSession
                 if(ability.Form=="target")f.Life=f.MaxLife=Quantize(fx.Delay);
                 if(ability.Form=="ground"){f.Position=f.TargetPoint;f.Pulse=fx.Interval>0?Quantize(fx.Interval):1d/SkillConfig.TickRate;}
                 skillState.Flights.Add(f);first??=f;
+                effectiveEffectVersion++;
             }
         }
         return first;
@@ -68,7 +86,7 @@ public sealed partial class GameSession
             case "AbilityCooldown":
             {
                 var action=ActionOf(owner);var cooling=action.Cooldowns.Where(p=>p.Value>0&&SkillConfig.Abilities.TryGetValue(p.Key,out var a)&&a.Form!="buff").ToArray();
-                if(cooling.Length>0){var pick=cooling[combatRandom.Next(0,cooling.Length)];double floor=SkillConfig.Skills[pick.Key].Cooldown/(double)SkillConfig.TickRate/(1+SkillConfig.Setting("cooldown_reduction_cap"));action.Cooldowns[pick.Key]=Math.Min(pick.Value,Math.Max(floor,pick.Value-SkillConfig.Buffs[buff.Id].Extra));}
+                if(cooling.Length>0){var pick=cooling[combatRandom.Next(0,cooling.Length)];double floor=SkillConfig.Skills[pick.Key].Cooldown/(double)SkillConfig.TickRate/(1+SkillConfig.Setting("cooldown_reduction_cap"));double next=Math.Min(pick.Value,Math.Max(floor,pick.Value-SkillConfig.Buffs[buff.Id].Extra));action.Cooldowns[pick.Key]=next;if(next<pick.Value)effectiveEffectVersion++;}
                 break;
             }
             case "AbilityMirror":
@@ -91,6 +109,7 @@ public sealed partial class GameSession
             float angle=count==1?0:(i/(float)(count-1)-.5f)*effect.SpreadDegrees*MathF.PI/180;
             var direction=new Vector2(forward.X*MathF.Cos(angle)-forward.Y*MathF.Sin(angle),forward.X*MathF.Sin(angle)+forward.Y*MathF.Cos(angle));
             skillState.Flights.Add(new(){Id=++skillState.NextId,OriginCast=work.OriginCast,Owner=work.Owner,Target=work.Target,Skill=work.Skill,Depth=work.Depth,Coefficient=work.Coefficient,Position=owner.Position,Start=owner.Position,Previous=owner.Position,TargetPoint=target.Position,Direction=direction,Form=effect.Kind=="SpawnEntity"?"entity":"generic",GenericEffect=effect.Id,GenericRadius=effect.Extent,GenericSpeed=effect.Speed,Snapshot=snapshot,Life=effect.Kind=="SpawnEntity"?effect.Lifetime/(double)SkillConfig.TickRate:Math.Max(1d/SkillConfig.TickRate,SkillConfig.Skills[work.Skill].Range/effect.Speed)});
+            effectiveEffectVersion++;
         }
     }
     private void AdvanceFlights(float dt)

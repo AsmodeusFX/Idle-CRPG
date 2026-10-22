@@ -1,0 +1,3 @@
+﻿id,max_per_cast,max_per_target
+QA_PROC_CAST_TRIGGER,2,0
+QA_PROC_TARGET_TRIGGER,0,1

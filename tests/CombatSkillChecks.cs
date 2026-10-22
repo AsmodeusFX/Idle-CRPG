@@ -11,8 +11,9 @@ public static class CombatSkillChecks
     {
         void Check(bool ok,string reason){if(!ok)throw new Exception("COMBAT_SKILL_CHECK: "+reason);}
         void Near(double actual,double expected,string reason)=>Check(Math.Abs(actual-expected)<.00001,reason+$" ({actual} != {expected})");
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
-        Check(c.Skills.Abilities.Count==15&&c.Skills.Buffs.Keys.Count(id=>!id.StartsWith("talent_"))==7&&c.Skills.Triggers.Count==2&&c.Skills.Skills.Keys.Count(id=>!c.Talents.Nodes.ContainsKey(id))==17,"迁移定义数量");
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        // 正式天赋树迁移新增 1 个能力与 7 个 Buff；新主动技能 ID 均与天赋节点同名，不计入非节点技能数。
+        Check(c.Skills.Abilities.Count==16&&c.Skills.Buffs.Keys.Count(id=>!id.StartsWith("talent_"))==14&&c.Skills.Triggers.Count==2&&c.Skills.Skills.Keys.Count(id=>!c.Talents.Nodes.ContainsKey(id))==17,"迁移定义数量");
         Check(c.Skills.Skills["skill_01"].Cooldown==25&&c.Skills.Buffs["buff_haste"].Duration==120,"8Hz→20Hz 换算");
         var attack=new BattleAttributes {CriticalChance=1,CriticalDamage=.5};
         attack.Modifiers.AddRange(new[]{new DamageModifier(DamageBucket.Skill,.3,"spin"),new(DamageBucket.General,.3,Type:DamageType.Fire),new(DamageBucket.General,.3,RangedOnly:true),new(DamageBucket.General,.3,BossOnly:true),new(DamageBucket.Critical,.2),new(DamageBucket.Power,.5,"spin"),new(DamageBucket.Power,1),new(DamageBucket.Vulnerable,.2,DebuffId:"vulnerable"),new(DamageBucket.Vulnerable,.3,DebuffId:"vulnerable"),new(DamageBucket.Vulnerable,.4,DebuffId:"wounded"),new(DamageBucket.Vulnerable,99,DebuffId:"absent"),new(DamageBucket.Skill,100,"other_skill")});
@@ -48,7 +49,8 @@ public static class CombatSkillChecks
         GameSession Copy(GameSession game)=>GameSession.Restore(c,SaveStore.Decode(c,State(game)).Session!);
 
         var none=GameSession.CreateWorld(c,1,new[]{"warrior","ranger","mage"});Check(none.Heroes.All(h=>h.SkillIds.Length==0),"迁移自动投放了技能");
-        foreach(var ability in c.Skills.Abilities.Values)
+        // 与天赋节点同名的 Ability 由天赋槽位驱动，走 SetTalentLoadout，不在旧迁移样本的显式装备循环内。
+        foreach(var ability in c.Skills.Abilities.Values.Where(a=>!c.Talents.Nodes.ContainsKey(a.Id)))
         {
             var game=Battle(ability.Id);Tick(game,5);
             Check(game.Capture().SkillState.Actions.Single().Cooldowns.ContainsKey(ability.Id),"技能未 Commit："+ability.Id);
@@ -94,7 +96,7 @@ public static class CombatSkillChecks
         // 不论此随机布局的首房编号，正式检查点始终不保留临时监听。
         Check(roomClear.CaptureProgress().SkillState.Buffs.Count==0,"房间检查点残留 Buff");
         string qa=Path.Combine(root,"artifacts/qa/skill-config-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(qa,"skill"));
-        foreach(var file in Directory.EnumerateFiles(Path.Combine(root,"Idle-CRPG/config/skill")))File.Copy(file,Path.Combine(qa,"skill",Path.GetFileName(file)));
+        foreach(var file in Directory.EnumerateFiles(Path.Combine(LegacySkillConfig.DirectoryFor(Path.Combine(root,"Idle-CRPG/config")),"skill")))File.Copy(file,Path.Combine(qa,"skill",Path.GetFileName(file)));
         string skillFile=Path.Combine(qa,"skill/skill.csv"),original=File.ReadAllText(skillFile);File.WriteAllText(skillFile,original.Replace("cast_skill_01","missing_effect"));
         rejected=false;try{SkillConfiguration.Load(qa,c.Attributes);}catch(InvalidDataException){rejected=true;}Check(rejected,"悬空效果引用没有拒绝");
         File.WriteAllText(skillFile,original);string fxFile=Path.Combine(qa,"skill/effect.csv"),fxText=File.ReadAllText(fxFile);File.WriteAllText(fxFile,fxText.Replace("AbilityCast","NotImplemented"));

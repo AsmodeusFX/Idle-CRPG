@@ -8,7 +8,7 @@ public static class HeroExperienceChecks
     public static void Run(string root)
     {
         void Need(bool ok,string why){if(!ok)throw new Exception("HERO_XP: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         Need(c.MonsterExperiencePercent(1,6)==300&&c.MonsterExperiencePercent(1,100)==300&&c.MonsterExperiencePercent(6,1)==0&&c.MonsterExperiencePercent(100,1)==0&&c.MonsterExperiencePercent(1,1)==100,"等级差倍率及边界");
         var g=new GameSession(c,785,new[]{"warrior","ranger","mage","priest"});
         for(int i=0;i<10000&&g.CurrentRoom==0;i++)g.Tick(.05f);

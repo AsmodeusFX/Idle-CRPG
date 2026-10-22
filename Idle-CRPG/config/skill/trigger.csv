@@ -1,3 +1,1 @@
 id,event_kind,effect_id,owner_buff,origin_filter
-tr_crit_shorten,OnCritical,ability_shorten,buff_crit,primary_cast
-tr_skill_mirror,OnSkillCommit,ability_mirror,buff_mirror,primary_cast

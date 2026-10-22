@@ -1,0 +1,3 @@
+id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id,target_policy,cast_condition
+QA_CHAIN_LIGHTNING,qa,ActiveSkill,60,1,1,1,6,QA_CHAIN_EFFECT,QA_CHAIN_LIGHTNING,,,enemy,
+QA_CONVICTION,qa,ActiveSkill,100,3,3,1,4,QA_CONVICTION_AURA,QA_CONVICTION,,,self,

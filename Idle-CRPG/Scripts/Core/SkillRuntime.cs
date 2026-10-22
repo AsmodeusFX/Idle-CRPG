@@ -12,6 +12,8 @@ public sealed partial class GameSession
     private readonly PersistentRandom combatRandom;
     private uint roomEntryCombatState;
     private int effectBudgetRemaining;
+    // 仅标记本次效果是否真正改变战斗状态，不参与伤害数值或存档。
+    private long effectiveEffectVersion;
     private SkillConfiguration SkillConfig=>Config.Skills;
     public DamageBreakdown? LastDamage { get; private set; }
     /// <summary>当前房间技能状态只读诊断入口；正式存档不保留这个战斗现场。</summary>
@@ -87,7 +89,7 @@ public sealed partial class GameSession
     }
     private void ResetSkillRoom()
     {
-        skillState=new();monsterLockIndex.Clear();foreach(var actor in Heroes.Concat(Summons))actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
+        skillState=new();ClearVisualEvents();monsterLockIndex.Clear();foreach(var actor in Heroes.Concat(Summons))actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
         if(FloorIndex<Floors.Count&&CurrentRoom<Floors[FloorIndex].Rooms.Count)foreach(var actor in Floor.Rooms[CurrentRoom].Monsters)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
     }
 
@@ -111,8 +113,12 @@ public sealed partial class GameSession
         double amount=result.FinalDamage/(friendly?Gm.MonsterHp:1);
         if(!friendly&&Gm.Invincible)amount=0;
         if(amount>0)foreach(var shield in ActorBuffs(CombatId(target)).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="shield").ToArray())
-        {double absorbed=Math.Min(amount,shield.Value);shield.Value-=absorbed;amount-=absorbed;if(shield.Value<=0)skillState.Buffs.Remove(shield);}
+        {double absorbed=Math.Min(amount,shield.Value);shield.Value-=absorbed;amount-=absorbed;if(absorbed>0)effectiveEffectVersion++;if(shield.Value<=0)skillState.Buffs.Remove(shield);}
         float before=target.Hp;target.Hp=(float)Math.Max(0,target.Hp-amount);bool killed=!target.Alive;
+        if(target.Hp<before)effectiveEffectVersion++;
+        // 表现事件只记录本次真实 HP 变化；不参与后续触发、奖励或死亡判定。
+        PushVisual(CombatVisualKind.Hit,skill,"",CombatId(attacker),CombatId(target),attacker.Position,target.Position,
+            Math.Max(0,before-target.Hp),0,type,depth,result.Dmg2.Critical,result.Dmg2.Blocked,result.Dmg2.Dodged,killed);
         if(target.Hp<before&&!killed&&!ranged&&depth==0&&target.Ranged&&!Stunned(target)&&!entryMoved.Contains(target)&&CombatEntryRemaining<=0)
         {
             var retreat=ActionOf(target);
@@ -122,6 +128,7 @@ public sealed partial class GameSession
         {
             var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);var loot=RollDrops(target);
             if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
+            RecordCorpse(target);
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}
         }
         if(killed){if(target.ActiveAuraSkills.Count>0&&Heroes.Contains(target))MarkChanged();target.ActiveAuraSkills.Clear();skillState.Buffs.RemoveAll(b=>b.Target==CombatId(target)||b.Owner==CombatId(target)&&b.AuraSkill!="");ReleaseCombatTargets(CombatId(target));}
@@ -167,14 +174,26 @@ public sealed partial class GameSession
     {
         action.Windup=0;
         var actor=CombatActor(action.Owner);var target=CombatActor(action.Target);string id=action.Active;var skill=SkillConfig.Skills[id];
-        // 目标在前摇期间死亡则取消，不扣冷却；本项目保留单动作槽。
-        if(actor is not {Alive:true}||target is not {Alive:true}||!InCombatRoom(actor)||!InCombatRoom(target)||Stunned(actor)){action.Active="";return;}
+        // 目标在前摇期间死亡则取消，不扣冷却；尸体目标例外，但尸体已被竞争消费时同样取消。
+        bool corpseTarget=skill.TargetPolicy=="corpse";
+        bool validCorpse=corpseTarget&&target is {Alive:false}&&CorpseInRoom(target)&&CorpseExists(action.Target);
+        if(actor is not {Alive:true}||target==null||!InCombatRoom(actor)||(!InCombatRoom(target)&&!validCorpse)||Stunned(actor)){action.Active="";return;}
         double cooldown=skill.Cooldown/(double)SkillConfig.TickRate;
         if(SkillConfig.Abilities.TryGetValue(id,out var ability)&&ability.Form=="buff")
             cooldown=Math.Max(ability.Buffs.Max(b=>SkillConfig.Buffs[b].Duration)/(double)SkillConfig.TickRate*SkillConfig.Setting("buff_cooldown_floor_ratio"),cooldown*(1-SkillConfig.Setting("buff_cooldown_per_level")*(LevelOf(actor,id)-1)));
         action.Cooldowns[id]=cooldown;action.Recovery=skill.Recovery/(double)SkillConfig.TickRate;action.Active="";
         long originCast=++skillState.NextId;
-        if(Config.Talents.Nodes.TryGetValue(id,out var talent)){CastTalent(actor,target,talent,originCast);return;}
+        DamageType castType=DamageType.Physical;
+        foreach(string effect in skill.Effects){var definition=SkillConfig.Effects[effect];if(definition.Kind is "Damage" or "Chain" or "CorpseExplosion" or "AreaPulse" or "Heal"){castType=definition.DamageType;break;}}
+        PushVisual(CombatVisualKind.Cast,id,"",action.Owner,action.Target,actor.Position,target.Position,0,skill.Range,castType);
+        if(Config.Talents.Nodes.TryGetValue(id,out var talent))
+        {
+            // 绑定节点按 skill.csv/effect.csv 执行，倍率取当前生效等级；未绑定节点保持旧 CastTalent 分派。
+            if(talent.SkillId==""){CastTalent(actor,target,talent,originCast);return;}
+            double value=TalentValue(actor,talent);
+            foreach(string effect in skill.Effects)Enqueue(new(){Effect=effect,Skill=id,Owner=action.Owner,Target=action.Target,Coefficient=value,OriginCast=originCast});
+            return;
+        }
         foreach(string effect in skill.Effects)Enqueue(new(){Effect=effect,Skill=id,Owner=action.Owner,Target=action.Target,Coefficient=skill.Coefficient,OriginCast=originCast});
     }
     private int LevelOf(Actor actor,string skill)=>Config.Talents.Nodes.ContainsKey(skill)?TalentLevel(actor,skill):actor.SkillLevels.GetValueOrDefault(skill,SkillConfig.Abilities.TryGetValue(skill,out var a)?a.Level:1);
@@ -186,12 +205,44 @@ public sealed partial class GameSession
     }
     private void React(string kind,int owner,int target,string skill,double coefficient,int depth,SkillFlightState? flight=null,long originCast=0)
     {
+        long cast=flight?.OriginCast??originCast;
         foreach(var buff in skillState.Buffs.Where(b=>b.Target==owner&&b.Remaining>0).ToArray())foreach(string id in SkillConfig.Buffs[buff.Id].Triggers)
         {
             var trigger=SkillConfig.Triggers[id];if(trigger.Event!=kind)continue;
             if(trigger.Filter=="primary_cast"&&(flight==null||flight.Mirrored||!flight.PrimaryFirst))continue;
-            Enqueue(new(){Effect=trigger.Effect,Skill=skill,Owner=buff.Owner,Target=target,Coefficient=coefficient,BuffInstance=buff.Instance,Depth=depth+1,Flight=flight,OriginCast=flight?.OriginCast??originCast});
+            // direct只允许根源命中触发，避免Proc伤害再次触发自身形成无界递归。
+            if(trigger.Filter=="direct"&&depth!=0)continue;
+            Enqueue(new(){Trigger=id,Effect=trigger.Effect,Skill=skill,Owner=buff.Owner,Target=target,Coefficient=coefficient,BuffInstance=buff.Instance,Depth=depth+1,Flight=flight,OriginCast=cast});
         }
+    }
+    /// <summary>按proc_limit.csv限次；0表示不限，未声明的触发保持原有无限次行为。计数上限有界，超出时丢弃最旧施法。</summary>
+    private bool ProcAllowed(string triggerId,int target,long originCast)
+    {
+        if(!SkillConfig.ProcLimits.TryGetValue(triggerId,out var limit))return true;
+        if(originCast<=0)return true;
+        int total=0;int own=0;
+        foreach(var row in skillState.ProcFires.Where(r=>r.OriginCast==originCast&&r.Trigger==triggerId))
+        {
+            total+=row.Count;if(row.Target==target)own+=row.Count;
+        }
+        if(limit.MaxPerCast>0&&total>=limit.MaxPerCast)return false;
+        if(limit.MaxPerTarget>0&&own>=limit.MaxPerTarget)return false;
+        return true;
+    }
+    private void RecordProcSuccess(SkillEffectWork work)
+    {
+        string triggerId=work.Trigger;int target=work.Target;long originCast=work.OriginCast;
+        if(SkillConfig.ProcIcdSeconds.TryGetValue(triggerId,out double seconds)&&seconds>0)
+        {
+            var icd=skillState.ProcIcds.FirstOrDefault(p=>p.Owner==work.Owner&&p.Trigger==triggerId);
+            if(icd==null){icd=new(){Owner=work.Owner,Trigger=triggerId};skillState.ProcIcds.Add(icd);}
+            icd.ReadyTick=checked(skillState.ProcTick+(long)Math.Ceiling(seconds*SkillConfig.TickRate));
+        }
+        if(!SkillConfig.ProcLimits.ContainsKey(triggerId)||originCast<=0)return;
+        var fire=skillState.ProcFires.FirstOrDefault(r=>r.OriginCast==originCast&&r.Trigger==triggerId&&r.Target==target);
+        if(fire!=null){fire.Count++;return;}
+        if(skillState.ProcFires.Count>=4096)foreach(var old in skillState.ProcFires.OrderBy(r=>r.OriginCast).Take(1024).ToArray())skillState.ProcFires.Remove(old);
+        skillState.ProcFires.Add(new(){OriginCast=originCast,Trigger=triggerId,Target=target,Count=1});
     }
     private void ApplyBuff(string id,int owner,int target,string ability,double coefficient,SkillFlightState? cause,string auraSkill="",long originCast=0)
     {
@@ -204,10 +255,15 @@ public sealed partial class GameSession
         if(definition.Mechanic=="shield")buff.Value=AttackSnapshot(CombatActor(owner)!).Attack*definition.Value;
         if(definition.Mechanic=="mirror")buff.Value+=SkillConfig.Setting("mirror_level_bonus")*(LevelOf(CombatActor(owner)!,ability)-1);
         skillState.Buffs.Add(buff);
+        effectiveEffectVersion++;
         actor.Hp=Math.Min(actor.Hp,CombatMaximumHp(actor));
+        // Buff表现按目标落点记录；光环/旋风/诅咒的持续状态由UI读取 PresentationBuffs 绘制。
+        PushVisual(CombatVisualKind.Buff,auraSkill!=""?auraSkill:ability,id,owner,target,
+            CombatActor(owner)?.Position??actor.Position,actor.Position,0,0);
     }
     private void AdvanceSkills(float dt)
     {
+        skillState.ProcTick=checked(skillState.ProcTick+(long)Math.Ceiling(dt*SkillConfig.TickRate-.000001));
         SynchronizeAuras();
         foreach(var buff in skillState.Buffs.ToArray())
         {
@@ -246,6 +302,16 @@ public sealed partial class GameSession
             effectBudgetRemaining--;
             var work=skillState.Pending[0];skillState.Pending.RemoveAt(0);var owner=CombatActor(work.Owner);if(owner is not {Alive:true})continue;
             var fx=SkillConfig.Effects[work.Effect];var target=CombatActor(work.Target);
+            bool proc=work.Trigger!="";
+            if(proc&&(!InCombatRoom(owner)||!SkillConfig.Triggers.TryGetValue(work.Trigger,out var trigger)||trigger.Effect!=work.Effect||!skillState.Buffs.Any(b=>b.Instance==work.BuffInstance&&b.Remaining>0&&b.Owner==work.Owner&&b.Id==trigger.OwnerBuff)||
+                skillState.ProcIcds.Any(p=>p.Owner==work.Owner&&p.Trigger==work.Trigger&&p.ReadyTick>skillState.ProcTick)||!ProcAllowed(work.Trigger,work.Target,work.OriginCast)||!ProcHasFlightCapacity(work,fx)))continue;
+            if(proc)
+            {
+                var chance=SkillConfig.Triggers[work.Trigger].Chance;
+                if((fx.Kind is "Damage" or "ApplyBuff" or "Heal" or "SpawnEntity" or "SpawnProjectile")&&(target==null||!InCombatRoom(target)))continue;
+                if(chance<=0||chance<1&&combatRandom.NextDouble()>=chance)continue;
+            }
+            long successBefore=effectiveEffectVersion;
             switch(fx.Kind)
             {
                 case "Damage":
@@ -255,14 +321,18 @@ public sealed partial class GameSession
                 case "ApplyBuff":
                     if(target is {Alive:true})foreach(var hit in BuffEffectTargets(work,fx,target))ApplyBuff(fx.BuffId,work.Owner,CombatId(hit),work.Skill,work.Coefficient,work.Flight,originCast:work.OriginCast);
                     break;
-                case "Heal":if(work.BuffInstance==0||ActorBuffs(work.Target).Any(b=>b.Instance==work.BuffInstance))HealTarget(target,fx.Share);break;
-                case "MaintainAura":if(!owner.ActiveAuraSkills.Contains(work.Skill)){owner.ActiveAuraSkills.Add(work.Skill);MarkChanged();}SynchronizeAuras(work.Owner,work.Skill,work.OriginCast);break;
+                case "Heal":if(work.BuffInstance==0||ActorBuffs(work.Target).Any(b=>b.Instance==work.BuffInstance))HealTarget(target,fx.Share,work.Skill);break;
+                case "MaintainAura":if(!owner.ActiveAuraSkills.Contains(work.Skill)){owner.ActiveAuraSkills.Add(work.Skill);MarkChanged();effectiveEffectVersion++;}SynchronizeAuras(work.Owner,work.Skill,work.OriginCast);break;
                 case "AbilityCast":CastAbility(work,SkillConfig.Abilities[fx.MechanicId]);break;
                 case "AbilityAttack":case "AbilityDot":case "AbilityCooldown":case "AbilityMirror":BuffEffect(work,fx);break;
                 case "Summon":SummonEffect(work,fx);break;
+                case "Chain":ChainEffect(work,fx);break;
+                case "CorpseExplosion":CorpseExplosionEffect(work,fx);break;
+                case "AreaPulse":AreaPulseEffect(work,fx);break;
                 case "SpawnEntity":case "SpawnProjectile":SpawnGeneric(work,fx);break;
                 default:throw new InvalidDataException("未知 Effect 类型");
             }
+            if(proc&&effectiveEffectVersion!=successBefore)RecordProcSuccess(work);
         }
     }
 }

@@ -1,0 +1,2 @@
+id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target,stack_group,stack_strength
+QA_CONVICTION_BUFF,120,Strongest,lightning_resistance:add:-0.3,,,,,0,0,enemy,QA_CONVICTION_GROUP,1

@@ -9,7 +9,7 @@ public static class SkillBdSupportChecks
     public static void Run(string root)
     {
         void Need(bool ok,string why){if(!ok)throw new Exception("BD_SUPPORT: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         string qa=Path.Combine(root,"artifacts/qa/bd-support-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(qa,"skill"));
         foreach(var source in Directory.EnumerateFiles(Path.Combine(root,"Idle-CRPG/config/skill"),"*.csv"))File.Copy(source,Path.Combine(qa,"skill",Path.GetFileName(source)));
         foreach(var file in Directory.EnumerateFiles(Path.Combine(root,"tests/fixtures/skill_bd_slice_b1"),"*.csv"))
@@ -81,7 +81,7 @@ public static class SkillBdSupportChecks
 
         var bad=GameSession.Restore(c,SaveStore.Decode(c,Encode(crossing)).Session!).Capture();bad.Heroes[0].ActiveAuraSkills.Add("missing");bool rejected=false;
         try{GameSession.Restore(c,bad);}catch(InvalidDataException){rejected=true;}Need(rejected,"非法激活光环存档未拒绝");
-        Need(!Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Skills.Keys.Any(id=>id.StartsWith("QA_")),"B1测试技能泄露生产配置");
+        Need(!LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Skills.Keys.Any(id=>id.StartsWith("QA_")),"B1测试技能泄露生产配置");
         Console.WriteLine("PASS: B1 two maintained auras, strongest/fallback, periodic heal/no revive, cross-room activation/checkpoints, typed curses/resistance, safe forced locks, defensive nova and bounded guided retarget");
     }
 }

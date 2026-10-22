@@ -1,6 +1,6 @@
 # 文档索引
 
-- [技能BD交互规则](design/skill_bd_interactions.md)：G01～G06；[公式提案来源](design/combat_formula_vnext_proposal.md)、[迁移计划](technical/skill_bd_plan.md)、[用户裁决](reviews/2026-10-22_skill_bd/04_approval_requests.md)、[执行与验收](reviews/2026-10-22_skill_bd/05_execution.md)。新公式已切换；A阶段及B1光环/诅咒、B2独立召唤Core QA完成，均为隔离夹具，未投放正式技能树或玩家存档。旧数据TEST_ONLY归档，新技能正式树迁移尚未执行。
+- [技能BD交互规则](design/skill_bd_interactions.md)：G01～G06；[公式提案来源](design/combat_formula_vnext_proposal.md)、[迁移计划](technical/skill_bd_plan.md)、[用户裁决](reviews/2026-10-22_skill_bd/04_approval_requests.md)、[执行与验收](reviews/2026-10-22_skill_bd/05_execution.md)、[迁移前置清单](reviews/2026-10-22_skill_bd/06_migration_inventory.md)、[验收报告](reviews/2026-10-22_skill_bd/07_acceptance.md)、[旧内容退役备案](reviews/2026-10-22_skill_bd/08_retired_content.md)。新公式已切换；A、B1、B2、C1、C2、C3 Core QA完成。正式五职业技能配置已完成迁移与退役清理（38节点、16个正式主动、`skill_id`绑定、新初始技能），新数值均为原型；正式技能已有临时几何表现；M5的23个旧主动节点与M7的15个`skill_XX`及无引用配套行已从正式表删除，旧回归数据隔离在TEST_ONLY夹具，预览仅展示16个正式主动。最终平衡由用户后续统一重算，Proc ICD V1.0已实现并通过专项检查；D4已确认镜像沿用现有全局弹体预算、原生命周期及不可递归规则，见[Proc ICD审计与实现](technical/proc_icd.md)。
 
 - [战斗索敌、接敌容量与入场展开](design/combat_targeting.md)：稳定锁敌、溢出重评、无单位推挤及有怪房AI警觉；[字段合同](technical/targeting_config.md)、[来源与执行记录](reviews/2026-10-22_combat_targeting/Execution_Record.md)。
 
@@ -38,6 +38,6 @@
 
 参考：用户提供的《末日危机2》截图及 https://www.u77game.net/h5/100.html 。参考空间探索和自动战斗体验，不复制其资源或未确认数值。
 
-- [角色技能与天赋树](design/talent_trees.md)：三系投入、技能装配与冷却、星图解锁/洗点、野蛮人原型；[字段字典](technical/talent_config.md)。
+- [角色技能与天赋树](design/talent_trees.md)：三系投入、技能装配与冷却、星图解锁/洗点、正式五职业三系与`skill_id`绑定、旧档`SkillTreeVersion`迁移；[字段字典](technical/talent_config.md)。
 
 - 五职业基础树、初始技能占点/可洗、室外队列跟随：见[天赋树](design/talent_trees.md)、[镜头与世界](design/camera_world_view.md)和[字段合同](technical/talent_config.md)。

@@ -1,0 +1,4 @@
+﻿id,duration_ticks,stacking_policy,attributes,periodic_effect,periodic_interval_ticks,trigger_ids,mechanic,value,extra,target,stack_group,stack_strength
+QA_PROC_CAST_BUFF,100,NonStacking,,,,QA_PROC_CAST_TRIGGER,,,,self,,
+QA_PROC_TARGET_BUFF,100,NonStacking,,,,QA_PROC_TARGET_TRIGGER,,,,self,,
+QA_WHIRLWIND_BUFF,101,NonStacking,,QA_WHIRLWIND_PULSE,20,,,,,self,,

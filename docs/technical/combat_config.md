@@ -26,13 +26,15 @@ DamageInput可携带最多五个类型唯一的DamagePortion(Type,Weight)，权�
 
 | 表 | 字段 |
 |---|---|
-| skill/skill.csv | id；role来源分类；kind=BasicAttack/ActiveSkill；cooldown_ticks正整数；windup_ticks/recovery_ticks非负；coefficient非负伤害本体系数；range正世界单位；effect_ids非空效果列表；name；cast_sound_id/hit_sound_id仅保留来源元数据 |
+| skill/skill.csv | id；role来源分类；kind=BasicAttack/ActiveSkill；cooldown_ticks正整数；windup_ticks/recovery_ticks非负；coefficient非负伤害本体系数；range正世界单位；effect_ids非空效果列表；name；cast_sound_id/hit_sound_id仅保留来源元数据；target_policy=enemy/self/ally_lowest_hp/corpse，corpse必须携带CorpseExplosion效果 |
 | skill/effect.csv | id,role,kind；damage_type=Physical/Fire/Cold/Lightning/Poison；share伤害分配系数；extent范围、speed速度；impact_effect碰撞效果；behavior弹道行为；spawn_tick；buff_id；entity_kind；lifetime_ticks；resolve_effect_ids生命周期结束效果；mechanic_id能力/召唤路由引用 |
-| skill/summon.csv | id；name显示名；max_count同一主人同原型存活上限1～5；hp_ratio/attack_ratio/defense_ratio按主人施法时基础生命/攻击/防御的比例，生命与攻击须为正、防御非负；speed/range/cooldown_seconds为召唤物自身移动、攻击距离与普攻冷却；engagement_capacity非负，仍可被有效属性聚合修正。当前仅QA切片填写，正式表保持空表不投放玩家召唤 |
+| skill/summon.csv | id；name显示名；max_count同一主人同原型存活上限1～5；hp_ratio/attack_ratio/defense_ratio按主人施法时基础生命/攻击/防御的比例，生命与攻击须为正、防御非负；speed/range/cooldown_seconds为召唤物自身移动、攻击距离与普攻冷却；engagement_capacity非负，仍可被有效属性聚合修正。正式表当前仅`nec_skeleton`与`ran_valkyrie`两只保守单只原型，数值不是最终平衡 |
+| skill/chain.csv | id；name显示名；max_targets含链根的总目标数1～12；jump_range每跳搜索下一目标的距离>0；damage_decay每跳伤害系数衰减0～1。仅显式Chain Effect引用；正式表当前仅`sor_chain_lightning`一条原型 |
 | skill/buff.csv | id；duration_ticks正时长；stacking_policy=NonStacking/RefreshDuration；attributes为attribute:operation:value分号列表，必须注册且操作合法；periodic_effect；periodic_interval_ticks；trigger_ids；mechanic,value,extra,target为已实现机制参数 |
-| skill/trigger.csv | id,event_kind,effect_id,owner_buff,origin_filter；引用有效，owner_buff与Buff.trigger_ids双向一致；事件和过滤仅允许已实现组合 |
+| skill/trigger.csv | id,event_kind,effect_id,owner_buff,origin_filter；引用有效，owner_buff与Buff.trigger_ids双向一致；事件和过滤仅允许已实现组合；origin_filter=primary_cast仅根源首次命中，direct仅depth=0的直接命中，用于阻断Proc伤害再次触发自身 |
+| skill/proc_limit.csv | id必须引用已声明trigger；max_per_cast/max_per_target为0～1000，0表示该维度不限，两项不得同时为0；按(根源施法,触发,目标)计数，仅显式声明行生效。当前正式表为空，仅C3 QA切片填写；ICD语义未裁决前不实现 |
 
-Effect 的 kind 决定允许字段：Damage使用damage_type/share；ApplyBuff使用buff_id；SpawnProjectile使用extent/speed/impact_effect/behavior/spawn_tick；SpawnEntity使用entity_kind/lifetime_ticks/resolve_effect_ids；Ability路由使用mechanic_id；Summon也仅使用mechanic_id并必须引用summon.csv。无关字段非空会拒绝，避免配置看似有效却无作用。Effect/Buff/Trigger引用缺失、执行环均拒绝。
+Effect 的 kind 决定允许字段：Damage使用damage_type/share；ApplyBuff使用buff_id；SpawnProjectile使用extent/speed/impact_effect/behavior/spawn_tick；SpawnEntity使用entity_kind/lifetime_ticks/resolve_effect_ids；Ability路由使用mechanic_id；Summon也仅使用mechanic_id并必须引用summon.csv；Chain使用damage_type/share/mechanic_id并必须引用chain.csv；CorpseExplosion使用damage_type/share/extent，extent必须为正，尸体只从本房死亡事实token中原子消费一次；AreaPulse使用damage_type/share/extent，extent必须为正，每拍以work.Target当前所在位置为圆心对范围内敌人走唯一SettleDamage，由周期Buff驱动，Buff到期或卸槽即停止。无关字段非空会拒绝，避免配置看似有效却无作用。Effect/Buff/Trigger/ProcLimit引用缺失、执行环均拒绝。
 
 Effect新增必填表头damage_parts，仅Damage允许非空，格式如Physical:0.6;Fire:0.4。类型枚举严格匹配且不重复，权重有限非负且合计1，首类型与damage_type一致；空表示原单类型。所有生产旧行已补空列，归档副本保留原schema。该字段只改变单次伤害实例的分量，不新增Effect/奖励入口。
 
@@ -54,3 +56,9 @@ SkillFlightState与SkillEffectWork新增OriginCast，正数对应本房NextId范
 所有定义加载后只读使用；运行实例、CD、Buff和弹道另存。改字段时同时修改加载器列清单、引用/互斥校验、本文及对应测试。只允许有限数字；有界概率、正数、数量和容量由加载器逐项检查。此轮未提供技能配置热更新界面。
 
 角色三系天赋、新增主动与被动效果、额外等级及基础系统规则见[talent_config.md](talent_config.md)。原有15技能稳定ID和机制继续保留。
+
+正式三系绑定（2026-10-22）：`skill.csv` 新增的主动行可与`talent.csv.skill_id`同名绑定，`SkillRuntime.Commit` 用节点当前生效等级作为伤害系数；未绑定节点仍由`CastTalent`分派。绑定行`role=prototype_bind`或`prototype`，均只复用现有Effect/Ability机制。`ability.csv`新增`ran_guided_arrow`（`projectile`、`nearest`、复用`arc_homing`），其ID同时是天赋节点与`skill.csv`技能，满足`ValidateGraph`的Ability→Skill引用检查。
+
+## Proc ICD V1.0（2026-10-22）
+
+新增可选skill/proc_icd.csv，字段id为TriggerID，icd_seconds为非负有限秒数；缺文件/缺行/0禁用，向上量化为20Hz Tick。trigger.csv原五列仍合法，可在末尾追加可选proc_chance（0～1，空/缺省1）。ICD与原proc_limit独立，均在原效果队列实际成功后记账；归属OwnerID+TriggerID，房间临时状态，正式检查点清空。完整审计、成功判定、字段校验、首批TEST_ONLY参数和镜像约束冲突见[Proc ICD](proc_icd.md)。

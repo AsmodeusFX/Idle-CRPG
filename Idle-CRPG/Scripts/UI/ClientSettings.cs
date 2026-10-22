@@ -78,6 +78,7 @@ public partial class Main
     /// <summary>只按持久状态变更保存；命中、走路和计时不产生保存请求，无周期战斗快照。</summary>
     private void AutoSave(double delta)
     {
+        if(PreviewOpen)return;
         if(progressWrite!=null)
         {
             if(!progressWrite.IsCompleted)return;
@@ -102,6 +103,7 @@ public partial class Main
     }
     private void SaveNow(bool wait=false)
     {
+        if(PreviewOpen){if(wait)CloseSkillPreview();else return;}
         if(!wait){forceProgressSave=true;AutoSave(0);return;}
         FinishProgressWrite();
         if(session==null||saveStore==null)return;

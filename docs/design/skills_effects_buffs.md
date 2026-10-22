@@ -1,6 +1,6 @@
 # Skill / Effect / Buff / Trigger 迁移运行规则
 
-2026-10-22技能BD补充：[G01～G06规则](skill_bd_interactions.md)及[新技能迁移计划](../technical/skill_bd_plan.md)已归档。下文15技能与现有职业原型是当前实现及旧回归基线；旧CSV已有TEST_ONLY快照，尚未退出生产引用。新技能单独设计迁移，不默认沿用旧ID/数值/树；多光环、多诅咒、Proc资格、独立召唤及尸体消费存在已审计缺口，不能因本文有Buff/SpawnEntity即视为已支持。现有唯一伤害、Buff与队列继续复用。
+2026-10-22技能BD补充：[G01～G06规则](skill_bd_interactions.md)及[新技能迁移计划](../technical/skill_bd_plan.md)已归档。下文15技能与现有职业原型是当前实现及旧回归基线；旧CSV已有TEST_ONLY快照，尚未退出生产引用。正式三系迁移已落地（见 §9）：新增13个主动、1个Ability和7个Buff，旧`barb_bash`/`mage_fireball`/`paladin_smite`改由绑定定义执行但保留原ID；新技能数值均来自隔离QA原型，不是最终平衡。多光环、多诅咒、Proc资格、独立召唤及尸体消费的审计缺口已由B1/B2/C1/C2/C3 Gate补齐，仍按各自投放下限使用。现有唯一伤害、Buff与队列继续复用。
 
 更新及确认：2026-10-18。源为 `E:/Git/Idle-Diablo` 当前代码和 `idle-diablo/config/skill/`，以实际代码和本次用户裁定优先于源文档中的过时说明。来源哈希与差异见 `docs/reviews/2026-10-18/combat_skill_migration.md`。
 
@@ -88,3 +88,28 @@ Buff 的属性通过统一注册表派生，不把临时加成写回永久 Attac
 
 ## 角色天赋与玩家装配（2026-10-21）
 原有15技能仍保留供旧档与回归。玩家天赋主动通过配置追加到Skills目录；伤害共用SettleDamage，吼叫复用Buff生命周期。被动在有效属性计算时添加、不写回永久基础属性。玩家装配使用SetTalentLoadout，保留原动作CD和房间Buff，新增战斗换入完整冷却。详见[talent_trees.md](talent_trees.md)。
+
+## 9. 正式三系绑定技能（2026-10-22）
+
+`talent.csv.skill_id` 与节点同名的主动不再生成旧模板，`SkillRuntime.Commit` 直接按 `skill.csv` 的 `effect_ids` 入队，系数取 `TalentValue`（`value+per_rank*(生效等级-1)`）。旧ID留空`skill_id`，继续走 `CastTalent`，行为不变。
+
+| 技能ID | 效果组合（`effect.csv`） | 说明 |
+|---|---|---|
+| barb_bash | Damage Physical | 原ID绑定，瞬发近战 |
+| mage_fireball | SpawnProjectile → Damage Fire | 保留`Effect=shot`的半径扩散特例 |
+| paladin_smite | Damage Physical | 原ID绑定，瞬发近战 |
+| barb_taunt | ApplyBuff `barb_taunt_buff` | 40 Tick强制锁敌，不打断已提交前摇 |
+| barb_whirlwind_window | ApplyBuff `barb_whirlwind_buff` | Buff周期触发`barb_whirlwind_pulse`（AreaPulse） |
+| pal_prayer | MaintainAura `pal_prayer_buff`（周期`pal_prayer_heal`） | 友方择强，不复活 |
+| pal_fanaticism | MaintainAura `pal_fanaticism_buff` | 攻速加算 |
+| pal_conviction | MaintainAura `pal_conviction_buff` | 敌方四抗降低，与减抗诅咒独立叠加 |
+| sor_chain_lightning | Chain `sor_chain_lightning` | 有界跳数/距离/衰减 |
+| nec_raise_skeleton | Summon `nec_skeleton` | 上限1，继承主人基础属性比例 |
+| nec_amplify_damage | ApplyBuff `nec_amplify_buff` | `cast_condition=missing_buff` |
+| nec_lower_resist | ApplyBuff `nec_lower_resist_buff` | 四抗降低 |
+| nec_corpse_explosion | CorpseExplosion | 消耗本房真实尸体，无尸体不扣冷却 |
+| ran_multishot | SpawnProjectile ×3（20°） | 初始技能 |
+| ran_guided_arrow | AbilityCast `ran_guided_arrow` | 复用`arc_homing`有界重选 |
+| ran_valkyrie | Summon `ran_valkyrie` | 上限1 |
+
+所有效果继续走唯一 `SettleDamage`/奖励路径；召唤击杀经验归全队、不产尸、不掉奖。`SkillMigrationChecks` 验证绑定光环与三箭齐发的实际执行；全部17个正式技能已有临时几何表现并通过Mini截图检查（`CombatFxView`只消费`VisualFxRuntime`只读事件，不参与权威计算）。这些是临时占位表现，不是最终美术；最终数值平衡仍待统一重算。

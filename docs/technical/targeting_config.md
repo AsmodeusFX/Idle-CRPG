@@ -17,12 +17,13 @@
 | targeting_reevaluate_milli | 250 | 毫秒，单个Overflow锁的最短重评间隔 |
 | targeting_budget | 4 | 每逻辑步最多消费的溢出重评请求数，不限制首次激活的合法索敌数量 |
 | combat_entry_delay_milli | 800 | 毫秒，有活怪房间警觉/小队展开窗口 |
-| combat_entry_front_depth_milli | 2800 | 千分之一世界单位，有容量英雄的门内展开纵深 |
-| combat_entry_back_depth_milli | 1800 | 千分之一世界单位，0容量英雄的门内展开纵深 |
-| combat_entry_spread_milli | 850 | 千分之一世界单位，展开横向通道间距 |
+| combat_entry_melee_depth_milli | 2800 | 千分之一世界单位，ranged=false英雄的门内展开纵深 |
+| combat_entry_ranged_depth_milli | 900 | 千分之一世界单位，ranged=true远程/法系的门内展开纵深 |
+| combat_entry_melee_spread_milli | 1100 | 千分之一世界单位，近战横向通道间距 |
+| combat_entry_ranged_spread_milli | 450 | 千分之一世界单位，远程/法系横向通道间距 |
 | dungeon_queue_spacing_milli | 650 | 千分之一世界单位，穿门行进队列间隔，不作为单位物理碰撞半径 |
 
-新增规则均为必填整数1～100000，禁止隐藏默认值。上述均为原型参数，可后续调参。角色位置仍使用已有二维世界坐标和固定步长，倍速不重复乘移动预算。
+新增规则均为必填整数1～100000，禁止隐藏默认值；近战纵深、横向间距均须大于对应远程值。旧front/back/shared-spread三个键已被上述四键替代。角色分组使用combat/unit_attributes.csv既有ranged字段，不读取接敌容量；提高容量不会把法系推入前排。上述均为原型参数，可后续调参。角色位置仍使用已有二维世界坐标和固定步长，倍速不重复乘移动预算。
 
 ## 运行态和存档
 

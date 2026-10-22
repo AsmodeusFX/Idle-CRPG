@@ -33,7 +33,7 @@ public sealed partial class GameSession
         var room=Floor.Rooms[CurrentRoom];var delta=Vector2.Abs(actor.Position-room.Center);
         return actor.Alive&&delta.X<=room.HalfWidth+.0001f&&delta.Y<=room.HalfHeight+.0001f;
     }
-    /// <summary>召唤物属性在施法时按主人基础值快照；房间切换只重建位置，不补满 HP。</summary>
+    /// <summary>召唤物属性在施法时按主人基础值快照；跨房连续行进，换层重建位置但不补满 HP。</summary>
     private void SummonEffect(SkillEffectWork work,EffectDefinition effect)
     {
         var owner=CombatActor(work.Owner);
@@ -53,9 +53,11 @@ public sealed partial class GameSession
         var offset=new Vector2(.35f+.2f*slot,(slot%2==0?.3f:-.3f));
         summon.Position=Vector2.Clamp(owner.Position+offset,room.Center-room.HalfSize+new Vector2(.3f),room.Center+room.HalfSize-new Vector2(.3f));
         Summons.Add(summon);
+        effectiveEffectVersion++;
+        PushVisual(CombatVisualKind.Summon,work.Skill,definition.Id,work.Owner,CombatId(summon),owner.Position,summon.Position,0,0);
         MarkChanged();
     }
-    /// <summary>召唤物跨房保留；进入新房间时按队伍位置重建，不复制主人当前临时 Buff。</summary>
+    /// <summary>新楼层按队伍位置重建召唤位置，不复制主人临时 Buff；普通跨房不调用此方法。</summary>
     private void PlaceSummonsNearParty(Room room)
     {
         int index=0;
@@ -107,7 +109,56 @@ public sealed partial class GameSession
                 ReleaseCombatTargets(id);
             }
         }
+        foreach(var summon in Summons){summon.Hp=0;summon.Timer=0;}
         Summons.Clear();roomEntrySummons.Clear();MarkChanged();
+    }
+    /// <summary>所有回城入口统一撤销召唤及进房副本；死亡不产生经验、掉落或怪物击杀。</summary>
+    internal void ClearTownSummons()=>ClearSummons();
+
+    /// <summary>清房后跟随主人；赶路沿真实房门与走廊连续移动，落后者进房后才参与正式战斗。</summary>
+    private void FollowDungeonSummons(float dt)
+    {
+        PruneSummons();
+        var current=Floor.Rooms[CurrentRoom];
+        foreach(var summon in Summons.Where(s=>s.Alive))
+        {
+            if(!MovingBetweenRooms&&!current.Clear&&InCombatRoom(summon))continue;
+            var owner=Heroes[summon.SummonOwner];
+            float budget=summon.Speed*dt;
+            for(int step=0;step<8&&budget>.00001f;step++)
+            {
+                var ownerRoom=Floor.Rooms.FirstOrDefault(r=>Inside(r,owner.Position));
+                var targetRoom=ownerRoom??Floor.Rooms.OrderBy(r=>Vector2.DistanceSquared(r.Center,owner.Position)).First();
+                var from=Floor.Rooms.FirstOrDefault(r=>Inside(r,summon.Position));
+                Vector2 goal=owner.Position;
+                if(from!=null&&from.Id!=targetRoom.Id)
+                {
+                    var next=Floor.Rooms[FirstStep(from.Id,targetRoom.Id)];
+                    var exit=from.DoorTowards(next);
+                    goal=Vector2.Distance(summon.Position,exit)>.001f?exit:next.DoorTowards(from);
+                }
+                else if(from==null)
+                {
+                    // 走廊内只沿所属门段前进；禁止朝主人直线切穿房墙。
+                    var passage=Floor.Passages.OrderBy(p=>SegmentDistance(summon.Position,Floor.Rooms[p.A].DoorTowards(Floor.Rooms[p.B]),Floor.Rooms[p.B].DoorTowards(Floor.Rooms[p.A]))).First();
+                    var a=Floor.Rooms[passage.A];var b=Floor.Rooms[passage.B];
+                    bool towardA=targetRoom.Id==a.Id||targetRoom.Id!=b.Id&&FirstStep(a.Id,targetRoom.Id)!=b.Id;
+                    goal=towardA?a.DoorTowards(b):b.DoorTowards(a);
+                }
+                else if(ownerRoom==null)
+                {
+                    var next=from!.Neighbors.Select(n=>Floor.Rooms[n]).OrderBy(r=>SegmentDistance(owner.Position,from.DoorTowards(r),r.DoorTowards(from))).First();
+                    var exit=from.DoorTowards(next);
+                    goal=Vector2.Distance(summon.Position,exit)>.001f?exit:owner.Position;
+                }
+                else if(Vector2.Distance(summon.Position,goal)<=Config.Talents.Rule("dungeon_queue_spacing_milli")/1000f)break;
+                float distance=Vector2.Distance(summon.Position,goal);
+                if(distance<.00001f)break;
+                Move(summon,goal,1,Math.Min(budget,distance));budget-=Math.Min(budget,distance);
+            }
+        }
+        static bool Inside(Room room,Vector2 p){var d=Vector2.Abs(p-room.Center);return d.X<=room.HalfWidth+.00001f&&d.Y<=room.HalfHeight+.00001f;}
+        static float SegmentDistance(Vector2 p,Vector2 a,Vector2 b){var d=b-a;return Vector2.DistanceSquared(p,a+d*Math.Clamp(Vector2.Dot(p-a,d)/d.LengthSquared(),0,1));}
     }
     /// <summary>进房检查点只保留进房时已存在的召唤；房内新召唤随战斗重开消失。</summary>
     private void CaptureSummonEntry()=>roomEntrySummons=Summons.Where(s=>s.Alive).Select(s=>s.Copy()).ToList();

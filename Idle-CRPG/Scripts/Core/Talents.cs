@@ -6,8 +6,8 @@ using System.Numerics;
 
 namespace IdleCrpg.Core;
 
-/// <summary>学习等级与额外等级分开；加成不提供学习资格，不计入系内投入。</summary>
-public record TalentNode(string Id,string Hero,int Tree,string TreeName,int Row,int Col,string Name,string Description,int MaxRank,bool BonusAllowed,string Kind,string Prerequisite,int RequiredRank,int RequiredPoints,string Effect,double Value,double PerRank,double Cooldown,float Range,float Radius,DamageType DamageType,float ProjectileSpeed);
+/// <summary>学习等级与额外等级分开；加成不提供学习资格，不计入系内投入。SkillId 为空时沿用 CastTalent 旧分派，非空时引用同名 CSV 主动定义。</summary>
+public record TalentNode(string Id,string Hero,int Tree,string TreeName,int Row,int Col,string Name,string Description,int MaxRank,bool BonusAllowed,string Kind,string Prerequisite,int RequiredRank,int RequiredPoints,string Effect,double Value,double PerRank,double Cooldown,float Range,float Radius,DamageType DamageType,float ProjectileSpeed,string SkillId);
 public record TalentBonus(string Source,string Scope,string Target,int Levels);
 public sealed class TalentConfiguration
 {
@@ -23,13 +23,17 @@ public sealed class TalentConfiguration
         if(c.Rule("talent_leap_ticks")<1||c.Rule("talent_windup_ticks")<1)throw new InvalidDataException("技能前摇必须大于0");
         if(c.Rule("active_skill_max_slots") is <1 or >5||c.Rule("active_skill_initial_slots")>c.Rule("active_skill_max_slots"))throw new InvalidDataException("主动槽位须在0～5内");
         if(c.Rule("world_follow_spacing_milli") is <1 or >1000)throw new InvalidDataException("世界跟随间距无效");
-        foreach(string key in new[]{"ranged_retreat_distance_milli","ranged_retreat_cooldown_milli","targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_front_depth_milli","combat_entry_back_depth_milli","combat_entry_spread_milli","dungeon_queue_spacing_milli"})
+        foreach(string key in new[]{"ranged_retreat_distance_milli","ranged_retreat_cooldown_milli","targeting_local_range_milli","targeting_reevaluate_milli","targeting_budget","combat_entry_delay_milli","combat_entry_melee_depth_milli","combat_entry_ranged_depth_milli","combat_entry_melee_spread_milli","combat_entry_ranged_spread_milli","dungeon_queue_spacing_milli"})
             if(!c.Rules.TryGetValue(key,out int value)||value<1||value>100000)throw new InvalidDataException("索敌规则缺失或越界："+key);
-        string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed".Split(',');
+        if(c.Rule("combat_entry_melee_depth_milli")<=c.Rule("combat_entry_ranged_depth_milli")||c.Rule("combat_entry_melee_spread_milli")<=c.Rule("combat_entry_ranged_spread_milli"))throw new InvalidDataException("近战入场深入距离及横向间距必须大于远程/法系");
+        string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed,skill_id".Split(',');
         foreach(var r in CsvTable.Load("skill/talent.csv",File.ReadAllText(Path.Combine(root,"skill/talent.csv")),columns).Rows)
         {
-            var n=new TalentNode(r.Id,r.Required("hero"),r.Integer("tree"),r.Required("tree_name"),r.Integer("row"),r.Integer("col"),r.Required("name"),r.Required("description"),r.Integer("max_rank"),r.Integer("bonus_allowed") is 1,r.Required("kind"),r["prerequisite"],r.Integer("required_rank"),r.Integer("required_points"),r.Required("effect"),r.Number("value"),r.Number("per_rank"),r.Number("cooldown"),(float)r.Number("range"),(float)r.Number("radius"),r.Enum<DamageType>("damage_type"),(float)r.Number("projectile_speed"));
-            if(r.Integer("bonus_allowed") is not (0 or 1)||!config.Heroes.Any(h=>h.Id==n.Hero)||n.Tree is <0 or >2||n.Col is <0 or >2||n.Row is <0 or >100||n.MaxRank is <1 or >100||n.RequiredPoints< -1||n.RequiredRank<0||n.Value<0||n.PerRank<0||n.Cooldown<0||n.Range<0||n.Radius<0||n.Kind is not ("active" or "passive")||n.Kind=="active"&&(n.Cooldown<0.05||n.Cooldown>5000||n.Range<=0)||n.Kind=="passive"&&n.Effect is not ("atk" or "armor" or "crit_rate" or "engagement_capacity")||!float.IsFinite(n.Range)||!float.IsFinite(n.Radius)||!float.IsFinite(n.ProjectileSpeed)||n.ProjectileSpeed<0||n.Effect=="shot"&&n.ProjectileSpeed<=0||n.Kind=="active"&&n.Effect is not ("bash" or "whirlwind" or "leap" or "shout" or "weaken" or "shot" or "nova"))throw new InvalidDataException("天赋节点无效："+n.Id);
+            var n=new TalentNode(r.Id,r.Required("hero"),r.Integer("tree"),r.Required("tree_name"),r.Integer("row"),r.Integer("col"),r.Required("name"),r.Required("description"),r.Integer("max_rank"),r.Integer("bonus_allowed") is 1,r.Required("kind"),r["prerequisite"],r.Integer("required_rank"),r.Integer("required_points"),r.Required("effect"),r.Number("value"),r.Number("per_rank"),r.Number("cooldown"),(float)r.Number("range"),(float)r.Number("radius"),r.Enum<DamageType>("damage_type"),(float)r.Number("projectile_speed"),r["skill_id"]);
+            if(r.Integer("bonus_allowed") is not (0 or 1)||!config.Heroes.Any(h=>h.Id==n.Hero)||n.Tree is <0 or >2||n.Col is <0 or >2||n.Row is <0 or >100||n.MaxRank is <1 or >100||n.RequiredPoints< -1||n.RequiredRank<0||n.Value<0||n.PerRank<0||n.Cooldown<0||n.Range<0||n.Radius<0||n.Kind is not ("active" or "passive")||n.Kind=="active"&&(n.Cooldown<0.05||n.Cooldown>5000||n.Range<=0)||n.Kind=="passive"&&n.Effect is not ("atk" or "armor" or "crit_rate" or "engagement_capacity")||!float.IsFinite(n.Range)||!float.IsFinite(n.Radius)||!float.IsFinite(n.ProjectileSpeed)||n.ProjectileSpeed<0||n.Effect=="shot"&&n.ProjectileSpeed<=0||n.Kind=="active"&&n.Effect is not ("bash" or "whirlwind" or "leap" or "shout" or "weaken" or "shot" or "nova" or "data"))throw new InvalidDataException("天赋节点无效："+n.Id);
+            // 绑定节点只能引用同名主动定义，冷却/距离必须与 CSV 一致，避免界面与战斗读取两份不同数值。
+            if(n.SkillId!=""&&(n.Kind!="active"||n.SkillId!=n.Id||!config.Skills.Skills.TryGetValue(n.SkillId,out var bound)||bound.Kind!="ActiveSkill"||bound.Cooldown!=checked((int)Math.Ceiling(n.Cooldown*20))||Math.Abs(bound.Range-n.Range)>.0001f))throw new InvalidDataException("天赋绑定技能无效："+n.Id);
+            if(n.Effect=="data"&&n.SkillId=="")throw new InvalidDataException("数据驱动主动缺少skill_id："+n.Id);
             c.Nodes.Add(n.Id,n);
         }
         foreach(var group in c.Nodes.Values.GroupBy(n=>(n.Hero,n.Tree)))
@@ -41,13 +45,14 @@ public sealed class TalentConfiguration
         }
         foreach(var row in CsvTable.Load("skill/hero_starting_skill.csv",File.ReadAllText(Path.Combine(root,"skill/hero_starting_skill.csv")),"id","skill_id").Rows)
         {
-            if(!c.Nodes.TryGetValue(row.Required("skill_id"),out var n)||n.Hero!=row.Id||n.Kind!="active"||n.Effect is not ("bash" or "leap" or "whirlwind" or "shot" or "nova")||n.Row!=0||n.Prerequisite!=""||c.Required(n)!=0)throw new InvalidDataException("初始技能必须为本职业首排无前置主动："+row.Id);
+            if(!c.Nodes.TryGetValue(row.Required("skill_id"),out var n)||n.Hero!=row.Id||n.Kind!="active"||(n.SkillId==""&&n.Effect is not ("bash" or "leap" or "whirlwind" or "shot" or "nova"))||n.Row!=0||n.Prerequisite!=""||c.Required(n)!=0)throw new InvalidDataException("初始技能必须为本职业首排无前置主动："+row.Id);
             c.StartingSkills.Add(row.Id,n.Id);
         }
         if(!c.StartingSkills.Keys.ToHashSet().SetEquals(config.Heroes.Select(h=>h.Id)))throw new InvalidDataException("每个职业须恰有一个初始技能");
         foreach(var n in c.Nodes.Values)
         {
-            if(n.Kind!="active")continue;
+            // 绑定节点直接使用 skill.csv 的定义，不再生成旧 hit_player/投射物模板。
+            if(n.Kind!="active"||n.SkillId!="")continue;
             if(n.Effect=="shot")
             {
                 config.Skills.Effects.Add(n.Id+"_impact",new(n.Id+"_impact","Damage",n.DamageType,1,"","","",0,0,Array.Empty<string>(),0));

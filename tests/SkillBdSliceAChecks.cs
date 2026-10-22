@@ -9,7 +9,7 @@ public static class SkillBdSliceAChecks
     public static void Run(string root)
     {
         void Need(bool value,string why){if(!value)throw new Exception("BD_SLICE_A: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         string fixture=Path.Combine(root,"tests/fixtures/skill_bd_slice_a/skill_cases.csv");
         var cases=CsvTable.Load(fixture,File.ReadAllText(fixture),"id","prototype_id","projectile_count","spread_degrees");
         foreach(var row in cases.Rows)
@@ -63,7 +63,7 @@ public static class SkillBdSliceAChecks
             }
             Need(g.CaptureProgress().SkillState.Flights.Count==0,"QA弹道泄露正式战斗检查点");
         }
-        Need(!Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Skills.Keys.Any(id=>id.StartsWith("QA_")),"QA技能进入正式配置");
+        Need(!LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config")).Skills.Skills.Keys.Any(id=>id.StartsWith("QA_")),"QA技能进入正式配置");
         string qa=Path.Combine(root,"artifacts/qa/bd-slice-a-config-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(Path.Combine(qa,"skill"));
         foreach(string source in Directory.EnumerateFiles(Path.Combine(root,"Idle-CRPG/config/skill"),"*.csv"))File.Copy(source,Path.Combine(qa,"skill",Path.GetFileName(source)));
         string effects=Path.Combine(qa,"skill/effect.csv"),baseline=File.ReadAllText(effects);

@@ -98,6 +98,7 @@ public partial class Main
             column.AddChild(UiLabel($"{nodes.FirstOrDefault()?.TreeName??$"天赋系 {tree+1}"} · 已投入 {session.TreeInvestment(h,tree)}",16));
             var scroll=new DragScrollContainer {CustomMinimumSize=new Vector2(322,425),HorizontalScrollMode=ScrollContainer.ScrollMode.Disabled};column.AddChild(scroll);
             var canvas=HudPanel(scroll,Vector2.Zero,new Vector2(306,Math.Max(415,(nodes.Select(n=>n.Row).DefaultIfEmpty(0).Max()+1)*112)));canvas.CustomMinimumSize=canvas.Size;canvas.MouseFilter=Control.MouseFilterEnum.Pass;
+            if(nodes.Length==0)HudText(canvas,"暂无技能",new Vector2(20,24),16);
             foreach(var n in nodes.Where(n=>n.Prerequisite!=""))
             {
                 var parent=config.Talents.Nodes[n.Prerequisite];var line=new Line2D {Width=2,DefaultColor=new Color("716342"),Points=new[]{new Vector2(51+parent.Col*100,75+parent.Row*112),new Vector2(51+n.Col*100,20+n.Row*112)}};canvas.AddChild(line);

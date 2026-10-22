@@ -224,6 +224,7 @@ public sealed partial class WorldCampaign
     }
     private void EnterVillage(GameSession game)
     {
+        game.ClearTownSummons();
         game.MarkChanged();
         Stage=CampaignStage.Village;TradeElapsed=0;route.Clear();villagePaths.Clear();
         for(int i=0;i<game.Heroes.Count;i++)game.Heroes[i].Position=new Vector2(0,i*.2f);

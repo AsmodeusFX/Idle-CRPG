@@ -11,6 +11,8 @@ public sealed partial class GameSession
     private Actor? ChooseSkillTarget(Actor actor,SkillDefinition skill)
     {
         if(skill.Condition=="nearby_melee"&&!Enemies(CombatId(actor)).Any(e=>!e.Ranged&&Vector2.Distance(e.Position,actor.Position)<=skill.Range))return null;
+        // 尸体技能只在本房存在未消费尸体且进入施放距离时有目标；无尸体时跳过且不进入冷却。
+        if(skill.TargetPolicy=="corpse")return ChooseCorpseTarget(actor,skill.Range);
         if(skill.TargetPolicy=="self")return actor;
         if(skill.TargetPolicy=="ally_lowest_hp")return Allies(CombatId(actor)).Where(a=>a.Hp<CombatMaximumHp(a)&&Vector2.Distance(a.Position,actor.Position)<=skill.Range).OrderBy(a=>a.Hp/CombatMaximumHp(a)).ThenBy(CombatId).FirstOrDefault();
         if(skill.Condition=="missing_buff")
@@ -28,10 +30,11 @@ public sealed partial class GameSession
         return (buff.Target=="ally"?Allies(work.Owner):Enemies(work.Owner)).Where(a=>Vector2.Distance(a.Position,center.Position)<=effect.Extent).ToArray();
     }
     /// <summary>显式治疗仅恢复存活合法单位至有效上限，不复活、不触发第二条伤害或奖励路径。</summary>
-    private void HealTarget(Actor? target,double fraction)
+    private void HealTarget(Actor? target,double fraction,string skill="")
     {
         if(target is not {Alive:true}||!InCombatRoom(target))return;
-        float maximum=CombatMaximumHp(target);target.Hp=(float)Math.Min(maximum,target.Hp+maximum*fraction);
+        float maximum=CombatMaximumHp(target);float before=target.Hp;target.Hp=(float)Math.Min(maximum,target.Hp+maximum*fraction);
+        if(target.Hp>before){effectiveEffectVersion++;PushVisual(CombatVisualKind.Heal,skill,"",CombatId(target),CombatId(target),target.Position,target.Position,target.Hp-before,0);}
     }
     private bool IsAuraSkill(string id)=>SkillConfig.Skills.TryGetValue(id,out var skill)&&skill.Effects.Any(e=>SkillConfig.Effects[e].Kind=="MaintainAura");
     /// <summary>激活状态随玩家跨房保留；卸槽和死亡立刻撤销，范围内贡献只存在于现有Buff列表。</summary>

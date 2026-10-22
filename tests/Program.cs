@@ -6,11 +6,15 @@ using IdleCrpg.Core;
 
 static void Check(bool value,string message) {if(!value)throw new Exception(message);}
 var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"));
+if(args.Contains("--proc-icd-checks")){ProcIcdChecks.Run(root);return;}
 if(args.Contains("--formula-only")){DamageFormulaChecks.Run();return;}
 if(args.Contains("--formula-checks")){DamageFormulaChecks.Run();DamageFormulaChecks.RunSession(root);return;}
 if(args.Contains("--skill-bd-a-checks")){SkillBdSliceAChecks.Run(root);return;}
 if(args.Contains("--skill-bd-support-checks")){SkillBdSupportChecks.Run(root);return;}
 if(args.Contains("--skill-bd-summon-checks")){SkillBdSummonChecks.Run(root);return;}
+if(args.Contains("--skill-bd-chain-checks")){SkillBdChainChecks.Run(root);return;}
+if(args.Contains("--skill-bd-corpse-checks")){SkillBdCorpseChecks.Run(root);return;}
+if(args.Contains("--skill-bd-proc-checks")){SkillBdProcChecks.Run(root);return;}
 if(args.Contains("--config-benchmark"))
 {
     for(int i=0;i<3;i++){var clock=System.Diagnostics.Stopwatch.StartNew();var loaded=Config.Load(Path.Combine(root,"Idle-CRPG/config"));Console.WriteLine($"CONFIG_LOAD_MS {i}: {clock.Elapsed.TotalMilliseconds:F1}; POI={loaded.ChapterMaps.Sum(m=>m.Dungeons.Count)}");}
@@ -18,8 +22,11 @@ if(args.Contains("--config-benchmark"))
 }
 if(args.Contains("--class-follow-checks")){ClassFollowingChecks.Run(root);return;}
 if(args.Contains("--talent-checks")){TalentChecks.Run(root);return;}
+if(args.Contains("--skill-migration-checks")){SkillMigrationChecks.Run(root);return;}
 if(args.Contains("--targeting-checks")){CombatTargetingChecks.Run(root);return;}
-var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+SkillPreviewChecks.Run(root);
+ProcIcdChecks.Run(root);
+var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
 string Shape(int seed)=>string.Join(";",Dungeon.Generate(seed,c).SelectMany(f=>f.Rooms.Select(r=>$"{r.Id}:{r.X},{r.Y}:{string.Join(',',r.Neighbors)}")));
 Check(Shape(42)==Shape(42),"种子不可重现");
 Check(Shape(42)!=Shape(43),"种子没有差异");
@@ -177,7 +184,7 @@ var allCleared=new WorldProgress();foreach(var d in c.Dungeons)allCleared.Cleare
 Check(ExpeditionPlanner.Select(c,allCleared,1,true).Farming,"世界完成后挂机停止");
 
 // 使用小地牢、高战力完整验证世界→地牢→返村→NPC读条→售卖→再出发及城堡解锁。
-var worldConfig=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));worldConfig.FloorsMin=worldConfig.FloorsMax=1;worldConfig.RoomsMin=worldConfig.RoomsMax=3;
+var worldConfig=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));worldConfig.FloorsMin=worldConfig.FloorsMax=1;worldConfig.RoomsMin=worldConfig.RoomsMax=3;
 var campaign=GameSession.CreateWorld(worldConfig,25,new[]{"warrior","ranger","mage"});
 var w=campaign.World!;
 Check(w.CurrentRegion==1&&w.Stage==CampaignStage.TravelDungeon&&w.Target.Dungeon.Id=="d1_1"&&campaign.Floors.Count==0,"未从初始村庄最低等级地牢出发");
@@ -255,7 +262,7 @@ for(int i=0;i<10&&battleWipe.World.Stage==CampaignStage.Dungeon;i++)battleWipe.T
 Check(battleWipe.World.Stage==CampaignStage.Village&&battleWipe.Retries==1&&battleWipe.Heroes.All(h=>h.Alive&&h.Hp==h.MaxHp),"战斗击杀触发全灭后未立即返村满血复活");
 void RejectConfig(Action<Config> mutate,string message)
 {
-    var invalid=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));mutate(invalid);bool failed=false;
+    var invalid=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));mutate(invalid);bool failed=false;
     try{invalid.ValidateWorld();}catch(InvalidDataException){failed=true;}Check(failed,message);
 }
 RejectConfig(config=>config.Villages.RemoveAt(0),"缺村庄没有拒绝");
@@ -274,6 +281,9 @@ DamageFormulaChecks.Run();DamageFormulaChecks.RunSession(root);CombatSkillChecks
 SkillBdSliceAChecks.Run(root);
 SkillBdSupportChecks.Run(root);
 SkillBdSummonChecks.Run(root);
+SkillBdChainChecks.Run(root);
+SkillBdCorpseChecks.Run(root);
+SkillBdProcChecks.Run(root);
 AttributeLevelChecks.Run(root);
 ChapterChecks.Run(root);
 TerrainGateChecks.Run(root);
@@ -281,6 +291,7 @@ Act1Checks.Run(root);
 CampaignPackageChecks.Run(root);
 TownLayoutChecks.Run(root);
 TalentChecks.Run(root);
+SkillMigrationChecks.Run(root);
 
 ClassFollowingChecks.Run(root);
 HeroExperienceChecks.Run(root);

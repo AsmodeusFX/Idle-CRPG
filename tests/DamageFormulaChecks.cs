@@ -50,7 +50,7 @@ public static class DamageFormulaChecks
     public static void RunSession(string root)
     {
         void Need(bool ok,string why){if(!ok)throw new Exception("DAMAGE_SESSION: "+why);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         GameSession Battle()
         {
             var game=new GameSession(c,785,new[]{"warrior"});

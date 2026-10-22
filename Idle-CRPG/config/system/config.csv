@@ -14,9 +14,10 @@ targeting_local_range_milli,4000
 targeting_reevaluate_milli,250
 targeting_budget,4
 combat_entry_delay_milli,800
-combat_entry_front_depth_milli,2800
-combat_entry_back_depth_milli,1800
-combat_entry_spread_milli,850
+combat_entry_melee_depth_milli,2800
+combat_entry_ranged_depth_milli,900
+combat_entry_melee_spread_milli,1100
+combat_entry_ranged_spread_milli,450
 dungeon_queue_spacing_milli,650
 ranged_retreat_distance_milli,1200
 ranged_retreat_cooldown_milli,4000

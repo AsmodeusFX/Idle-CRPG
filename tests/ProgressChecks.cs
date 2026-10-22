@@ -10,7 +10,7 @@ public static class ProgressChecks
     public static void Run(string root)
     {
         void Check(bool ok,string message){if(!ok)throw new Exception("PROGRESS_CHECK: "+message);}
-        var c=Config.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
+        var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         var g=new GameSession(c,42,new[]{"warrior","ranger","mage"});
         foreach(var h in g.Heroes){h.Hp=h.MaxHp=100000;h.Attack=100000;h.Range=100;}
         for(int i=0;i<10000;i++)

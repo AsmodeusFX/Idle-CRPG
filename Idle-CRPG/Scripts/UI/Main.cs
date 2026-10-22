@@ -143,13 +143,16 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--capture-stars")){captureView="stars";SelectStarView(3);BuyStarNode("s_root");BuyStarNode("s_hp");BuyStarNode("s_atk");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-star-editor")){captureView="star-editor";viewMode=3;ToggleStarEditor();EditorClickNode("s_root");}
         if(OS.GetCmdlineUserArgs().Contains("--capture-gm")){captureView="gm";ToggleGm();}
-        if(OS.GetCmdlineUserArgs().Contains("--capture-formation")){captureView="formation";SelectStarView(4);OpenFormation(0);}if(OS.GetCmdlineUserArgs().Contains("--capture-heroes")){captureView="heroes";SelectStarView(4);}if(smoke){RunClassTalentSmoke();RunInteractionSmoke();RunTalentSmoke();RunHeroSmoke();RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunAct1UiSmoke();RunGmSmoke();RunStarSmoke();}
+        if(OS.GetCmdlineUserArgs().Contains("--capture-formation")){captureView="formation";SelectStarView(4);OpenFormation(0);}if(OS.GetCmdlineUserArgs().Contains("--capture-heroes")){captureView="heroes";SelectStarView(4);}if(smoke){RunClassTalentSmoke();RunInteractionSmoke();RunTalentSmoke();RunHeroSmoke();RunClientSmoke();RunSceneSmoke();RunHudSmoke();RunChapterUiSmoke();RunAct1UiSmoke();RunGmSmoke();RunStarSmoke();RunSkillPreviewSmoke();}
+        if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-skill-preview")){OpenSkillPreview();for(int i=0;i<35;i++)StepSkillPreview();previewPaused=true;captureView="skill-preview";}
         if(capture&&OS.GetCmdlineUserArgs().Any(a=>a is "--capture-talents" or "--capture-talent-editor" or "--capture-talent-hud" or "--capture-talent-drag"))PrepareTalentCapture(OS.GetCmdlineUserArgs().Contains("--capture-talent-editor"),OS.GetCmdlineUserArgs().Contains("--capture-talent-hud"));
         if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-heroes"))
         {var heroArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-hero="));if(heroArg!=null)captureView="heroes-"+heroArg.Substring("--qa-hero=".Length);}
         var targetingCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-targeting="));
         if(capture&&targetingCapture!=null)PrepareTargetingCapture(targetingCapture.Substring("--capture-targeting=".Length));
         if(capture&&OS.GetCmdlineUserArgs().Contains("--capture-bd-a"))PrepareSkillBdCapture();
+        string? bdSkillCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-bd-skill="));
+        if(capture&&bdSkillCapture!=null)PrepareSkillBdSkillCapture(bdSkillCapture.Substring("--capture-bd-skill=".Length));
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
@@ -171,7 +174,8 @@ public partial class Main : Node2D
         long profileStart=System.Diagnostics.Stopwatch.GetTimestamp();
         if(quitRequested)return;
         TickClient(delta);
-        if(session!=null && !paused && !settingsRoot.Visible && !resetConfirmation.Visible && !gmRoot.Visible && !_editingStars)
+        if(PreviewOpen)TickSkillPreview(delta);
+        else if(session!=null && !paused && !settingsRoot.Visible && !resetConfirmation.Visible && !gmRoot.Visible && !_editingStars)
         {
             AdvanceSimulation(delta);
             motionAlpha=(float)(accumulator/.05);
@@ -182,6 +186,7 @@ public partial class Main : Node2D
         SyncCampaignConfig();TrackSounds();AutoSave(delta);
         TickStarPanels();
         if(session!=null)motion.UpdateCombatVisuals(session,delta);
+        UpdateCombatFx();
         UpdateCamera(delta);UpdateTownBackdrop();sceneCanvas.QueueRedraw();
         if(performanceRun){processTimes.Add(Milliseconds(profileStart));frameTimes.Add(delta*1000);}
         if(capture && ++smokeFrames==10) Capture();
@@ -212,6 +217,7 @@ public partial class Main : Node2D
 
     private void Refresh()
     {
+        if(PreviewOpen)return;
         if(session!=null&&!ReferenceEquals(config,session.Config)){SyncCampaignConfig();return;}
         RefreshHud();RefreshCastleInteractions();RefreshFormationPlan();
         if(viewMode==1)RefreshWorldPage();
@@ -283,7 +289,7 @@ public partial class Main : Node2D
                 var p=Project(loot.Position);
                 DrawCircle(p,6,new Color("f0ca79"));DrawCircle(p,3,new Color("8c6335"));
             }
-            if(r.Id==0||r.Boss&&(config.Town==null||session.FloorIndex<session.Floors.Count-1))
+            if(!PreviewOpen&&(r.Id==0||r.Boss&&(config.Town==null||session.FloorIndex<session.Floors.Count-1)))
             {
                 var p=Project(f.StairPosition(r));
                 var tint=r.Id==0?new Color("81cbd5"):new Color("e4bf7c");
@@ -295,9 +301,11 @@ public partial class Main : Node2D
                 DrawString(font,p+new Vector2(-25,-44),text,HorizontalAlignment.Left,-1,12,tint);
             }
         }
-        foreach(var a in visible.SelectMany(r=>r.Monsters).Concat(session.Heroes).Where(a=>a.Alive).OrderBy(a=>a.Position.X+a.Position.Y))
+        // 召唤物是独立Actor，按友方颜色绘制；不并入Heroes或怪物列表，也不改变锁定与伤害权威。
+        foreach(var a in visible.SelectMany(r=>r.Monsters).Concat(session.Heroes).Concat(session.Summons).Where(a=>a.Alive).OrderBy(a=>a.Position.X+a.Position.Y))
         {
-            int index=session.Heroes.IndexOf(a); var color=index>=0?heroColors[index]:a.Boss?new Color("ffc56b"):new Color("dc6b70");
+            bool summon=session.Summons.Contains(a);
+            int index=session.Heroes.IndexOf(a); var color=index>=0?heroColors[index]:summon?new Color("9fc7b4"):a.Boss?new Color("ffc56b"):new Color("dc6b70");
             var visualOffset=motion.CombatVisualOffset(a);
             DrawFighter(Project(VisualPosition(a))+new Vector2(visualOffset.X,visualOffset.Y)-new Vector2(0,index>=0?session.TalentLeapHeight(a):0),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
             if(index>=0&&session.CombatEntryRemaining<=0&&a.Timer<=a.Cooldown+.001f&&a.Timer>a.Cooldown-.14f)
@@ -311,6 +319,7 @@ public partial class Main : Node2D
             var color=flight.Type switch {DamageType.Fire=>new Color("ff9b48"),DamageType.Cold=>new Color("83daff"),DamageType.Lightning=>new Color("fff08d"),DamageType.Poison=>new Color("b5e47d"),_=>new Color("e2dcc9")};
             var point=Project(V.Lerp(flight.Previous,flight.Position,motionAlpha));DrawLine(Project(flight.Previous),point,color,2,true);DrawCircle(point,4,color);
         }
+        DrawCombatFx();
         foreach(var h in session.Heroes.Where(h=>!h.Alive))
         {
             var p=Project(VisualPosition(h));

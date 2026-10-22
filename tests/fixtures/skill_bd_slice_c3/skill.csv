@@ -1,0 +1,4 @@
+﻿id,role,kind,cooldown_ticks,windup_ticks,recovery_ticks,coefficient,range,effect_ids,name,cast_sound_id,hit_sound_id,target_policy,cast_condition
+QA_PROC_CAST_SKILL,qa,ActiveSkill,60,0,0,1,6,QA_SELF_PROC_CAST;QA_C3_CHAIN_EFFECT,QA_PROC_CAST_SKILL,,,enemy,
+QA_PROC_TARGET_SKILL,qa,ActiveSkill,60,0,0,1,6,QA_SELF_PROC_TARGET;QA_HIT_DAMAGE_A;QA_HIT_DAMAGE_B,QA_PROC_TARGET_SKILL,,,enemy,
+QA_WHIRLWIND_WINDOW,qa,ActiveSkill,300,0,0,1,4,QA_SELF_WHIRLWIND,QA_WHIRLWIND_WINDOW,,,self,
