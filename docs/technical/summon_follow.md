@@ -37,7 +37,7 @@
 
 | id | 原型 value | 含义 |
 |---|---|---|
-| summon_follow_distance_milli | 3000 | 千分之一世界单位；正常跟随距离，同房内该距离内不动 |
+| summon_follow_distance_milli | 2000 | 千分之一世界单位；正常跟随距离，同房内该距离内不动 |
 | summon_catchup_speed_pct | 100 | 非战斗追赶速度相对主人当前行走速度的百分比，必须≥100 |
 | summon_blink_distance_milli | 8000 | 千分之一世界单位；超过此距离才可能闪现，必须大于跟随距离 |
 | summon_blink_delay_milli | 500 | 毫秒；持续脱队达到该时长才闪现，任一条件中断即清零 |

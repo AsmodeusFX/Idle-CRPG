@@ -104,7 +104,7 @@ public static class SkillBdSummonChecks
         trailRoom.ContentCleared=true;trailRoom.EventUsed=true;trailRoom.Loot.Clear();
         trailRoom.HalfWidth=trailRoom.HalfHeight=20;
         var follower=Live(trail)[0];var trailOwner=trail.Heroes[0];
-        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(2,0);
+        trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(1.5f,0);
         var parked=follower.Position;Tick(trail);
         Need(Vector2.Distance(follower.Position,parked)<.0001f,"跟随距离内召唤物仍在移动");
         trailOwner.Position=trailRoom.Center;follower.Position=trailOwner.Position+new Vector2(6,0);
