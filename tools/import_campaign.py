@@ -7,7 +7,8 @@ import argparse, csv, io, json, hashlib, shutil, random
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=ROOT/'docs/temp'
 TARGET=ROOT/'Idle-CRPG/config'
-ARCHIVE=ROOT/'docs/references/campaign/2026-10-19'
+# 转换产物只写忽略目录；docs/references 已于 2026-10-23 删除，不能由本脚本重建。
+ARCHIVE=ROOT/'artifacts/campaign-import'
 DIFFS=['NORMAL','NIGHTMARE','HELL']
 
 def readcsv(path):
