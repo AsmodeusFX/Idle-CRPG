@@ -4,6 +4,8 @@
 
 - [P2-2-M1 全系统配置与内容资产普查](data/2026-10-24_00-03_data_p2_2_m1_inventory.md)：`P2_2_M1_PASS`。391 份配置资产（ACTIVE 142/LEGACY 9/TEST_ONLY 41/PREVIEW 2/未引用 1/残留 1/import 195）、31 个系统、4278 条内容 ID（悬挂 0）、7 项扩容缺口、14 项问题；机器字典归档在 `docs/data/2026-10-24_00-03_data_p2_2_m1_inventory/{system_inventory,config_manifest,content_registry,content_expansion_gaps,issues_and_decisions}.csv`（与报告同名同夹），只读复跑 `--inventory-audit`。
 
+- [P2-2-M2 参数、公式与运行消费链路审计](data/2026-10-24_00-42_data_p2_2_m2_parameter_runtime_audit.md)：`P2_2_M2_PASS`。142/142 份 ACTIVE CSV、962 个列级参数台账（0 UNVERIFIED）、23 条公式、36 属性 Key（18 已投放/18 零投放）+ 10 类 Effect、23 条运行消费链、15 条 P2-3 扩容接口；纠正 M1 的天赋绑定数（16 绑定/23 旧路径）与“未投放/未消费”混淆；发现 `floor_plan` 跨章 schema 漂移（40/37/38/41/42 列，12 列无消费者）。机器表在同名文件夹内，复跑 `--param-audit`。
+
 - [核心体验模拟与数值基线](data/2026-10-23_core_experience_sim.md)：`--economy-sim` 实测 30/120/240 游戏分钟（纯挂机 vs 含成长操作）、成长时间轴、收支与效率曲线、异常与断点；统计结果保留在该单份报告中。
 
 - [核心体验闭环就绪度审计](data/2026-10-23_core_loop_readiness_audit.md)：五系统完成度矩阵、经验/金币/天赋/星图/难度链路与断点、当前正式数值、缺失与风险清单；只读统计，未改配置与数值。
