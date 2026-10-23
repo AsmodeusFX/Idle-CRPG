@@ -1,6 +1,6 @@
 # 第一章：地图、攻略与失败回刷
 
-2026-10-18实施版本。以用户确认覆盖AI参考文档；原始资料及哈希见 [来源归档](../references/act1/2026-10-18/manifest.md)。字段见 [第一章配置](../technical/act1_config.md)，验证见 [验收记录](../reviews/2026-10-18/act1_implementation_audit.md)。
+2026-10-18实施版本。以用户确认覆盖AI参考文档；原始资料及哈希见 [来源归档](../references/act1/2026-10-18/manifest.md)。字段见 [第一章配置](../technical/act1_config.md)，验证见 [验收记录](../reviews/2026-10-18_act1_combat_chapters.md#一第一章地图与自动攻略)。
 
 ## 地图与主线
 

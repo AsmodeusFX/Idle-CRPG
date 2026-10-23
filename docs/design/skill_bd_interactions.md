@@ -1,8 +1,8 @@
 # 技能 BD 交互规则与开发边界
 
-2026-10-22。来源为 `docs/temp/D2_Skill_BD_Interaction_V1_0_HandOff/`；源码审计见[能力图谱](../reviews/2026-10-22_skill_bd/01_capability_audit.md)。本次用户裁决：同意修改伤害公式、保留项目已有成长和流程、新技能另做迁移方案且旧数据归档为测试数据、同意先完成文档合并。实现计划见[技术方案](../technical/skill_bd_plan.md)。
+2026-10-22。来源为 `docs/temp/D2_Skill_BD_Interaction_V1_0_HandOff/`；源码审计见[G0审计结论](../reviews/2026-10-22_skill_bd.md#一g0-阶段结论)。本次用户裁决：同意修改伤害公式、保留项目已有成长和流程、新技能另做迁移方案且旧数据归档为测试数据、同意先完成文档合并。实现计划见[技术方案](../technical/skill_bd_plan.md)。
 
-本文确认产品规则与开发方向，不表示17个候选技能已投放。用户后续批准执行及原型参数后，[现行公式](combat_formula.md)已切换为K(L)=L+4的物理护甲、−100%～75%元素抗性、无最低1点保底和池内加算。A阶段仅完成隔离Core QA；多重箭按用户选择允许同次施法多箭命中同一目标。原始建议保留于[提案](combat_formula_vnext_proposal.md)，实际执行与验证见[记录](../reviews/2026-10-22_skill_bd/05_execution.md)。
+本文确认产品规则与开发方向，不表示17个候选技能已投放。用户后续批准执行及原型参数后，[现行公式](combat_formula.md)已切换为K(L)=L+4的物理护甲、−100%～75%元素抗性、无最低1点保底和池内加算。A阶段仅完成隔离Core QA；多重箭按用户选择允许同次施法多箭命中同一目标。原始建议保留于[提案](combat_formula_vnext_proposal.md)，实际执行与验证见[记录](../reviews/2026-10-22_skill_bd.md)。
 
 ## 保留的项目设定
 

@@ -26,7 +26,7 @@ GM菜单"接敌容量 · 实时诊断"每0.2秒更新前排总容量、正常占
 
 2026-10-22技能BD补充：现有警觉、散开、普通锁/容量及[远程退让V0.1](#远程角色受击退让-v01)继续有效。后续嘲讽Forced与可受攻击召唤物接入现有AI/实体/容量，不能新增并行索敌或退让控制器；这些扩展目前尚未实现，详见[规则](skill_bd_interactions.md)和[迁移计划](../technical/skill_bd_plan.md)。
 
-2026-10-22。来源为D2_Combat_Targeting_NoCollision_V1_0，用户批准前置审计全部建议后实施；随后两条用户补充优先于来源原文。来源、裁决及逐项实施状态见[执行记录](../reviews/2026-10-22_combat_targeting/Execution_Record.md)。
+2026-10-22。来源为D2_Combat_Targeting_NoCollision_V1_0，用户批准前置审计全部建议后实施；随后两条用户补充优先于来源原文。来源、裁决及逐项实施状态见[执行记录](../reviews/2026-10-22_combat_targeting.md)。
 
 ## 生效规则
 

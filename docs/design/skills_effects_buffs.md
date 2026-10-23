@@ -2,7 +2,7 @@
 
 2026-10-22技能BD补充：[G01～G06规则](skill_bd_interactions.md)及[新技能迁移计划](../technical/skill_bd_plan.md)已归档。下文15技能与现有职业原型是当前实现及旧回归基线；旧CSV已有TEST_ONLY快照，尚未退出生产引用。正式三系迁移已落地（见 §9）：新增13个主动、1个Ability和7个Buff，旧`barb_bash`/`mage_fireball`/`paladin_smite`改由绑定定义执行但保留原ID；新技能数值均来自隔离QA原型，不是最终平衡。多光环、多诅咒、Proc资格、独立召唤及尸体消费的审计缺口已由B1/B2/C1/C2/C3 Gate补齐，仍按各自投放下限使用。现有唯一伤害、Buff与队列继续复用。
 
-更新及确认：2026-10-18。源为 `E:/Git/Idle-Diablo` 当前代码和 `idle-diablo/config/skill/`，以实际代码和本次用户裁定优先于源文档中的过时说明。来源哈希与差异见 `docs/reviews/2026-10-18/combat_skill_migration.md`。
+更新及确认：2026-10-18。源为 `E:/Git/Idle-Diablo` 当前代码和 `idle-diablo/config/skill/`，以实际代码和本次用户裁定优先于源文档中的过时说明。来源与差异见 `docs/reviews/2026-10-18_act1_combat_chapters.md`。
 
 ## 1. 投放范围
 

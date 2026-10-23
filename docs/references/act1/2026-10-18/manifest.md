@@ -13,4 +13,4 @@
 | KILL_SUMMARY.csv | 校验预算合计，不发奖励 |
 | AUTO_ROUTE_SIMULATION.csv | 自动要塞/支线策略被用户手动授权规则覆盖 |
 
-逐POI对照见 [导入审计](../../../reviews/2026-10-18/act1_v05_poi_import.csv)。运行只读取config，不读取参考归档或temp。
+逐POI对照明细（原 `act1_v05_poi_import.csv`）随 2026-10-23 的归档精炼移除，结论保留在[第一章实施验收](../../../reviews/2026-10-18_act1_combat_chapters.md#一第一章地图与自动攻略)。运行只读取config，不读取参考归档或temp。

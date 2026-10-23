@@ -4,7 +4,7 @@
 
 2026-10-22技能BD迁移边界：当前正式进度仍按进房检查点重开，SkillBattleState只保存本房临时现场，不作为召唤跨房持久化的捷径。独立召唤的持久实体、主人与进房状态已在`SessionSnapshot.Summons`/`RoomEntrySummons`定义，卸槽、死亡、全灭、换队清理由召唤运行时执行。新技能替换旧原型时迁移学习、装配、加成目标、换入等待和初始技能初始化标记，保留合法资源与星图（见文末“正式三系天赋迁移”）。旧配置TEST_ONLY副本不含玩家进度，不被生产加载器引用。详见[迁移计划](skill_bd_plan.md)。
 
-2026-10-22索敌兼容：SkillBattleState.Targeting仅供完整内部快照保存本房Normal/Overflow/Ranged锁、重评时钟、层/房归属和入场警觉现场；正式CaptureProgress全部清空。正式Restore从原进房位置和房间几何重建警觉展开，不续接怪物战斗现场，不改变已获得的成长/资源及拾取边界。缺少该字段的旧档默认空临时态。详细合同及测试见[targeting_config.md](targeting_config.md)和[执行记录](../reviews/2026-10-22_combat_targeting/Execution_Record.md)。
+2026-10-22索敌兼容：SkillBattleState.Targeting仅供完整内部快照保存本房Normal/Overflow/Ranged锁、重评时钟、层/房归属和入场警觉现场；正式CaptureProgress全部清空。正式Restore从原进房位置和房间几何重建警觉展开，不续接怪物战斗现场，不改变已获得的成长/资源及拾取边界。缺少该字段的旧档默认空临时态。详细合同及测试见[targeting_config.md](targeting_config.md)和[执行记录](../reviews/2026-10-22_combat_targeting.md)。
 
 固定城镇与传送补充（2026-10-19）：新增城镇服务阶段、传送表演阶段及中心回城门常驻标记；服务边界保存，已售背包不重卖。旧村庄现场安全迁入新场景，不重置累计进度。局部与世界坐标分别校验，历史地图保留回城门显示状态。见 [配置及迁移合同](../design/towns_portals.md)。
 
