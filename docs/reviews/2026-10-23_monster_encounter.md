@@ -1,6 +1,6 @@
 # 2026-10-23 怪物原型与实验遭遇 V1.0 收尾归档
 
-原 `2026-10-23_monster_encounter/`（收尾 README + 外部方案 source/）精炼为本文件；外部方案原文按归档规范不再随工程保存。阶段记录 `2026-10-22_monster_encounter_e1/e2/e3.md` 保留历史过程，其“视觉 NOT RUN”“召唤收益待审批”已被本文覆盖。
+原 `2026-10-23_monster_encounter/`（收尾 README + 外部方案 source/）精炼为本文件；外部方案原文按归档规范不再随工程保存。原分阶段记录 E1/E2/E3 已并入本文“阶段过程”一节（同一功能模块只保留一个 review 文件），其“视觉 NOT RUN”“召唤收益待审批”已被本文覆盖。
 
 ## 一、范围与结论
 
@@ -47,3 +47,33 @@ M01–M08 原型、T01–T07 与 T04C 隔离检查、T08 Boss 代理、GM 技能
 - 视觉证据为默认两只原型（召唤/支援含陪同）的渲染观察，不是所有种子、极端数量或分辨率穷举；12 怪堵门、Forced 与退让的完整动态仍以 Core 回归为准。
 - 未执行 commit / push / merge。
 - 下一包 P1-5 才负责五章真实怪物与 Boss 的内容/配置/验收。
+
+## 六、阶段过程（E1–E3，原独立记录已并入）
+
+### E1 怪物与实验遭遇（2026-10-22）
+
+授权：首轮审计后用户回复“同意”，仅批准 E1。实现复用 `GameSession`、`Actor`、`CombatTargeting`、`SkillRuntime`；M01–M04 只是测试原型，不新增生产 AI，也不新增第二份伤害/奖励实现。
+
+- 夹具：`tests/fixtures/monster_encounters/archetypes.csv`（四原型属性）、`members.csv`（T01=8 近战、T02=12 快怪、T03=3 重型、T04=4 近战+4 射手）。
+- 检查：`tests/MonsterEncounterChecks.cs` 读取正式 `Config.Load`，真实走门后在内存会话替换测试怪群，保留入场警觉与二维空间规则；`--monster-encounter-checks` 入口已并入默认回归。
+- 验证：四房×单前排/单法师/双人/五人共 16 组合 PASS（数量与分散、警觉期不索敌移动、激活后真实攻击、Normal 容量不超限、远程锁不占容量、二维边界、同 seed 快照一致）；编译 0 警告 0 错误。
+- 当时边界：视觉 NOT RUN、M03 仅有属性差异无新前摇、AOE 未作为 E1 通过项（留 E2）。
+
+### E2 范围法师与后排猎手（2026-10-22）
+
+- `Actor.TargetPolicy` 增 `Ordinary`/`BacklinePriority`，默认 0 保持旧行为，随 `Actor.Copy` 与完整快照保存并校验；正式检查点不升级版本。
+- `CombatTargeting.Select` 在 Forced 之后处理猎手：本房存活候选中选最近远程职责单位，无合法后排则回退最近合法对象；锁类型 `Special` 追加在枚举末尾、不占 Normal 容量；未新增目标管理器。
+- 夹具：`archetypes_e2.csv`（M05/M06 占位）、`members_e2.csv`（T04C=4M01+2M04+2M05、T05=6M01+2M06）；M05 测试技能 `QA_E2_AREA` 复用 `AreaPulse`（半径 4、CD 60 tick、前摇/恢复 3 tick），均为占位值，生产加载器不读。
+- 验证：T04C/T05 数量、警觉期不提前索敌、真实伤害、同 seed 快照一致；Special 锁选后排且不占普通容量、Forced 覆盖与到期恢复、非法后排回退、范围技能不覆盖普通远程锁、Forced 不改写已开始前摇。编译 0 警告 0 错误。
+- 当时边界：视觉 NOT RUN、猎手冲刺未实现。
+
+### E3 召唤与支援（2026-10-23）
+
+用户裁定：敌方仆从正常给经验/金币/掉落/尸体；来源死亡后保留或撤销由配置选择（默认保留）；我方主人死亡统一撤销；上限先用临时值。
+
+- `EnemySummonRuntime` 复用现有 `Summon` Effect、`Actor`、`Room.Monsters`、`SettleDamage`、`RecordCorpse` 与 `Room.Clear`，无第二套伤害/奖励/房间导演。
+- 进房按来源预留有限槽位，槽位从死亡/未激活开始且每槽只激活一次，不从列表删除或复用 ID，因此战斗中 `Monsters.Count` 不变、友方召唤物 ID 不漂移。
+- 仆从激活后是普通敌方 Actor：按来源等级与既有 Spawn 配置快照属性，击杀照常给经验/掉落/唯一尸体；`PersistAfterOwnerDeath=false` 时来源死亡撤销仆从与关联 Buff/锁，撤销不算击杀、不产收益。
+- 临时字段字典（`tests/fixtures/monster_encounters/enemy_summon_e3.csv`）：`id` 对应 Summon 定义、`caster_template`/`child_template` 引用怪物模板、`skill` 引用施法技能、`alive_cap` 每来源存活上限、`total_cap` 每来源本房激活上限、`persist_after_owner_death` 布尔、`status` 标注临时。当时上限 3/9，仅隔离注册，不进生产池。
+- 验证：T06 上限、唯一槽位、真实击杀收益与尸体、死亡补员、总上限停止、快照续行、检查点重开、两种死亡策略 PASS；T07 Buff 来源/刷新/离场/来源死亡后到期 PASS；编译 0 警告 0 错误。
+- 当时边界：T08 真实 Boss NOT RUN、视觉 NOT RUN、M07 复活变体未实现——这些已由本文正文的 T08 代理与 8 类渲染观察补上，但仍不是五章真实 Boss 验收。

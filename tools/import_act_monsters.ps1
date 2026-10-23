@@ -146,6 +146,67 @@ foreach ($actNo in 1..5) {
     Write-ImportMeta $path
 }
 
+# 6) 行为层：archetype 决定索敌策略与特殊技能；只有 M05/M06/M08 需要偏移。
+$behavior=@{
+    'M05'=[pscustomobject]@{Policy='Ordinary';Skill='mob_area_pulse'}
+    'M06'=[pscustomobject]@{Policy='BacklinePriority';Skill=''}
+    'M08'=[pscustomobject]@{Policy='Ordinary';Skill='mob_support'}
+}
+$behRows=@($identities | Where-Object { $behavior.ContainsKey($_.Archetype) } | Sort-Object Id | ForEach-Object {
+    [pscustomobject]@{monster_id=$_.Id;policy=$behavior[$_.Archetype].Policy;skill_id=$behavior[$_.Archetype].Skill}
+})
+Write-Csv (Join-Path $cfg 'monster/act_behaviors.csv') @('monster_id','policy','skill_id') $behRows 'monster/act_behaviors.csv'
+Write-ImportMeta (Join-Path $cfg 'monster/act_behaviors.csv')
+
+# 7) 精英词缀：只用既有 Core 能承载的四类（护甲/移速/护盾机制/猎手策略）。
+$eliteRows=@(
+    @('normal','HARDENED','elite_hardened','',50,20),
+    @('normal','VIGOR','elite_vigor','',50,20),
+    @('nightmare','HARDENED','elite_hardened','',35,30),
+    @('nightmare','VIGOR','elite_vigor','',30,30),
+    @('nightmare','ARCANE_SHIELD','elite_shield','',20,30),
+    @('nightmare','HUNTER','','BacklinePriority',15,30),
+    @('hell','HARDENED','elite_hardened','',25,40),
+    @('hell','VIGOR','elite_vigor','',20,40),
+    @('hell','ARCANE_SHIELD','elite_shield','',20,40),
+    @('hell','HUNTER','','BacklinePriority',35,40)
+) | ForEach-Object { [pscustomobject]@{difficulty=$_[0];affix_id=$_[1];buff_id=$_[2];policy=$_[3];weight=$_[4];chance_pct=$_[5]} }
+Write-Csv (Join-Path $cfg 'monster/elite.csv') @('difficulty','affix_id','buff_id','policy','weight','chance_pct') $eliteRows 'monster/elite.csv'
+Write-ImportMeta (Join-Path $cfg 'monster/elite.csv')
+
+# 8) Boss 技能包与名称：只对源数据里已命名的 Boss 生效，其余保持占位。
+$anchors=Read-Csv (Join-Path $src 'boss_anchors_PROPOSAL.csv')
+$mechanics=Read-Csv (Join-Path $src 'boss_mechanics_PROPOSAL.csv')
+$mechByAnchor=@{};foreach($m in $mechanics){$mechByAnchor[$m.boss_anchor_id]=$m}
+$bossSkill=@();$bossName=@{};$seen=@{}
+foreach($a in $anchors)
+{
+    $name=($a.source_final_boss -replace '\s','')
+    if($name -eq '' -or $name -eq '待定'){continue}
+    $poi=($a.boss_anchor_id -split ':')[1]
+    if($seen.ContainsKey($poi)){continue};$seen[$poi]=$true
+    $semantic=if($mechByAnchor.ContainsKey($a.boss_anchor_id)){$mechByAnchor[$a.boss_anchor_id].basic_target_policy_semantic}else{''}
+    $skill=if($semantic -match 'Ranged'){'mob_area_pulse'}else{'mob_heavy'}
+    $bossSkill += [pscustomobject]@{poi_id=$poi;skill_id=$skill}
+    $bossName[$poi]=$a.source_final_boss
+}
+Write-Csv (Join-Path $cfg 'monster/boss_skill.csv') @('poi_id','skill_id') ($bossSkill | Sort-Object poi_id) 'monster/boss_skill.csv'
+Write-ImportMeta (Join-Path $cfg 'monster/boss_skill.csv')
+
+# 9) poi_profile.boss_name：以源锚点为唯一来源回填，其余列原样保留；已存在的名字不覆盖。
+foreach($actNo in 1..5)
+{
+    $path=Join-Path $cfg "chapters/act$actNo/dungeon/poi_profile.csv"
+    $rows=Read-Csv $path
+    $header=$rows[0].PSObject.Properties.Name
+    $touched=$false
+    foreach($r in $rows)
+    {
+        if($r.boss_name -eq '' -and $bossName.ContainsKey($r.id)){ $r.boss_name=$bossName[$r.id];$touched=$true }
+    }
+    if($touched){ Write-Csv $path $header $rows "chapters/act$actNo/dungeon/poi_profile.csv" }
+}
+
 if ($changed.Count -eq 0) { Write-Output 'ACT_MONSTER_IMPORT: no changes' }
 else {
     Write-Output ("ACT_MONSTER_IMPORT: " + $(if ($Check) { 'changes pending' } else { 'written' }))

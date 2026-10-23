@@ -41,6 +41,36 @@ pwsh tools/import_act_monsters.ps1          # 写入配置
 - 映射：`ACT01:REGION_NN` → `apNN`（五章均为一一对应，已逐章核对）；身份属性取 archetype 的 `template`（rat/guard）与 `ranged`，不引入外部数值。
 - 幂等：先剔除 `^a[1-5]_` 行再整体重写，重复执行结果一致。
 
+## 行为偏移（C2）
+
+| 文件 | 作用 | 说明 |
+|---|---|---|
+| `config/monster/act_behaviors.csv` | `monster_id,policy,skill_id` | 只给 M05（范围）、M06（猎手）、M08（支援）三类身份各一行，共 10 行；其余身份没有行为行 |
+
+- `policy` 只接受 `Ordinary`/`BacklinePriority`，与 `Actor.TargetPolicy` 同一枚举；猎手复用 Special 锁，不占近战容量。
+- `skill_id` 引用正式技能表：`mob_area_pulse`（自身中心 `AreaPulse`）、`mob_support`（友方 `ApplyBuff`）。技能由既有 `RunActiveSkill`/`Commit` 调度，没有新的怪物 AI 分支。
+- 未知身份、未知技能、非法策略在加载期报错；行为只在世界远征生成时套用，单地牢/legacy/GM 预览不受影响。
+
+## 精英词缀（C2）
+
+`config/monster/elite.csv`：`difficulty,affix_id,buff_id,policy,weight,chance_pct`
+
+| 词缀 | 实现 | 可用难度 |
+|---|---|---|
+| HARDENED | `elite_hardened`（armor +6 flat） | normal/nightmare/hell |
+| VIGOR | `elite_vigor`（move_speed +0.6 flat） | normal/nightmare/hell |
+| ARCANE_SHIELD | `elite_shield`（mechanic=shield，吸收 40） | nightmare/hell |
+| HUNTER | 只改 `TargetPolicy=BacklinePriority` | nightmare/hell |
+
+- `chance_pct` 是出现率，同难度必须一致；`weight` 决定同难度内抽哪一个。
+- 每房最多一个精英，Boss 房不参与；目标从存活非 Boss 单位中随机。
+- 词缀只加 Buff 或策略，不新增乘区、不改掉落；持续时间覆盖整场战斗，换房重开时随 Buff 一起清空。
+- 出现率是原型值（20/30/40%），不是最终平衡。
+
+## Boss 技能包（C3）
+
+`config/monster/boss_skill.csv`：`poi_id,skill_id`，按 `boss_mechanics_PROPOSAL` 的远程/近战语义映射到 `mob_area_pulse` 或 `mob_heavy`（单体重击，系数 1.8）。只加给 `Boss=true` 本体；`poi_profile.boss_name` 仍由源数据提供，实际命名与逐 Boss 机制另需内容裁定。
+
 ## 未投放（需单独批准）
 
-精英词缀、Boss 锚点替换与经典 Boss 技能包、四段特殊剧本阶段（三难度契约/封印/三远古/巴尔五波）、三难度投放策略表。这些都需要新的运行时能力或内容裁定，本轮未动；候选数据仍在外部队列里，不在本工程配置中。
+M07 敌方召唤的生产投放（需进房预留槽位与存档现场合同）、其余 6 个精英词缀（元素附伤/死亡爆裂/统御光环，需要新机制）、四段特殊剧本阶段（议会/封印/三远古/巴尔五波）、逐 Boss 专属机制包、三难度数值调平与长时挂机验收。这些都需要新的运行时能力或内容裁定，本轮未动；候选数据仍在外部队列里，不在本工程配置中。

@@ -17,6 +17,15 @@ public static class LegacySkillConfig
         foreach(var file in Directory.GetFiles(source,"*.csv",SearchOption.AllDirectories))
         {var target=Path.Combine(directory,Path.GetRelativePath(source,file));Directory.CreateDirectory(Path.GetDirectoryName(target)!);File.Copy(file,target);}
         if(mergeRetiredBaseline)foreach(var file in Directory.GetFiles(Path.Combine(root,"tests/fixtures/retired_skill_baseline_2026_10_22/skill"),"*.csv"))File.Copy(file,Path.Combine(directory,"skill",Path.GetFileName(file)),true);
+        if(mergeRetiredBaseline)
+        {
+            // 旧技能基线不含2026-10-23新增的怪物技能，章节内容层表在旧组合里没有来源，
+            // 这里显式移除而不是放宽生产校验：正式 Load 仍会拒绝未知技能引用。
+            foreach(var relative in new[]{"monster/act_behaviors.csv","monster/elite.csv","monster/boss_skill.csv"})
+            {var path=Path.Combine(directory,relative);if(File.Exists(path))File.Delete(path);}
+            foreach(var act in new[]{"act1","act2","act3","act4","act5"})
+            {var path=Path.Combine(directory,"chapters",act,"monster/region_pool.csv");if(File.Exists(path))File.Delete(path);}
+        }
         return directory;
     }
     public static Config LoadLegacy(string source)=>Config.LoadLegacy(DirectoryFor(source));

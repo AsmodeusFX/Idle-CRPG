@@ -59,9 +59,9 @@
 
 system/config.csv新增必填整数规则，范围1～100000：ranged_retreat_distance_milli=1200（千分之一世界单位）、ranged_retreat_cooldown_milli=4000（毫秒）。均为原型值。SkillActionState新增RetreatCooldown、RetreatThreat（默认-1）、RetreatMoving、RetreatGoal；内部快照拒绝非法时间、坐标及敌方引用，旧档字段缺省兼容，正式进度不保存。
 
-E2增量：Actor.TargetPolicy=Ordinary（旧档默认）或BacklinePriority；后者仅隔离猎手显式启用，锁类型Special不占Normal容量，Forced优先，候选仍限本房存活单位。完整快照保存并校验枚举，正式检查点重开规则不变。见 ../reviews/2026-10-22_monster_encounter_e2.md。
+E2增量：Actor.TargetPolicy=Ordinary（旧档默认）或BacklinePriority；后者仅隔离猎手显式启用，锁类型Special不占Normal容量，Forced优先，候选仍限本房存活单位。完整快照保存并校验枚举，正式检查点重开规则不变。见 ../reviews/2026-10-23_monster_encounter.md。
 
-E3：敌方动态召唤在入场前预留有限单次槽位，战斗中不改变怪物列表长度，避免友方召唤物CombatId漂移；来源死亡保留/撤销由EnemySummonRule配置。敌方仆从正常奖励与产尸；详见 ../reviews/2026-10-22_monster_encounter_e3.md。
+E3：敌方动态召唤在入场前预留有限单次槽位，战斗中不改变怪物列表长度，避免友方召唤物CombatId漂移；来源死亡保留/撤销由EnemySummonRule配置。敌方仆从正常奖励与产尸；详见 ../reviews/2026-10-23_monster_encounter.md。
 
 ## 2026-10-23 Steam D2增量
 

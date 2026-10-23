@@ -495,10 +495,14 @@ public sealed partial class GameSession
             var m=rule.Create(spec,rng.Next(levelMin,levelMax+1),boss,modifiers);
             m.Position=SpawnPoint();
             Config.ApplyCombatProfile(m);
+            // 内容层：行为偏移（范围/猎手/支援）与 Boss 技能包；不改等级、奖励与房间预算。
+            Config.ApplyMonsterContent(m,boss,ActiveDungeon?.Id??"");
             if(m.Boss&&ActiveDungeon!=null&&Config.PoiProfiles.TryGetValue(ActiveDungeon.Id,out var poi)&&poi.Boss!="")m.Name=poi.Boss+"（原型）";
             room.Monsters.Add(m);
             room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,modifiers));
         }
+        // 精英词缀：只在世界远征投掷，Boss 房不参与，每房最多一个。
+        if(ActiveDungeon!=null&&!room.Boss)TryApplyElite(room.Monsters,rng,DifficultyIndex);
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
         PrepareEnemySummons(Config,room);
         Floor.ActualSpawned+=room.Monsters.Count(m=>m.Alive);

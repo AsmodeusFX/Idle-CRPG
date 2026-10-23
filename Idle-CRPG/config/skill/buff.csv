@@ -8,3 +8,7 @@ pal_fanaticism_buff,121,Strongest,attack_speed_pct:add:0.25,,,,,0,0,ally,pal_fan
 pal_conviction_buff,121,Strongest,fire_resistance:add:-0.15;cold_resistance:add:-0.15;lightning_resistance:add:-0.15;poison_resistance:add:-0.15,,,,,0,0,enemy,pal_conviction_group,1
 nec_amplify_buff,200,RefreshDuration,physical_vulnerable_damage_pct:add:0.3,,,,,0,0,enemy,,
 nec_lower_resist_buff,200,RefreshDuration,fire_resistance:add:-0.2;cold_resistance:add:-0.2;lightning_resistance:add:-0.2;poison_resistance:add:-0.2,,,,,0,0,enemy,,
+mob_support_buff,120,Strongest,attack_speed_pct:add:0.2,,,,,0,0,ally,mob_support_group,1
+elite_hardened,600,RefreshDuration,armor:flat:6,,,,,0,0,self,,
+elite_vigor,600,RefreshDuration,move_speed:flat:0.6,,,,,0,0,self,,
+elite_shield,600,RefreshDuration,,,,,shield,40,0,self,,

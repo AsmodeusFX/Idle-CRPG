@@ -1,0 +1,11 @@
+difficulty,affix_id,buff_id,policy,weight,chance_pct
+normal,HARDENED,elite_hardened,,50,20
+normal,VIGOR,elite_vigor,,50,20
+nightmare,HARDENED,elite_hardened,,35,30
+nightmare,VIGOR,elite_vigor,,30,30
+nightmare,ARCANE_SHIELD,elite_shield,,20,30
+nightmare,HUNTER,,BacklinePriority,15,30
+hell,HARDENED,elite_hardened,,25,40
+hell,VIGOR,elite_vigor,,20,40
+hell,ARCANE_SHIELD,elite_shield,,20,40
+hell,HUNTER,,BacklinePriority,35,40

@@ -1,8 +1,8 @@
-# P1-5 五章怪物与 Boss 执行归档（切片 C1）
+# P1-5 五章怪物与 Boss 执行归档（C1–C3）
 
-2026-10-23。来源：用户外部交付的 P1-5 V1.0 执行包（`docs/temp/P1_5_FiveActs_Monsters_Boss_V1_0/`）。**本文件是本轮唯一工程归档**；外部方案原件留在 temp，由用户自行处置。字段合同见[章节怪物身份与区域投放池](../technical/act_monsters.md)。
+2026-10-23。来源：用户外部交付的 P1-5 V1.0 执行包（`docs/temp/P1_5_FiveActs_Monsters_Boss_V1_0/`）。**本文件是本轮唯一工程归档**；外部方案原件留在 temp，由用户自行处置。字段合同见[章节怪物身份与区域投放池](../technical/act_monsters.md)。同一模块的后续切片按约定继续写入本文件，不再新建并列文件。
 
-范围：只做该包 C1（数据联结与普通怪投放）。C2 精英/特殊怪、C3 Boss 与四段剧本、C4 三难度与长期回归未实施，原因与依赖见文末。
+范围：C1（身份与区域投放）已完成；C2 中**行为偏移与精英词缀已完成**，M07 生产投放未做；C3 中**Boss 名称与技能包已完成**，四段特殊剧本未做；C4 只做难度门控与回归，未改等级权威。
 
 ## 一、G0 审计结论（真实代码）
 
@@ -41,14 +41,34 @@
 3. **不新增运行时 ID 体系**：池键沿用 `areapart`，POI/存档键不变。
 4. **不驱动 Boss**：`poi_profile.boss_name` 未改，城堡仍为占位守将与既有通关条件。
 
+## 二之二、C2 内容层（行为与精英）
+
+| 项 | 落地 |
+|---|---|
+| M05 范围 | 新技能 `mob_area_pulse`（`self` + `AreaPulse`，半径 2.2、CD 240 tick、前摇/恢复 6）；只有 archetype=M05 的 11 个身份获得 |
+| M06 猎手 | 只改 `TargetPolicy=BacklinePriority`，复用既有 Special 锁与容量规则，不新增容量账本 |
+| M08 支援 | 新技能 `mob_support`（`self` + `ApplyBuff ally` 半径 3，`mob_support_buff` 攻速 +20%）；只给 M08 身份 |
+| 配置入口 | `monster/act_behaviors.csv`（`monster_id,policy,skill_id`），生成器按 archetype 产出，共 10 行 |
+| 精英词缀 | `monster/elite.csv`（`difficulty,affix_id,buff_id,policy,weight,chance_pct`）：HARDENED(armor+6)、VIGOR(移速+0.6)、ARCANE_SHIELD(shield 40)、HUNTER(后排优先)；normal 20%、nightmare 30%、hell 40%，每房最多一个、Boss 房不参与 |
+| Buff | 新增 `mob_support_buff`、`elite_hardened`、`elite_vigor`、`elite_shield`；护甲/移速用 `flat` 操作（属性规则只允许 base/flat/pct） |
+
+行为只在世界远征生成时套用；单地牢模拟、legacy 夹具与 GM 预览不掷精英骰，旧回归不受影响。精英只额外给 Buff 或策略，不新增乘区、不改掉落。
+
+## 二之三、C3 Boss 层
+
+- **名称**：`poi_profile.boss_name` 在源数据中已有命名（血乌、拉卡尼休、都瑞尔等），本轮核对后**未覆盖**；仍为占位的“待定”保持原状，等后续内容裁定。
+- **技能包**：`monster/boss_skill.csv`（`poi_id,skill_id`）按 `boss_mechanics` 的 `basic_target_policy_semantic` 映射：远程语义 → `mob_area_pulse`，其余 → `mob_heavy`（单体重击，系数 1.8）。生成时只加给 `Boss=true` 本体，普通怪不继承。
+- **未做**：四段特殊剧本（议会/五封印三守卫/三远古/巴尔五波）。三远古需要同房 3 个固定角色、巴尔需要波次门控与存档现场、封印需要“三守卫全灭后生成 Boss”，都要新增阶段状态与存档迁移，单独立项。
+
 ## 三、未实施（需单独批准）
 
 | 项 | 原因与依赖 |
 |---|---|
-| C2 精英词缀与 M05–M08 特殊普通怪 | 无精英系统；词缀需 Buff/Effect 组合与生命周期验证；猎手 `BacklinePriority` 目前只在隔离预览启用 |
-| C3 Boss 锚点替换与经典 Boss 技能包 | 需要内容命名/美术裁定与 Boss 技能数据；特殊阶段需新的阶段调度能力 |
-| C3 四段剧本（议会/五封印三守卫/三远古/巴尔五波） | 现有系统没有阶段编排与波次预算；包内 `special_stages_SOURCE.csv` 只是源分段 |
-| C4 三难度投放策略表 | 需先有 C2/C3 内容，且不得与既有 `poi_challenge`/`floor_plan` 形成第二份等级权威 |
+| M07 召唤巫师生产投放 | 敌方召唤要求进房预留槽位、来源/规则ID随快照保存与重建；当前只在隔离预览注册，生产存档合同需单独立项 |
+| 其余 6 个精英词缀（FIERY/FROST/LIGHTNING/VENOM/DEATH_BURST/LEADER_AURA） | 需要“命中附带元素伤害”“死亡触发链”“来源光环”等新机制与触发深度限制；本轮只用既有 Buff/策略承载力 |
+| C3 四段剧本（议会/五封印三守卫/三远古/巴尔五波） | 需要阶段状态机与存档现场（三远古 3 固定角色、封印全灭后生成 Boss、巴尔波次门控）；`special_stages_SOURCE.csv` 只是源分段，不含组成 |
+| 每个 Boss 的专属机制包 | 现有只按“远程/近战”二分映射到 2 个复用技能；逐 Boss 数值与技能组合需内容裁定 |
+| C4 长期挂机与三难度调平 | 难度仅控制精英出现率；等级与楼层仍由 `poi_challenge`/`floor_plan` 唯一决定，未做数值调平与长时 soak |
 | 怪物中文名正式化 | 现为 D2 风格内容提案，商用前需 IP/命名审核，不作为美术资源需求 |
 
 ## 四、验证
@@ -58,13 +78,14 @@
 | `pwsh tools/import_act_monsters.ps1 -Check` | 待写变更时退出码 1；写入后再次执行为 `no changes` |
 | `dotnet build Idle-CRPG/Idle-CRPG.csproj` | 0 警告 0 错误 |
 | `dotnet run --project tests/IdleCrpg.Checks.csproj -- --act-monster-checks` | PASS |
+| `dotnet run --project tests/IdleCrpg.Checks.csproj -- --act-content-checks` | PASS |
 | `dotnet run --project tests/IdleCrpg.Checks.csproj` | 全量 PASS |
 | Godot `--headless -- --smoke-test` | PASS：各 UI 冒烟子项与 `SMOKE_OK`，退出码 0 |
 
-新增检查覆盖：49 身份具备属性/容量/掉落；五章每个统治区池覆盖且权重合计 100；加权抽样同种子可复现且分布贴合权重；世界远征进房怪物必须来自所在统治区池；legacy 第一章无池时回落原怪物表；重复身份/权重非 100/未知身份/统治区缺池四类配置均被拒绝。
+新增检查覆盖：49 身份具备属性/容量/掉落；五章每个统治区池覆盖且权重合计 100；加权抽样同种子可复现且分布贴合权重；世界远征进房怪物必须来自所在统治区池；legacy 第一章无池时回落原怪物表；重复身份/权重非 100/未知身份/统治区缺池四类配置均被拒绝。内容层另覆盖：M05/M06/M08 行为只落在对应身份、Boss 技能只加 Boss 本体、三难度精英规则存在且出现率一致、精英掷骰同种子稳定且真实产生 Buff/策略、Boss 房不出精英、未知行为技能/无效果词缀/未知 Boss 技能均被拒绝。
 
 ## 五、变更文件
 
-- 新增：`Scripts/Core/MonsterPools.cs`、`tests/ActMonsterPoolChecks.cs`、`tools/import_act_monsters.ps1`、`config/monster/act_monsters.csv(+.import)`、`config/chapters/act{1..5}/monster/region_pool.csv(+.import)`、本文件、[字段合同](../technical/act_monsters.md)。
-- 修改：`Scripts/Core/Config.cs`、`CombatConfiguration.cs`、`ChapterConfiguration.cs`、`GameSession.cs`、`WorldConfig.cs`、`SessionSnapshot.cs`、`tests/Program.cs`、`config/combat/unit_attributes.csv`、`config/monster/monster_drop.csv`、`docs/README.md`。
+- 新增：`Scripts/Core/MonsterPools.cs`、`Scripts/Core/MonsterContent.cs`、`tests/ActMonsterPoolChecks.cs`、`tests/ActMonsterContentChecks.cs`、`tools/import_act_monsters.ps1`、`config/monster/{act_monsters,act_behaviors,elite,boss_skill}.csv(+.import)`、`config/chapters/act{1..5}/monster/region_pool.csv(+.import)`、本文件、[字段合同](../technical/act_monsters.md)。
+- 修改：`Scripts/Core/Config.cs`、`CombatConfiguration.cs`、`ChapterConfiguration.cs`、`GameSession.cs`、`WorldConfig.cs`、`SessionSnapshot.cs`、`tests/Program.cs`、`tests/LegacySkillConfig.cs`、`config/combat/unit_attributes.csv`、`config/monster/monster_drop.csv`、`config/skill/{skill,effect,buff}.csv`、`docs/README.md`。
 - 未改动：`monsters.csv`、地图/POI/挑战等级、`poi_profile.boss_name`、伤害与护甲公式、AI 与入场规则、存档版本。
