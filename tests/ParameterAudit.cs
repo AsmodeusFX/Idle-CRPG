@@ -7,17 +7,20 @@ using System.Text;
 using IdleCrpg.Core;
 
 /// <summary>
-/// P2-2-M2 只读审计：把 M1 的内容清单推进为「参数—公式—消费方—验证方法」。
+/// P2-2-M2/M3 只读审计：把 M1 的内容清单推进为「参数—公式—消费方—验证方法」。
 /// 参数台账按 (正式来源路径, 列名) 生成；公式/属性/消费链/扩容接口为人工核对后写入。
+/// M3 起把「投放(has_content_deployment)／消费(has_code_consumer)／运行验证级别」拆成独立列。
 /// 只读正式配置与源码，仅写出 5 份机器表，不改 Core/配置/存档。
 /// </summary>
 public static class ParameterAudit
 {
-    public const string ArchiveFolder = "2026-10-24_00-42_data_p2_2_m2_parameter_runtime_audit";
+    public const string ArchiveFolder = "2026-10-24_01-25_data_p2_2_m3_design_readiness";
     private const string M1Folder = "2026-10-24_00-03_data_p2_2_m1_inventory";
 
     private static readonly UTF8Encoding Utf8 = new(false);
     private static string Q(string? v) => "\"" + (v ?? "").Replace("\"", "\"\"") + "\"";
+    /// <summary>供 DesignInterfaceAudit 复用的 CSV 引号转义。</summary>
+    internal static string Quote(string? v) => Q(v);
 
     public static void Run(string root, string outDir)
     {
@@ -42,7 +45,7 @@ public static class ParameterAudit
             "formula_id,mechanism,inputs,formula_and_order,defaults,clamp_and_rounding,random,trigger,output,write_point,affected_systems,source_evidence,existing_check,verification_level,risk",
             formulas);
         Write(outDir, "attribute_effect_matrix.csv",
-            "category,key,definition_source,default_and_baseline,config_supplied_by,aggregation,consumer,used_by_current_content,status,notes",
+            "category,key,definition_source,default_and_baseline,config_supplied_by,aggregation,consumer,has_content_deployment,has_code_consumer,runtime_verification_level,status,notes",
             attributes);
         Write(outDir, "runtime_consumption_matrix.csv",
             "chain_id,system,config_source,loader,rule_or_aggregation,runtime,result,observable_evidence,verification_level",
@@ -50,6 +53,20 @@ public static class ParameterAudit
         Write(outDir, "expansion_interface_matrix.csv",
             "system,existing_capability,candidate_content_extension,data_only_or_core_extension_or_out_of_scope,configuration_schema_support,new_consumer_needed,minimum_code_touchpoints,testability,missing_fact,P2_3_decision",
             expansion);
+
+        // M3：设计接口就绪矩阵 / P2-3 工作包 / schema 与裁决登记
+        var readiness = IdleCrpg.Checks.DesignInterfaceAudit.ReadinessRows();
+        var packages = IdleCrpg.Checks.DesignInterfaceAudit.WorkPackageRows();
+        var decisions = IdleCrpg.Checks.DesignInterfaceAudit.DecisionRows();
+        Write(outDir, "design_interface_readiness.csv",
+            "system_id,system_name,authoritative_config,code_consumer,current_capability,deployed_content,content_expansion_boundary,extension_class,observation_method,verification_level,p2_3_design_need,pending_decision,work_package",
+            readiness);
+        Write(outDir, "content_work_packages.csv",
+            "work_id,system,current_state_and_gap,content_category,needs_new_runtime_rule,authoritative_tables_keys,extension_class,key_design_questions,p2_4_verification,unavailable_observations,depends_on,min_code_touchpoints,product_decisions",
+            packages);
+        Write(outDir, "schema_and_decision_register.csv",
+            "decision_id,topic,current_finding,evidence,options,affected_scope,cost_and_risk,recommendation,status,approval_gate,related_work_package",
+            decisions);
 
         var actives = manifest.Where(m => m.Scope == "ACTIVE").ToArray();
         int rows = registry.SelectMany(r => r.Columns).Count();
@@ -59,6 +76,7 @@ public static class ParameterAudit
         Console.WriteLine($"PARAM_STATUS {string.Join(' ', registry.SelectMany(r => r.Columns).GroupBy(c => c.Scope).OrderBy(g => g.Key).Select(g => $"{g.Key}={g.Count()}"))}");
         Console.WriteLine($"PARAM_LEVEL {string.Join(' ', registry.SelectMany(r => r.Columns).GroupBy(c => c.Verification).OrderBy(g => g.Key).Select(g => $"{g.Key}={g.Count()}"))}");
         Console.WriteLine($"PARAM_FORMULAS {formulas.Count} ATTR {attributes.Count} CHAINS {chains.Count} EXPANSION {expansion.Count}");
+        Console.WriteLine($"PARAM_M3 READINESS {readiness.Count} PACKAGES {packages.Count} DECISIONS {decisions.Count}");
     }
 
     // ---------- M1 清单对账 ----------
@@ -333,7 +351,7 @@ public static class ParameterAudit
                 "CanBuy：节点存在→已配置效果→任一前置点亮→未满级→金币≥Costs[level]；成功后 Gold-=cost、ApplyStarTotals 按 (totals-old) 差量改全队 Attack/MaxHp",
                 "—","节点最多 2000；等级 1..10000；costs 数量必须等于 max_level；洗点折扣总和≤100%","无随机","手动购买/编辑器刷新","星图等级、全队属性、席位、技能槽、洗点",
                 "Stars.BuyStar/ApplyStarTotals；StarProgression.CanBuy/Totals","成长与编队",
-                "Stars.cs:11-38；StarConfiguration.cs:28-96","--star-checks","STATIC_VERIFIED","属性只支持 attack/hp，功能性节点仅 4 类且各有消费者"),
+                "Stars.cs:11-38；StarConfiguration.cs:28-96","默认全量检查(StarChecks)","STATIC_VERIFIED","属性只支持 attack/hp，功能性节点仅 4 类且各有消费者"),
             Row("F-TALENT-01","天赋学习与洗点","talent.row/col/prerequisite/required_rank/required_points/max_rank; system/config 规则; star talent_reset",
                 "CanLearn：同职业→未满级→树投入≥required_points→前置等级→点数>0；点数=initial+(Lv-1)*per_level-invested；洗点费用=ceil((base+invested*per_point)*(1-discount))",
                 "initial=1；per_level/row_points 等来自 system/config.csv","前置只统计手动点；洗点必须城镇且传送结束","无随机","手动学习/洗点","天赋投入、被动属性、主动装配",
@@ -379,7 +397,7 @@ public static class ParameterAudit
             Row("F-SAVE-01","存档与自动保存","system/client.autosave_min_seconds,checkpoint_seconds",
                 "自动保存按 autosave_min_seconds 计时写盘；checkpoint_seconds 无消费者",
                 "—","—","无随机","定时/关键节点","存档文件","ClientSettings/SaveStore","持久化",
-                "ClientSettings.cs；SaveStore.cs","--save-checks","STATIC_VERIFIED","checkpoint_seconds 为无效旋钮（M1 ISS-009）"),
+                "ClientSettings.cs；SaveStore.cs","默认全量检查(SaveChecks)","STATIC_VERIFIED","checkpoint_seconds 为无效旋钮（M1 ISS-009）"),
             Row("F-CAMERA-01","镜头跟随","system/camera.follow_rate,transition_rate,dungeon_max_zoom,world_zoom,world_units",
                 "跟随插值=follow_rate；场景切换=transition_rate；世界坐标→像素用 world_units","—","均>0；world_units≥12","无随机","每帧表现层","镜头位置","Main/SceneRenderer","表现",
                 "WorldNavigation.cs:61-66","--smoke-test","STATIC_VERIFIED","仅表现层，不参与战斗判定")
@@ -390,11 +408,12 @@ public static class ParameterAudit
 
     private static List<string> AttributeRows(string configRoot, Config config)
     {
-        string Row(string cat, string key, string source, string def, string supplied, string agg, string consumer, string used, string status, string notes)
-            => string.Join(',', Q(cat), Q(key), Q(source), Q(def), Q(supplied), Q(agg), Q(consumer), Q(used), Q(status), Q(notes));
+        // 投放(has_content_deployment)、消费(has_code_consumer)、运行验证级别三者独立成列，避免再出现“是/否”与状态混写。
+        string Row(string cat, string key, string source, string def, string supplied, string agg, string consumer, string deployed, bool consumed, string level, string status, string notes)
+            => string.Join(',', Q(cat), Q(key), Q(source), Q(def), Q(supplied), Q(agg), Q(consumer), Q(deployed), Q(consumed ? "是" : "否"), Q(level), Q(status), Q(notes));
 
-        // key|config_supplied_by|consumer|used|status|notes
-        var attr = new (string key, string supplied, string consumer, string status, string notes)[]
+        // key|config_supplied_by|consumer|has_content_deployment|status
+        var attr = new (string key, string supplied, string consumer, string deployed, string status)[]
         {
             ("atk","heroes.csv/monsters.csv 的 attack 作为 basis；无 buff 投放","SkillRuntime.AttackSnapshot(EffectiveValue atk)","是","ACTIVE"),
             ("hp","heroes/monsters.hp；星图 hp 节点（星光加成走 MaxHp 增量）；无 buff 投放","SkillRuntime.MaxHp(EffectiveValue hp)","是","ACTIVE"),
@@ -433,15 +452,22 @@ public static class ParameterAudit
             ("lightning_vulnerable_damage_pct","无投放","Vulnerable(Type=Lightning)","否","EMPTY_DEPLOYMENT"),
             ("poison_vulnerable_damage_pct","无投放","Vulnerable(Type=Poison)","否","EMPTY_DEPLOYMENT")
         };
+        // 在 M3 模拟/定向检查中被实际观察到的 Key；其余已投放 Key 只做静态确认。
+        var runtimeKeys = new HashSet<string>(StringComparer.Ordinal)
+        { "atk","hp","armor","move_speed","attack_range","basic_cooldown","attack_speed_pct","engagement_capacity" };
         var rows = new List<string>();
         foreach (var a in attr)
         {
             var def = config.Attributes.Definitions.TryGetValue(a.key, out var d) ? d : null;
             var rule = config.Attributes.Rules.TryGetValue(a.key, out var r) ? r : null;
             string rate = rule == null ? "—" : $"{rule.Baseline}（min {rule.Minimum?.ToString(CultureInfo.InvariantCulture) ?? "—"} / max {rule.Maximum?.ToString(CultureInfo.InvariantCulture) ?? "—"}）";
+            bool deployed = a.deployed == "是";
+            string level = deployed ? (runtimeKeys.Contains(a.key) ? "RUNTIME_VERIFIED" : "STATIC_VERIFIED") : "STATIC_VERIFIED";
+            string extra = deployed ? "" : "无内容投放，运行验证标 UNAVAILABLE；";
             rows.Add(Row("attribute", a.key, "combat/fightattr.csv + fightattr_rules.csv",
                 $"default={def?.Default.ToString(CultureInfo.InvariantCulture) ?? "?"}；baseline={rate}",
-                a.supplied, def?.Aggregation ?? "?", a.consumer, a.status == "ACTIVE" ? "是" : "否", a.status, a.notes + "；value_type=" + (def?.ValueType ?? "?") + "；category=" + (def?.Category ?? "?")));
+                a.supplied, def?.Aggregation ?? "?", a.consumer, a.deployed, true, level, a.status,
+                extra + "value_type=" + (def?.ValueType ?? "?") + "；category=" + (def?.Category ?? "?")));
         }
         // 10 类 Effect
         var kinds = new (string kind, string chain, string consumer, string status, string note)[]
@@ -457,10 +483,21 @@ public static class ParameterAudit
             ("MaintainAura","光环维持（离开/死亡则移除）","SkillSupportRuntime","ACTIVE","3 个效果使用"),
             ("AbilityCast","交给 AbilityRuntime（form=projectile/buff…）","AbilityRuntime","ACTIVE","1 个效果使用")
         };
-        foreach (var k in kinds) rows.Add(Row("effect_kind", k.kind, "skill/effect.csv 的 kind 枚举", "由 effect 行配置", "按 kind 分支", "—", k.consumer, "是", k.status, k.note));
-        rows.Add(Row("buff_mechanic", "shield/forced/haste/crit_reduce/纯属性", "skill/buff.csv 的 mechanic", "13 行（9 行 mechanic 为空=纯属性）", "按 mechanic 分支", "—", "SkillRuntime/SummonRuntime", "是", "ACTIVE", "空 mechanic 只提供 attributes 声明"));
-        rows.Add(Row("buff_trigger", "trigger", "skill/trigger.csv（0 行）", "—", "—", "—", "SkillRuntime.React", "否", "EMPTY_DEPLOYMENT", "链已实现但零投放"));
-        rows.Add(Row("buff_proc", "proc_icd/proc_limit", "两张空表", "—", "—", "—", "SkillRuntime.ProcAllowed", "否", "EMPTY_DEPLOYMENT", "功能可用、零配置"));
+        foreach (var k in kinds) rows.Add(Row("effect_kind", k.kind, "skill/effect.csv 的 kind 枚举", "由 effect 行配置", "按 kind 分支", "—", k.consumer, "是", true, "RUNTIME_VERIFIED", k.status, k.note));
+        // 代码存在但零投放的分支标签：与 effect_kind 分开登记，避免把「未投放」写成「未实现」。
+        var undeployedKinds = new (string kind, string consumer, string note)[]
+        {
+            ("AbilityAttack","AbilityRuntime.HitAbility（经 ability_effect.csv 行驱动）","ability.csv 仅 1 行 projectile form；buff form 与 ability_effect 零投放"),
+            ("AbilityDot","AbilityRuntime.BuffEffect→HitAbility","同上；周期伤害需 ability_effect 行"),
+            ("AbilityCooldown","AbilityRuntime.BuffEffect→冷却改写","同上；零投放"),
+            ("AbilityMirror","AbilityRuntime.BuffEffect→镜像投射物","同上；零投放"),
+            ("SpawnEntity","SkillRuntime.SpawnGeneric（与 SpawnProjectile 同分支）","effect.csv 无 SpawnEntity 行；分支可用但无内容")
+        };
+        foreach (var k in undeployedKinds)
+            rows.Add(Row("effect_branch_undeployed", k.kind, "SkillRuntime.DrainEffects 的 case 标签", "无配置行", "需 ability_effect/effect 行显式引用", "—", k.consumer, "否", true, "STATIC_VERIFIED", "CODE_ONLY_NO_CONTENT", k.note + "；运行验证 UNAVAILABLE"));
+        rows.Add(Row("buff_mechanic", "shield/forced/haste/crit_reduce/纯属性", "skill/buff.csv 的 mechanic", "13 行（9 行 mechanic 为空=纯属性）", "按 mechanic 分支", "—", "SkillRuntime/SummonRuntime", "是", true, "RUNTIME_VERIFIED", "ACTIVE", "空 mechanic 只提供 attributes 声明"));
+        rows.Add(Row("buff_trigger", "trigger", "skill/trigger.csv（0 行）", "—", "—", "—", "SkillRuntime.React", "否", true, "STATIC_VERIFIED", "CODE_ONLY_NO_CONTENT", "链已实现但零投放；运行验证 UNAVAILABLE"));
+        rows.Add(Row("buff_proc", "proc_icd/proc_limit", "两张空表", "—", "—", "—", "SkillRuntime.ProcAllowed", "否", true, "STATIC_VERIFIED", "CODE_ONLY_NO_CONTENT", "功能可用、零配置；运行验证 UNAVAILABLE"));
         return rows;
     }
 
@@ -481,8 +518,8 @@ public static class ParameterAudit
             Row("C-07","Buff 与触发","skill/buff.csv, trigger.csv(空), proc_*.csv(空)","SkillConfiguration.Load","属性聚合 + 周期 DoT + 触发反应","ApplyBuff/React","BattleAttributes/DoT","--skill-bd-proc-checks（含空表）","STATIC_VERIFIED"),
             Row("C-08","召唤","skill/summon.csv","SkillConfiguration.Load","cap/ratio/duration","SummonRuntime","Summons、接敌名额","--skill-bd-summon-checks","STATIC_VERIFIED"),
             Row("C-09","天赋树","skill/talent.csv, system/config 规则","TalentConfiguration.Load","点数/前置/树投入 + 被动属性","LearnTalent/SetTalentLoadout/HeroTalentAttribute","TalentBonuses、主动槽","--talent-checks","RUNTIME_VERIFIED"),
-            Row("C-10","星图属性","star.csv(attack/hp)","LoadStars","Totals 累加 + 差量应用","ApplyStarTotals","全队 Attack/MaxHp","--star-checks","RUNTIME_VERIFIED"),
-            Row("C-11","星图席位","star.csv(party_slots)","LoadStars","1+Σ等级，上限 5，且不低于 floor","FormationCapacity/ValidateFormationCapacity","编队上限","--star-checks；--simulation E 扩编","RUNTIME_VERIFIED"),
+            Row("C-10","星图属性","star.csv(attack/hp)","LoadStars","Totals 累加 + 差量应用","ApplyStarTotals","全队 Attack/MaxHp","默认全量检查(StarChecks)","RUNTIME_VERIFIED"),
+            Row("C-11","星图席位","star.csv(party_slots)","LoadStars","1+Σ等级，上限 5，且不低于 floor","FormationCapacity/ValidateFormationCapacity","编队上限","默认全量检查(StarChecks)；--simulation E 扩编","RUNTIME_VERIFIED"),
             Row("C-12","星图技能槽","star.csv(skill_slots) + system/config 规则","LoadStars","min(max_slots, initial+Σ)","ActiveSkillSlots/ValidateTalentCapacity","装配槽位","--talent-checks","RUNTIME_VERIFIED"),
             Row("C-13","星图洗点","star.csv(talent_reset, talent_reset_discount)","LoadStars","解锁=等级≥1；折扣总和≤100%","CanResetTalents/TalentResetCost","洗点可用性与价格","--talent-checks","RUNTIME_VERIFIED"),
             Row("C-14","地牢规模","dungeon_rule, poi_profile.floors","Config.Load / LoadPoiConfiguration","楼层=profile.floors 或随机；房间数随机","Dungeon.Generate","Floors/Rooms","--dungeon-travel-checks","RUNTIME_VERIFIED"),
@@ -493,7 +530,7 @@ public static class ParameterAudit
             Row("C-19","失败恢复","world/recovery.failure_threshold","LoadRecovery","阈值计数→暂停→选同级副本","FailureRecovery.TryRecovery","目标与重试","--simulation C/D retries","RUNTIME_VERIFIED"),
             Row("C-20","城堡请求","castle_region, areapart, region_prerequisite, poi_challenge","LoadWorld/LoadAreaParts/LoadPoiConfiguration","解锁→请求排队→完成当前地牢→返村→开战","WorldCampaign.RequestCastle/CompleteDungeon","章节推进","events.csv castle_*；--simulation","RUNTIME_VERIFIED"),
             Row("C-21","传输/传送","waypoint.csv, portal_rule.csv, town_scene","LoadWaypoints/LoadSceneConfig","使用距离→阶段计时","WorldCampaign.BeginPortal/Tick","阶段与位置","--town-layout-checks","RUNTIME_VERIFIED"),
-            Row("C-22","自动保存","system/client.csv","LoadClientConfig","autosave_min_seconds 计时","ClientSettings/SaveStore","存档文件","--save-checks","RUNTIME_VERIFIED（checkpoint_seconds 无消费者）"),
+            Row("C-22","自动保存","system/client.csv","LoadClientConfig","autosave_min_seconds 计时","ClientSettings/SaveStore","存档文件","默认全量检查(SaveChecks)","RUNTIME_VERIFIED（checkpoint_seconds 无消费者）"),
             Row("C-23","模拟隔离","tests/Simulation/**","--simulation 入口","GM/策略开关分离；不写玩家存档","SimulationRunner","artifacts/simulation","M3 报告","RUNTIME_VERIFIED")
         };
     }
@@ -507,18 +544,18 @@ public static class ParameterAudit
         return new List<string>
         {
             Row("天赋/技能","61 节点、23 列 schema、行列/前置/等级/点数校验齐全","增节点、连线、被动属性、主动技能绑定（skill_id）",
-                "DATA_ONLY（绑定现有 skill）/ NEEDS_M2（新被动 Key）","talent.csv 支持任意节点数与 skill_id","被动走天赋值；主动需已存在 skill 或旧 effect 值",
+                "DATA_ONLY（绑定现有 skill）/ 新被动 Key 需补属性注册与消费（REQUIRES_EXISTING_SYSTEM_EXTENSION）","talent.csv 支持任意节点数与 skill_id","被动走天赋值；主动需已存在 skill 或旧 effect 值",
                 "无（纯数据）；若新增 effect 值需 Talents.CastTalent 分支","--talent-checks 可覆盖学习/前置/洗点","新 effect 值的运行时语义","P2-3 先补节点，不改 Core"),
-            Row("属性/Effect","36 Key、10 Effect kind、5 伤害桶、聚合规则表","元素增伤、技能增伤、Boss/远程增伤、易伤（17 Key 未投放）",
-                "DATA_ONLY（现有 Key）","buff.attributes 只接受已注册 Key","SkillRuntime/DamagePipeline 已有分支",
+            Row("属性/Effect","36 Key（18 已投放 / 18 零投放但有消费分支）、10 Effect kind、5 伤害桶、聚合规则表","元素/技能/职业增伤与通用及元素易伤等 18 Key 零投放，消费者已就绪（物理易伤已投放）",
+                "DATA_ONLY（现有 Key，仅需 skill/buff/effect 配置引用）","buff.attributes 只接受已注册 Key","SkillRuntime/DamagePipeline 已有分支",
                 "无（用现有 Key）；新增 Key 需改 fightattr/聚合/消费","--formula-checks + 模拟","新增 Key 的最小改动面","P2-3 优先用现有 Key 做内容"),
             Row("属性/Effect（新增种类）","Effect kind 为代码分支而非枚举表","新效果类型（如吸血、反弹）","REQUIRES_EXISTING_SYSTEM_EXTENSION",
                 "skill/effect.csv 的 kind 由 Core 分支消费","需新 Consumer","SkillRuntime.DrainEffects 增加分支 + 校验 + 快照字段","--skill-bd-*-checks","新 kind 的状态与可观测性","P2-3 若需要须单独立项"),
-            Row("星图（属性）","17 节点、逐级价格、任一前置、差量应用","增加攻击/生命节点与等级","DATA_ONLY","star.csv 仅接受 attack/hp + flat","ApplyStarTotals","无","--star-checks","—","可直接扩充"),
+            Row("星图（属性）","17 节点、逐级价格、任一前置、差量应用","增加攻击/生命节点与等级","DATA_ONLY","star.csv 仅接受 attack/hp + flat","ApplyStarTotals","无","默认全量检查(StarChecks)","—","可直接扩充"),
             Row("星图（现有功能节点）","party_slots/skill_slots/talent_reset/talent_reset_discount 各有消费者","增加同类节点（如第二个技能槽节点）",
-                "DATA_ONLY（受校验约束）","party_slots/skill_slots/talent_reset 必须单级+1；折扣总和≤100%","FormationCapacity/ActiveSkillSlots/ResetTalents","无（但校验会拒绝违规）","--star-checks","扩展上限被 formula 硬编码","可直接扩充但受上限约束"),
+                "DATA_ONLY（受校验约束）","party_slots/skill_slots/talent_reset 必须单级+1；折扣总和≤100%","FormationCapacity/ActiveSkillSlots/ResetTalents","无（但校验会拒绝违规）","默认全量检查(StarChecks)","扩展上限被 formula 硬编码","可直接扩充但受上限约束"),
             Row("星图（全新功能）","节点效果类型是白名单（6 种）","新功能解锁（如第二编队、装备槽、自动售卖升级）","REQUIRES_EXISTING_SYSTEM_EXTENSION",
-                "新增 attr_id 需同时改 StarConfiguration 校验 + 消费者","需新 Consumer","StarConfiguration:33/35 白名单 + 新消费点 + 存档字段","--star-checks","新功能的存档与回放","P2-3 需逐项评估"),
+                "新增 attr_id 需同时改 StarConfiguration 校验 + 消费者","需新 Consumer","StarConfiguration:33/35 白名单 + 新消费点 + 存档字段","默认全量检查(StarChecks)","新功能的存档与回放","P2-3 需逐项评估"),
             Row("地牢事件","仅宝箱/营火两种硬编码；event_chance 全局","事件表（类型/条件/奖励/风险）","REQUIRES_EXISTING_SYSTEM_EXTENSION",
                 "无事件表 schema","需新 Consumer","GameSession.Reveal 抽选 + TickDungeon 执行 + 新校验","--simulation room_event","事件与房间/怪物的条件表达","P2-3 建议立项"),
             Row("怪物身份","49 身份；身份与行为分离；加权池","新增身份/组合（同区域不同权重）","DATA_ONLY","act_monsters + region_pool 即可","PickSpawnMonster","无","--act-monster-checks","—","可直接扩充"),
@@ -1011,10 +1048,10 @@ skill_id|text|-|初始主动技能|外键|GrantStarterSkill|-|必须存在|建�
         ["star/star.csv"] = @"
 id|text|-|节点 ID|主键|LoadStars|-|-|加载时|-|VALIDATION_ONLY|LOADER_VERIFIED||
 name|text|-|节点名|展示|HUD|-|-|—|-|DISPLAY_ONLY|LOADER_VERIFIED||
-max_level|int|级|最高等级（价格项数必须相等）|业务数值|CanBuy|-|1..10000|加载时|-|ACTIVE_CONSUMED|STATIC_VERIFIED|--star-checks|
+max_level|int|级|最高等级（价格项数必须相等）|业务数值|CanBuy|-|1..10000|加载时|-|ACTIVE_CONSUMED|STATIC_VERIFIED|默认全量检查(StarChecks)|
 cost_currency|text|enum:gold|货币（仅 gold）|枚举|CanBuy|-|必须 gold|加载时|-|ACTIVE_CONSUMED|STATIC_VERIFIED||
 cost|int|金币|逐级价格（; 分隔）|业务数值|BuyStar|-|项数=max_level，≥0|购买|-|ACTIVE_CONSUMED|STATIC_VERIFIED||
-attr_id|text|enum|效果（attack/hp/party_slots/skill_slots/talent_reset/talent_reset_discount）|枚举|ApplyStarTotals/各消费者|-|白名单|购买|-|ACTIVE_CONSUMED|STATIC_VERIFIED|--star-checks|空=占位节点不可购买
+attr_id|text|enum|效果（attack/hp/party_slots/skill_slots/talent_reset/talent_reset_discount）|枚举|ApplyStarTotals/各消费者|-|白名单|购买|-|ACTIVE_CONSUMED|STATIC_VERIFIED|默认全量检查(StarChecks)|空=占位节点不可购买
 operation|text|enum:flat|运算（仅 flat）|枚举|Totals|-|必须 flat|购买|-|ACTIVE_CONSUMED|STATIC_VERIFIED||
 value_per_level|float|-|每级增量|业务数值|Totals|-|≥0；节点类型有额外约束|购买|-|ACTIVE_CONSUMED|STATIC_VERIFIED||
 icon|text|enum:attack/defense/utility|图标分组|展示|HUD|-|枚举|—|-|DISPLAY_ONLY|LOADER_VERIFIED||
@@ -1023,7 +1060,7 @@ icon|text|enum:attack/defense/utility|图标分组|展示|HUD|-|枚举|—|-|DIS
 id|text|-|节点 ID|主键|LoadStars|-|必须与 star.csv 一一对应|加载时|-|VALIDATION_ONLY|STATIC_VERIFIED||
 col|int|格|列坐标|规划|UI|-|-|—|-|DISPLAY_ONLY|LOADER_VERIFIED||
 row|int|格|行坐标|规划|UI|-|-|—|-|DISPLAY_ONLY|LOADER_VERIFIED||
-prereq|text|; 列表|前置节点（任一满足即可点亮）|外键|PrerequisitesMet|-|必须存在且无环|购买|-|ACTIVE_CONSUMED|STATIC_VERIFIED|--star-checks|
+prereq|text|; 列表|前置节点（任一满足即可点亮）|外键|PrerequisitesMet|-|必须存在且无环|购买|-|ACTIVE_CONSUMED|STATIC_VERIFIED|默认全量检查(StarChecks)|
 label|text|-|展示标签|展示|HUD|-|-|—|-|DISPLAY_ONLY|LOADER_VERIFIED||
 ",
         ["star/star_plan.csv"] = @"
@@ -1163,7 +1200,7 @@ world_zoom|float|缩放|世界缩放|表现|Main|-|>0|渲染|-|ACTIVE_CONSUMED|S
 world_units|float|单位|世界投影单位数|表现|WorldNavigation|-|≥12|渲染|-|ACTIVE_CONSUMED|STATIC_VERIFIED||
 ",
         ["system/client.csv"] = @"
-autosave_min_seconds|float|s|自动保存最小间隔|业务数值|ClientSettings|-|>0|定时|-|ACTIVE_CONSUMED|STATIC_VERIFIED|--save-checks|
+autosave_min_seconds|float|s|自动保存最小间隔|业务数值|ClientSettings|-|>0|定时|-|ACTIVE_CONSUMED|STATIC_VERIFIED|默认全量检查(SaveChecks)|
 checkpoint_seconds|float|s|检查点间隔|业务数值|无消费者|-|—|—|-|NO_CONSUMER|STATIC_VERIFIED||仅检查断言“无周期写盘”
 ",
         ["system/config.csv"] = @"
