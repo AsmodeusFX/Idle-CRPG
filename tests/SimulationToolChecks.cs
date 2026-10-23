@@ -87,8 +87,55 @@ public static class SimulationToolChecks
         Need(ledger.Contains("\"starmap_purchase\",\"s_root\",-3"), "金币流水缺少星图扣费明细");
         var snapshotRows = first["snapshots.csv"].Split('\n');
         Need(snapshotRows.Length >= 8, "密集采样行数不足（前 30 分钟每分钟）");
+        // 城堡策略关闭时不得出现任何城堡点击（无隐性动作）。
+        Need(!events.Contains("\"castle_click\""), "castle.enabled=false 仍然点击了城堡");
+        // 多组同时到期时必须记录只执行一组的次序。
+        Need(events.Contains("\"policy_order\"") && events.Contains("same_tick_contention"), "缺少同 Tick 多策略到期的次序记录");
         SimulationRunner.Run(root, probe);
         foreach (var pair in first) Need(File.ReadAllText(Path.Combine(outDir, pair.Key)) == pair.Value, "同 Seed 复跑输出不一致：" + pair.Key);
+
+        // 四之二、指纹与性能：源码/配置指纹可区分改动；性能计数有界且非零。
+        string configCopy = Path.Combine(qa, "config-fp");
+        foreach (string file in Directory.GetFiles(configRoot, "*.csv", SearchOption.AllDirectories))
+        {
+            string target = Path.Combine(configCopy, Path.GetRelativePath(configRoot, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, true);
+        }
+        string fingerprintBefore = SimulationRecorder.ConfigFingerprint(configCopy);
+        string firstCsv = Directory.GetFiles(configCopy, "*.csv", SearchOption.AllDirectories).OrderBy(p => p, StringComparer.Ordinal).First();
+        File.AppendAllText(firstCsv, "\n# fingerprint probe\n");
+        Need(SimulationRecorder.ConfigFingerprint(configCopy) != fingerprintBefore, "配置改动后指纹没有变化");
+        string sourceFingerprint = SimulationRecorder.SourceFingerprint(root);
+        Need(sourceFingerprint.Length == 64 && sourceFingerprint.All(ch => "0123456789abcdef".Contains(ch)), "源码指纹格式错误");
+        var meta = System.Text.Json.JsonDocument.Parse(metadata).RootElement;
+        Need(meta.TryGetProperty("source_fingerprint_sha256", out var sourceNode) && sourceNode.GetString() == sourceFingerprint, "metadata 未记录当前源码指纹");
+        Need(meta.GetProperty("git_worktree").GetString()!.StartsWith("unknown"), "未声明工作区状态为 unknown");
+        var perf = meta.GetProperty("perf");
+        Need(perf.GetProperty("elapsed_ms").GetDouble() > 0 && perf.GetProperty("events").GetInt32() > 0 && perf.GetProperty("output_bytes").GetInt64() > 0, "性能计数缺失或为零");
+        Need(perf.GetProperty("managed_heap_peak_mb").GetDouble() > 0, "缺少托管堆峰值采样");
+
+        // 四之三、采样密度不得改变同 Seed 业务结果：事件与金币流水必须逐字节一致。
+        string sparse = Path.Combine(scenarioDir, "T_tool_probe_sparse.json");
+        SimulationRunner.Run(root, sparse);
+        string sparseDir = Path.Combine(root, "artifacts/simulation", "T_tool_probe_sparse_" + 20261023);
+        Need(File.ReadAllText(Path.Combine(sparseDir, "events.csv")) == first["events.csv"], "改变采样密度改变了事件流");
+        Need(File.ReadAllText(Path.Combine(sparseDir, "ledger.csv")) == first["ledger.csv"], "改变采样密度改变了金币流水");
+        Need(File.ReadAllText(Path.Combine(sparseDir, "snapshots.csv")) != first["snapshots.csv"], "稀疏采样未减少快照行（用例前提不成立）");
+
+        // 四之四、可疑停滞现场落盘：M1 修复后长跑不再自然出现，这里直接验证落盘内容与复跑信息。
+        {
+            var probeCfg = SimulationConfig.Load(probe);
+            var run = new SimulationRun(probeCfg, e, config, root, Path.Combine(qa, "stall-dump"));
+            var alert = new DiagnosticAlert(123.45, 2469, AnomalyDiagnoser.SuspectedStuck, "测试用：无位移无目标",
+                new[] { "hero_outside_room" }, "stage=Dungeon || hero outside room at door line");
+            run.WriteStallDump(alert);
+            string dump = Path.Combine(qa, "stall-dump", "stalls", "stall-2469.md");
+            Need(File.Exists(dump), "可疑停滞现场未落盘");
+            string text = File.ReadAllText(dump);
+            foreach (string key in new[] { "tick 2469", "SUSPECTED_STUCK", "--seed=", "配置指纹", "源码指纹", "hero outside room" })
+                Need(text.Contains(key), "停滞现场缺少字段：" + key);
+        }
 
         // 五、异常分级器：合法门槛、合法失败、经验平台、真实停滞必须区分开。
         var stuck = new List<SimulationObservation>();
@@ -156,6 +203,6 @@ public static class SimulationToolChecks
         Need(limited.Alerts.Count <= 2, "重复告警没有限频/限次");
         Need(limited.Alerts.All(a => a.Evidence.Length > 0), "告警缺少有界现场证据");
 
-        Console.WriteLine("PASS: simulation policy loader (v1 compat, v2 explicit, 20 rejection cases, default-off), explicit purchase/formation exactness, output completeness, same-seed byte-identical rerun, and anomaly classification (stuck/manual gate/failure loop/xp platform/busy, bounded alerts)");
+        Console.WriteLine("PASS: simulation policy loader (v1 compat, v2 explicit, 20 rejection cases, default-off), explicit purchase/formation exactness, single-group-per-tick trace, castle-disabled silence, output completeness, same-seed byte-identical rerun, config/source fingerprints (incl. working-tree unknown), perf counters, sampling-density independence, and anomaly classification (stuck/manual gate/failure loop/xp platform/busy, bounded alerts)");
     }
 }

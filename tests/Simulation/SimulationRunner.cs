@@ -14,13 +14,22 @@ using IdleCrpg.Core;
 /// </summary>
 public static class SimulationRunner
 {
-    public static void Run(string root, string path)
+    /// <summary>运行一个场景。seedOverride 用于多 Seed 批次；runTag 追加到输出目录，避免覆盖其他轮次的证据。</summary>
+    public static void Run(string root, string path, int? seedOverride = null, string runTag = "")
     {
         var cfg = SimulationConfig.Load(path);
+        if (seedOverride is { } seed)
+        {
+            if (seed < 1) throw new ArgumentException("非法 Seed 覆盖：" + seed);
+            cfg = cfg with { Seed = seed };
+        }
+        if (!string.IsNullOrWhiteSpace(runTag) && runTag.Any(ch => !char.IsLetterOrDigit(ch) && ch != '_' && ch != '-'))
+            throw new ArgumentException("--tag 只能包含字母、数字、下划线与连字符");
         var config = LegacySkillConfig.Load(Path.Combine(root, "Idle-CRPG/config"));
         var policy = SimulationPolicy.From(cfg, config);
-        string directory = Path.Combine(root, "artifacts/simulation", cfg.ScenarioId + "_" + cfg.Seed);
-        var run = new SimulationRun(cfg, policy, config, root, directory);
+        string directory = Path.Combine(root, "artifacts/simulation",
+            cfg.ScenarioId + "_" + cfg.Seed + (string.IsNullOrWhiteSpace(runTag) ? "" : "_" + runTag));
+        var run = new SimulationRun(cfg, policy, config, root, directory, runTag);
         var summary = run.Execute();
         Console.WriteLine($"PASS simulation {directory}");
         Console.WriteLine("SIM_HASH " + summary.BusinessHash);
@@ -28,10 +37,11 @@ public static class SimulationRunner
         Console.WriteLine("SIM_XP " + summary.XpLine);
         Console.WriteLine("SIM_DIAG " + summary.DiagnosticLine);
         Console.WriteLine("SIM_END " + summary.EndLine);
+        Console.WriteLine("SIM_PERF " + summary.PerfLine);
     }
 }
 
-public sealed record SimulationSummary(string BusinessHash, string LedgerLine, string XpLine, string DiagnosticLine, string EndLine);
+public sealed record SimulationSummary(string BusinessHash, string LedgerLine, string XpLine, string DiagnosticLine, string EndLine, string PerfLine);
 
 internal sealed class SimulationRun
 {
@@ -41,7 +51,7 @@ internal sealed class SimulationRun
     private readonly GameSession game;
     private readonly SimulationRecorder rec = new();
     private readonly AnomalyDiagnoser diag;
-    private readonly string root, directory;
+    private readonly string root, directory, runTag;
 
     // 逐 Tick 镜像（只保存判定所需的标量，避免每帧分配大对象）
     private long[] heroXpCumulative = Array.Empty<long>();
@@ -79,10 +89,11 @@ internal sealed class SimulationRun
     private long xpEarnedVerified, xpEarnedLevelUp, xpEarnedUnexplained;
     private int castlesWon, wipes, trades;
     private long[] levelPrefix = Array.Empty<long>();
+    private long heapPeakBytes;
 
-    public SimulationRun(SimulationConfig cfg, SimulationPolicy policy, Config config, string root, string directory)
+    public SimulationRun(SimulationConfig cfg, SimulationPolicy policy, Config config, string root, string directory, string runTag = "")
     {
-        this.cfg = cfg; this.policy = policy; this.config = config; this.root = root; this.directory = directory;
+        this.cfg = cfg; this.policy = policy; this.config = config; this.root = root; this.directory = directory; this.runTag = runTag;
         string[] start = cfg.StartingHeroes is { Count: > 0 } heroes ? heroes.ToArray() : new[] { "warrior" };
         game = GameSession.CreateWorld(config, cfg.Seed, start);
         diag = new AnomalyDiagnoser(policy.StallWindowSeconds, policy.RecheckSeconds, policy.MaxAlerts);
@@ -104,6 +115,7 @@ internal sealed class SimulationRun
             game.World?.WaitingApproval ?? false, game.Floors.Count > 0 ? game.FloorIndex + 1 : 0, game.CurrentRoom, game.Status);
         SyncMirrors();
         long totalTicks = cfg.DurationMinutes * 1200L;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         for (long tick = 1; tick <= totalTicks; tick++)
         {
             CaptureBefore();
@@ -112,8 +124,10 @@ internal sealed class SimulationRun
             RunPolicy(tick);
             ObserveDiagnostics(tick);
             MaybeSample(tick);
+            if (tick % 1200 == 0) heapPeakBytes = Math.Max(heapPeakBytes, GC.GetTotalMemory(false));
         }
-        return Finalize(totalTicks);
+        clock.Stop();
+        return Finalize(totalTicks, clock.Elapsed.TotalMilliseconds);
     }
 
     // ---------- 逐 Tick 采集 ----------
@@ -331,20 +345,26 @@ internal sealed class SimulationRun
     private void RunPolicy(long tick)
     {
         // 固定优先级：城堡 → 星图 → 编队 → 天赋；同一 Tick 只允许一组动作。
-        if (Due(ref nextCastle, tick, policy.CastleIntervalSeconds, policy.CastleEnabled)) { ExecCastle(tick); return; }
-        if (Due(ref nextStar, tick, policy.StarIntervalSeconds, policy.StarMode != "none")) { ExecStarmap(tick); return; }
-        if (Due(ref nextParty, tick, policy.PartyIntervalSeconds, policy.PartyMode != "none")) { ExecParty(tick); return; }
-        if (Due(ref nextTalent, tick, policy.TalentIntervalSeconds, policy.TalentMode != "none")) ExecTalents(tick);
+        // 多组同时到期时记录一条 policy_order，使“只执行一组”的次序可追溯。
+        var due = new List<string>(4);
+        if (policy.CastleEnabled && IsDue(nextCastle, tick)) due.Add("castle");
+        if (policy.StarMode != "none" && IsDue(nextStar, tick)) due.Add("starmap");
+        if (policy.PartyMode != "none" && IsDue(nextParty, tick)) due.Add("party");
+        if (policy.TalentMode != "none" && IsDue(nextTalent, tick)) due.Add("talents");
+        if (due.Count == 0) return;
+        string chosen = due[0];
+        if (due.Count > 1) rec.Event(tick, "policy_order", chosen, "single_group", "same_tick_contention", string.Join('|', due));
+        switch (chosen)
+        {
+            case "castle": Advance(ref nextCastle, tick, policy.CastleIntervalSeconds); ExecCastle(tick); break;
+            case "starmap": Advance(ref nextStar, tick, policy.StarIntervalSeconds); ExecStarmap(tick); break;
+            case "party": Advance(ref nextParty, tick, policy.PartyIntervalSeconds); ExecParty(tick); break;
+            case "talents": Advance(ref nextTalent, tick, policy.TalentIntervalSeconds); ExecTalents(tick); break;
+        }
     }
 
-    private static bool Due(ref long next, long tick, int intervalSeconds, bool enabled)
-    {
-        if (!enabled) return false;
-        if (next == 0) next = tick;
-        if (next > tick) return false;
-        next = tick + intervalSeconds * 20L;
-        return true;
-    }
+    private static bool IsDue(long next, long tick) => next == 0 || next <= tick;
+    private static void Advance(ref long next, long tick, int intervalSeconds) => next = tick + intervalSeconds * 20L;
 
     private void ExecCastle(long tick)
     {
@@ -548,9 +568,42 @@ internal sealed class SimulationRun
 
     private void ObserveDiagnostics(long tick)
     {
-        bool needEvidence = tick - diag.LastProgressTick >= diag.WindowTicks && tick % 20 == 0 && diag.Alerts.Count < policy.MaxAlerts;
+        // 现场证据只在观察窗已经被突破时构建：越界后前 2 个 Tick 必有，稳定后限 5 次/秒，且受告警上限约束。
+        long over = tick - diag.LastProgressTick - diag.WindowTicks;
+        bool stuckBudget = diag.Alerts.Count(a => a.Classification == AnomalyDiagnoser.SuspectedStuck) < policy.MaxAlerts;
+        bool needEvidence = over >= 0 && stuckBudget && (over < 2 || tick % 4 == 0);
         var observation = BuildObservation(tick, needEvidence);
-        foreach (var alert in diag.Observe(observation)) rec.Diagnostic(alert);
+        foreach (var alert in diag.Observe(observation))
+        {
+            rec.Diagnostic(alert);
+            if (alert.Classification == AnomalyDiagnoser.SuspectedStuck) WriteStallDump(alert);
+        }
+    }
+
+    /// <summary>可疑停滞现场：有界文本落盘，含复跑所需的 Seed/策略/指纹与完整现场行，便于离线定位。
+    /// internal 仅用于同程序集的定向检查（不改变运行期行为）。</summary>
+    internal void WriteStallDump(DiagnosticAlert alert)
+    {
+        string dir = Path.Combine(directory, "stalls");
+        Directory.CreateDirectory(dir);
+        var lines = new List<string>
+        {
+            "# 可疑停滞现场",
+            "",
+            $"- 场景：{cfg.ScenarioId}（Seed {cfg.Seed}，{cfg.DurationMinutes} 分钟）",
+            $"- 触发时刻：{alert.SimTime:0.00}s / tick {alert.Tick}",
+            $"- 分类：{alert.Classification}",
+            $"- 原因：{alert.Reason}",
+            $"- 策略：{policy.Summarize()}",
+            $"- 配置指纹：{SimulationRecorder.ConfigFingerprint(Path.Combine(root, "Idle-CRPG/config"))}",
+            $"- 源码指纹：{SimulationRecorder.SourceFingerprint(root)}",
+            $"- 复跑：dotnet run --no-build --project tests/IdleCrpg.Checks.csproj -- --simulation tests/Simulation/{cfg.ScenarioId}.json --seed={cfg.Seed}",
+            "",
+            "```text"
+        };
+        lines.AddRange(alert.Evidence.Split(" || "));
+        lines.Add("```");
+        File.WriteAllLines(Path.Combine(dir, $"stall-{alert.Tick}.md"), lines, new UTF8Encoding(false));
     }
 
     private SimulationObservation BuildObservation(long tick, bool withEvidence)
@@ -600,6 +653,20 @@ internal sealed class SimulationRun
         };
     }
 
+    /// <summary>停滞现场补充事实（入房掩码、最后进展、最近事件、导航状态）；只在构建证据时读取。</summary>
+    private IEnumerable<string> DiagnosticExtras(long tick)
+    {
+        var lines = new List<string>();
+        if (game.Floors.Count > 0)
+        {
+            var targeting = game.Capture().SkillState.Targeting;
+            lines.Add($"entry_masks prepared={targeting.EntryPrepared} pass=0x{targeting.EntryPassMask:X} engaged=0x{targeting.EntryEngagedMask:X} deployed=0x{targeting.DeployedMask:X} candidate=0x{targeting.CandidateMask:X} clock={targeting.Clock:0.00} floor_idx={targeting.FloorIndex} room_idx={targeting.RoomIndex}");
+        }
+        lines.Add($"last_progress={(diag.LastProgressTick) / 20.0:0.00}s stalled_for={(tick - diag.LastProgressTick) / 20.0:0.0}s travel_leader={game.TravelLeader?.Name ?? "-"} moving={game.MovingBetweenRooms} nav_destination=unavailable（Core 私有字段未暴露）");
+        foreach (string? row in rec.Events.Skip(Math.Max(0, rec.Events.Count - 5))) if (row != null) lines.Add("recent " + row);
+        return lines;
+    }
+
     private bool ManualGateActive(WorldCampaign? world)
         => world != null && (world.WaitingApproval || (!policy.CastleEnabled && game.Config.Dungeons.Any(d => d.Castle && !world.Progress.Cleared.Contains(d.Id) && world.Progress.CastleUnlocked(game.Config, d.Id))));
 
@@ -633,6 +700,7 @@ internal sealed class SimulationRun
             lines.AddRange(game.EntryDiagnostics().Take(4));
         }
         lines.Add($"revive target={game.ReviveTarget?.SpecId ?? "-"} rescuer={game.Rescuer?.SpecId ?? "-"} elapsed={game.ReviveElapsed:0.0}");
+        lines.AddRange(DiagnosticExtras(tick));
         return string.Join(" || ", lines);
     }
 
@@ -669,7 +737,7 @@ internal sealed class SimulationRun
         if (game.World != null) foreach (string id in game.World.Progress.Cleared) clearedMirror.Add(id);
     }
 
-    private SimulationSummary Finalize(long totalTicks)
+    private SimulationSummary Finalize(long totalTicks, double elapsedMs)
     {
         long expected = goldIn - goldOut;
         long diff = game.Gold - expected;
@@ -681,7 +749,7 @@ internal sealed class SimulationRun
             game.World?.WaitingApproval ?? false, game.Floors.Count > 0 ? game.FloorIndex + 1 : 0, game.CurrentRoom, game.Status);
         string hash = rec.BusinessHash();
         rec.WriteAll(directory);
-        File.WriteAllText(Path.Combine(directory, "metadata.json"), Metadata(hash, totalTicks), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(directory, "metadata.json"), Metadata(hash, totalTicks, elapsedMs), new UTF8Encoding(false));
         File.WriteAllText(Path.Combine(directory, "fields.md"), Fields(), new UTF8Encoding(false));
         File.WriteAllText(Path.Combine(directory, "diagnostics.md"), DiagnosticsMarkdown(), new UTF8Encoding(false));
 
@@ -690,17 +758,23 @@ internal sealed class SimulationRun
         string xpLine = $"verified_ticks={xpTicksVerified} level_up_ticks={xpTicksLevelUp} event_ticks={xpTicksEvent} unexplained_ticks={xpTicksUnexplained} verified_hundredths={xpEarnedVerified} unexplained_hundredths={xpEarnedUnexplained}";
         string diagLine = diag.Alerts.Count == 0 ? "none" : string.Join(",", diagnosticCounts.Select(kv => $"{kv.Key}={kv.Value}"));
         string endLine = $"chapter={game.ChapterIndex + 1} stage={game.World?.Stage} gold={game.Gold} kills={game.Kills} retries={game.Retries} cleared={game.World?.Progress.Cleared.Count ?? 0} castles_won={castlesWon} party={game.Heroes.Count} levels={string.Join('/', game.Heroes.Select(h => h.Level))}";
-        return new SimulationSummary(hash, ledgerLine, xpLine, diagLine, endLine);
+        long bytes = new[] { "snapshots.csv", "events.csv", "ledger.csv", "diagnostics.csv", "metadata.json" }
+            .Sum(f => new FileInfo(Path.Combine(directory, f)).Length);
+        string perfLine = $"ticks={totalTicks} elapsed_ms={elapsedMs:0} us_per_tick={elapsedMs * 1000 / Math.Max(1, totalTicks):0.0} events={rec.Events.Count - 1} ledger={rec.Ledger.Count - 1} snapshots={rec.Snapshots.Count - 1} diagnostics={rec.Diagnostics.Count - 1} bytes={bytes} heap_peak_mb={heapPeakBytes / 1048576.0:0.0}";
+        return new SimulationSummary(hash, ledgerLine, xpLine, diagLine, endLine, perfLine);
     }
 
-    private string Metadata(string hash, long totalTicks)
+    private string Metadata(string hash, long totalTicks, double elapsedMs)
     {
+        long bytes = new[] { "snapshots.csv", "events.csv", "ledger.csv", "diagnostics.csv" }
+            .Sum(f => new FileInfo(Path.Combine(directory, f)).Length);
         var payload = new
         {
-            schema = "p2-1-m2/1",
+            schema = "p2-1-m3/1",
             scenario = cfg.ScenarioId,
             scenario_note = cfg.ScenarioNote,
             config_schema_version = cfg.SchemaVersion,
+            run_tag = runTag,
             seed = cfg.Seed,
             duration_minutes = cfg.DurationMinutes,
             sample_interval_minutes = cfg.SampleIntervalMinutes,
@@ -709,11 +783,26 @@ internal sealed class SimulationRun
             policy = policy.Summarize(),
             config_root = "Idle-CRPG/config",
             config_fingerprint_sha256 = SimulationRecorder.ConfigFingerprint(Path.Combine(root, "Idle-CRPG/config")),
+            source_fingerprint_sha256 = SimulationRecorder.SourceFingerprint(root),
+            source_fingerprint_scope = "Idle-CRPG/Scripts/**/*.cs + tests/**/*.cs（排除 bin/obj）",
             code_version = SimulationRecorder.CodeVersion(root),
+            git_worktree = "unknown（git CLI 不可用；未提交改动以 source_fingerprint_sha256 区分）",
             created_at = DateTimeOffset.Now.ToString("yyyy-MM-dd'T'HH:mm:ssK", CultureInfo.InvariantCulture),
             sim_end_tick = totalTicks,
             sim_end_seconds = totalTicks / 20.0,
             business_hash = hash,
+            perf = new
+            {
+                elapsed_ms = Math.Round(elapsedMs, 1),
+                us_per_tick = Math.Round(elapsedMs * 1000 / Math.Max(1, totalTicks), 1),
+                events = rec.Events.Count - 1,
+                ledger_rows = rec.Ledger.Count - 1,
+                snapshot_rows = rec.Snapshots.Count - 1,
+                diagnostic_rows = rec.Diagnostics.Count - 1,
+                output_bytes = bytes,
+                managed_heap_peak_mb = Math.Round(heapPeakBytes / 1048576.0, 1),
+                evidence_truncated = "诊断现场固定截断（怪物≤6、入场诊断≤4 行、告警≤max_alerts），未记录全量逐 Tick 状态"
+            },
             counters = new
             {
                 gold_in = goldIn,

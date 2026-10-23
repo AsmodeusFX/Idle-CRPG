@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "scenario_id": "T_tool_probe_sparse",
+  "scenario_note": "与 T_tool_probe 同 Seed/同策略、仅采样密度不同：用于证明采样与采集不改变同 Seed 业务结果",
+  "seed": 20261023,
+  "duration_minutes": 6,
+  "sample_interval_minutes": 6,
+  "dense_sample_minutes": 0,
+  "dense_every_minutes": 0,
+  "starting_heroes": ["warrior"],
+  "player_policy": {
+    "castle": { "enabled": false, "interval_seconds": 60, "max_requests": 0 },
+    "starmap": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "nodes": [
+        { "id": "s_root", "max_level": 1 },
+        { "id": "s_party_1", "max_level": 1 }
+      ]
+    },
+    "party": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "roster": ["warrior", "ranger"],
+      "target_size": 2
+    },
+    "talents": { "mode": "none" },
+    "diagnostics": { "stall_window_seconds": 120, "recheck_seconds": 60, "max_alerts": 3 }
+  }
+}

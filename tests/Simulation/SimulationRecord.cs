@@ -48,6 +48,29 @@ public sealed class SimulationRecorder
         return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
     }
 
+    /// <summary>源码指纹：正式 Core 脚本与测试脚本（排除 bin/obj）的 SHA256，用于区分未提交改动。</summary>
+    public static string SourceFingerprint(string root)
+    {
+        var scopes = new[] { Path.Combine(root, "Idle-CRPG/Scripts"), Path.Combine(root, "tests") };
+        var files = scopes.Where(Directory.Exists)
+            .SelectMany(scope => Directory.GetFiles(scope, "*.cs", SearchOption.AllDirectories))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                        && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Select(path => (Path: path, Relative: Path.GetRelativePath(root, path).Replace('\\', '/')))
+            .OrderBy(x => x.Relative, StringComparer.Ordinal).ToArray();
+        using var sha = SHA256.Create();
+        using var stream = new MemoryStream();
+        foreach (var file in files)
+        {
+            var name = Encoding.UTF8.GetBytes(file.Relative + "\n");
+            stream.Write(name, 0, name.Length);
+            var bytes = File.ReadAllBytes(file.Path);
+            stream.Write(bytes, 0, bytes.Length);
+        }
+        stream.Position = 0;
+        return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
+    }
+
     /// <summary>代码版本：直读 .git（不依赖 git CLI）；缺失记为 unavailable。</summary>
     public static string CodeVersion(string root)
     {

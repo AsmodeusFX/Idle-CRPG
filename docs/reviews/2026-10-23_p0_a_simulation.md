@@ -162,6 +162,33 @@ dotnet run --no-build --project tests/IdleCrpg.Checks.csproj -- --simulation tes
 
 M2 的工具能力已补齐：任何一次模拟都能回答“用了哪套策略、实际做了什么、产生哪些结算、出现什么异常、能否复现”，并明确指出还无法观测什么（第 7 节）。金币对账与经验对账在六个场景全部闭合，异常分级能区分设计平台、合法失败与真实停滞。**验收结论：除第 7 节列明的 Core 只读采集缺口外，M2 测试侧能力通过**；不涉及任何数值设计结论。
 
+## P2-1-M3 模拟环境系统验收（2026-10-23）
+
+结论：**`M3_TEST_ENV_PASS`**，可进入 P2-2；同时保留 `M3_COMBAT_FACTS_PENDING`（逐技能/攻击者/召唤事实仍需 Core 只读接口，未获批前不得宣称具备 P2-4 全技能逐项核验能力）。完整矩阵、六类数据与复跑命令见[M3 统计与矩阵](../data/2026-10-23_23-32_data_p2_1_m3_simulation_acceptance.md)，本文件只记验收事实。
+
+测试侧变更（正式 Core、配置、数值、存档与旧 A–E 场景语义均未改）：
+
+| 文件 | 变更 |
+|---|---|
+| `tests/Simulation/SimulationRunner.cs` | 新增 `--seed=`/`--tag=`（多 Seed 批次与证据目录隔离）；`policy_order` 事件记录“同 Tick 多组到期只执行一组”；`metadata.json` 增加源码指纹、工作区 unknown 声明与 `perf` 段（耗时/µs·Tick/行数/字节/托管堆峰值/截断说明）；`SUSPECTED_STUCK` 自动落盘 `stalls/stall-<tick>.md`（阶段/章节/POI/房间/坐标与 HP/怪物/预约账本/入房掩码/最后进展/最近 5 条事件/双指纹/复跑命令，导航目标标 `unavailable`） |
+| `tests/Simulation/SimulationRecord.cs` | 新增 `SourceFingerprint`（`Scripts/**/*.cs` + `tests/**/*.cs`，排除 bin/obj） |
+| `tests/SimulationToolChecks.cs` | 新增断言：城堡关闭零点击、同 Tick 次序留痕、配置指纹可检出改动、源码指纹与 `git_worktree=unknown` 入盘、性能计数非零、**采样密度不改变事件/金币流水** |
+| `tests/Simulation/T_tool_probe_sparse.json` | 采样独立性对照场景 |
+| `tests/Program.cs` | `--seed`/`--tag` 参数解析 |
+
+验收数据要点：
+
+- 构建 0 警告 0 错误；全量 Core Checks 退出 0（30.7~50.8s，含冷/热与重建差异）；`--room-entry-checks` 退出 0（2.1s，384 边界带场景 + 旧档恢复）；`--simulation-tool-checks` 退出 0（3.4s）；Godot headless smoke 退出 0（3.6s，`SMOKE_OK`）。
+- 标准 7 场（Seed 20261023）：**金币差额 0、经验无法解释 0**；A 仍为 Lv7 设计平台但击杀 4133／金币 30356 持续增长（无入房冻结）。
+- 多 Seed 30 场：A/C/E × 8 Seed 与 B/D × 3 Seed 全部 `diff=0`、`unexplained=0`，0 条 `SUSPECTED_STUCK`/`MANUAL_GATE`/`COMBAT_FAILURE_LOOP`。
+- 确定性：C 同 Seed 双跑业务哈希一致且四份机器文件逐字节相同；同 Seed 不同目录（`m3` vs `m3s`）哈希一致。E 精确性：仅 78 金币三节点购买、编队两步扩编、无天赋/装配动作。
+- 失败链可持续（C）：`wipe`(2161.95s) → `village_trade`(+338) → `TravelDungeon` → `dungeon_enter A04-D04` → 继续击杀，无重复结算。
+- 性能有界：240 分钟场 4.4–6.6s（16.7–22.8 µs/Tick），产物体积 1.14–1.51 MB/场，托管堆峰值 27–30 MB，诊断 ≤5 条/场并固定截断。
+
+未覆盖并已标 `UNAVAILABLE`：逐技能施放/命中、攻击者身份、逐技能伤害与承伤、召唤生命周期、城堡失败致死序列、洗点扣费路径（通路存在，`TalentChecks` 覆盖）、实机窗口与多平台视觉验收。Core 只读采集提案（`SettleDamage`/`GrantHeroExperience`/`Commit`/`SummonEffect` + 256~512 环缓冲 + 默认关闭 + 开关前后哈希一致验证）停在审批门，**本轮未改任何正式 Core**。
+
+本轮未提交、未推送。
+
 ## P0-B补充（2026-10-23_22-12）
 
 新增D单人成长、E最小扩编策略，前30分钟每分钟快照及5分钟现场。正式Core/配置未改。build退出0；五场双轮退出0，事件与快照SHA256一致。报告见[统一统计](../data/2026-10-23_22-12_data_p0_b_growth_stall.md)。英雄存活排除本次永久死亡无人救援解释；疑似入口资格问题未确认。逐击杀经验及精准停滞起点、失败细分和部分定向检查仍未完成，不能视作完整验收。
