@@ -88,9 +88,9 @@ public partial class Main
         var toolsTitle=HudText(tools,"编辑器入口",new Vector2(16,10),17);toolsTitle.AddThemeColorOverride("font_color",new Color("8cc4b1"));
         HudText(tools,"配置工具",new Vector2(16,58),15);
         GmButton(tools,"StarEditorEntry","星图节点编辑器",new Vector2(112,48),new Vector2(200,38),()=>{gmRoot.Hide();viewMode=3;if(!_editingStars)ToggleStarEditor();else RefreshStarPage();TickStarPanels();},false);
-        GmButton(tools,"EngagementDiagnostics","接敌容量 · 实时诊断",new Vector2(324,48),new Vector2(224,38),()=>
+        GmButton(tools,"EngagementDiagnostics","接敌容量与入场 · 实时诊断",new Vector2(324,48),new Vector2(224,38),()=>
         {
-            var window=new Window {Title="接敌容量与关系记录",Size=new Vector2I(900,650)};
+            var window=new Window {Title="入场通行、敌方警觉与接敌容量记录",Size=new Vector2I(900,650)};
             var text=new TextEdit {Editable=false};text.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);window.AddChild(text);
             var timer=new Timer {WaitTime=.2,Autostart=true};window.AddChild(timer);
             void Update()=>text.Text=session?.EngagementDiagnostics()??"无战斗现场";

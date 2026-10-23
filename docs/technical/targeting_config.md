@@ -16,7 +16,10 @@
 | targeting_local_range_milli | 4000 | 千分之一世界单位，正常优先接敌范围；不是全房追击硬上限 |
 | targeting_reevaluate_milli | 250 | 毫秒，单个Overflow锁的最短重评间隔 |
 | targeting_budget | 4 | 每逻辑步最多消费的溢出重评请求数，不限制首次激活的合法索敌数量 |
-| combat_entry_delay_milli | 800 | 毫秒，有活怪房间警觉/小队展开窗口 |
+| combat_entry_delay_milli | 800 | 毫秒，有活怪房间基础警觉时间，无条件保留 |
+| combat_entry_alert_cap_milli | 2000 | 毫秒，敌方启动兜底上限，必须大于基础警觉；防止入房异常导致长期待机 |
+| combat_entry_pass_depth_milli | 1500 | 千分之一世界单位，入口通行深度；无近距威胁时单位须自然入房该深度才可停下攻击 |
+| combat_entry_threat_range_milli | 1200 | 千分之一世界单位，入口浅区近距离威胁距离，必须小于通行深度 |
 | combat_entry_melee_depth_milli | 2800 | 千分之一世界单位，ranged=false英雄的门内展开纵深 |
 | combat_entry_ranged_depth_milli | 900 | 千分之一世界单位，ranged=true远程/法系的门内展开纵深 |
 | combat_entry_melee_spread_milli | 1100 | 千分之一世界单位，近战横向通道间距 |
@@ -31,6 +34,16 @@
 新增规则均为必填整数1～100000，禁止隐藏默认值；近战纵深、横向间距均须大于对应远程值。旧front/back/shared-spread三个键已被上述四键替代。角色分组使用combat/unit_attributes.csv既有ranged字段，不读取接敌容量；提高容量不会把法系推入前排。上述均为原型参数，可后续调参。角色位置仍使用已有二维世界坐标和固定步长，倍速不重复乘移动预算。
 
 召唤物入场复用同一警觉窗口与纵深/间距：`skill/summon.csv`必填`role`（melee/ranged/support）决定近战前压、远程靠后或贴近主人，不按显示名或主人职业推断。召唤物车道从英雄总数之后继续，临时加速取`基础×summon_entry_speed_pct%`（原型150%）；窗口结束不再兜底闪现，未接敌的召唤物继续沿真实房门走进房间，到达或进入有效战斗即交回战斗AI，不延长敌人AI延迟。该加速只在进入有活怪房间时触发，走廊与已清空房间仍按普通跟随/追赶。详见[召唤物跟随与入场部署](summon_follow.md)。
+
+## 2026-10-23 V1.2 入场通行与出生避让
+
+不新增 CSV 表；通行相关数值全部来自上表三条新规则，行为见[索敌设计](../design/combat_targeting.md)。
+
+- `CombatTargetingState` 新增 `EntryPassMask`（已完成通行）与 `EntryEngagedMask`（提前接战豁免），按友方连续索引（英雄在前、召唤物在后）独立记录；`DeployedMask` 语义保留为英雄已交回战斗 AI。
+- 单位入房深度由 `EntryAnchor`（本次实际房门位置）与 `EntryDirection`（指向房间中心）投影得到，四种入口共用；不新增门线字段或存档版本。
+- 两个新掩码属于本房短期现场：完整快照保存并校验位宽与友方数量，正式检查点必须为 0，读档重建入场而不是续接。
+- 刷怪避让复用 `Reveal` 的既有随机过程：四边 0.8 留白后，再按实际进房方向排除入口内侧通行区；重试上限 32 次，失败时确定性回退到通行线外，怪物数量始终等于快照数量。
+- GM 接敌诊断窗口新增入口门线、朝内方向、通行边界、单位坐标/深度、当前目标、停止原因与敌方警觉状态；只读、不入档。
 
 ## 运行态和存档
 

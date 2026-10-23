@@ -1,5 +1,7 @@
 # 文档索引
 
+- [Steam D2 房间入场与门口拥堵修正 V1.2](reviews/2026-10-23_room_entry_v1_2.md)：入口通行1.5U与逐单位交接、敌方警觉0.8s基础/2.0s兜底、入口内侧1.5U出生避让、GM入场诊断；含召唤物接敌容量为0的独立审计结论。规则写入[索敌与入场展开](design/combat_targeting.md)、[字段合同](technical/targeting_config.md)。
+
 - [跨平台Agent开发规范](technical/agent_workflow.md)：仓库规则、游戏开发Skill、平台验证和维护；[创建与自身归档](reviews/2026-10-23_agent_skill_archive.md)。
 
 - [怪物实验遭遇E1实施与验收](reviews/2026-10-22_monster_encounter_e1.md)：M01–M04、T01–T04隔离Core夹具；实机视觉验收待完成。
