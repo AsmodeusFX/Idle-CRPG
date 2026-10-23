@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "scenario_id": "F_policy_probe",
+  "scenario_note": "工具缺口定向场景：验证合法但未解锁/未满足前置时的拒绝理由记录（星图前置、职业解锁、天赋行门槛），并保留一条可成功的动作作为对照",
+  "seed": 20261023,
+  "duration_minutes": 30,
+  "sample_interval_minutes": 10,
+  "dense_sample_minutes": 30,
+  "dense_every_minutes": 5,
+  "starting_heroes": ["warrior"],
+  "player_policy": {
+    "castle": { "enabled": false, "interval_seconds": 60, "max_requests": 0 },
+    "starmap": {
+      "mode": "explicit",
+      "interval_seconds": 30,
+      "nodes": [
+        { "id": "s_party_1", "max_level": 1 },
+        { "id": "s_root", "max_level": 1 }
+      ]
+    },
+    "party": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "roster": ["warrior", "ranger", "priest"],
+      "target_size": 3
+    },
+    "talents": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "learn": [
+        { "hero": "warrior", "node": "barb_bash", "ranks": 1 },
+        { "hero": "warrior", "node": "barb_leap", "ranks": 1 }
+      ],
+      "equip": [
+        { "hero": "warrior", "skills": ["barb_bash"] }
+      ]
+    },
+    "diagnostics": { "stall_window_seconds": 600, "recheck_seconds": 300, "max_alerts": 5 }
+  }
+}

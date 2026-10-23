@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "scenario_id": "E_min_party",
+  "scenario_note": "精确最小合法扩编：仅购买 s_root/s_party_1/s_party_2 各 1 级，编入 warrior/ranger/mage，不做天赋学习与额外技能装配（历史 E_party_only 为四开关近似，不可与本场景严格数值对照）",
+  "seed": 20261023,
+  "duration_minutes": 240,
+  "sample_interval_minutes": 30,
+  "dense_sample_minutes": 30,
+  "dense_every_minutes": 1,
+  "starting_heroes": ["warrior"],
+  "player_policy": {
+    "castle": { "enabled": true, "interval_seconds": 60, "max_requests": 0 },
+    "starmap": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "nodes": [
+        { "id": "s_root", "max_level": 1 },
+        { "id": "s_party_1", "max_level": 1 },
+        { "id": "s_party_2", "max_level": 1 }
+      ]
+    },
+    "party": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "roster": ["warrior", "ranger", "mage"],
+      "target_size": 3
+    },
+    "talents": { "mode": "none" },
+    "diagnostics": { "stall_window_seconds": 600, "recheck_seconds": 300, "max_alerts": 5 }
+  }
+}

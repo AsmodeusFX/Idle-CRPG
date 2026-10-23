@@ -40,6 +40,7 @@ if(args.Contains("--economy-sim"))
     EconomySimChecks.Run(root,minutes);return;
 }
 if(args.Contains("--dungeon-travel-checks")){DungeonTravelChecks.Run(root);return;}
+if(args.Contains("--simulation-tool-checks")){SimulationToolChecks.Run(root);return;}
 MonsterEncounterChecks.Run(root);MonsterSupportEncounterChecks.Run(root);
 SkillPreviewChecks.Run(root);
 ProcIcdChecks.Run(root);
@@ -320,3 +321,4 @@ ActMonsterContentChecks.Run(root);
 SummonCapacityChecks.Run(root);
 CombatStatsChecks.Run(root);
 DungeonTravelChecks.Run(root);
+SimulationToolChecks.Run(root);

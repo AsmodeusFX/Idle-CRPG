@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "scenario_id": "T_tool_probe",
+  "scenario_note": "工具自检专用短场景：验证显式策略精确性、输出文件完整性与同 Seed 可重复性（不作为数值样本）",
+  "seed": 20261023,
+  "duration_minutes": 6,
+  "sample_interval_minutes": 3,
+  "dense_sample_minutes": 6,
+  "dense_every_minutes": 1,
+  "starting_heroes": ["warrior"],
+  "player_policy": {
+    "castle": { "enabled": false, "interval_seconds": 60, "max_requests": 0 },
+    "starmap": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "nodes": [
+        { "id": "s_root", "max_level": 1 },
+        { "id": "s_party_1", "max_level": 1 }
+      ]
+    },
+    "party": {
+      "mode": "explicit",
+      "interval_seconds": 60,
+      "roster": ["warrior", "ranger"],
+      "target_size": 2
+    },
+    "talents": { "mode": "none" },
+    "diagnostics": { "stall_window_seconds": 120, "recheck_seconds": 60, "max_alerts": 3 }
+  }
+}

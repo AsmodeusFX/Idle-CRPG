@@ -72,7 +72,7 @@
 
 - [空间配置与显示比例审计](data/2026-10-23_spatial_configuration_audit.md)：房间/走廊/镜头/投影/显示比例的逐项实测汇总，标注单位、来源与“规划预算≠实际生成”的边界。
 
-- [P0-A 统一模拟测试配置结构](reviews/2026-10-23_p0_a_simulation.md)：部分实施与验收缺口；A/B/C 240分钟数据。
+- [P0-A 统一模拟测试配置结构](reviews/2026-10-23_p0_a_simulation.md)：部分实施与验收缺口；A/B/C 240分钟数据。**P2-1-M2（同日追加）**：模拟工具能力矩阵与补齐——`player_policy` 版本 2 显式策略（城堡/星图/编队/天赋，同一 Tick 只执行一组）、逐 Tick 事件与金币/经验对账（六场差额 0、经验无法解释 0）、可疑停滞分级（MANUAL_GATE/XP_RATE_ZERO/COMBAT_FAILURE_LOOP/SUSPECTED_STUCK/RUNNING/UNDETERMINED）、`metadata.json` 配置指纹与业务哈希、`E_min_party`/`F_policy_probe` 场景；逐技能/攻击者采集仍待 Core 只读接口批准。
 
 - [P0-A 模拟玩家对照统计](data/2026-10-23_21-54_data_p0_a_simulation.md)：A/B/C 各240游戏分钟，30分钟采样；B跨章与A/C停滞实测，缺失指标明确标注。
 
