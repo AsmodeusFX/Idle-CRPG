@@ -1,9 +1,0 @@
-﻿test_id,party,enemy_setup,event_timeline,expected_assertion,status
-TG-01,Barbarian(cap3),8 melee,Barbarian enters only,3 Normal + 5 Overflow can attack,TEST_FIXTURE
-TG-02,Barbarian(cap3);Sorceress(cap0),8 melee,Tank then Mage enters,Original 3 Normal stable; >=1 Overflow may target Mage depending legality,TEST_FIXTURE
-TG-03,Barbarian(cap3);Sorceress(cap0);Ranger(cap0),8 melee,Mage and Ranger join later,Overflow distributes by nearest other legal; not forced uniform,TEST_FIXTURE
-TG-04,Sorceress(cap0),8 melee,Mage solo,All 8 can lock or attack mage if valid,TEST_FIXTURE
-TG-09,Barbarian(cap3);Sorceress(cap0),3 ranged + 6 melee,All in valid range,Ranged reservations zero; normal melee occupancy <=3,TEST_FIXTURE
-TG-12,Barbarian(cap3);Sorceress(cap0),8 melee,Active force taunt then expire,Forced overrides temporarily; expiry reevaluates at safe boundary,TEST_FIXTURE
-TG-14,Necromancer(cap0);Skeleton(cap1),5 melee,Summon spawns and despawns,Summon has independent capacity; references cleaned,TEST_FIXTURE
-TG-18,Barbarian(cap3),10 melee,SameTick spawn fixed IDs,No duplicate reservations; fixed seed deterministic,TEST_FIXTURE
