@@ -15,12 +15,9 @@ public sealed partial class GameSession
         skillState.Corpses.Add(new(){ActorId=id,Position=target.Position});
     }
     private bool CorpseExists(int actorId)=>skillState.Corpses.Any(c=>c.ActorId==actorId);
-    /// <summary>尸体已死亡，不能用存活判定；空间资格只按本房边界和记录坐标判断。</summary>
-    private bool CorpseInRoom(Actor actor)
-    {
-        var room=Floor.Rooms[CurrentRoom];var delta=Vector2.Abs(actor.Position-room.Center);
-        return delta.X<=room.HalfWidth+.0001f&&delta.Y<=room.HalfHeight+.0001f;
-    }
+    /// <summary>尸体已死亡，不能用存活判定；空间资格只按本房边界和记录坐标判断，
+    /// 房间归属容差与 InCombatRoom 一致。</summary>
+    private bool CorpseInRoom(Actor actor)=>SpatialTolerance.InsideRoom(Floor.Rooms[CurrentRoom],actor.Position);
     /// <summary>尸体目标只从本房未被消费的死亡事实中选择；同距用稳定战斗 ID 打破，已被消费则立即失去资格。</summary>
     private Actor? ChooseCorpseTarget(Actor actor,float range)
     {

@@ -1,0 +1,15 @@
+﻿{
+  "schema_version": 1,
+  "scenario_id": "E_party_only",
+  "seed": 20261023,
+  "duration_minutes": 240,
+  "sample_interval_minutes": 30,
+  "action_check_interval_seconds": 60,
+  "castle_retry_cooldown_seconds": 60,
+  "player_actions": {
+    "auto_castle_challenge": true,
+    "auto_hero_growth": false,
+    "auto_starmap_purchase": true,
+    "auto_party_management": true
+  }
+}

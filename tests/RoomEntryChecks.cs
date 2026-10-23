@@ -17,16 +17,18 @@ public static class RoomEntryChecks
         double alert=c.Talents.Rule("combat_entry_delay_milli")/1000d;
         double cap=c.Talents.Rule("combat_entry_alert_cap_milli")/1000d;
         void Tick(GameSession g,int n=1){for(int i=0;i<n;i++)g.Tick(.05f);}
-        GameSession Entered()
+        GameSession Entered(int party=0)
         {
-            var g=new GameSession(c,785,c.Heroes.Select(h=>h.Id));
+            var ids=(party<=0?c.Heroes:c.Heroes.Take(party)).Select(h=>h.Id).ToArray();
+            var g=new GameSession(c,785,ids);
             for(int t=0;t<10000&&g.CurrentRoom==0;t++)g.Tick(.05f);
             return g;
         }
         // 隔离场景：重配当前房间尺寸与怪物，并把入口门线/朝内方向显式写入唯一入场现场。
-        (GameSession Game,Room Room,Vector2 Anchor,Vector2 Inward,CombatTargetingState State) Arena(Vector2 inward,int width,int height,int monsters=3)
+        // doorGap<0 表示沿用“已入房”的前置态；>=0 表示英雄停在门线外 doorGap 处（AUD-001 边界用例）。
+        (GameSession Game,Room Room,Vector2 Anchor,Vector2 Inward,CombatTargetingState State) Arena(Vector2 inward,int width,int height,int monsters=3,int party=0,float doorGap=-1f)
         {
-            var g=Entered();var room=g.Floor.Rooms[g.CurrentRoom];
+            var g=Entered(party);var room=g.Floor.Rooms[g.CurrentRoom];
             room.HalfWidth=width/2f;room.HalfHeight=height/2f;
             room.Monsters.Clear();room.Origins.Clear();room.Loot.Clear();
             room.ContentCleared=false;room.Event="";room.EventUsed=true;
@@ -45,7 +47,11 @@ public static class RoomEntryChecks
                 room.Monsters.Add(m);
             }
             foreach(var h in g.Heroes){h.Hp=h.MaxHp=1000000;h.Timer=999;h.Attack=1;}
-            for(int i=0;i<g.Heroes.Count;i++)g.Heroes[i].Position=anchor+inward*.2f+lateral*((i-(g.Heroes.Count-1)/2f)*.12f);
+            for(int i=0;i<g.Heroes.Count;i++)
+            {
+                float offset=(i-(g.Heroes.Count-1)/2f)*.12f;
+                g.Heroes[i].Position=doorGap>=0?anchor-inward*doorGap+lateral*offset:anchor+inward*.2f+lateral*offset;
+            }
             return (g,room,anchor,inward,state);
         }
         int Index(GameSession g,Actor actor)=>g.Heroes.Contains(actor)?g.Heroes.IndexOf(actor):g.Heroes.Count+g.Floor.Rooms[g.CurrentRoom].Monsters.Count+g.Summons.IndexOf(actor);
@@ -232,6 +238,66 @@ public static class RoomEntryChecks
                 Need(text.Contains(key),"GM入场诊断缺少字段："+key);
             Need(string.Join("\n",scene.Game.EngagementDiagnostics()).Contains("通行边界"),"GM主诊断未包含入场通行信息");
         }
-        Console.WriteLine("PASS: room entry passage in four directions and four room sizes, per-unit handover, near-threat early engagement without retro passage, alert base/progress/fallback, entrance-zone spawn avoidance with padding and reproducibility, independent summon passage, capacity source and GM entry diagnostics");
+        // 七、AUD-001/AUD-002 边界带：门线外 0~0.0019U（覆盖位移到达阈值两侧）×
+        //     四方向 × 四种房间尺寸 × 1/2/3 人。断言有限时间内入房或合法提前接战，
+        //     且不存在“持续无位移、无目标、无战斗”的死锁。
+        {
+            Need(SpatialTolerance.RoomBoundary>=SpatialTolerance.MoveArrival,"房间归属容差必须不小于位移到达阈值");
+            foreach(float gap in new[]{0f,0.00005f,0.0003f,0.0006f,0.0009f,0.0011f,0.0015f,0.0019f})
+            foreach(var inward in new[]{Vector2.UnitX,-Vector2.UnitX,Vector2.UnitY,-Vector2.UnitY})
+            foreach(var size in new[]{(6,5),(7,6),(8,7),(9,8)})
+            foreach(int party in new[]{1,2,3})
+            {
+                string tag=$"gap={gap:F5}/{inward}/room={size.Item1}x{size.Item2}/{party}人";
+                var scene=Arena(inward,size.Item1,size.Item2,2,party,gap);
+                var g=scene.Game;
+                var handed=new int[g.Heroes.Count];
+                int idle=0;
+                for(int t=0;t<80;t++)
+                {
+                    var before=g.Heroes.Select(h=>h.Position).ToArray();
+                    Tick(g);
+                    bool moved=false,hasTarget=scene.State.FriendlyTargets.Count>0;
+                    for(int i=0;i<g.Heroes.Count;i++)
+                    {
+                        if(Vector2.Distance(before[i],g.Heroes[i].Position)>0.0005f)moved=true;
+                        int bit=1<<i;
+                        if((scene.State.EntryPassMask&bit)!=0||(scene.State.EntryEngagedMask&bit)!=0)handed[i]=1;
+                        if(scene.State.FriendlyTargets.ContainsKey(i))handed[i]=2;
+                    }
+                    idle=!moved&&!hasTarget?idle+1:0;
+                    Need(idle<40,$"{tag} 连续40步无位移且无目标（入口死区）");
+                }
+                for(int i=0;i<g.Heroes.Count;i++)
+                {
+                    Need(handed[i]>0,$"{tag} 4秒内未完成通行或合法提前接战（#{i}）");
+                    Need(g.InCombatRoom(g.Heroes[i]),$"{tag} 4秒后仍未进入房间（#{i}）");
+                }
+            }
+        }
+        // 八、AUD-001 旧存档恢复：门线外 0.00063U（修复前的死区现场）与 0.19063U（真实旧档记录点）
+        //     经正式 CaptureProgress→Restore 往返后必须自行入房恢复推进，不依赖 GM 移动。
+        {
+            foreach(float gap in new[]{0.00063f,0.19063f})
+            {
+                var scene=Arena(Vector2.UnitY,6,5,3);
+                var g=scene.Game;
+                // 正式检查点按 Origin 重建怪物，手工场景必须登记出生快照才能被读档还原。
+                foreach(var m in scene.Room.Monsters)scene.Room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,new SpawnModifiers()));
+                var snapshot=g.CaptureProgress();
+                // 模拟旧档写入的门外坐标：读档后入口门禁仍按门线解锁，只有几何推进能自救。
+                snapshot.Heroes[0].Position=scene.Anchor-scene.Inward*gap;
+                var resumed=GameSession.Restore(c,snapshot);
+                // 0.00063U 落在新的房间归属容差内，0.19063U 才是真正的门外；后者必须保持“读档时仍在门外”的前提。
+                if(gap>0.01f)Need(!resumed.InCombatRoom(resumed.Heroes[0]),$"旧档用例前提：{gap}U 应在门外");
+                bool inRoom=false;
+                for(int t=0;t<120&&!inRoom;t++){resumed.Tick(.05f);inRoom=resumed.InCombatRoom(resumed.Heroes[0]);}
+                Need(inRoom,$"旧存档停滞现场（门外 {gap}U）未在6秒内自行入房");
+                bool engaged=false;
+                for(int t=0;t<120&&!engaged;t++){resumed.Tick(.05f);engaged=resumed.MonsterTargets.Any();}
+                Need(engaged,$"旧存档停滞现场（门外 {gap}U）入房后未恢复接敌");
+            }
+        }
+        Console.WriteLine("PASS: room entry passage in four directions and four room sizes, per-unit handover, near-threat early engagement without retro passage, alert base/progress/fallback, entrance-zone spawn avoidance with padding and reproducibility, independent summon passage, capacity source and GM entry diagnostics, AUD-001 boundary band (0~0.0019U × 4 directions × 4 room sizes × 1/2/3 party) without displacement/target deadlock, and stalled old-checkpoint self recovery");
     }
 }

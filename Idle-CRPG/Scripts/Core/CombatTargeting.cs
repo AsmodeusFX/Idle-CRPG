@@ -107,7 +107,9 @@ public sealed partial class GameSession
         int index=FriendlyIndex(actor);
         return index>=0&&skillState.Targeting.Locks.Any(l=>l.Target==index||l.Owner==id);
     }
-    /// <summary>入场通行未完成的己方单位不得停下战斗；由入场推进继续前进，或按豁免转入正式战斗。</summary>
+    /// <summary>入场通行未完成的己方单位不得停下战斗；由入场推进继续前进，或按豁免转入正式战斗。
+    /// 解锁条件只看“通行深度/提前接战”，与房间归属容差无关；房间归属统一由 SpatialTolerance 判定，
+    /// 因此不会出现“已到达门线（在房内）但仍被通行门禁拦住且无法再移动”的组合。</summary>
     private bool EntryPassageBlocked(Actor actor)
     {
         var s=skillState.Targeting;
@@ -134,12 +136,9 @@ public sealed partial class GameSession
         double value=Floors.Count>0&&(World==null||World.Stage==CampaignStage.Dungeon)?EffectiveValue(actor,"engagement_capacity",basis):Config.Attributes.Aggregate("engagement_capacity",basis+PassiveTalentValue(actor,"engagement_capacity"),Array.Empty<BuffAttributeSpec>());
         return checked((int)Math.Floor(value));
     }
-    /// <summary>按实际坐标判断本房空间资格；调用者的英雄/怪物列表另限定当前房间成员。</summary>
-    public bool InCombatRoom(Actor actor)
-    {
-        var room=Floor.Rooms[CurrentRoom];var delta=Vector2.Abs(actor.Position-room.Center);
-        return actor.Alive&&delta.X<=room.HalfWidth+.0001f&&delta.Y<=room.HalfHeight+.0001f;
-    }
+    /// <summary>按实际坐标判断本房空间资格；调用者的英雄/怪物列表另限定当前房间成员。
+    /// 房间归属容差与位移到达阈值配套（见 SpatialTolerance），站在门线上的单位视为已入房。</summary>
+    public bool InCombatRoom(Actor actor)=>actor.Alive&&SpatialTolerance.InsideRoom(Floor.Rooms[CurrentRoom],actor.Position);
     /// <summary>队尾继续连续跨门，不夹取或瞬移进房；进房检查点的位置足以恢复这一过程。
     /// 入口通行按单位独立判定：未完成约通行深度的单位继续沿门轴朝内推进；
     /// 只有近距离威胁、正在发生的攻击或被锁定才允许提前接战，接战后不再补做通行。</summary>
@@ -177,8 +176,9 @@ public sealed partial class GameSession
             }
             if(inside&&EntryDepth(hero.Position)+.0001f>=EntryPassDepth){state.EntryPassMask|=bit;state.DeployedMask|=bit;continue;}
             // 即使仍在走廊或上一房间，也先计算房内推进点，再沿真实房门连续进入，不直线穿墙。
+            // 门线只是路径点，不能作为终点，否则位移系统会判定“已到达”而不入房（AUD-001）。
             var goal=EntryAdvancePoint(hero,room,heroIndex);
-            Move(hero,inside?goal:PartyDoorWaypoint(hero,room,goal),dt);
+            Move(hero,inside?goal:EntryMoveTarget(hero.Position,room,goal),dt);
             entryMoved.Add(hero);
         }
         // 召唤物与英雄共用同一入场窗口；入场逻辑独占其移动权，完成后交回正式战斗 AI。
@@ -268,6 +268,16 @@ public sealed partial class GameSession
     private void EngagementEvent(string message)
     {
         engagementEvents.Enqueue(message);while(engagementEvents.Count>24)engagementEvents.Dequeue();
+    }
+    /// <summary>入场推进的最终目标：门线只是路径点，不能成为终点。
+    /// 若位移系统已判定“到达门线”（剩余距离不超过到达阈值），改用房内推进点，
+    /// 保证几何目标一定落在房间归属判定之内，而不是停在边界死区（AUD-001/AUD-002）。
+    /// 只在贴边带内这样走，直线不会切墙；其余情况仍交给走廊/上一房间的路径点。</summary>
+    private Vector2 EntryMoveTarget(Vector2 position,Room room,Vector2 roomGoal)
+    {
+        var waypoint=PartyDoorWaypoint(position,room,roomGoal);
+        if(Vector2.Distance(position,waypoint)>SpatialTolerance.MoveArrival)return waypoint;
+        return SpatialTolerance.NearRoomEdge(room,position)?roomGoal:waypoint;
     }
     private readonly HashSet<int> threatIntents=new();
     /// <summary>正常重新索敌时优先处理本房四单位内后排威胁；意图不占容量。</summary>

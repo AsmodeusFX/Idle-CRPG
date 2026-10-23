@@ -2,7 +2,7 @@
 
 2026-10-23。**本轮只新增测试入口与数据导出，未修改任何正式配置、数值、存档或规则。**
 
-数据附件（CSV，取自同一次运行）：`docs/data/2026-10-23_economy_sim/{summary,timeseries,events}.csv`。
+历史 CSV 附件已清理；本文件保留当次统计结果，下文 CSV 名称仅说明原始数据来源。
 
 ---
 
@@ -127,7 +127,7 @@
 dotnet run --project tests/IdleCrpg.Checks.csproj -- --economy-sim --economy-minutes=240
 ```
 
-输出：`artifacts/economy/{summary,timeseries,events}.csv`（已在 `docs/data/2026-10-23_economy_sim/` 留档一份）。
+输出：`artifacts/economy/{summary,timeseries,events}.csv`（复跑时生成的原始数据，不再作为文档附件归档）。
 
 ---
 

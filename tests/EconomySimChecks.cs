@@ -75,11 +75,11 @@ public static class EconomySimChecks
     }
 
     /// <summary>只用正式接口：星图购买、天赋学习、技能装配、编队请求；失败不伪造成功。</summary>
-    private static void Grow(string strategy,GameSession game,HashSet<string>bought,Dictionary<string,List<string>>learned,int minute,List<string> events)
+    internal static void Grow(string strategy,GameSession game,HashSet<string>bought,Dictionary<string,List<string>>learned,double minute,List<string> events,bool stars=true,bool growth=true,bool party=true)
     {
         // 1) 星图：优先队伍人数与技能槽，再买最便宜的攻击/生命节点。
         string[] order={"s_party_1","s_party_2","s_party_3","s_party_4","s_skill_1","s_skill_2","s_skill_3","s_skill_4","s_root","s_hp","s_atk","s_hp_01","s_atk_01","s_hp_02","s_atk_02"};
-        foreach(string id in order)
+        foreach(string id in stars?order:Array.Empty<string>())
         {
             if(bought.Contains(id))continue;
             if(!game.BuyStar(id,out string reason))continue;
@@ -87,7 +87,7 @@ public static class EconomySimChecks
             events.Add($"{strategy},{minute},star,{id}");
         }
         // 2) 天赋：按行、列顺序学到学不动为止。
-        foreach(var hero in game.Heroes.ToArray())
+        foreach(var hero in growth?game.Heroes.ToArray():Array.Empty<Actor>())
         {
             var list=learned.TryGetValue(hero.SpecId,out var existing)?existing:learned[hero.SpecId]=new();
             foreach(var node in game.Config.Talents.Nodes.Values.Where(n=>n.Hero==hero.SpecId).OrderBy(n=>n.Row).ThenBy(n=>n.Col))
@@ -99,7 +99,7 @@ public static class EconomySimChecks
         }
         // 3) 技能装配：已学主动节点按槽位上阵（槽位由星图解锁，超限会被正式接口拒绝）。
         int slots=1+CountLevel(game,"skill_slots");
-        foreach(var hero in game.Heroes.ToArray())
+        foreach(var hero in growth?game.Heroes.ToArray():Array.Empty<Actor>())
         {
             if(!learned.TryGetValue(hero.SpecId,out var nodes))continue;
             var actives=nodes.Where(id=>game.Config.Talents.Nodes.TryGetValue(id,out var n)&&n.Kind=="active").Take(Math.Max(1,slots-0)).ToArray();
@@ -109,7 +109,7 @@ public static class EconomySimChecks
         }
         // 4) 编队：星图扩编后按已解锁职业补人。
         int capacity=1+CountLevel(game,"party_slots");
-        if(game.Heroes.Count<capacity)
+        if(party&&game.Heroes.Count<capacity)
         {
             string[] unlocked={"warrior","ranger","mage"};
             var roster=unlocked.Take(capacity).ToArray();

@@ -6,6 +6,7 @@ using IdleCrpg.Core;
 
 static void Check(bool value,string message) {if(!value)throw new Exception(message);}
 var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"));
+if(args.Length==2&&args[0]=="--simulation"){SimulationRunner.Run(root,args[1]);return;}
 if(args.Contains("--proc-icd-checks")){ProcIcdChecks.Run(root);return;}
 if(args.Contains("--formula-only")){DamageFormulaChecks.Run();return;}
 if(args.Contains("--formula-checks")){DamageFormulaChecks.Run();DamageFormulaChecks.RunSession(root);return;}

@@ -201,7 +201,7 @@ public sealed partial class GameSession
             {
                 Status="前往"+room.Event;
                 var user=Heroes.Where(h=>h.Alive).OrderBy(h=>Vector2.DistanceSquared(h.Position,room.EventPosition)).First();
-                if(Vector2.Distance(user.Position,room.EventPosition)>.35f){Move(user,room.EventPosition,dt);return;}
+                if(Vector2.Distance(user.Position,room.EventPosition)>SpatialTolerance.InteractionRange){Move(user,room.EventPosition,dt);return;}
             }
             MarkChanged();
             room.EventUsed=true;
@@ -220,7 +220,7 @@ public sealed partial class GameSession
             Status="楼梯集合";
             var stairs=Floor.StairPosition(room);
             foreach(var h in Heroes.Where(h=>h.Alive)) Move(h,stairs,dt);
-            if (Heroes.Where(h=>h.Alive).Any(h=>Vector2.Distance(h.Position,stairs)>0.35f)){regroup=0;return;}
+            if (Heroes.Where(h=>h.Alive).Any(h=>Vector2.Distance(h.Position,stairs)>SpatialTolerance.InteractionRange)){regroup=0;return;}
             regroup += dt;
             if(regroup < 0.6f) return;
             regroup=0;
@@ -383,7 +383,7 @@ public sealed partial class GameSession
         if(phase==0)
         {
             MoveTravelOrder(order,exit,exit,dir,dt,spacing,catchupDistance,catchupPct,null,null);
-            if(Vector2.Distance(leader.Position,exit)<=0.32f)
+            if(Vector2.Distance(leader.Position,exit)<=SpatialTolerance.EntryTrigger)
             {
                 var passage=Floor.Passages.Single(p=>(p.A==a.Id&&p.B==b.Id)||(p.A==b.Id&&p.B==a.Id));
                 if(!passage.Revealed){passage.Revealed=true;MarkChanged();}
@@ -395,7 +395,7 @@ public sealed partial class GameSession
         {
             // 已清空房间没有开门剧情：全队直接连续通过，不等待先锋。
             MoveTravelOrder(order,entry,exit,dir,dt,spacing,catchupDistance,catchupPct,null,null);
-            if(Vector2.Distance(leader.Position,entry)<=0.32f)EnterTargetRoom(b,entry);
+            if(Vector2.Distance(leader.Position,entry)<=SpatialTolerance.EntryTrigger)EnterTargetRoom(b,entry);
             return;
         }
         float waitOffset=Config.Talents.Rule("dungeon_door_wait_offset_milli")/1000f;
@@ -405,7 +405,7 @@ public sealed partial class GameSession
             // 领队走到门外等待位，其余队员继续靠拢；先锋只会在领队到位后选择一次。
             MoveTravelOrder(order,waitPoint,exit,dir,dt,spacing,catchupDistance,catchupPct,null,null);
             // 已在等待线上或更靠近门时同样视为到位，避免读档/手动构造场景倒退回等待位。
-            if(Vector2.Dot(leader.Position-waitPoint,dir)<-0.32f)return;
+            if(Vector2.Dot(leader.Position-waitPoint,dir)<-SpatialTolerance.EntryTrigger)return;
             doorOpener=SelectDoorOpener(entry)??leader;
             doorWait=0;doorFallback=ReferenceEquals(doorOpener,leader);
         }
@@ -428,7 +428,7 @@ public sealed partial class GameSession
             float speed=Summons.Contains(doorOpener)?SummonTravelSpeed(doorOpener):TravelWalkSpeed(doorOpener);
             Move(doorOpener,DoorStep(doorOpener.Position,exit,entry,dir),dt,speed);
         }
-        if(Vector2.Distance(doorOpener.Position,entry)<=0.32f)
+        if(Vector2.Distance(doorOpener.Position,entry)<=SpatialTolerance.EntryTrigger)
         {
             EnterTargetRoom(b,entry);
             return;
@@ -562,7 +562,10 @@ public sealed partial class GameSession
     internal static void Move(Actor a,Vector2 target,float dt,float? speed=null)
     {
         var delta=target-a.Position; float distance=delta.Length();
-        if(distance>0.001f) a.Position+=delta/distance*Math.Min(distance,(speed??a.Speed)*dt);
+        // 到达阈值内直接吸附目标：否则“就地不动”与“房间归属容差”会互相矛盾，
+        // 站在门线前 0.0001~0.001U 的单位既进不了房也走不动（AUD-001）。
+        if(distance<=SpatialTolerance.MoveArrival){a.Position=target;return;}
+        a.Position+=delta/distance*Math.Min(distance,(speed??a.Speed)*dt);
     }
     private RoomLoot RollDrops(Actor monster)
     {
@@ -597,7 +600,7 @@ public sealed partial class GameSession
         if(loot==null)return false;
         Status="前往拾取战利品";
         var user=Heroes.Where(h=>h.Alive).OrderBy(h=>Vector2.DistanceSquared(h.Position,loot.Position)).First();
-        if(Vector2.Distance(user.Position,loot.Position)>.35f){Move(user,loot.Position,dt);return true;}
+        if(Vector2.Distance(user.Position,loot.Position)>SpatialTolerance.InteractionRange){Move(user,loot.Position,dt);return true;}
         loot.Collected=true;Gold=checked(Gold+loot.Gold);
         foreach(var item in loot.Items)
         {

@@ -1,0 +1,15 @@
+﻿{
+    "schema_version":  1,
+    "sample_interval_minutes":  30,
+    "duration_minutes":  240,
+    "castle_retry_cooldown_seconds":  60,
+    "action_check_interval_seconds":  60,
+    "player_actions":  {
+                           "auto_castle_challenge":  true,
+                           "auto_starmap_purchase":  false,
+                           "auto_hero_growth":  false,
+                           "auto_party_management":  false
+                       },
+    "seed":  20261023,
+    "scenario_id":  "C_castle_only"
+}

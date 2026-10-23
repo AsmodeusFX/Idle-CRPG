@@ -38,11 +38,11 @@ public sealed partial class GameSession
         int monsters=Floors.Count>0&&CurrentRoom>=0&&CurrentRoom<Floor.Rooms.Count?Floor.Rooms[CurrentRoom].Monsters.Count:0;
         return id>=0&&(id<Heroes.Count||id>=Heroes.Count+monsters&&id<Heroes.Count+monsters+Summons.Count);
     }
+    /// <summary>空间资格与 InCombatRoom 共用同一房间归属容差，避免召唤物判定与本房判定不一致。</summary>
     private bool InCurrentRoom(Actor actor)
     {
         if(Floors.Count==0||CurrentRoom<0||CurrentRoom>=Floor.Rooms.Count)return false;
-        var room=Floor.Rooms[CurrentRoom];var delta=Vector2.Abs(actor.Position-room.Center);
-        return actor.Alive&&delta.X<=room.HalfWidth+.0001f&&delta.Y<=room.HalfHeight+.0001f;
+        return actor.Alive&&SpatialTolerance.InsideRoom(Floor.Rooms[CurrentRoom],actor.Position);
     }
     /// <summary>召唤物属性在施法时按主人基础值快照；跨房连续行进，换层重建位置但不补满 HP。</summary>
     private void SummonEffect(SkillEffectWork work,EffectDefinition effect)
@@ -164,7 +164,7 @@ public sealed partial class GameSession
                 {state.EntryPassMask|=bit;summonDeployGoals.Remove(summon);summonDeployed.Add(summon);continue;}
                 else
                 {
-                    Move(summon,PartyDoorWaypoint(summon,room,summonDeployGoals[summon]),dt,summon.Speed*entrySpeedPct);
+                    Move(summon,EntryMoveTarget(summon.Position,room,summonDeployGoals[summon]),dt,summon.Speed*entrySpeedPct);
                     entryMoved.Add(summon);continue;
                 }
             }
@@ -178,7 +178,7 @@ public sealed partial class GameSession
                 goal=ClampToRoom(room,anchor+side*(Summons.IndexOf(summon)%2==0?.25f:-.25f));
                 summonDeployGoals[summon]=goal;
             }
-            Move(summon,PartyDoorWaypoint(summon,room,goal),dt,summon.Speed*entrySpeedPct);
+            Move(summon,EntryMoveTarget(summon.Position,room,goal),dt,summon.Speed*entrySpeedPct);
             entryMoved.Add(summon);
             // 走廊/旧房间的路径点不能当作落点：必须真正进入房间并站到目标附近才算部署完成。
             if(Vector2.DistanceSquared(summon.Position,goal)<.04f&&WithinRoom(room,summon.Position))
@@ -212,16 +212,17 @@ public sealed partial class GameSession
     }
     private static Vector2 ClampToRoom(Room room,Vector2 point)=>Vector2.Clamp(point,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
     /// <summary>英雄与召唤物共用的房门路径点：同房直接朝落点；在上一房间先走到通往目标房间的门；
-    /// 在走廊时沿最近门段前进。禁止朝目标直线穿墙，也不做瞬移。</summary>
-    private Vector2 PartyDoorWaypoint(Actor actor,Room targetRoom,Vector2 roomGoal)
+    /// 在走廊时沿最近门段前进。禁止朝目标直线穿墙，也不做瞬移。
+    /// 该方法的返回值只是“下一个路径点”，门线本身不能作为最终目标（见 EntryMoveTarget）。</summary>
+    private Vector2 PartyDoorWaypoint(Vector2 position,Room targetRoom,Vector2 roomGoal)
     {
-        var from=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,actor.Position));
-        if(from==null)return CorridorWaypointTowards(actor.Position,targetRoom);
+        var from=Floor.Rooms.FirstOrDefault(r=>WithinRoom(r,position));
+        if(from==null)return CorridorWaypointTowards(position,targetRoom);
         if(from.Id!=targetRoom.Id)
         {
             var next=Floor.Rooms[FirstStep(from.Id,targetRoom.Id)];
             var exit=from.DoorTowards(next);
-            return Vector2.Distance(actor.Position,exit)>.001f?exit:next.DoorTowards(from);
+            return Vector2.Distance(position,exit)>SpatialTolerance.MoveArrival?exit:next.DoorTowards(from);
         }
         return roomGoal;
     }
@@ -235,7 +236,8 @@ public sealed partial class GameSession
     }
     private Actor? OwnerOf(Actor summon)=>summon.SummonOwner>=0&&summon.SummonOwner<Heroes.Count?Heroes[summon.SummonOwner]:null;
     private string SummonRole(Actor summon)=>SkillConfig.Summons.TryGetValue(summon.SummonDefinitionId,out var definition)?definition.Role:"melee";
-    private static bool WithinRoom(Room room,Vector2 p){var d=Vector2.Abs(p-room.Center);return d.X<=room.HalfWidth+.00001f&&d.Y<=room.HalfHeight+.00001f;}
+    /// <summary>房间归属与 InCombatRoom 共用同一容差，避免“跟随认为在房内、战斗认为在房外”。</summary>
+    private static bool WithinRoom(Room room,Vector2 p)=>SpatialTolerance.InsideRoom(room,p);
 
     /// <summary>限时召唤按固定逻辑步递减剩余时间，归零即撤销；永续定义不受该计时影响。
     /// 计时不MarkChanged，避免每一步都触发存档；剩余时间随进房检查点保存。</summary>
