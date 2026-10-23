@@ -56,6 +56,14 @@ if(args.Contains("--economy-sim"))
 }
 if(args.Contains("--dungeon-travel-checks")){DungeonTravelChecks.Run(root);return;}
 if(args.Contains("--simulation-tool-checks")){SimulationToolChecks.Run(root);return;}
+if(args.Contains("--inventory-audit"))
+{
+    // 机器字典与报告同名归档在同一文件夹，避免散落在 docs/data 根目录。
+    string outDir=Path.Combine(root,"docs/data",InventoryAudit.ArchiveFolder);
+    string? custom=args.FirstOrDefault(a=>a.StartsWith("--inventory-out=",StringComparison.Ordinal));
+    if(custom!=null)outDir=custom.Substring("--inventory-out=".Length);
+    InventoryAudit.Run(root,outDir);return;
+}
 MonsterEncounterChecks.Run(root);MonsterSupportEncounterChecks.Run(root);
 SkillPreviewChecks.Run(root);
 ProcIcdChecks.Run(root);

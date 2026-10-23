@@ -2,6 +2,8 @@
 
 - [工程代码健康审计（只读）](reviews/2026-10-23_code_health_audit.md)：AUD-001~012；**P0 入口坐标带死锁**（单人队伍在门口永久停滞，存读档不可恢复，已复现并定位到 0.001/0.0001/0.00001 三处阈值死区）、P1 阈值语义分散与纯挂机 Lv.7 平台期口径、P2/P3 存档捕获/缺表降级/读档重复重建等；含环境快照、调用链、金币四分账与复跑方法。
 
+- [P2-2-M1 全系统配置与内容资产普查](data/2026-10-24_00-03_data_p2_2_m1_inventory.md)：`P2_2_M1_PASS`。391 份配置资产（ACTIVE 142/LEGACY 9/TEST_ONLY 41/PREVIEW 2/未引用 1/残留 1/import 195）、31 个系统、4278 条内容 ID（悬挂 0）、7 项扩容缺口、14 项问题；机器字典归档在 `docs/data/2026-10-24_00-03_data_p2_2_m1_inventory/{system_inventory,config_manifest,content_registry,content_expansion_gaps,issues_and_decisions}.csv`（与报告同名同夹），只读复跑 `--inventory-audit`。
+
 - [核心体验模拟与数值基线](data/2026-10-23_core_experience_sim.md)：`--economy-sim` 实测 30/120/240 游戏分钟（纯挂机 vs 含成长操作）、成长时间轴、收支与效率曲线、异常与断点；统计结果保留在该单份报告中。
 
 - [核心体验闭环就绪度审计](data/2026-10-23_core_loop_readiness_audit.md)：五系统完成度矩阵、经验/金币/天赋/星图/难度链路与断点、当前正式数值、缺失与风险清单；只读统计，未改配置与数值。
