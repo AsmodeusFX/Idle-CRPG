@@ -88,7 +88,14 @@ public partial class Main
         var toolsTitle=HudText(tools,"编辑器入口",new Vector2(16,10),17);toolsTitle.AddThemeColorOverride("font_color",new Color("8cc4b1"));
         HudText(tools,"配置工具",new Vector2(16,58),15);
         GmButton(tools,"StarEditorEntry","星图节点编辑器",new Vector2(112,48),new Vector2(200,38),()=>{gmRoot.Hide();viewMode=3;if(!_editingStars)ToggleStarEditor();else RefreshStarPage();TickStarPanels();},false);
-        var future=new Button {Text="关卡编辑器 · 待实现",Position=new Vector2(324,48),Size=new Vector2(224,38),Disabled=true};tools.AddChild(future);
+        GmButton(tools,"EngagementDiagnostics","接敌容量 · 实时诊断",new Vector2(324,48),new Vector2(224,38),()=>
+        {
+            var window=new Window {Title="接敌容量与关系记录",Size=new Vector2I(900,650)};
+            var text=new TextEdit {Editable=false};text.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);window.AddChild(text);
+            var timer=new Timer {WaitTime=.2,Autostart=true};window.AddChild(timer);
+            void Update()=>text.Text=session?.EngagementDiagnostics()??"无战斗现场";
+            timer.Timeout+=Update;window.CloseRequested+=()=>window.QueueFree();AddChild(window);Update();window.PopupCentered();
+        });
         GmButton(panel,"SkillPreviewEntry","技能预览 · 战斗试场",new Vector2(130,628),new Vector2(424,36),OpenSkillPreview,false);
         gmStatus=HudText(panel,"",new Vector2(28,674),13);gmStatus.Size=new Vector2(544,50);gmStatus.AutowrapMode=TextServer.AutowrapMode.WordSmart;
         gmButtons["GmHpPlus"].TooltipText=gmButtons["GmHpMinus"].TooltipText="有效血量倍率：承伤除以倍率，保持当前生命比例，立即影响场上及后续怪物。";
@@ -98,6 +105,7 @@ public partial class Main
     }
     private void RefreshGm()
     {
+        gmStatus.TooltipText=session?.EngagementDiagnostics()??"无战斗现场";
         foreach(var button in gmSessionButtons)button.Disabled=session==null;
         var settings=session?.Gm??new GmBattleSettings();
         gmHpValue.Text=$"×{settings.MonsterHp:0.#}";gmAttackValue.Text=$"×{settings.MonsterAttack:0.#}";

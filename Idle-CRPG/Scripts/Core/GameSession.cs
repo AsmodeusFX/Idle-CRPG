@@ -493,16 +493,16 @@ public sealed partial class GameSession
             skillState.Targeting.EntryElapsed+=dt;
             // 警觉窗口只限制敌人 AI 启动；召唤物未到位不会被强制闪现，继续由入场部署按真实路径推进。
             Status=$"入场展开 · 敌人警觉 {CombatEntryRemaining:0.0}秒";
-            return;
         }
         effectBudgetRemaining=SkillConfig.EffectBudget;
         PruneSummons();PruneEnemySummons();
         AdvanceSkills(dt);
         DrainEffects();
+        threatIntents.Clear();
+        if(CombatEntryRemaining<=0)PrepareMonsterTargets(dt);
         foreach(var h in Heroes.Where(h=>h.Alive)) Act(h,room.Monsters,dt,room);
         foreach(var s in Summons.Where(s=>s.Alive)) Act(s,room.Monsters,dt,room);
-        PrepareMonsterTargets(dt);
-        foreach(var m in room.Monsters.Where(m=>m.Alive).ToArray()) Act(m,Heroes,dt,room);
+        if(CombatEntryRemaining<=0)foreach(var m in room.Monsters.Where(m=>m.Alive).ToArray()) Act(m,Heroes,dt,room);
         DrainEffects();
         if(room.Clear){if(!skillPreviewMode)ResetSkillRoom();}else SynchronizeAuras();
     }
@@ -512,7 +512,7 @@ public sealed partial class GameSession
         actor.Timer=Math.Max(0,actor.Timer-dt*(float)(1+EffectiveAttributes(actor).AttackSpeed));
         if(RunRetreat(actor,dt,room))return;
         if(RunActiveSkill(actor))return;
-        var target=IsFriendlyActor(actor)?opponents.Where(InCombatRoom).OrderBy(o=>Vector2.DistanceSquared(o.Position,actor.Position)).FirstOrDefault():OrdinaryMonsterTarget(actor);
+        var target=IsFriendlyActor(actor)?FriendlyCombatTarget(actor,opponents):OrdinaryMonsterTarget(actor);
         if(target==null||!InCombatRoom(target)) return;
         double engagementRange=EffectiveValue(actor,"attack_range",actor.Range);
         // 已装配近战主动就绪时先接近其施放距离，避免远程普攻射程使至圣斩永远无法使用。

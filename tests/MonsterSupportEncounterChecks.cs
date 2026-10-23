@@ -50,6 +50,8 @@ public static class MonsterSupportEncounterChecks
         room.Monsters[4].Hp=1;room.Monsters[4].Position=game.Heroes[0].Position;game.Heroes[0].Attack=100000;game.Heroes[0].Timer=0;
         // 把其余怪物移远，确保统一普攻选中支援源。
         foreach(var m in room.Monsters.Take(4))m.Position=room.Center+Vector2.UnitX*2;
+        // D2稳定友方目标：夹具显式进入正常重新索敌。
+        state.Targeting.FriendlyTargets.Clear();
         Tick(game,1);Need(!room.Monsters[4].Alive,"支援源必须由统一伤害路径击杀");
         Need(state.Buffs.Any(x=>x.Id=="QA_E3_SUPPORT"&&x.Target!=game.Heroes.Count+4),"来源死亡不应删除独立定时Buff");
         game.Heroes[0].Timer=999;Tick(game,45);Need(!state.Buffs.Any(x=>x.Id=="QA_E3_SUPPORT"),"定时Buff必须到期");
@@ -74,6 +76,7 @@ public static class MonsterSupportEncounterChecks
         var first=sr.Monsters.First(m=>m.EnemySummonSource>=0&&m.Alive);first.Hp=1;first.Position=sg.Heroes[0].Position;
         foreach(var m in sr.Monsters.Where(m=>m!=first&&m.Alive))m.Position=sr.Center+Vector2.UnitX*2;
         int kills=sg.Kills;long xp=sg.Experience;int corpseCount=sg.Capture().SkillState.Corpses.Count;
+        sg.Capture().SkillState.Targeting.FriendlyTargets.Clear();
         first.RewardXp=50;first.DropMultiplier=100;sg.Heroes[0].Attack=10000;sg.Heroes[0].Timer=0;Tick(sg,1);sg.Heroes[0].Timer=999;
         Need(!first.Alive&&sg.Kills==kills+1&&sg.Experience>xp&&sg.Capture().SkillState.Corpses.Count==corpseCount+1&&sr.Loot.Count>0,"仆从死亡须沿统一经验掉落尸体链");
         Tick(sg,30);Need(sr.Monsters.Count(m=>m.EnemySummonSource>=0&&m.Alive)==3&&sr.Monsters.Count(m=>m.EnemySummonActivated)==4,"死亡释放上限且不得复用ID");

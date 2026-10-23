@@ -25,6 +25,14 @@ public sealed class MotionPresentation
         if(room==null)return;
         var locks=game.MonsterTargets.ToDictionary(l=>l.Owner);
         float blend=1-MathF.Exp(-12*(float)Math.Clamp(dt,0,.1));
+        // 软部署仅以屏幕Y偏移维持自然错位；X完全由实际战斗移动决定。
+        var friends=game.Heroes.Concat(game.Summons).ToArray();
+        for(int i=0;i<friends.Length;i++)
+        {
+            int lane=i==0?0:(i+1)/2*(i%2==1?-1:1);
+            var goal=game.InCombatRoom(friends[i])&&!room.Clear?new Vector2(0,lane*8):Vector2.Zero;
+            combatOffsets[friends[i]]=Vector2.Lerp(combatOffsets.GetValueOrDefault(friends[i]),goal,blend);
+        }
         for(int i=0;i<room.Monsters.Count;i++)
         {
             var actor=room.Monsters[i];Vector2 goal=Vector2.Zero;

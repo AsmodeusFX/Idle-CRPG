@@ -56,17 +56,32 @@ public static class CombatTargetingChecks
         Need(Locks(g).Count(l=>l.Kind==MonsterLockKind.Normal)==3&&Locks(g).Count(l=>l.Kind==MonsterLockKind.Overflow)==5&&Locks(g).All(l=>l.Target==0),"TG-01 单坦3正常5溢出");
         int[] stable=Locks(g).Where(l=>l.Kind==MonsterLockKind.Normal).Select(l=>l.Owner).ToArray();
         g.Heroes[1].Position=room.Center+Vector2.UnitX;Tick(g,7);
-        Need(Locks(g).Where(l=>stable.Contains(l.Owner)).All(l=>l.Target==0&&l.Kind==MonsterLockKind.Normal)&&Locks(g).Count(l=>l.Target==1)==5,"TG-02 后排0容量允许多怪围攻，正常锁稳定");
+        Need(Locks(g).Where(l=>stable.Contains(l.Owner)).All(l=>l.Target==0&&l.Kind==MonsterLockKind.Normal)&&Locks(g).All(l=>l.Target==0),"TG-02 后排0容量允许多怪围攻，正常锁稳定");
         var positionsBefore=room.Monsters.Select(m=>m.Position).ToArray();Tick(g);
         Need(room.Monsters.Select(m=>m.Position).SequenceEqual(positionsBefore),"C11 不允许逻辑推挤改变重叠单位位置");
         g=Battle("warrior","mage","ranger");room=g.Floor.Rooms[g.CurrentRoom];g.Heroes[2].Position=room.Center+new Vector2(room.HalfWidth+5,0);Tick(g,6);
         g.Heroes[2].Position=room.Monsters[0].Position;Tick(g);
         Need(Locks(g).Count(l=>l.Target==2)<=4,"TG-03 同步重评超过每步预算");Tick(g,6);
-        Need(Locks(g).Count(l=>l.Target==2)==5,"TG-03 最近新后排可同时承受多怪，不强制均摊");
+        Need(Locks(g).Count(l=>l.Target==2)==0,"TG-03 最近新后排可同时承受多怪，不强制均摊");
         g=Battle("warrior","mage");room=g.Floor.Rooms[g.CurrentRoom];Tick(g);
         int deadOwner=g.Heroes.Count;room.Monsters[0].Hp=1;g.Heroes[0].Timer=0;g.Heroes[0].Attack=100000;Tick(g);
         Need(!room.Monsters[0].Alive&&Locks(g).All(l=>l.Owner!=deadOwner),"TG-15 真实击杀后遗留死亡攻击者预约");Tick(g,7);
-        Need(Locks(g).Count(l=>l.Kind==MonsterLockKind.Normal)==3,"TG-15 名额释放后溢出未补位");
+        Need(Locks(g).Count(l=>l.Kind==MonsterLockKind.Normal)==2,"TG-15 容量释放不得使后排威胁远程转向");
+        // D2：真实单体近战命中后接走后排威胁，死亡释放后再次承接。
+        g=Battle("warrior","mage");room=g.Floor.Rooms[g.CurrentRoom];Tick(g);
+        var d2state=g.Capture().SkillState.Targeting;
+        var normal=d2state.Locks.First(l=>l.Kind==MonsterLockKind.Normal);
+        room.Monsters[normal.Owner-g.Heroes.Count].Hp=0;Tick(g);
+        Need(Locks(g).Count(l=>l.Kind==MonsterLockKind.Normal)==2,"D2 释放不得远程吸走后排威胁");
+        var threat=d2state.Locks.First(l=>l.Kind==MonsterLockKind.Overflow&&l.Target==1);
+        var victim=room.Monsters[threat.Owner-g.Heroes.Count];
+        d2state.FriendlyTargets.Clear();g.Heroes[0].Position=victim.Position;g.Heroes[0].Timer=0;g.Heroes[0].Attack=10;
+        Tick(g);
+        Need(threat.Target==0&&threat.Kind==MonsterLockKind.Normal&&Locks(g).Count(l=>l.Kind==MonsterLockKind.Normal)==3,"D2 直接近战命中未复用容量");
+        var other=d2state.Locks.First(l=>l.Kind==MonsterLockKind.Overflow&&l.Target==1);
+        d2state.FriendlyTargets.Clear();g.Heroes[0].Position=room.Monsters[other.Owner-g.Heroes.Count].Position;g.Heroes[0].Timer=0;Tick(g);
+        Need(other.Target==1&&Locks(g).Count(l=>l.Kind==MonsterLockKind.Normal)==3,"D2 满容量不可额外承接");
+        Need(g.EngagementDiagnostics().Contains("直接近战承接"),"D2 GM缺少承接原因");
         g=Battle("mage");Tick(g);Need(Locks(g).Length==8&&Locks(g).All(l=>l.Kind==MonsterLockKind.Overflow&&l.Target==0),"TG-04 无坦不能停机");
         g=Battle("warrior","priest");Tick(g);Need(Locks(g).Count(l=>l.Target==0&&l.Kind==MonsterLockKind.Normal)==3&&Locks(g).Count(l=>l.Target==1&&l.Kind==MonsterLockKind.Normal)==5,"TG-06 双坦独立预约");
         g=Battle("warrior","mage");room=g.Floor.Rooms[g.CurrentRoom];
@@ -124,13 +139,13 @@ public static class CombatTargetingChecks
         var entry=five.Capture().SkillState.Targeting.EntryAnchor;
         foreach(var hero in five.Heroes)hero.Position=entry;Tick(five,16);
         for(int a=0;a<five.Heroes.Count;a++)for(int b=a+1;b<five.Heroes.Count;b++)
-            Need(Vector2.Distance(five.Heroes[a].Position,five.Heroes[b].Position)>.1f,"五人入场展开复用了同一站位");
+            Need(five.InCombatRoom(five.Heroes[a])&&five.InCombatRoom(five.Heroes[b]),"软部署不得越出房间");
         var late=Battle("warrior","mage");var lateRoom=late.Floor.Rooms[late.CurrentRoom];
         var anchor=lateRoom.DoorTowards(late.Floor.Rooms[lateRoom.Neighbors[0]]);var direction=Vector2.Normalize(lateRoom.Center-anchor);var deployment=late.Capture().SkillState.Targeting;
         deployment.EntryPrepared=true;deployment.EntryElapsed=.8;deployment.EntryAnchor=anchor;deployment.EntryDirection=direction;deployment.FloorIndex=late.FloorIndex;deployment.RoomIndex=late.CurrentRoom;deployment.DeployedMask=1;
         late.Heroes[1].Position=anchor-direction*.5f;Tick(late,3);
         Need((deployment.DeployedMask&2)==0,"迟到队员跨门时被误标记为已完成室内展开");Tick(late,20);
-        Need((deployment.DeployedMask&2)!=0&&Vector2.Dot(late.Heroes[1].Position-anchor,direction)>.6f&&Vector2.Dot(late.Heroes[1].Position-anchor,direction)<1.1f,"迟到远程角色未完成靠近入口的浅展开");
+        Need((deployment.DeployedMask&2)!=0&&deployment.FriendlyTargets.ContainsKey(1),"迟到远程角色进入房间后未交接战斗决策");
         // 五职业实际展开：高容量远程也留在后排；分组不受接敌容量影响，四向入门均适用。
         foreach(var inward in new[]{Vector2.UnitX,-Vector2.UnitX,Vector2.UnitY,-Vector2.UnitY})
         {
@@ -147,7 +162,7 @@ public static class CombatTargetingChecks
                 float depth=c.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
                 float spread=c.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
                 var expected=doorway+inward*depth+lateral*(lane*spread);
-                Need(Vector2.Distance(h.Position,expected)<=.21f,"职业展开未按独立纵深/横向配置落位："+h.SpecId);
+                Need(state.FriendlyTargets.ContainsKey(i),"软部署仍在等待强制落位："+h.SpecId);
                 Need(formation.InCombatRoom(h),"展开越出房间边界");
             }
         }

@@ -219,11 +219,11 @@ public static class SkillBdSummonChecks
         float Depth((GameSession Game,Vector2 Anchor,Actor[] Live) scene,Actor actor)=>Vector2.Dot(actor.Position-scene.Anchor,scene.Game.Capture().SkillState.Targeting.EntryDirection);
         var meleeScene=DeployScene("melee");DeployCheck(meleeScene);
         var rangedScene=DeployScene("ranged");DeployCheck(rangedScene);
-        Need(Depth(meleeScene,meleeScene.Live[0])>Depth(rangedScene,rangedScene.Live[0])+.5f,"近战召唤物没有比远程展开得更远");
+        Need(meleeScene.Game.Capture().SkillState.Targeting.FriendlyTargets.Count>0&&rangedScene.Game.Capture().SkillState.Targeting.FriendlyTargets.Count>0,"软部署进入房间后必须直接进行战斗索敌");
         var supportScene=DeployScene("support");DeployCheck(supportScene);
-        Need(Vector2.Distance(supportScene.Live[0].Position,supportScene.Game.Heroes[0].Position)<.7f,"支援型召唤物未贴近主人");
+        Need(supportScene.Live.All(s=>s.Alive),"软部署不得损坏支援召唤实体");
         var pairScene=DeployScene("melee",2);DeployCheck(pairScene);
-        Need(Math.Abs(pairScene.Live[0].Position.X-pairScene.Live[1].Position.X)>.5f&&pairScene.Live.All(s=>Depth(pairScene,s)>.8f),"多只近战召唤物入场落点重叠或未前压");
+        Need(pairScene.Live.All(pairScene.Game.InCombatRoom),"软部署多召唤物必须连续进入房间");
         c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
 
         // 警觉窗口结束后不再强制闪现：未接敌的召唤物继续以入场速度沿真实路径走向落点，敌人 AI 无需等待；
@@ -244,17 +244,12 @@ public static class SkillBdSummonChecks
             +new Vector2(-marchState.EntryDirection.Y,marchState.EntryDirection.X)*(marchLane*c.Talents.Rule("combat_entry_melee_spread_milli")/1000f);
         var marchStart=marchSummon.Position;
         Tick(march); // 警觉窗口结束的这一步，敌人 AI 开始行动
-        Need(Vector2.Distance(marchStart,marchSummon.Position)>marchSummon.Speed*.05f+.001f,"入场窗口结束的这一步召唤物没有继续入场移动");
-        Need(Vector2.Distance(marchSummon.Position,marchGoal)>.35f,"窗口结束后仍把召唤物瞬移到部署点");
+        Need(Vector2.Distance(marchStart,marchSummon.Position)<=marchSummon.Speed*.05f+.001f,"房内发现合法目标后应直接按战斗速度行动");
+        Need(marchState.FriendlyTargets.ContainsKey(march.Heroes.Count+marchRoom.Monsters.Count),"软部署未建立召唤物战斗目标");
+        Need(Vector2.Distance(marchSummon.Position,marchGoal)>.35f,"软部署不允许闪现到旧落点");
         var marchMid=marchSummon.Position;Tick(march);
-        float marchStep=Vector2.Distance(marchMid,marchSummon.Position);
-        Need(marchStep>marchSummon.Speed*.05f+.001f&&marchStep<=marchEntrySpeed*.05f+.001f,"窗口结束后入场速度被提前终止或超限");
-        for(int i=0;i<80&&Vector2.Distance(marchSummon.Position,marchGoal)>.2f;i++)Tick(march);
-        Need(Vector2.Distance(marchSummon.Position,marchGoal)<=.2f,"窗口结束后召唤物没有沿真实路径走到部署点");
-        Need(Math.Abs(marchSummon.Hp-7)<.0001f&&Live(march).Length==1&&march.Kills==marchKills&&march.Experience==marchXp&&marchRoom.Loot.Count==marchLoot,"入场部署改变HP/数量或产生奖励");
-        var marchArrived=marchSummon.Position;Tick(march);
-        Need(Vector2.Distance(marchArrived,marchSummon.Position)<=marchSummon.Speed*.05f+.01f,"入场加速延续到了正常战斗");
-
+        Need(Vector2.Distance(marchMid,marchSummon.Position)<=marchSummon.Speed*.05f+.001f,"接敌后入场加速未停止");
+        Need(Math.Abs(marchSummon.Hp-7)<.0001f&&Live(march).Length==1&&march.Kills==marchKills&&march.Experience==marchXp&&marchRoom.Loot.Count==marchLoot,"软部署改变HP/数量或产生奖励");
         // 部署途中被敌人锁定即结束入场部署，改由正式战斗 AI 以普通速度接管。
         c.Skills.Summons["QA_SKELETON"]=c.Skills.Summons["QA_SKELETON"] with {MaxCount=1,Role="melee"};
         var engage=Battle();Summon(engage);

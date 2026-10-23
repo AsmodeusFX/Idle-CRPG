@@ -49,3 +49,7 @@ system/config.csv新增必填整数规则，范围1～100000：ranged_retreat_di
 E2增量：Actor.TargetPolicy=Ordinary（旧档默认）或BacklinePriority；后者仅隔离猎手显式启用，锁类型Special不占Normal容量，Forced优先，候选仍限本房存活单位。完整快照保存并校验枚举，正式检查点重开规则不变。见 ../reviews/2026-10-22_monster_encounter_e2.md。
 
 E3：敌方动态召唤在入场前预留有限单次槽位，战斗中不改变怪物列表长度，避免友方召唤物CombatId漂移；来源死亡保留/撤销由EnemySummonRule配置。敌方仆从正常奖励与产尸；详见 ../reviews/2026-10-22_monster_encounter_e3.md。
+
+## 2026-10-23 Steam D2增量
+
+不新增CSV字段或数值。targeting_local_range_milli继续为4000，用于普通近战优先预约及我方本地后排威胁筛选，不是普攻射程。CombatTargetingState.FriendlyTargets保存战斗ID到敌方战斗ID的稳定目标，只属于内部完整现场；正式检查点清空并验证不得携带。读取校验归属、数量和目标范围。GM事件历史不入档。友方目标与怪物Locks分别服务攻击选择与唯一容量预约，不重复记账。

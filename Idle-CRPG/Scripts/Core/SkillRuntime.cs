@@ -96,7 +96,7 @@ public sealed partial class GameSession
     }
 
     /// <summary>所有普攻/技能/反击/持续伤害共用一次 HP 应用和奖励结算，死亡后不会重复结算。</summary>
-    private DamageBreakdown? SettleDamage(Actor attacker,Actor target,string skill,double coefficient,DamageType type,bool ranged,SkillAttackSnapshot? snapshot=null,bool? critical=null,bool events=true,int depth=0,double powerBonus=0,DamagePortion[]? portions=null,long originCast=0,double baseScale=1)
+    private DamageBreakdown? SettleDamage(Actor attacker,Actor target,string skill,double coefficient,DamageType type,bool ranged,SkillAttackSnapshot? snapshot=null,bool? critical=null,bool events=true,int depth=0,double powerBonus=0,DamagePortion[]? portions=null,long originCast=0,double baseScale=1,bool directMelee=false)
     {
         if(!attacker.Alive||!target.Alive||!InCombatRoom(target))return null;
         // 召唤物与英雄共用玩家侧伤害缩放；只有英雄受 GM 无敌保护。
@@ -118,6 +118,7 @@ public sealed partial class GameSession
         {double absorbed=Math.Min(amount,shield.Value);shield.Value-=absorbed;amount-=absorbed;if(absorbed>0)effectiveEffectVersion++;if(shield.Value<=0)skillState.Buffs.Remove(shield);}
         float before=target.Hp;target.Hp=(float)Math.Max(0,target.Hp-amount);bool killed=!target.Alive;
         if(target.Hp<before)effectiveEffectVersion++;
+        if(directMelee&&!ranged&&depth==0&&!result.Dmg2.Dodged&&!killed)TryMeleeEngagement(attacker,target);
         // 表现事件只记录本次真实 HP 变化；不参与后续触发、奖励或死亡判定。
         PushVisual(CombatVisualKind.Hit,skill,"",CombatId(attacker),CombatId(target),attacker.Position,target.Position,
             Math.Max(0,before-target.Hp),0,type,depth,result.Dmg2.Critical,result.Dmg2.Blocked,result.Dmg2.Dodged,killed);
@@ -325,7 +326,7 @@ public sealed partial class GameSession
             {
                 case "Damage":
                     if(target is {Alive:true})foreach(var hit in fx.Extent>0?Enemies(work.Owner).Where(e=>Vector2.Distance(e.Position,target.Position)<=fx.Extent).ToArray():new[]{target})
-                        SettleDamage(owner,hit,work.Skill,work.Coefficient*fx.Share,fx.DamageType,owner.Ranged,work.Snapshot,depth:work.Depth,portions:fx.Portions,originCast:work.OriginCast);
+                        SettleDamage(owner,hit,work.Skill,work.Coefficient*fx.Share,fx.DamageType,owner.Ranged,work.Snapshot,depth:work.Depth,portions:fx.Portions,originCast:work.OriginCast,directMelee:fx.Extent<=0&&work.BuffInstance==0&&work.Flight==null&&!proc);
                     break;
                 case "ApplyBuff":
                     if(target is {Alive:true})foreach(var hit in BuffEffectTargets(work,fx,target))ApplyBuff(fx.BuffId,work.Owner,CombatId(hit),work.Skill,work.Coefficient,work.Flight,originCast:work.OriginCast);

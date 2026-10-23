@@ -20,6 +20,7 @@ public sealed class MonsterTargetLock
 public sealed class CombatTargetingState
 {
     public List<MonsterTargetLock> Locks=new();
+    public Dictionary<int,int> FriendlyTargets=new();
     public int CandidateMask,Cursor;
     public int FloorIndex=-1,RoomIndex=-1;
     public int[] Capacities=Array.Empty<int>();
@@ -67,6 +68,7 @@ public sealed partial class GameSession
         {
             int heroIndex=Heroes.IndexOf(hero);
             bool inside=InCombatRoom(hero);
+            if(inside&&!room.Clear&&room.Monsters.Any(InCombatRoom)){skillState.Targeting.DeployedMask|=1<<heroIndex;continue;}
             if(!hero.Alive||inside&&(!spread||(skillState.Targeting.DeployedMask&(1<<heroIndex))!=0))continue;
             if(!spread)
             {
@@ -89,12 +91,59 @@ public sealed partial class GameSession
         // 召唤物与英雄共用同一入场窗口；入场逻辑独占其移动权，完成后交回正式战斗 AI。
         if(spread)AdvanceEntrySummons(room,dt);
     }
+    private readonly Queue<string> engagementEvents=new();
+    /// <summary>GM只读诊断，直接读取唯一预约账本。</summary>
+    public string EngagementDiagnostics()
+    {
+        if(Floors.Count==0)return "无战斗现场";
+        var lines=new List<string>();
+        for(int i=0;i<FriendlyCount;i++)if(FriendlyAt(i) is {Alive:true} a&&EngagementCapacity(a)>0)
+            lines.Add($"{a.Name} {skillState.Targeting.Locks.Count(l=>l.Target==i&&l.Kind==MonsterLockKind.Normal)}/{EngagementCapacity(a)}："+string.Join("，",skillState.Targeting.Locks.Where(l=>l.Target==i).Select(l=>$"#{l.Owner} {l.Kind}")));
+        return string.Join("\n",lines.Concat(engagementEvents));
+    }
+    private void EngagementEvent(string message)
+    {
+        engagementEvents.Enqueue(message);while(engagementEvents.Count>24)engagementEvents.Dequeue();
+    }
+    private readonly HashSet<int> threatIntents=new();
+    /// <summary>正常重新索敌时优先处理本房四单位内后排威胁；意图不占容量。</summary>
+    private Actor? FriendlyCombatTarget(Actor actor,List<Actor> opponents)
+    {
+        var state=skillState.Targeting;
+        if(state.FriendlyTargets.TryGetValue(CombatId(actor),out int old)&&CombatActor(old) is { } current&&opponents.Contains(current)&&InCombatRoom(current))return current;
+        float range=Config.Talents.Rule("targeting_local_range_milli")/1000f;
+        bool Threat(Actor enemy)=>!enemy.Ranged&&!enemy.Boss&&enemy.TargetPolicy==MonsterTargetPolicy.Ordinary&&monsterLockIndex.TryGetValue(CombatId(enemy),out var l)&&l.Kind==MonsterLockKind.Overflow&&FriendlyAt(l.Target) is {Ranged:true};
+        var candidates=opponents.Where(InCombatRoom);
+        Actor? chosen=null;
+        int index=FriendlyIndexFromCombatId(CombatId(actor));
+        if(!actor.Ranged&&EngagementCapacity(actor)>state.Locks.Count(l=>l.Kind==MonsterLockKind.Normal&&l.Target==index))
+            chosen=candidates.Where(e=>Threat(e)&&Vector2.DistanceSquared(e.Position,actor.Position)<=range*range).OrderBy(e=>threatIntents.Contains(CombatId(e))).ThenBy(e=>Vector2.DistanceSquared(e.Position,actor.Position)).ThenBy(CombatId).FirstOrDefault();
+        chosen??=candidates.OrderBy(e=>Vector2.DistanceSquared(e.Position,actor.Position)).ThenBy(CombatId).FirstOrDefault();
+        if(chosen!=null){state.FriendlyTargets[CombatId(actor)]=CombatId(chosen);if(Threat(chosen))threatIntents.Add(CombatId(chosen));}
+        return chosen;
+    }
+    /// <summary>直接近战命中后在唯一锁上原子承接，不改变其他交战者。</summary>
+    private void TryMeleeEngagement(Actor front,Actor enemy)
+    {
+        int owner=CombatId(enemy),target=FriendlyIndexFromCombatId(CombatId(front));
+        if(target<0||front.Ranged||enemy.Ranged||enemy.Boss||enemy.TargetPolicy!=MonsterTargetPolicy.Ordinary||!enemy.Alive||!InCombatRoom(front))return;
+        if(!monsterLockIndex.TryGetValue(owner,out var l)||l.Kind!=MonsterLockKind.Overflow||FriendlyAt(l.Target) is not {Ranged:true})return;
+        if(ActorBuffs(owner).Any(b=>SkillConfig.Buffs[b.Id].Mechanic=="forced"))return;
+        if(Vector2.Distance(front.Position,enemy.Position)>EffectiveValue(front,"attack_range",front.Range)+.0001)return;
+        if(skillState.Targeting.Locks.Count(x=>x.Kind==MonsterLockKind.Normal&&x.Target==target)>=EngagementCapacity(front))return;
+        EngagementEvent($"切换 #{owner} {l.Target}→{target}：直接近战承接");
+        l.Target=target;l.Kind=MonsterLockKind.Normal;l.NeedsReevaluation=false;
+    }
     private void ReleaseCombatTargets(int id)
     {
         var locks=skillState.Targeting.Locks;
-        if(locks.RemoveAll(l=>l.Owner==id||l.Target==id)==0)return;
+        int friendlyIndex=FriendlyIndexFromCombatId(id);
+        skillState.Targeting.FriendlyTargets.Remove(id);
+        foreach(int key in skillState.Targeting.FriendlyTargets.Where(p=>p.Value==id).Select(p=>p.Key).ToArray())skillState.Targeting.FriendlyTargets.Remove(key);
+        foreach(var l in locks.Where(l=>l.Owner==id||friendlyIndex>=0&&l.Target==friendlyIndex))EngagementEvent($"解除 #{l.Owner}→{l.Target}：死亡或离场");
+        if(locks.RemoveAll(l=>l.Owner==id||friendlyIndex>=0&&l.Target==friendlyIndex)==0)return;
         foreach(var l in locks)if(l.Kind==MonsterLockKind.Overflow)l.NeedsReevaluation=true;
-        foreach(int owner in monsterLockIndex.Where(p=>p.Value.Owner==id||p.Value.Target==id).Select(p=>p.Key).ToArray())monsterLockIndex.Remove(owner);
+        foreach(int owner in monsterLockIndex.Where(p=>p.Value.Owner==id||friendlyIndex>=0&&p.Value.Target==friendlyIndex).Select(p=>p.Key).ToArray())monsterLockIndex.Remove(owner);
     }
     private Actor? OrdinaryMonsterTarget(Actor actor)=>monsterLockIndex.TryGetValue(CombatId(actor),out var locked)?FriendlyAt(locked.Target):null;
     /// <summary>本步只对缺锁者初选；已正常接敌者不洗牌，事件触发的溢出重评受间隔及公平预算限制。</summary>
@@ -111,7 +160,9 @@ public sealed partial class GameSession
         bool changed=state.CandidateMask!=mask||!state.Capacities.SequenceEqual(capacities);
         state.CandidateMask=mask;state.Capacities=capacities;
         int before=state.Locks.Count;
-        state.Locks.RemoveAll(l=>l.Owner<monsterBase||l.Owner>=monsterBase+room.Monsters.Count||!room.Monsters[l.Owner-monsterBase].Alive||l.Target<0||l.Target>=count||(mask&(1<<l.Target))==0||l.Kind!=MonsterLockKind.Forced&&room.Monsters[l.Owner-monsterBase].Ranged!=(l.Kind==MonsterLockKind.Ranged));
+        bool Invalid(MonsterTargetLock l)=>l.Owner<monsterBase||l.Owner>=monsterBase+room.Monsters.Count||!room.Monsters[l.Owner-monsterBase].Alive||l.Target<0||l.Target>=count||(mask&(1<<l.Target))==0||l.Kind!=MonsterLockKind.Forced&&room.Monsters[l.Owner-monsterBase].Ranged!=(l.Kind==MonsterLockKind.Ranged);
+        foreach(var l in state.Locks.Where(Invalid))EngagementEvent($"解除 #{l.Owner}→{l.Target}：死亡、离房或攻击类型失效");
+        state.Locks.RemoveAll(Invalid);
         changed|=before!=state.Locks.Count;
         int ForcedTarget(int owner)
         {
@@ -128,17 +179,17 @@ public sealed partial class GameSession
             int forced=ForcedTarget(locked.Owner);
             if(forced>=0)
             {
-                if(locked.Kind!=MonsterLockKind.Forced||locked.Target!=forced)changed=true;
+                if(locked.Kind!=MonsterLockKind.Forced||locked.Target!=forced){changed=true;EngagementEvent($"切换 #{locked.Owner} {locked.Target}→{forced}：强制索敌");}
                 locked.Target=forced;locked.Kind=MonsterLockKind.Forced;locked.NeedsReevaluation=false;
             }
-            else if(locked.Kind==MonsterLockKind.Forced){state.Locks.Remove(locked);changed=true;}
+            else if(locked.Kind==MonsterLockKind.Forced){EngagementEvent($"解除 #{locked.Owner}→{locked.Target}：强制索敌结束");state.Locks.Remove(locked);changed=true;}
         }
         var occupied=new int[count];
         foreach(var locked in state.Locks.OrderBy(l=>l.Owner))
         {
             if(locked.Kind!=MonsterLockKind.Normal)continue;
             if(occupied[locked.Target]<capacities[locked.Target])occupied[locked.Target]++;
-            else {locked.Kind=MonsterLockKind.Overflow;locked.NeedsReevaluation=true;changed=true;}
+            else {EngagementEvent($"释放普通容量 #{locked.Owner}→{locked.Target}：容量降低，保留攻击目标");locked.Kind=MonsterLockKind.Overflow;locked.NeedsReevaluation=true;changed=true;}
         }
         if(changed)foreach(var l in state.Locks)if(l.Kind==MonsterLockKind.Overflow)l.NeedsReevaluation=true;
         monsterLockIndex.Clear();foreach(var l in state.Locks)monsterLockIndex.Add(l.Owner,l);
@@ -183,6 +234,7 @@ public sealed partial class GameSession
             if(!room.Monsters[i].Alive||monsterLockIndex.ContainsKey(owner)||busy.Contains(owner))continue;
             var selected=Select(owner);if(selected==null)continue;
             state.Locks.Add(selected);monsterLockIndex.Add(owner,selected);
+            EngagementEvent($"建立 #{owner}→{selected.Target} {selected.Kind}：首次索敌或原目标失效");
         }
         int budget=Config.Talents.Rule("targeting_budget"),total=room.Monsters.Count;
         int start=total==0?0:state.Cursor%total;
@@ -190,6 +242,14 @@ public sealed partial class GameSession
         {
             int index=(start+step)%total,owner=monsterBase+index;
             if(!monsterLockIndex.TryGetValue(owner,out var l)||l.Kind!=MonsterLockKind.Overflow||!l.NeedsReevaluation||l.NextEvaluation>state.Clock||busy.Contains(owner))continue;
+            // 有效主锁保持稳定；目标失效仍由上方清理并重新索敌。
+            if(FriendlyAt(l.Target) is { } valid&&InCombatRoom(valid))
+            {
+                // 原目标自身恢复容量可就地恢复预约，绝不吸走其他目标的敌人。
+                if(!valid.Ranged&&occupied[l.Target]<capacities[l.Target]&&Vector2.DistanceSquared(room.Monsters[index].Position,valid.Position)<=range*range)
+                {l.Kind=MonsterLockKind.Normal;occupied[l.Target]++;EngagementEvent($"建立普通容量 #{owner}→{l.Target}：原目标容量恢复");}
+                l.NeedsReevaluation=false;l.NextEvaluation=state.Clock+interval;budget--;state.Cursor=(index+1)%Math.Max(1,total);continue;
+            }
             var selected=Select(owner);if(selected==null)continue;
             l.Target=selected.Target;l.Kind=selected.Kind;l.NeedsReevaluation=false;l.NextEvaluation=selected.NextEvaluation;
             budget--;state.Cursor=(index+1)%Math.Max(1,total);

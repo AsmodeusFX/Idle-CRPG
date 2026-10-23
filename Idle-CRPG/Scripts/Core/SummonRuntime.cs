@@ -151,7 +151,7 @@ public sealed partial class GameSession
                 summonDeployGoals[summon]=SummonDeployGoal(summon,room,state);
             }
             // 抵达落点前已进入有效战斗（施法、接敌或被锁定）时立即结束部署，交由正式战斗 AI 接管。
-            if(SummonEngaged(summon))
+            if(SummonEngaged(summon)||InCombatRoom(summon)&&room.Monsters.Any(InCombatRoom))
             {
                 summonDeployGoals.Remove(summon);summonDeployed.Add(summon);continue;
             }

@@ -1,8 +1,0 @@
-﻿source_package,reference_path_or_package,relevant_cases,access_status
-P0-2,D2_P0_2_Monster_Encounter_V1_0/05_战斗观测与自动化测试.md,"AI01-AI20, R01-R10, T01-T08",EXISTS_IN_PRIOR_HANDOFF
-P1-4,D2_P1_4_AutoSkill_AI_V1_0/05_验收与调平测试.md,"AI01-AI30, R01-R16",EXISTS_IN_PRIOR_HANDOFF
-P0-3,D2_Skill_BD_Interaction_V1_0_HandOff/04_验收矩阵与调平实验.md,"BD-01-BD-22, AI-R01-AI-R12",EXISTS_IN_PRIOR_HANDOFF
-07,D2_07_五章怪物与Boss_ClaudeCode执行包_V1.0.zip,POI source snapshots and 36 07 tests,EXISTS_IN_PRIOR_HANDOFF
-P1-5,D2_P1_5_Equipment_BD_V1_0/07_测试矩阵.md,"EQ-01-EQ-30, REG-01-REG-14",EXISTS_IN_PRIOR_HANDOFF
-P0-1,D2_Step2_4_Combat_Formula_V1_0.zip,earlier DMG and 4+1 contract,EXISTS_IN_PRIOR_HANDOFF
-CurrentGame,Actual Godot C# repo,source of implementation facts; not present in this handoff,NOT_ACCESSED

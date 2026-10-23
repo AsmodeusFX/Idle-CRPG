@@ -14,21 +14,21 @@ public partial class Main
         if(scene=="pre"){PreparePreSummonCapture();return;}
         // QA 远程定义复用同一骷髅原型，只改 role/range，证明展开分类来自定义而不是显示名。
         var skeleton=config.Skills.Summons["nec_skeleton"];
-        config.Skills.Summons["nec_skeleton"]=skeleton with {MaxCount=scene=="pair"?2:1,Role="melee"};
+        config.Skills.Summons["nec_skeleton"]=skeleton with {MaxCount=scene=="d2"?3:scene=="pair"?2:1,Role="melee"};
         var ranged=skeleton with {Id="summon_qa_ranged",Name="QA远程骷髅",MaxCount=1,Role="ranged",Range=3.4f};
         config.Skills.Summons[ranged.Id]=ranged;
         var raise=config.Skills.Skills["nec_raise_skeleton"];
         var summonEffect=config.Skills.Effects[raise.Effects[0]];
         config.Skills.Effects["summon_qa_ranged_effect"]=summonEffect with {Id="summon_qa_ranged_effect",MechanicId=ranged.Id};
         config.Skills.Skills["nec_raise_ranged_qa"]=raise with {Id="nec_raise_ranged_qa",Effects=new[]{"summon_qa_ranged_effect"}};
-        session=GameSession.CreateWorld(config,787,new[]{"necromancer"});
+        session=GameSession.CreateWorld(config,787,scene=="d2"?new[]{"warrior","necromancer"}:new[]{"necromancer"});
         for(int i=0;i<10000&&(session.World!.Stage!=CampaignStage.Dungeon||session.CurrentRoom==0);i++)session.Tick(.05f);
         var room=session.Floor.Rooms[session.CurrentRoom];var state=session.Capture().SkillState;
         state.Targeting=new();state.Actions.Clear();state.Pending.Clear();state.Buffs.Clear();state.Flights.Clear();room.ContentCleared=false;
         var hero=session.Heroes[0];hero.Position=room.Center;hero.Hp=hero.MaxHp=10000;hero.Attack=10;hero.Timer=999;hero.Range=100;
         hero.SkillIds=scene=="entry"?new[]{"nec_raise_skeleton","nec_raise_ranged_qa"}:new[]{"nec_raise_skeleton"};
         for(int i=0;i<room.Monsters.Count;i++){var m=room.Monsters[i];m.Position=room.Center+new V(0,2.6f+(i-room.Monsters.Count/2f)*.4f);m.Hp=m.MaxHp=100000;m.Range=100;m.Attack=0;m.Timer=999;}
-        int expected=scene=="pair"?2:scene=="entry"?2:1;
+        int expected=scene=="d2"?3:scene=="pair"?2:scene=="entry"?2:1;
         for(int i=0;i<900&&session.Summons.Count(s=>s.Alive)<expected;i++)session.Tick(.05f);
         if(session.Summons.Count(s=>s.Alive)<expected)throw new InvalidOperationException("QA 召唤物未按预期生成");
         // 等待召唤期间怪物会自行接近，截图前恢复同一排布，保证场景可读。
