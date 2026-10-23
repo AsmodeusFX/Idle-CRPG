@@ -490,7 +490,9 @@ public sealed partial class GameSession
         for(int i=0;i<count;i++)
         {
             bool boss=room.Boss&&i==count-1&&(plan==null||plan.BossActors==1);
-            var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),boss,modifiers);
+            // 世界远征按本次地牢所在统治区的投放池抽取身份；无池（单地牢模拟、legacy）仍用原全局怪物表。
+            var spec=ActiveDungeon==null?Config.Monsters[rng.Next(Config.Monsters.Count)]:Config.PickSpawnMonster(rng,Config.AreaPart(ActiveDungeon.RegionId).Id);
+            var m=rule.Create(spec,rng.Next(levelMin,levelMax+1),boss,modifiers);
             m.Position=SpawnPoint();
             Config.ApplyCombatProfile(m);
             if(m.Boss&&ActiveDungeon!=null&&Config.PoiProfiles.TryGetValue(ActiveDungeon.Id,out var poi)&&poi.Boss!="")m.Name=poi.Boss+"（原型）";

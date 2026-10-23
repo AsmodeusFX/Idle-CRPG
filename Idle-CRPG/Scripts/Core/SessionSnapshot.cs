@@ -164,7 +164,7 @@ public sealed partial class GameSession
                 if(r.Generated&&!r.ContentCleared)
                     foreach(var o in r.Origins)
                     {
-                        var spec=config.Monsters.SingleOrDefault(m=>m.Id==o.SpecId)??throw new InvalidDataException("出生模板怪物引用无效");
+                        var spec=config.FindMonsterSpec(o.SpecId)??throw new InvalidDataException("出生模板怪物引用无效");
                         config.Spawn.Validate(o.Modifiers);
                         if(o.Level<1||o.Level>config.MaxMonsterLevel)throw new InvalidDataException("出生模板等级超过怪物等级表范围");
                         var monster=config.Spawn.Create(spec,o.Level,o.Boss,o.Modifiers);config.ApplyCombatProfile(monster);monster.Position=o.Position;r.Monsters.Add(monster);
@@ -332,7 +332,7 @@ public sealed partial class GameSession
                 Need(float.IsFinite(r.HalfWidth)&&float.IsFinite(r.HalfHeight)&&r.HalfWidth>=2&&r.HalfWidth<=5&&r.HalfHeight>=2&&r.HalfHeight<=5,"房间尺寸");
                 Need((!r.Generated||r.Revealed)&&(!r.EventUsed||r.Generated)&&new[]{"","营火","宝箱"}.Contains(r.Event)&&r.Monsters.Count<=1000&&(!r.Generated?r.Monsters.Count==0:true),"房间生成状态");
                 Need(r.Monsters.All(m=>m.EnemySummonSource>=-1&&(m.EnemySummonSource<0||m.EnemySummonSource<r.Monsters.Count&&m.EnemySummonSource!=r.Monsters.IndexOf(m)&&c.EnemySummons.ContainsKey(m.EnemySummonRule)&&(!m.Alive||m.EnemySummonActivated))),"敌方召唤来源无效");
-                Need(r.Monsters.All(m=>c.Monsters.Any(t=>t.Id==m.SpecId)&&m.RewardXp>=0),"怪物引用");
+                Need(r.Monsters.All(m=>c.FindMonsterSpec(m.SpecId)!=null&&m.RewardXp>=0),"怪物引用");
                 Need(r.Origins.Count<=1000&&r.Loot.Count<=1000&&(!r.ContentCleared||r.Generated),"房间检查点");
                 Need(!s.RoomCheckpoint||!r.Generated||r.ContentCleared||r.Origins.Count>0,"未清房缺少出生模板");
                 foreach(var loot in r.Loot)

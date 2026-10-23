@@ -1,5 +1,7 @@
 # 文档索引
 
+- [章节怪物投放](technical/act_monsters.md)：49个章节身份、统治区加权池、抽取回落与校验；[P1-5切片C1执行归档](reviews/2026-10-23_p1_5_act_monsters.md)（精英/Boss/特殊阶段未实施）。
+
 - [角色自动技能 AI](design/auto_skill_ai.md)：槽序选技、条件与目标、射程外兜底、召唤名额资格、光环与多诅咒维持、GM有界诊断；[P1-4执行与审计](reviews/2026-10-23_p1_4_auto_skill_ai.md)：含C01–C12逐项结论与实施范围，外部方案原件留在 `docs/temp/` 不随工程归档。
 
 - [Steam D2 房间入场与门口拥堵修正 V1.2](reviews/2026-10-23_room_entry_v1_2.md)：入口通行1.5U与逐单位交接、敌方警觉0.8s基础/2.0s兜底、入口内侧1.5U出生避让、GM入场诊断；含召唤物接敌容量为0的独立审计结论。规则写入[索敌与入场展开](design/combat_targeting.md)、[字段合同](technical/targeting_config.md)。

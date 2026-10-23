@@ -83,7 +83,7 @@ public sealed partial class Config
         ValidateAreaParts();
         Require(Unique(ItemTypes.Select(t=>t.Id))&&ItemTypes.All(t=>t.Kind is "currency" or "junk"&&t.AutoSell==(t.Kind=="junk")),"物品类型非法");
         Require(Unique(Items.Select(i=>i.Id))&&Items.All(i=>i.SellPrice>=0&&ItemTypes.Any(t=>t.Id==i.TypeId))&&Items.Count(i=>ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency")==1&&Items.Any(i=>i.Id=="gold"&&ItemTypes.Single(t=>t.Id==i.TypeId).Kind=="currency"),"物品引用/金币配置非法");
-        Require(Drops.Count>0&&Drops.All(d=>Monsters.Any(m=>m.Id==d.MonsterId)&&Items.Any(i=>i.Id==d.ItemId)&&d.Chance>=0&&d.Chance<=1&&d.Min>=1&&d.Max>=d.Min),"掉落引用/概率/数量非法");
+        Require(Drops.Count>0&&Drops.All(d=>(Monsters.Any(m=>m.Id==d.MonsterId)||ActMonsters.Any(m=>m.Id==d.MonsterId))&&Items.Any(i=>i.Id==d.ItemId)&&d.Chance>=0&&d.Chance<=1&&d.Min>=1&&d.Max>=d.Min),"掉落引用/概率/数量非法");
         Spawn.Validate(new SpawnModifiers());
     }
 }

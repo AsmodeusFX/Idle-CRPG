@@ -27,6 +27,7 @@ if(args.Contains("--monster-encounter-checks")){MonsterEncounterChecks.Run(root)
 if(args.Contains("--targeting-checks")){CombatTargetingChecks.Run(root);return;}
 if(args.Contains("--room-entry-checks")){RoomEntryChecks.Run(root);return;}
 if(args.Contains("--auto-skill-checks")){AutoSkillAiChecks.Run(root);return;}
+if(args.Contains("--act-monster-checks")){ActMonsterPoolChecks.Run(root);return;}
 if(args.Contains("--dungeon-travel-checks")){DungeonTravelChecks.Run(root);return;}
 MonsterEncounterChecks.Run(root);MonsterSupportEncounterChecks.Run(root);
 SkillPreviewChecks.Run(root);
@@ -303,4 +304,5 @@ HeroExperienceChecks.Run(root);
 CombatTargetingChecks.Run(root);
 RoomEntryChecks.Run(root);
 AutoSkillAiChecks.Run(root);
+ActMonsterPoolChecks.Run(root);
 DungeonTravelChecks.Run(root);

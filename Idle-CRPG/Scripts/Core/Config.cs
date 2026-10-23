@@ -35,6 +35,8 @@ public sealed partial class Config
             throw new InvalidDataException("复活时间和距离必须为正数，生命比例必须在 (0,1] 内");
         if (c.FloorsMin < 1 || c.FloorsMax < c.FloorsMin || c.FloorsMax > 20 || c.RoomsMin < 3 || c.RoomsMax < c.RoomsMin || c.RoomsMax > 20 || c.EventChance < 0 || c.EventChance > 1 || c.Heroes.Count < 3 || c.Monsters.Count == 0)
             throw new InvalidDataException("地牢配置范围非法");
+        // 章节内容身份先于世界校验加载，掉落与统治区投放池都允许引用它们。
+        c.LoadActMonsters(directory);
         c.LoadWorld(directory);
         c.LoadClientConfig(directory);
         c.LoadSceneConfig(directory);
