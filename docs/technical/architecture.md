@@ -50,3 +50,8 @@ SessionSnapshot 的 Capture 保留内部确定性测试现场，CaptureProgress 
 五职业与室外队列（2026-10-21）：StartingSkills负责一次性初始点分配与洗点后的初始化标记；Talents追加shot/nova及元素类型，投射物沿用AbilityRuntime。OutdoorFollowing由WorldCampaign记录短折线路径并提供每名队员的世界位置，入口集合使用剩余移动预算；MotionPresentation对队列独立插值，UI不伪造偏移位置。详见[talent_config.md](talent_config.md)。
 
 主城表现缓存（2026-10-21）：SceneCanvas区分静态主城背景与动态场景两层。TownView/ChapterTownView静态地形建筑仅随场景、投影和可见性变化重绘；人物、门、状态每帧更新。地面与装饰裁切减少绘制量，寻路热循环避免捕获委托和邻居数组分配。性能与导航复核见[主城移动检查](../reviews/2026-10-21_town_performance.md)。
+
+
+## 跨平台代理工作规范
+
+后续开发遵守[Agent工作规范](agent_workflow.md)及仓库AGENTS.md。通用流程维护在.agents/skills/game-development/，平台验证按实际证据报告。

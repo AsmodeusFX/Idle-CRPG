@@ -1,5 +1,7 @@
 # 文档索引
 
+- [跨平台Agent开发规范](technical/agent_workflow.md)：仓库规则、游戏开发Skill、平台验证和维护；[创建与自身归档](reviews/2026-10-23_agent_skill_archive.md)。
+
 - [怪物实验遭遇E1实施与验收](reviews/2026-10-22_monster_encounter_e1.md)：M01–M04、T01–T04隔离Core夹具；实机视觉验收待完成。
 
 - [召唤物跟随与入场部署](technical/summon_follow.md)：非战斗跟随当前跑图领队（近战靠前、远程靠后，领队速度×100%追赶）、无跨房瞬移、进入有怪房间时近战/远程/支援入场展开、150%临时入场加速与战斗交接、`duration_seconds`生命周期（0永续/正数限时）与永续召唤脱战补员；归属仍绑定原召唤者，规则数值均为原型。
