@@ -527,6 +527,7 @@ public sealed partial class GameSession
         foreach(var s in Summons.Where(s=>s.Alive)) Act(s,room.Monsters,dt,room);
         if(CombatEntryRemaining<=0)foreach(var m in room.Monsters.Where(m=>m.Alive).ToArray()) Act(m,Heroes,dt,room);
         DrainEffects();
+        SampleCombatStats(room,dt);
         if(room.Clear){if(!skillPreviewMode)ResetSkillRoom();}else SynchronizeAuras();
     }
     private void Act(Actor actor,List<Actor> opponents,float dt,Room room)
@@ -550,6 +551,7 @@ public sealed partial class GameSession
             return;
         }
         if(actor.Timer>0) return;
+        if(IsFriendlyActor(actor))RecordFirstAttack(actor);
         actor.Timer=(float)EffectiveValue(actor,"basic_cooldown",actor.Cooldown);
         // 召唤物复用玩家侧普攻与伤害缩放；其战斗力由召唤定义快照决定，不读取怪物技能。
         string basic=IsFriendlyActor(actor)?"basic_player":"basic_monster";

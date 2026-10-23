@@ -1,6 +1,6 @@
 # P0 基础规则修复与现状数据审计 执行归档
 
-2026-10-23。范围：召唤物接敌容量修复、跨场景移动速度审计、D03/D04 运行数据。**速度配置未改**（需批准）；不涉及装备、星图、经济与站位系统。
+2026-10-23。范围：召唤物接敌容量修复、跨场景移动速度审计与调平、D03/D04 运行数据与轻量统计、第 2 轮站位输入。第一轮只审计速度（未改），第二轮按批准把正式五章 `travel_speed` 调为 0.31；不涉及装备、星图、经济与站位系统本身。
 
 数据报告：[移动速度审计](../data/2026-10-23_movement_speed_audit.md)、[D03/D04 现状数据](../data/2026-10-23_runtime_state_audit_d03_d04.md)。规则更新：[召唤跟随与容量](../technical/summon_follow.md)、[技能配置字段](../technical/combat_config.md)。
 
@@ -57,7 +57,55 @@
 
 未验证：实机速度手感对比录像、长时间挂机、多显卡后端、玩家主观节奏。
 
-## 五、变更文件
+## 五、第二轮：基础规则收口（2026-10-23 追加）
+
+### 1. 跨场景移速调平（已执行）
+
+- 只改**五个正式章节** `chapters/act{1..5}/world/world.csv` 的 `travel_speed`：0.65 → **0.31**；`world_zoom 36`、地牢 `dungeon_max_zoom 62`、城镇 `walk_speed`、`village_speed` 均未动。非正式 `world/world.csv` 与 `legacy/act*/world/world.csv` 保持 0.65（旧档与旧回归口径）。
+- 结果：大地图名义速度 0.31×720 ≈ **223 px/s**，与地牢 197–260、主城 ≈223 同档。
+- 旅行耗时预计 ×2.1（1 格 1.54→3.23s；8 格 12.3→25.8s；16 格 24.6→51.6s）。
+- 回归：全量 Core 通过，含寻路/连续穿门/门先锋/区域切换/旅行速度重选/存读档一致性（`DungeonTravelChecks`、`OutdoorFollowing`、`ChapterChecks` 等）。
+
+### 2. 召唤物接敌回归（补验）
+
+在原有三骷髅容量、Normal 预约、主动承接、死亡释放、补召恢复之外，新增**女武神超时释放**：限时 5 秒到期后召唤物被撤销、容量从 4 回到 3、指向它的锁被清除。检查名 `--summon-capacity-checks`，全部通过。
+
+### 3. D03/D04 轻量统计（已落地）
+
+新增 `Scripts/Core/CombatStatsRuntime.cs`（`RoomCombatStats`），按房累积、内存有界、不入存档，GM 诊断窗口追加 6 行。字段合同见[本房战斗观测统计](../technical/combat_stats.md)。
+
+覆盖：首次友方普攻深度、提前接战原因（近距威胁/战斗锁定）、同目标近战最小间距、友方最近邻、明显重叠对数、远程浅区施法次数、AOE 命中人数分布、治疗时目标血量比例、补召延迟、容量峰值/释放/累计占用、0 容量后排被近战锁定秒数。
+
+尚未覆盖：UI 名字/血条重叠（表现层，需截图）、链式与尸爆未并入 AOE 分布、实机长时间采样。
+
+### 4. 第 2 轮站位开发输入
+
+新增 `--position-scenarios`（确定性，五英雄＋三骷髅 × 五类敌人：单 Boss、五普通近战、近远混合、M06 猎手、M05 范围怪），输出每单位位置、容量与目标关系。
+
+实测样例（同一房间、220 tick）：
+
+| 场景 | 前排 | 后排 | 骷髅 | 观察 |
+|---|---|---|---|---|
+| 单 Boss | 野蛮人 (0.49,−12.35) 容量3、圣骑士 (0.23,−12.32) 容量5，目标均为 Boss | 游侠/法师/死灵 x≈−1.6～−1.0，目标同 Boss | 三只 x=0.51/0.57/0.63，y=−11.87 | 前排承伤、后排不堵门 |
+| 五普通近战 | 野蛮人/圣骑士分别锁 #5/#6 | 游侠/法师/死灵锁 #7/#8 | 三只间距 0.07–0.14U | **骷髅之间已出现贴脸**，是后续站位层的首要输入 |
+| 近远混合 | 同上前排 | 远程英雄锁 #7/#8 | 同上 | 近远锁分离正常 |
+| M06 猎手 | 猎手优先锁后排 | 后排被锁定 | — | 猎手策略生效 |
+| M05 范围怪 | 范围技能施放 | — | — | 读 AOE 分布 |
+
+截图：**NOT RUN**。现有 `--capture` 入口没有对应五场景预设，本轮未新增拍摄器；等站位层开发时一并加。
+
+### 5. V1.2 入场堵门复核
+
+本轮五场景实测未再出现“全队停在门口”的现象：前排进入房间约 1.0–1.5U 后接敌，后排按各自通行独立推进，骷髅独立走到前排；队首接战不会冻结队尾。观察到的真正问题不是堵门，而是**骷髅之间与后排三人之间的站位重叠**（0.07–0.3U），属于站位层，按用户要求本轮不处理，也未修改入场状态机或增加部署补丁。
+
+### 6. 第二轮变更文件与验证
+
+- 配置：`chapters/act{1..5}/world/world.csv`（travel_speed）。
+- 代码：新增 `Scripts/Core/CombatStatsRuntime.cs`；钩子接入 `CombatTargeting`（提前接战原因、锁采样、诊断输出）、`GameSession`（首次普攻、每步采样）、`SkillRuntime`（施法统计、房间重置）、`PulseRuntime`（AOE 命中数）、`SkillSupportRuntime`（治疗比例）。
+- 测试：新增 `tests/SummonCapacityChecks.cs`（含女武神超时）、`tests/CombatStatsChecks.cs`、`tests/PositionScenarioChecks.cs`；`tests/Program.cs` 注册三个入口。
+- 验证：`dotnet build` 0 警告 0 错误；`--summon-capacity-checks`、`--combat-stats-checks`、`--position-scenarios` 全部 PASS；完整 Core Checks 退出码 0；Godot 冒烟 `SMOKE_OK` 退出码 0。
+
+## 六、变更文件
 
 - 配置：`config/skill/summon.csv`（容量 0→1）。
 - 测试：新增 `tests/SummonCapacityChecks.cs`，`tests/Program.cs` 注册并入默认回归。

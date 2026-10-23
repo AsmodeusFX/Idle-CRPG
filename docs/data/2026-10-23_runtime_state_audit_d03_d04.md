@@ -24,15 +24,21 @@
 - 敌方警觉：0.8s 基础无条件保留；之后按前方通行进度或近距遭遇提前启动，最迟 2.0s 兜底。
 - 出生避让与四边留白，且同 seed 可复现；怪物数量不因避让改变。
 
-### 未测量（本轮不做埋点）
+### 已补充的有界统计（2026-10-23 第二轮）
 
-| 数据 | 状态 | 取数方式 |
+`GameSession.CombatStats`（`RoomCombatStats`）按房累积，GM 诊断窗口显示；字段合同见[本房战斗观测统计](../technical/combat_stats.md)。
+
+| 数据 | 状态 | 字段 |
 |---|---|---|
-| 首次合法索敌 / 首次停止 / 首次攻击距门线的精确深度 | NOT MEASURED | GM「接敌容量与入场」窗口已显示每单位深度与停止原因，可按帧抄录 |
-| “被锁定导致提前结束通行”的次数与位置 | NOT MEASURED | 诊断里有“已接战豁免”状态和 `engagementEvents` 最近 24 条，可计数但未做累计统计 |
-| 房间内交火位置分布 | NOT MEASURED | 需要按帧记录坐标，现有诊断只给当前值 |
-| 友军/怪物最近邻距离、同目标攻击者聚集 | 部分可读 | Locks 账本给出同目标攻击者数量；最近邻距离未输出 |
-| 多召唤物名字/血条重叠 | NOT MEASURED | 纯 UI 表现，需实机截图或录像 |
+| 首次友方普攻距门线深度 | 已可读 | `FirstAttackActor` / `FirstAttackDepth` |
+| 提前结束通行的次数与原因 | 已可读 | `EarlyEngage`（近距威胁 / 战斗锁定） |
+| 同目标近战最小间距、明显重叠对数 | 已可读 | `SameTargetMinDistance` / `OverlapPairs` |
+| 友方最近邻距离 | 已可读 | `NearestNeighbourMin` |
+| 远程浅区施法次数 | 已可读 | `RangedShallowCasts` |
+| 容量占用峰值/释放/累计占用 | 已可读 | `CapacityPeak` / `CapacityReleases` / `CapacityOccupiedSeconds` |
+| 0 容量后排被近战锁定秒数 | 已可读 | `BacklineMeleeSeconds` |
+
+仍未测量：房间内交火位置分布（需逐帧坐标采样）、多召唤物名字/血条重叠（UI 表现，需截图）。
 
 ## D04 怪物与技能 AI
 
@@ -69,16 +75,22 @@
 - GM 技能AI诊断：每单位最近结论，含“选择/跳过原因（冷却中、召唤已满、无合法目标、光环已维持）/Runtime 取消”，按变化追加最多 24 条。
 - 完整快照保存动作、冷却、光环激活、召唤数量，可用于确定性重放。
 
-未测量（无累计埋点）：
+2026-10-23 第二轮补充（`RoomCombatStats`）：
 
 | 数据 | 状态 |
 |---|---|
-| 各技能施放频次、跳过原因占比、取消原因占比 | NOT MEASURED（需按房间汇总，现有只保留最近 24 条） |
-| 满员召唤跳过次数 | NOT MEASURED（诊断文本可见，未计数） |
-| AOE 只打到 1 个目标的施放比例 | NOT MEASURED（需在命中时统计覆盖人数） |
-| 治疗施放时的目标生命比例 | NOT MEASURED |
-| 缺员到补召的延迟 | NOT MEASURED |
-| 远程/近战首次技能释放时的入房深度 | 可由 `EntryDiagnostics` + 技能AI诊断联读，未做联合采样 |
+| AOE 命中人数分布（1/2/3/4/5+） | 已可读：`AoeCasts` + `AoeHits[1..5]`（仅 `AreaPulse` 类） |
+| 治疗施放时目标血量比例 | 已可读：`HealCasts` / `HealRatioSum`（均值） |
+| 缺员到补召的延迟 | 已可读：`RefillCasts` / `RefillDelaySum` |
+| 容量占用、释放、后排被近战锁定时长 | 已可读：`CapacityPeak` / `CapacityReleases` / `BacklineMeleeSeconds` |
+
+仍未测量：
+
+| 数据 | 状态 |
+|---|---|
+| 各技能施放频次、跳过原因占比、取消原因占比 | NOT MEASURED（技能AI诊断只保留最近 24 条，未做按技能汇总计数） |
+| 满员召唤跳过次数 | NOT MEASURED（文本可见，无计数） |
+| 远程/近战首次技能释放时的入房深度 | 未做联合采样（可后续在施法钩子里补一列） |
 
 如后续确需这些指标，建议只加**有界计数器**（按房间/按技能，整数计数，不入存档、不上报磁盘），不建设埋点平台。
 

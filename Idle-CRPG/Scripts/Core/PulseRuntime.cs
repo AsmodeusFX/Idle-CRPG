@@ -15,7 +15,9 @@ public sealed partial class GameSession
         var center=CombatActor(work.Target);
         if(center is not {Alive:true})return;
         PushVisual(CombatVisualKind.Pulse,work.Skill,"",work.Owner,work.Target,center.Position,center.Position,0,effect.Extent,effect.DamageType,work.Depth);
-        foreach(var hit in Enemies(work.Owner).Where(e=>e.Alive&&InCombatRoom(e)&&Vector2.Distance(e.Position,center.Position)<=effect.Extent).ToArray())
+        var hits=Enemies(work.Owner).Where(e=>e.Alive&&InCombatRoom(e)&&Vector2.Distance(e.Position,center.Position)<=effect.Extent).ToArray();
+        RecordAoe(hits.Length);
+        foreach(var hit in hits)
             SettleDamage(owner,hit,work.Skill,work.Coefficient*effect.Share,effect.DamageType,owner.Ranged,work.Snapshot,depth:work.Depth,originCast:work.OriginCast);
     }
 }

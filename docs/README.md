@@ -1,6 +1,6 @@
 # 文档索引
 
-- [P0 基础规则与运行数据](reviews/2026-10-23_p0_rules_and_runtime_audit.md)：召唤物接敌容量 0→1 及回归、跨场景速度审计结论、D03/D04 现状；速度调平待批准。数据见[移动速度审计](data/2026-10-23_movement_speed_audit.md)、[D03/D04 现状](data/2026-10-23_runtime_state_audit_d03_d04.md)。
+- [P0 基础规则与运行数据](reviews/2026-10-23_p0_rules_and_runtime_audit.md)：召唤物接敌容量 0→1（含女武神超时释放）、五章大地图 `travel_speed` 0.65→0.31 调平、本房战斗统计与五场景站位输入。数据见[移动速度审计](data/2026-10-23_movement_speed_audit.md)、[D03/D04 现状](data/2026-10-23_runtime_state_audit_d03_d04.md)；统计字段见[战斗观测统计](technical/combat_stats.md)。
 
 - [章节怪物投放](technical/act_monsters.md)：49个章节身份、统治区加权池、行为偏移（范围/猎手/支援）、精英词缀与Boss技能包；[P1-5执行归档](reviews/2026-10-23_p1_5_act_monsters.md)（C1–C3；M07召唤、其余6词缀与四段特殊剧本未实施）。
 

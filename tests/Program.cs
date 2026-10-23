@@ -30,6 +30,8 @@ if(args.Contains("--auto-skill-checks")){AutoSkillAiChecks.Run(root);return;}
 if(args.Contains("--act-monster-checks")){ActMonsterPoolChecks.Run(root);return;}
 if(args.Contains("--act-content-checks")){ActMonsterContentChecks.Run(root);return;}
 if(args.Contains("--summon-capacity-checks")){SummonCapacityChecks.Run(root);return;}
+if(args.Contains("--combat-stats-checks")){CombatStatsChecks.Run(root);return;}
+if(args.Contains("--position-scenarios")){PositionScenarioChecks.Run(root);return;}
 if(args.Contains("--dungeon-travel-checks")){DungeonTravelChecks.Run(root);return;}
 MonsterEncounterChecks.Run(root);MonsterSupportEncounterChecks.Run(root);
 SkillPreviewChecks.Run(root);
@@ -309,4 +311,5 @@ AutoSkillAiChecks.Run(root);
 ActMonsterPoolChecks.Run(root);
 ActMonsterContentChecks.Run(root);
 SummonCapacityChecks.Run(root);
+CombatStatsChecks.Run(root);
 DungeonTravelChecks.Run(root);

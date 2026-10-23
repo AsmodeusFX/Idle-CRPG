@@ -99,6 +99,19 @@ public static class SummonCapacityChecks
         game.Summons.Add(extra);
         Need(game.Summons.Where(s=>s.Alive).Sum(game.EngagementCapacity)==3,"补召后容量未恢复3");
 
-        Console.WriteLine("PASS: skeleton/valkyrie capacity=1, three skeletons give 3 normal slots, melee monsters take skeleton slots without exceeding per-unit capacity, death releases locks and lowers capacity, refill restores capacity");
+        // 女武神超时释放：限时召唤到期必须撤销并让出容量，而不是只改CSV数值。
+        var valkyrie=game.Heroes[0].Copy();
+        valkyrie.Name="女武神";valkyrie.SummonDefinitionId="ran_valkyrie";valkyrie.SummonSkill="ran_valkyrie_summon";
+        valkyrie.SummonOwner=0;valkyrie.Hp=valkyrie.MaxHp=1000;valkyrie.Attack=0;valkyrie.Range=.9f;valkyrie.Timer=999;
+        valkyrie.SummonRemaining=5;valkyrie.Position=game.Floor.Rooms[game.CurrentRoom].Center;
+        game.Summons.Add(valkyrie);
+        Need(game.Summons.Where(s=>s.Alive).Sum(game.EngagementCapacity)==4,"女武神存活时容量未增加");
+        int valkyrieIndex=FriendlyIndex(valkyrie);
+        for(int i=0;i<140;i++)game.Tick(.05f);
+        Need(!game.Summons.Any(s=>ReferenceEquals(s,valkyrie)&&s.Alive),"女武神超时未被撤销");
+        Need(game.Summons.Where(s=>s.Alive).Sum(game.EngagementCapacity)==3,"女武神超时后容量未回到3");
+        Need(!game.Capture().SkillState.Targeting.Locks.Any(l=>l.Target==valkyrieIndex),"女武神超时后锁未释放");
+
+        Console.WriteLine("PASS: skeleton/valkyrie capacity=1, three skeletons give 3 normal slots, melee monsters take skeleton slots without exceeding per-unit capacity, death releases locks and lowers capacity, refill restores capacity, timed valkyrie expiry releases its slot");
     }
 }

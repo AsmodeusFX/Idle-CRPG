@@ -33,7 +33,7 @@ public sealed partial class GameSession
     private void HealTarget(Actor? target,double fraction,string skill="")
     {
         if(target is not {Alive:true}||!InCombatRoom(target))return;
-        float maximum=CombatMaximumHp(target);float before=target.Hp;target.Hp=(float)Math.Min(maximum,target.Hp+maximum*fraction);
+        float maximum=CombatMaximumHp(target);RecordHeal(target,maximum);float before=target.Hp;target.Hp=(float)Math.Min(maximum,target.Hp+maximum*fraction);
         if(target.Hp>before){effectiveEffectVersion++;PushVisual(CombatVisualKind.Heal,skill,"",CombatId(target),CombatId(target),target.Position,target.Position,target.Hp-before,0);}
     }
     private bool IsAuraSkill(string id)=>SkillConfig.Skills.TryGetValue(id,out var skill)&&skill.Effects.Any(e=>SkillConfig.Effects[e].Kind=="MaintainAura");

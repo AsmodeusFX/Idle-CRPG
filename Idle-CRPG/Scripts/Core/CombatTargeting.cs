@@ -164,11 +164,16 @@ public sealed partial class GameSession
                 if(inside&&room.Monsters.Any(InCombatRoom))state.DeployedMask|=bit;
                 continue;
             }
-            if(inside&&(EntryEngagedByCombat(hero)||EntryThreatened(hero,room)))
+            if(inside)
             {
-                state.EntryEngagedMask|=bit;state.DeployedMask|=bit;
-                EngagementEvent($"#{heroIndex} {hero.Name}：入口浅区提前接战，通行豁免");
-                continue;
+                bool byCombat=EntryEngagedByCombat(hero),byThreat=!byCombat&&EntryThreatened(hero,room);
+                if(byCombat||byThreat)
+                {
+                    state.EntryEngagedMask|=bit;state.DeployedMask|=bit;
+                    RecordEarlyEngage(byCombat?"战斗锁定":"近距威胁");
+                    EngagementEvent($"#{heroIndex} {hero.Name}：入口浅区提前接战（{(byCombat?"施法/被锁定":"近距威胁")}），通行豁免");
+                    continue;
+                }
             }
             if(inside&&EntryDepth(hero.Position)+.0001f>=EntryPassDepth){state.EntryPassMask|=bit;state.DeployedMask|=bit;continue;}
             // 即使仍在走廊或上一房间，也先计算房内推进点，再沿真实房门连续进入，不直线穿墙。
@@ -198,6 +203,7 @@ public sealed partial class GameSession
     {
         if(Floors.Count==0)return "无战斗现场";
         var lines=EntryDiagnostics().ToList();
+        lines.AddRange(CombatStatsDiagnostics());
         if(skillDecisions.Count>0)
         {
             lines.Add("技能AI决策（本房最近记录）：");

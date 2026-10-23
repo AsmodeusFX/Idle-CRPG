@@ -93,6 +93,8 @@ public sealed partial class GameSession
         summonDeployGoals.Clear();summonDeployed.Clear();
         // 技能AI决策记录同属本房诊断，换房或清房时重置，避免把上一房的选择当成当前事实。
         skillDecisions.Clear();lastSkillDecision.Clear();
+        // 战斗观测计数同样只在内存、按房重置，不进入正式存档。
+        combatStats=new();lastNormalLockCount=0;lastSummonDeathAt=-1;lastSummonAlive=0;
         skillState=new();ClearVisualEvents();monsterLockIndex.Clear();foreach(var actor in Heroes.Concat(Summons))actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
         if(FloorIndex<Floors.Count&&CurrentRoom<Floors[FloorIndex].Rooms.Count)foreach(var actor in Floor.Rooms[CurrentRoom].Monsters)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
     }
@@ -207,6 +209,7 @@ public sealed partial class GameSession
         // 永续召唤的脱战补员是唯一允许在房间外完成的自身施放；其它技能仍要求施放者在本房。
         bool offCombatSummon=skill.TargetPolicy=="self"&&PermanentSummonOf(id)!=null;
         if(actor is not {Alive:true}||target==null||(!InCombatRoom(actor)&&!offCombatSummon)||(!InCombatRoom(target)&&!offCombatSummon&&!validCorpse)||Stunned(actor)){action.Active="";if(actor!=null)NoteSkillDecision(actor,$"Runtime取消 {id}：目标或施法者失效");return;}
+        RecordSkillCast(actor,id);
         double cooldown=skill.Cooldown/(double)SkillConfig.TickRate;
         if(SkillConfig.Abilities.TryGetValue(id,out var ability)&&ability.Form=="buff")
             cooldown=Math.Max(ability.Buffs.Max(b=>SkillConfig.Buffs[b].Duration)/(double)SkillConfig.TickRate*SkillConfig.Setting("buff_cooldown_floor_ratio"),cooldown*(1-SkillConfig.Setting("buff_cooldown_per_level")*(LevelOf(actor,id)-1)));
