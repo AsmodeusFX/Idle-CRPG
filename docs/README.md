@@ -1,10 +1,12 @@
 # 文档索引
 
+- [P0 基础规则与运行数据](reviews/2026-10-23_p0_rules_and_runtime_audit.md)：召唤物接敌容量 0→1 及回归、跨场景速度审计结论、D03/D04 现状；速度调平待批准。数据见[移动速度审计](data/2026-10-23_movement_speed_audit.md)、[D03/D04 现状](data/2026-10-23_runtime_state_audit_d03_d04.md)。
+
 - [章节怪物投放](technical/act_monsters.md)：49个章节身份、统治区加权池、行为偏移（范围/猎手/支援）、精英词缀与Boss技能包；[P1-5执行归档](reviews/2026-10-23_p1_5_act_monsters.md)（C1–C3；M07召唤、其余6词缀与四段特殊剧本未实施）。
 
 - [角色自动技能 AI](design/auto_skill_ai.md)：槽序选技、条件与目标、射程外兜底、召唤名额资格、光环与多诅咒维持、GM有界诊断；[P1-4执行与审计](reviews/2026-10-23_p1_4_auto_skill_ai.md)：含C01–C12逐项结论与实施范围，外部方案原件留在 `docs/temp/` 不随工程归档。
 
-- [Steam D2 房间入场与门口拥堵修正 V1.2](reviews/2026-10-23_room_entry_v1_2.md)：入口通行1.5U与逐单位交接、敌方警觉0.8s基础/2.0s兜底、入口内侧1.5U出生避让、GM入场诊断；含召唤物接敌容量为0的独立审计结论。规则写入[索敌与入场展开](design/combat_targeting.md)、[字段合同](technical/targeting_config.md)。
+- [Steam D2 房间入场与门口拥堵修正 V1.2](reviews/2026-10-23_room_entry_v1_2.md)：入口通行1.5U与逐单位交接、敌方警觉0.8s基础/2.0s兜底、入口内侧1.5U出生避让、GM入场诊断；含召唤物接敌容量的独立审计结论（已于 P0 修复为 1）。规则写入[索敌与入场展开](design/combat_targeting.md)、[字段合同](technical/targeting_config.md)。
 
 - [跨平台Agent开发规范](technical/agent_workflow.md)：仓库规则、游戏开发Skill、平台验证和维护；[创建与自身归档](reviews/2026-10-23_agent_skill_archive.md)。
 
