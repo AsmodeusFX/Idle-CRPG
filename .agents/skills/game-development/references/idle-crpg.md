@@ -7,7 +7,7 @@
 | 所有开发 | docs/README.md、docs/design/dungeon_combat.md、docs/design/world.md、docs/technical/architecture.md |
 | 战斗/容量/召唤 | docs/design/combat_targeting.md、docs/technical/targeting_config.md、docs/technical/summon_follow.md |
 | 公式/技能 | docs/design/combat_formula.md、docs/design/skills_effects_buffs.md、docs/technical/combat_config.md |
-| 空间/拥堵/镜头 | docs/design/camera_world_view.md、docs/reviews/2026-10-23_spatial_configuration_audit.md |
+| 空间/拥堵/镜头 | docs/design/camera_world_view.md、docs/data/2026-10-23_spatial_configuration_audit.md |
 | 存档/设置 | docs/technical/persistence_settings.md |
 | 五章地图 | docs/design/campaign_five_acts.md、docs/reviews/2026-10-19_campaign.md |
 | 城镇/传送 | docs/design/towns_portals.md |
