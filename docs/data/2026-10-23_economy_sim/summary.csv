@@ -1,0 +1,7 @@
+strategy,minute,hero_levels,gold,kills,retries,chapter,difficulty,party,star_nodes,talent_spent,skill_slots,summon_slots
+A,30,warrior:7:0,3737,511,0,1,0,1,0,0,1,0
+A,120,warrior:7:0,15150,2061,0,1,0,1,0,0,1,0
+A,240,warrior:7:0,19211,2621,0,1,0,1,0,0,1,0
+B,30,warrior:7:0|ranger:7:0|mage:7:0,3700,587,0,1,0,3,15,18,5,0
+B,120,warrior:7:0|ranger:7:0|mage:7:0,17132,2402,0,1,0,3,15,18,5,0
+B,240,warrior:7:0|ranger:7:0|mage:7:0,34785,4830,0,1,0,3,15,18,5,0

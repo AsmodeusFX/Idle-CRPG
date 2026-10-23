@@ -32,6 +32,12 @@ if(args.Contains("--act-content-checks")){ActMonsterContentChecks.Run(root);retu
 if(args.Contains("--summon-capacity-checks")){SummonCapacityChecks.Run(root);return;}
 if(args.Contains("--combat-stats-checks")){CombatStatsChecks.Run(root);return;}
 if(args.Contains("--position-scenarios")){PositionScenarioChecks.Run(root);return;}
+if(args.Contains("--economy-sim"))
+{
+    int minutes=240;var arg=args.FirstOrDefault(a=>a.StartsWith("--economy-minutes="));
+    if(arg!=null)minutes=int.Parse(arg.Split('=')[1]);
+    EconomySimChecks.Run(root,minutes);return;
+}
 if(args.Contains("--dungeon-travel-checks")){DungeonTravelChecks.Run(root);return;}
 MonsterEncounterChecks.Run(root);MonsterSupportEncounterChecks.Run(root);
 SkillPreviewChecks.Run(root);

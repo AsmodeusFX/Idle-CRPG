@@ -1,5 +1,7 @@
 # 文档索引
 
+- [核心体验模拟与数值基线](data/2026-10-23_core_experience_sim.md)：`--economy-sim` 实测 30/120/240 游戏分钟（纯挂机 vs 含成长操作）、成长时间轴、收支与效率曲线、异常与断点；CSV 在 `data/2026-10-23_economy_sim/`。
+
 - [核心体验闭环就绪度审计](data/2026-10-23_core_loop_readiness_audit.md)：五系统完成度矩阵、经验/金币/天赋/星图/难度链路与断点、当前正式数值、缺失与风险清单；只读统计，未改配置与数值。
 
 - [P0 基础规则与运行数据](reviews/2026-10-23_p0_rules_and_runtime_audit.md)：召唤物接敌容量 0→1（含女武神超时释放）、五章大地图 `travel_speed` 0.65→0.31 调平、本房战斗统计与五场景站位输入。数据见[移动速度审计](data/2026-10-23_movement_speed_audit.md)、[D03/D04 现状](data/2026-10-23_runtime_state_audit_d03_d04.md)；统计字段见[战斗观测统计](technical/combat_stats.md)。
