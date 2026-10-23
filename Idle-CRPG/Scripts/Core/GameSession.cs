@@ -444,7 +444,7 @@ public sealed partial class GameSession
     /// <summary>先锋/领队抵达门内后切换当前房间；保留连续移动，召唤物按实际坐标进入入场部署。</summary>
     private void EnterTargetRoom(Room room,Vector2 entry)
     {
-        Reveal(room);
+        Reveal(room,entry);
         CurrentRoom=room.Id; destination=-1;
         // 召唤物不再随跨房瞬移：入场部署会让仍在旧房间或走廊的存活召唤物沿真实房门加速进入。
         // 进房检查点仍按当前存活召唤物记录实际坐标，读档后继续同一段连续移动。
@@ -454,7 +454,9 @@ public sealed partial class GameSession
         StartCombatEntry(room,entry);
     }
 
-    private void Reveal(Room room)
+    /// <summary>揭示并按快照生成房间内容。entry 为本次实际使用的房门位置，用于按真实进房方向
+    /// 计算入口内侧避让区，不能固定排除房间某一侧。</summary>
+    private void Reveal(Room room,Vector2 entry)
     {
         room.Revealed=true;
         if(room.Generated) return;
@@ -470,11 +472,26 @@ public sealed partial class GameSession
         int count=rng.Next(rule.Min+modifiers.MinBonus,rule.Max+modifiers.MaxBonus+1);
         // GM 数量是临时输入；已生成房间仍沿用原快照，BOSS 占总数中的一个名额。
         count=Math.Clamp(count+Gm.RoomCountBonus,1,1000);
+        var inward=Vector2.Normalize(room.Center-entry);
+        if(!float.IsFinite(inward.X)||inward==Vector2.Zero)inward=Vector2.UnitX;
+        float passDepth=Config.Talents.Rule("combat_entry_pass_depth_milli")/1000f;
+        // 普通刷怪保留四边0.8U留白，并额外避让入口内侧通行区；重试有界，失败时确定性回退，
+        // 数量始终等于配置/快照值，不因避让改变怪物数量。
+        Vector2 SpawnPoint()
+        {
+            for(int attempt=0;attempt<32;attempt++)
+            {
+                var p=room.Center+new Vector2(((float)rng.NextDouble()*2-1)*(room.HalfWidth-.8f),((float)rng.NextDouble()*2-1)*(room.HalfHeight-.8f));
+                if(Vector2.Dot(p-entry,inward)>=passDepth-.0001f)return p;
+            }
+            var fallback=Vector2.Clamp(entry+inward*passDepth,room.Center-room.HalfSize+new Vector2(.8f),room.Center+room.HalfSize-new Vector2(.8f));
+            return fallback;
+        }
         for(int i=0;i<count;i++)
         {
             bool boss=room.Boss&&i==count-1&&(plan==null||plan.BossActors==1);
             var m=rule.Create(Config.Monsters[rng.Next(Config.Monsters.Count)],rng.Next(levelMin,levelMax+1),boss,modifiers);
-            m.Position=room.Center+new Vector2(((float)rng.NextDouble()*2-1)*(room.HalfWidth-.8f),((float)rng.NextDouble()*2-1)*(room.HalfHeight-.8f));
+            m.Position=SpawnPoint();
             Config.ApplyCombatProfile(m);
             if(m.Boss&&ActiveDungeon!=null&&Config.PoiProfiles.TryGetValue(ActiveDungeon.Id,out var poi)&&poi.Boss!="")m.Name=poi.Boss+"（原型）";
             room.Monsters.Add(m);
@@ -509,6 +526,8 @@ public sealed partial class GameSession
     private void Act(Actor actor,List<Actor> opponents,float dt,Room room)
     {
         if(!InCombatRoom(actor)||entryMoved.Contains(actor)||Stunned(actor))return;
+        // 入口通行未完成的己方单位不得停下攻击；推进与接战豁免由 AdvanceRoomEntry 统一安排。
+        if(IsFriendlyActor(actor)&&EntryPassageBlocked(actor))return;
         actor.Timer=Math.Max(0,actor.Timer-dt*(float)(1+EffectiveAttributes(actor).AttackSpeed));
         if(RunRetreat(actor,dt,room))return;
         if(RunActiveSkill(actor))return;

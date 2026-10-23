@@ -150,10 +150,23 @@ public sealed partial class GameSession
                 if(!entryWindow)continue;
                 summonDeployGoals[summon]=SummonDeployGoal(summon,room,state);
             }
-            // 抵达落点前已进入有效战斗（施法、接敌或被锁定）时立即结束部署，交由正式战斗 AI 接管。
-            if(SummonEngaged(summon)||InCombatRoom(summon)&&room.Monsters.Any(InCombatRoom))
+            // V1.2：召唤物同样独立完成入口通行，不因英雄或队友开始战斗而停在门口。
+            // 近距离威胁、正在施法或被锁定才允许提前接战；接战后不再补做通行。
+            if(!EntryGateCleared(summon))
             {
-                summonDeployGoals.Remove(summon);summonDeployed.Add(summon);continue;
+                int bit=1<<FriendlyIndex(summon);
+                if(SummonEngaged(summon)||EntryThreatened(summon,room))
+                {
+                    state.EntryEngagedMask|=bit;summonDeployGoals.Remove(summon);summonDeployed.Add(summon);continue;
+                }
+                // 到达通行边界即结束入场部署并交回正式战斗AI：通行边界不是固定落点，本步不再改写位置。
+                if(InCombatRoom(summon)&&EntryDepth(summon.Position)+.0001f>=EntryPassDepth)
+                {state.EntryPassMask|=bit;summonDeployGoals.Remove(summon);summonDeployed.Add(summon);continue;}
+                else
+                {
+                    Move(summon,PartyDoorWaypoint(summon,room,summonDeployGoals[summon]),dt,summon.Speed*entrySpeedPct);
+                    entryMoved.Add(summon);continue;
+                }
             }
             var goal=summonDeployGoals[summon];
             // 支援型始终贴近主人当前站位；其余角色沿用入场时分配的固定落点，避免每步重算产生抖动。
@@ -188,7 +201,8 @@ public sealed partial class GameSession
         }
         else
         {
-            float depth=Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
+            // 通行边界不小于原展开纵深：远程/支援型也必须真正入房通行后才停止推进。
+            float depth=Math.Max(Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f,EntryPassDepth);
             float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
             int laneIndex=Heroes.Count+Summons.IndexOf(summon);
             int lane=laneIndex==0?0:(laneIndex+1)/2*(laneIndex%2==1?-1:1);
@@ -234,19 +248,28 @@ public sealed partial class GameSession
             if(summon.SummonRemaining<=0)KillSummon(summon);
         }
     }
-    /// <summary>技能只包含永续召唤效果时返回其定义，供脱战补员与生命周期判断共用；混合技能不参与脱战施放。</summary>
-    private SummonDefinition? PermanentSummonOf(string skillId)
+    /// <summary>技能的全部效果指向同一定义且均为召唤时返回该定义（不限永续/限时）；
+    /// 供AI名额资格与生命周期判断共用，混合技能不参与自动施放。</summary>
+    private SummonDefinition? SoleSummonOf(string skillId)
     {
         if(!SkillConfig.Skills.TryGetValue(skillId,out var skill)||skill.Effects.Length==0)return null;
         SummonDefinition? found=null;
         foreach(string effectId in skill.Effects)
         {
             var effect=SkillConfig.Effects[effectId];
-            if(effect.Kind!="Summon"||!SkillConfig.Summons.TryGetValue(effect.MechanicId,out var definition)||!definition.Permanent)return null;
+            if(effect.Kind!="Summon"||!SkillConfig.Summons.TryGetValue(effect.MechanicId,out var definition))return null;
             if(found!=null&&found.Id!=definition.Id)return null;
             found=definition;
         }
         return found;
+    }
+    /// <summary>技能只包含永续召唤效果时返回其定义，供脱战补员与生命周期判断共用；混合技能不参与脱战施放。</summary>
+    private SummonDefinition? PermanentSummonOf(string skillId)=>SoleSummonOf(skillId) is {Permanent:true} definition?definition:null;
+    /// <summary>该主人当前存活且同一召唤定义的单位数；与 SummonEffect 的名额判定使用同一口径。</summary>
+    private int SummonCountOf(Actor owner,string definitionId)
+    {
+        int index=CombatId(owner);
+        return Summons.Count(s=>s.Alive&&s.SummonOwner==index&&s.SummonDefinitionId==definitionId);
     }
     /// <summary>脱战补员只服务永续召唤；限时召唤仍由战斗AI施放，避免走廊里无限续时。
     /// 仍走原有前摇→提交→恢复时序与冷却，只是不要求敌人或有效攻击目标。</summary>

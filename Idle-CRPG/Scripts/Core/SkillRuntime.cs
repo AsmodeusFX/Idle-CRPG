@@ -91,6 +91,8 @@ public sealed partial class GameSession
     {
         // 入场部署目标只属于本房间战斗现场；换房、清房或重置技能现场时一并清空，不进入存档。
         summonDeployGoals.Clear();summonDeployed.Clear();
+        // 技能AI决策记录同属本房诊断，换房或清房时重置，避免把上一房的选择当成当前事实。
+        skillDecisions.Clear();lastSkillDecision.Clear();
         skillState=new();ClearVisualEvents();monsterLockIndex.Clear();foreach(var actor in Heroes.Concat(Summons))actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
         if(FloorIndex<Floors.Count&&CurrentRoom<Floors[FloorIndex].Rooms.Count)foreach(var actor in Floor.Rooms[CurrentRoom].Monsters)actor.Hp=Math.Min(actor.Hp,actor.MaxHp);
     }
@@ -157,17 +159,39 @@ public sealed partial class GameSession
     {
         if(actor.SkillIds.Length==0)return false;
         var action=ActionOf(actor);if(action.Active!=""||action.Recovery>0)return true;
+        // 按玩家已装备的槽序扫描，选中至多一个主动技能；本层只做“能否提出请求”，
+        // 真正的动作许可、CD 与效果仍在 Commit/Effect 层复核，AI 不预扣冷却、不预产生效果。
+        var skipped=new List<string>();
         foreach(string id in actor.SkillIds)
         {
-            if(actor.ActiveAuraSkills.Contains(id))continue;
-            var skill=SkillConfig.Skills[id];if(SkillCooldown(actor,id)>0)continue;
+            if(actor.ActiveAuraSkills.Contains(id)){skipped.Add($"{id} 光环已维持");continue;}
+            var skill=SkillConfig.Skills[id];if(SkillCooldown(actor,id)>0){skipped.Add($"{skill.Name} 冷却中");continue;}
+            // 召唤名额已满时不再发起施法：Commit 会消费冷却与恢复，效果层静默丢弃等于白耗一次动作。
+            var summon=SoleSummonOf(id);
+            if(summon!=null&&SummonCountOf(actor,summon.Id)>=summon.MaxCount){skipped.Add($"{skill.Name} 召唤已满");continue;}
             var target=ChooseSkillTarget(actor,skill);
-            if(target==null)continue;
+            if(target==null){skipped.Add($"{skill.Name} 无合法目标");continue;}
             action.Active=id;action.Target=CombatId(target);action.Windup=skill.Windup/(double)SkillConfig.TickRate;
+            NoteSkillDecision(actor,$"选择 {skill.Name}（{id}）"+(skipped.Count>0?"；跳过："+string.Join("、",skipped):""));
             if(action.Windup<=0)Commit(action);return true;
         }
+        if(skipped.Count>0)NoteSkillDecision(actor,"无可用主动技能："+string.Join("、",skipped));
         return false;
     }
+    /// <summary>本房有界的技能AI决策记录；只在结论变化时追加，供GM只读诊断，不进存档。</summary>
+    private readonly Queue<string> skillDecisions=new();
+    private readonly Dictionary<int,string> lastSkillDecision=new();
+    private void NoteSkillDecision(Actor actor,string text)
+    {
+        if(!IsFriendlyActor(actor))return;
+        int owner=CombatId(actor);
+        if(lastSkillDecision.TryGetValue(owner,out var previous)&&previous==text)return;
+        lastSkillDecision[owner]=text;
+        skillDecisions.Enqueue($"{actor.Name} {text}");
+        while(skillDecisions.Count>24)skillDecisions.Dequeue();
+    }
+    /// <summary>GM只读诊断：本房最近的技能选择与跳过原因，按变化追加，最多保留24条。</summary>
+    public IEnumerable<string> SkillAiDiagnostics()=>skillDecisions;
     private Actor? Choose(Actor owner,AbilityDefinition? ability,float range)
     {
         var enemies=Enemies(CombatId(owner)).Where(e=>ability?.Targeting=="highest_hp"||Vector2.Distance(owner.Position,e.Position)<=range).OrderBy(CombatId).ToArray();
@@ -182,7 +206,7 @@ public sealed partial class GameSession
         bool validCorpse=corpseTarget&&target is {Alive:false}&&CorpseInRoom(target)&&CorpseExists(action.Target);
         // 永续召唤的脱战补员是唯一允许在房间外完成的自身施放；其它技能仍要求施放者在本房。
         bool offCombatSummon=skill.TargetPolicy=="self"&&PermanentSummonOf(id)!=null;
-        if(actor is not {Alive:true}||target==null||(!InCombatRoom(actor)&&!offCombatSummon)||(!InCombatRoom(target)&&!offCombatSummon&&!validCorpse)||Stunned(actor)){action.Active="";return;}
+        if(actor is not {Alive:true}||target==null||(!InCombatRoom(actor)&&!offCombatSummon)||(!InCombatRoom(target)&&!offCombatSummon&&!validCorpse)||Stunned(actor)){action.Active="";if(actor!=null)NoteSkillDecision(actor,$"Runtime取消 {id}：目标或施法者失效");return;}
         double cooldown=skill.Cooldown/(double)SkillConfig.TickRate;
         if(SkillConfig.Abilities.TryGetValue(id,out var ability)&&ability.Form=="buff")
             cooldown=Math.Max(ability.Buffs.Max(b=>SkillConfig.Buffs[b].Duration)/(double)SkillConfig.TickRate*SkillConfig.Setting("buff_cooldown_floor_ratio"),cooldown*(1-SkillConfig.Setting("buff_cooldown_per_level")*(LevelOf(actor,id)-1)));

@@ -14,6 +14,9 @@ targeting_local_range_milli,4000
 targeting_reevaluate_milli,250
 targeting_budget,4
 combat_entry_delay_milli,800
+combat_entry_alert_cap_milli,2000
+combat_entry_pass_depth_milli,1500
+combat_entry_threat_range_milli,1200
 combat_entry_melee_depth_milli,2800
 combat_entry_ranged_depth_milli,900
 combat_entry_melee_spread_milli,1100

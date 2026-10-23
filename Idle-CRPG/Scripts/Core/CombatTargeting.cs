@@ -29,6 +29,9 @@ public sealed class CombatTargetingState
     public int DeployedMask;
     public double EntryElapsed;
     public Vector2 EntryAnchor,EntryDirection;
+    /// <summary>入口通行按友方连续索引（英雄在前、召唤物在后）独立记录：已完成入房通行、以及提前接战豁免。
+    /// 两者都属于本房短期现场，正式检查点清空，完整快照保存以复现决策。</summary>
+    public int EntryPassMask,EntryEngagedMask;
 }
 public sealed partial class GameSession
 {
@@ -36,8 +39,85 @@ public sealed partial class GameSession
     private readonly Dictionary<int,MonsterTargetLock> monsterLockIndex=new();
     private readonly HashSet<Actor> entryMoved=new();
     public IEnumerable<(int Owner,int Target,MonsterLockKind Kind)> MonsterTargets=>skillState.Targeting.Locks.Select(l=>(l.Owner,l.Target,l.Kind));
-    /// <summary>仅有怪新房的短暂警觉窗口；已清理房间和走廊始终为0。</summary>
-    public double CombatEntryRemaining=>skillState.Targeting.EntryPrepared?Math.Max(0,Config.Talents.Rule("combat_entry_delay_milli")/1000d-skillState.Targeting.EntryElapsed):0;
+    /// <summary>入口通行深度、近距离威胁距离、敌方基础警觉与兜底上限；数值均为原型参数。</summary>
+    private float EntryPassDepth=>Config.Talents.Rule("combat_entry_pass_depth_milli")/1000f;
+    private float EntryThreatRange=>Config.Talents.Rule("combat_entry_threat_range_milli")/1000f;
+    private double EntryAlertBase=>Config.Talents.Rule("combat_entry_delay_milli")/1000d;
+    private double EntryAlertCap=>Config.Talents.Rule("combat_entry_alert_cap_milli")/1000d;
+    /// <summary>仅有怪新房的短暂警觉窗口；已清理房间和走廊始终为0。
+    /// 基础警觉无条件保留；之后还要等小队前方真正入房通行，但没有超过兜底上限的等待。</summary>
+    public double CombatEntryRemaining
+    {
+        get
+        {
+            var s=skillState.Targeting;if(!s.EntryPrepared)return 0;
+            if(s.EntryElapsed<EntryAlertBase)return EntryAlertBase-s.EntryElapsed;
+            if(EntryAlertReleased)return 0;
+            return Math.Max(0,EntryAlertCap-s.EntryElapsed);
+        }
+    }
+    /// <summary>敌方启动条件：基础警觉已过，且前方已入房约通行深度、已发生近距离遭遇，或已到兜底上限。
+    /// 只参考小队前方进度，不等待全部队友和召唤物。</summary>
+    private bool EntryAlertReleased
+    {
+        get
+        {
+            var s=skillState.Targeting;
+            if(!s.EntryPrepared)return true;
+            if(s.EntryElapsed+.000001<EntryAlertBase)return false;
+            if(s.EntryElapsed+.000001>=EntryAlertCap)return true;
+            var room=Floor.Rooms[CurrentRoom];
+            foreach(var hero in Heroes)
+            {
+                if(!hero.Alive||!InCombatRoom(hero))continue;
+                if(EntryDepth(hero.Position)+.0001f>=EntryPassDepth)return true;
+                if(room.Monsters.Any(m=>m.Alive&&InCombatRoom(m)&&Vector2.Distance(m.Position,hero.Position)<=EntryThreatRange))return true;
+            }
+            return false;
+        }
+    }
+    /// <summary>单位沿当前入口门线朝内方向的入房深度（世界单位）；门外为负，适配上下左右四种入口。</summary>
+    public float EntryDepth(Vector2 position)
+    {
+        var s=skillState.Targeting;
+        return Vector2.Dot(position-s.EntryAnchor,s.EntryDirection);
+    }
+    /// <summary>单个单位是否已不再受入口通行限制：完成通行、提前接战豁免，或沿用旧的展开完成掩码。
+    /// 按友方连续索引独立判定，队友开始战斗不会顺带放行队尾。</summary>
+    private bool EntryGateCleared(Actor actor)
+    {
+        int index=FriendlyIndex(actor);if(index<0)return true;
+        var s=skillState.Targeting;int bit=1<<index;
+        return ((s.DeployedMask|s.EntryPassMask|s.EntryEngagedMask)&bit)!=0;
+    }
+    /// <summary>是否已按提前接战豁免结束通行，接战后不再补做通行。</summary>
+    private bool EntryEngagedExempt(Actor actor)
+    {
+        int index=FriendlyIndex(actor);
+        return index>=0&&(skillState.Targeting.EntryEngagedMask&(1<<index))!=0;
+    }
+    /// <summary>入口浅区近距离威胁：只统计本房存活怪物的真实间距，屏幕错位不参与判定。</summary>
+    private bool EntryThreatened(Actor actor,Room room)=>room.Monsters.Any(m=>m.Alive&&InCombatRoom(m)&&Vector2.Distance(m.Position,actor.Position)<=EntryThreatRange);
+    /// <summary>正在发生的攻击/施法、已在飞来的打击或已被怪物锁定同样允许立即接战，不只依赖距离阈值。</summary>
+    private bool EntryEngagedByCombat(Actor actor)
+    {
+        int id=CombatId(actor);
+        if(skillState.Actions.Any(a=>a.Owner==id&&(a.Active!=""||a.Windup>0||a.Recovery>0)))return true;
+        if(skillState.Flights.Any(f=>f.Target==id))return true;
+        int index=FriendlyIndex(actor);
+        return index>=0&&skillState.Targeting.Locks.Any(l=>l.Target==index||l.Owner==id);
+    }
+    /// <summary>入场通行未完成的己方单位不得停下战斗；由入场推进继续前进，或按豁免转入正式战斗。</summary>
+    private bool EntryPassageBlocked(Actor actor)
+    {
+        var s=skillState.Targeting;
+        if(!s.EntryPrepared||Floors.Count==0)return false;
+        var room=Floor.Rooms[CurrentRoom];
+        if(room.Clear||!InCombatRoom(actor))return false;
+        // 战斗中临时召唤不参与已认领的入场部署，直接按正式战斗AI行动。
+        if(actor.SummonDefinitionId!=""&&!summonDeployGoals.ContainsKey(actor))return false;
+        return !EntryGateCleared(actor);
+    }
     private void StartCombatEntry(Room room,Vector2 anchor)
     {
         if(room.Clear)return;
@@ -60,46 +140,124 @@ public sealed partial class GameSession
         var room=Floor.Rooms[CurrentRoom];var delta=Vector2.Abs(actor.Position-room.Center);
         return actor.Alive&&delta.X<=room.HalfWidth+.0001f&&delta.Y<=room.HalfHeight+.0001f;
     }
-    /// <summary>队尾继续连续跨门，不夹取或瞬移进房；进房检查点的位置足以恢复这一过程。</summary>
+    /// <summary>队尾继续连续跨门，不夹取或瞬移进房；进房检查点的位置足以恢复这一过程。
+    /// 入口通行按单位独立判定：未完成约通行深度的单位继续沿门轴朝内推进；
+    /// 只有近距离威胁、正在发生的攻击或被锁定才允许提前接战，接战后不再补做通行。</summary>
     private void AdvanceRoomEntry(Room room,float dt)
     {
         entryMoved.Clear();bool spread=!room.Clear&&skillState.Targeting.EntryPrepared;
-        foreach(var hero in Heroes)
+        if(!spread)
         {
-            int heroIndex=Heroes.IndexOf(hero);
-            bool inside=InCombatRoom(hero);
-            if(inside&&!room.Clear&&room.Monsters.Any(InCombatRoom)){skillState.Targeting.DeployedMask|=1<<heroIndex;continue;}
-            if(!hero.Alive||inside&&(!spread||(skillState.Targeting.DeployedMask&(1<<heroIndex))!=0))continue;
-            if(!spread)
+            // 非入场窗口：房内成员交回正式战斗AI，走廊/上一房间成员仍由跑图与跟随逻辑处理。
+            foreach(var hero in Heroes)if(!InCombatRoom(hero))entryMoved.Add(hero);
+            return;
+        }
+        var state=skillState.Targeting;
+        for(int heroIndex=0;heroIndex<Heroes.Count;heroIndex++)
+        {
+            var hero=Heroes[heroIndex];
+            if(!hero.Alive)continue;
+            bool inside=InCombatRoom(hero);int bit=1<<heroIndex;
+            if(EntryGateCleared(hero))
             {
-                // 非入场窗口：房内成员已跳过，房外成员仍由跑图/跟随逻辑处理。
-                entryMoved.Add(hero);continue;
+                // 已通行或已提前接战：进入房间后交回正式战斗AI，不再补做落位。
+                if(inside&&room.Monsters.Any(InCombatRoom))state.DeployedMask|=bit;
+                continue;
             }
-            // 即使仍在走廊或上一房间，也先计算房间内落点，再沿真实房门连续进入，不直线穿墙。
-            var state=skillState.Targeting;var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
-            // 入场纵深/横向间距按攻击类型分组；接敌容量只决定怪物预约，不能把远程法系推入前排。
-            string role=hero.Ranged?"ranged":"melee";
-            float depth=Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f;
-            float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
-            int lane=heroIndex==0?0:(heroIndex+1)/2*(heroIndex%2==1?-1:1);
-            var goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*spacing);
-            goal=Vector2.Clamp(goal,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
+            if(inside&&(EntryEngagedByCombat(hero)||EntryThreatened(hero,room)))
+            {
+                state.EntryEngagedMask|=bit;state.DeployedMask|=bit;
+                EngagementEvent($"#{heroIndex} {hero.Name}：入口浅区提前接战，通行豁免");
+                continue;
+            }
+            if(inside&&EntryDepth(hero.Position)+.0001f>=EntryPassDepth){state.EntryPassMask|=bit;state.DeployedMask|=bit;continue;}
+            // 即使仍在走廊或上一房间，也先计算房内推进点，再沿真实房门连续进入，不直线穿墙。
+            var goal=EntryAdvancePoint(hero,room,heroIndex);
             Move(hero,inside?goal:PartyDoorWaypoint(hero,room,goal),dt);
-            if(inside&&Vector2.DistanceSquared(hero.Position,goal)<.04f)skillState.Targeting.DeployedMask|=1<<heroIndex;
             entryMoved.Add(hero);
         }
         // 召唤物与英雄共用同一入场窗口；入场逻辑独占其移动权，完成后交回正式战斗 AI。
-        if(spread)AdvanceEntrySummons(room,dt);
+        AdvanceEntrySummons(room,dt);
+    }
+    /// <summary>入口通行推进点：沿门轴朝内取“通行深度”与原展开纵深的较大值，横向仍按远近程车道错开。
+    /// 这是通行限制而非固定部署坐标，允许在到达前因真实威胁提前接战。</summary>
+    private Vector2 EntryAdvancePoint(Actor actor,Room room,int laneIndex)
+    {
+        var state=skillState.Targeting;var side=new Vector2(-state.EntryDirection.Y,state.EntryDirection.X);
+        // 纵深/间距按攻击类型分组；接敌容量只决定怪物预约，不能把远程法系推入前排。
+        string role=actor.Ranged?"ranged":"melee";
+        float depth=Math.Max(Config.Talents.Rule($"combat_entry_{role}_depth_milli")/1000f,EntryPassDepth);
+        float spacing=Config.Talents.Rule($"combat_entry_{role}_spread_milli")/1000f;
+        int lane=laneIndex==0?0:(laneIndex+1)/2*(laneIndex%2==1?-1:1);
+        var goal=state.EntryAnchor+state.EntryDirection*depth+side*(lane*spacing);
+        return Vector2.Clamp(goal,room.Center-room.HalfSize+new Vector2(.4f),room.Center+room.HalfSize-new Vector2(.4f));
     }
     private readonly Queue<string> engagementEvents=new();
-    /// <summary>GM只读诊断，直接读取唯一预约账本。</summary>
+    /// <summary>GM只读诊断：入口门线、朝内方向、通行边界、单位深度/停止原因与敌方警觉，再附唯一预约账本。</summary>
     public string EngagementDiagnostics()
     {
         if(Floors.Count==0)return "无战斗现场";
-        var lines=new List<string>();
+        var lines=EntryDiagnostics().ToList();
+        if(skillDecisions.Count>0)
+        {
+            lines.Add("技能AI决策（本房最近记录）：");
+            lines.AddRange(skillDecisions);
+        }
         for(int i=0;i<FriendlyCount;i++)if(FriendlyAt(i) is {Alive:true} a&&EngagementCapacity(a)>0)
             lines.Add($"{a.Name} {skillState.Targeting.Locks.Count(l=>l.Target==i&&l.Kind==MonsterLockKind.Normal)}/{EngagementCapacity(a)}："+string.Join("，",skillState.Targeting.Locks.Where(l=>l.Target==i).Select(l=>$"#{l.Owner} {l.Kind}")));
         return string.Join("\n",lines.Concat(engagementEvents));
+    }
+    /// <summary>入场通行与敌方警觉的只读诊断；不写入正式存档，也不参与任何判定。</summary>
+    public IEnumerable<string> EntryDiagnostics()
+    {
+        if(Floors.Count==0)return Array.Empty<string>();
+        var room=Floor.Rooms[CurrentRoom];var s=skillState.Targeting;
+        if(!s.EntryPrepared)
+            return new[]{room.Clear?"入场：当前房间已清理，无通行限制":"入场：尚未进入有活怪房间"};
+        var lines=new List<string>
+        {
+            $"入场：门线({s.EntryAnchor.X:0.00},{s.EntryAnchor.Y:0.00}) 朝内({s.EntryDirection.X:0.00},{s.EntryDirection.Y:0.00}) 通行边界 {EntryPassDepth:0.00}U 近距威胁 {EntryThreatRange:0.00}U",
+            $"敌方警觉：{(CombatEntryRemaining>0?$"进行中 剩余{CombatEntryRemaining:0.00}s":"已启动")} 基础{EntryAlertBase:0.00}s 兜底{EntryAlertCap:0.00}s",
+            $"本房怪物 {room.Monsters.Count(m=>m.Alive)} 只：{(CombatEntryRemaining>0?"待机（警觉中）":"常规索敌")}"
+        };
+        for(int i=0;i<FriendlyCount;i++)
+        {
+            if(FriendlyAt(i) is not {Alive:true} actor)continue;
+            string gate=EntryEngagedExempt(actor)?"已接战豁免":EntryGateCleared(actor)?"已通行":"通行中";
+            string target=TargetText(actor);
+            lines.Add($"{actor.Name} 坐标({actor.Position.X:0.00},{actor.Position.Y:0.00}) 深度{EntryDepth(actor.Position):0.00} {gate} 目标{target} 停止原因={EntryStopReason(actor,room,i)}");
+        }
+        return lines;
+    }
+    /// <summary>GM 诊断用的当前目标文本：友方读稳定目标，怪物读唯一预约账本。</summary>
+    private string TargetText(Actor actor)
+    {
+        if(IsFriendlyActor(actor))
+            return skillState.Targeting.FriendlyTargets.TryGetValue(CombatId(actor),out int id)?$"#{id}": "无";
+        return monsterLockIndex.TryGetValue(CombatId(actor),out var locked)?$"#{locked.Target} {locked.Kind}":"无";
+    }
+    /// <summary>GM 用的移动/行动停止原因推断；只读现有状态，不改变任何决策。</summary>
+    private string EntryStopReason(Actor actor,Room room,int index)
+    {
+        if(!InCombatRoom(actor))return "穿门或走廊";
+        if(EntryPassageBlocked(actor))return "入口通行";
+        bool acting=skillState.Actions.Any(a=>a.Owner==CombatId(actor)&&(a.Active!=""||a.Windup>0||a.Recovery>0));
+        if(acting)return "技能动作";
+        if(!IsFriendlyActor(actor))return ordinaryReason(actor);
+        if(!skillState.Targeting.FriendlyTargets.TryGetValue(CombatId(actor),out int target))return "重新索敌";
+        var enemy=CombatActor(target);
+        if(enemy==null||!enemy.Alive)return "目标失效";
+        double range=EffectiveValue(actor,"attack_range",actor.Range);
+        return Vector2.Distance(actor.Position,enemy.Position)<=range+.0001?"攻击目标":"接近目标";
+
+        string ordinaryReason(Actor monster)
+        {
+            if(!monsterLockIndex.TryGetValue(CombatId(monster),out var locked))return "无合法目标";
+            var victim=FriendlyAt(locked.Target);
+            if(victim==null||!victim.Alive)return "目标失效";
+            double reach=EffectiveValue(monster,"attack_range",monster.Range);
+            return Vector2.Distance(monster.Position,victim.Position)<=reach+.0001?$"攻击{locked.Kind}目标":"接近目标";
+        }
     }
     private void EngagementEvent(string message)
     {

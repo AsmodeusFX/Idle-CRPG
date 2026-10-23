@@ -216,7 +216,6 @@ public static class SkillBdSummonChecks
                 for(int s=0;s<scene.Live.Length;s++)Need(Vector2.Distance(from[s],scene.Live[s].Position)<=cap,"入场部署超出临时加速上限");
             }
         }
-        float Depth((GameSession Game,Vector2 Anchor,Actor[] Live) scene,Actor actor)=>Vector2.Dot(actor.Position-scene.Anchor,scene.Game.Capture().SkillState.Targeting.EntryDirection);
         var meleeScene=DeployScene("melee");DeployCheck(meleeScene);
         var rangedScene=DeployScene("ranged");DeployCheck(rangedScene);
         Need(meleeScene.Game.Capture().SkillState.Targeting.FriendlyTargets.Count>0&&rangedScene.Game.Capture().SkillState.Targeting.FriendlyTargets.Count>0,"软部署进入房间后必须直接进行战斗索敌");
@@ -236,7 +235,9 @@ public static class SkillBdSummonChecks
         var marchState=march.Capture().SkillState.Targeting;
         marchState.EntryPrepared=true;marchState.EntryElapsed=c.Talents.Rule("combat_entry_delay_milli")/1000f-.05f;marchState.EntryAnchor=marchAnchor;marchState.EntryDirection=new(0,1);marchState.DeployedMask=0;marchState.Locks.Clear();
         march.Capture().SkillState.Actions.Clear();
-        var marchSummon=Live(march)[0];marchSummon.Position=marchRoom.Center+new Vector2(-5,-5);marchSummon.Hp=7;
+        // V1.2入口通行：召唤物需先真正入房约1.5U才允许因远处目标停下；本用例验证的是通行之后的行为，
+        // 因此把召唤物放在通行边界之内，避免与入口通行限制混淆。
+        var marchSummon=Live(march)[0];marchSummon.Position=marchRoom.Center+new Vector2(-4,-2);marchSummon.Hp=7;
         int marchKills=march.Kills;long marchXp=march.Experience;int marchLoot=marchRoom.Loot.Count;
         float marchEntrySpeed=marchSummon.Speed*c.Talents.Rule("summon_entry_speed_pct")/100f;
         int marchLaneIndex=march.Heroes.Count;int marchLane=marchLaneIndex==0?0:(marchLaneIndex+1)/2*(marchLaneIndex%2==1?-1:1);
