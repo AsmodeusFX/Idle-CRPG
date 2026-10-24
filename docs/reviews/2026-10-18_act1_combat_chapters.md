@@ -18,7 +18,7 @@
 
 用户裁定（优先于来源文档）：维持玩家手动攻要塞；埋骨之地不阻断第一章主线完成；8×8 原图与 POI/Gate 命名不擅改；三难度五章沿用既有授权。自然成长下的三难度平衡与耗时收益 **NOT RUN**。
 
-原始资料清单见 `docs/references/act1/2026-10-18/manifest.md`。原 `act1_v05_poi_import.csv`（逐 POI 导入对照）与原 `combat_skill_sources.csv`（18 组源/目标文件 SHA-256）随本次归档精炼移除，结论保留在本文件；如需复盘到行级明细，应重新从参考归档导入，不要凭记忆重建。
+来源到配置的映射见 `docs/technical/act1_config.md#来源映射历史`。原 `act1_v05_poi_import.csv`（逐 POI 导入对照）、`combat_skill_sources.csv`（18 组源/目标文件 SHA-256）与 `docs/references/` 下的冻结原件均已从工作区移除，只在 Git 历史保留；如需复盘到行级明细，应从 Git 历史取回，不要凭记忆重建。
 
 ## 二、战斗、技能、属性与等级迁移
 
