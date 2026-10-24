@@ -1,6 +1,0 @@
-﻿ChapterId,RegionId,RegionName,IsOptional,UnlockParentCastleIds,RequiresManualSideApproval,CastlePoiId,TileCount,DungeonCount,Status
-ACT04,REGION_01,郊外大草原,0,,0,D01-C01,5,3,PROPOSAL
-ACT04,REGION_02,绝望平原,0,D01-C01,0,D02-C01,5,3,PROPOSAL
-ACT04,REGION_03,神罚之城,0,D02-C01,0,D03-C01,6,4,PROPOSAL
-ACT04,REGION_04,火焰之河与混沌避难所,0,D03-C01,0,D04-C01,7,6,PROPOSAL
-ACT04,REGION_05,地狱熔炉,1,D03-C01,1,D05-C01,5,3,PROPOSAL

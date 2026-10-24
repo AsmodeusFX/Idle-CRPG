@@ -1,8 +1,0 @@
-﻿sample_id,unit_type,base_engagement_capacity,attack_kind,comment,status
-UNIT_BAR_TEST,Barbarian,3,Melee,仅为测试数值；前排天生容量,EXAMPLE_ONLY
-UNIT_PAL_TEST,Paladin,5,Melee,仅为测试数值；不要据此承诺圣骑永远高于野蛮人,EXAMPLE_ONLY
-UNIT_RANGER_TEST,Ranger,0,Ranged,不提供优先接敌槽，仍可被无限多怪锁定,EXAMPLE_ONLY
-UNIT_MAGE_TEST,Sorceress,0,Ranged,0不意味着不可攻击,EXAMPLE_ONLY
-UNIT_NECRO_TEST,Necromancer,0,Ranged,召唤物独立配置,EXAMPLE_ONLY
-SUMMON_SKELETON_TEST,SkeletonWarrior,1,Melee,独立可攻击单位,EXAMPLE_ONLY
-SUMMON_GOLEM_TEST,Golem,3,Melee,独立可攻击单位,EXAMPLE_ONLY
