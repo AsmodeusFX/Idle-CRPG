@@ -1,0 +1,5 @@
+﻿sample_policy_id,attack_kind,normal_slot_required,acquisition_order,overflow_behavior,notes,status
+NORMAL_MELEE_TEST,Melee,Yes,NearestEligibleWithFreeCapacity,NearestEligibleNonFullCapturingUnitElseAny,同Tick稳定预约; 后排0容量仍可无限承接; 超额可攻击,EXAMPLE_ONLY
+NORMAL_RANGED_TEST,Ranged,No,NearestLegalTarget,NotApplicable,普通远程不消耗近战接敌容量,EXAMPLE_ONLY
+SPECIAL_SKILL_TEST,Skill,No,SkillDefinedTargetPolicy,SkillDefined,技能自己选目标，Boss特殊独立配置,EXAMPLE_ONLY
+FORCED_TARGET_TEST,Melee,No,ForcedByApprovedSkill,ReevaluateAtSafeBoundary,嘲讽可临时突破容量，不能跨无限距离,EXAMPLE_ONLY
