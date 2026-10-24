@@ -1,0 +1,11 @@
+{
+  "test_only": true,
+  "test_cases": [
+    {"id":"TEST_EQ01","profile":"open_chest_atomic","item_instances":["TEST_INSTANCE_WPN_001"],"expect":["no_instance_before_success_open","rolled_affixes_persist_once","second_open_does_not_duplicate"]},
+    {"id":"TEST_EQ02","profile":"equip_weapon","item_instances":["TEST_INSTANCE_WPN_001"],"expect":["slot_points_to_unique_id","atk_source_registered_once","skill_modifier_applied_if_eligible"]},
+    {"id":"TEST_EQ03","profile":"replace_weapon","item_instances":["TEST_INSTANCE_WPN_001","TEST_INSTANCE_WPN_002"],"expect":["old_sources_removed","new_sources_registered","no_partial_state"]},
+    {"id":"TEST_EQ04","profile":"proc_bounded","item_instances":["TEST_INSTANCE_WPN_001"],"expect":["hit_eligibility_checked","proc_does_not_recurse_unbounded"]},
+    {"id":"TEST_EQ05","profile":"summon_aura_no_double_dip","item_instances":["TEST_INSTANCE_WPN_002"],"expect":["permanent_item_inheritance_only","aura_applied_once","requires_TBD03_review_for_live_swap"]},
+    {"id":"TEST_EQ06","profile":"save_exit_newprocess_load","item_instances":["TEST_INSTANCE_ARM_001"],"expect":["affix_roll_unchanged","slot_ref_restored","modifiers_rebuilt_once"]}
+  ]
+}

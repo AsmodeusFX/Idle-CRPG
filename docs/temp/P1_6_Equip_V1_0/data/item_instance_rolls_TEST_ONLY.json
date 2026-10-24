@@ -1,0 +1,9 @@
+{
+  "test_only": true,
+  "description": "仅示意成功OpenChest之后持久化的实例词缀实际值，不是生成规则，也不是生产存档DTO",
+  "instances": [
+    {"instance_id":"TEST_INSTANCE_WPN_001","item_def_id":"TEST_WPN_BOW","source_chest_id":"TEST_CHEST_A","affixes":[{"affix_id":"TEST_AFX_BOW_ATK_FLAT","rolled_value":8,"occurrence_index":0},{"affix_id":"TEST_AFX_MULTISHOT_EXTRA","rolled_value":1,"occurrence_index":1}]},
+    {"instance_id":"TEST_INSTANCE_ARM_001","item_def_id":"TEST_ARM_BASIC","source_chest_id":"TEST_CHEST_B","affixes":[{"affix_id":"TEST_AFX_ARMOR_FLAT","rolled_value":12,"occurrence_index":0}]},
+    {"instance_id":"TEST_INSTANCE_WPN_002","item_def_id":"TEST_WPN_MELEE","source_chest_id":"TEST_CHEST_C","affixes":[{"affix_id":"TEST_AFX_ATK_FLAT","rolled_value":10,"occurrence_index":0},{"affix_id":"TEST_AFX_SUMMON_ATK","rolled_value":0.10,"occurrence_index":1}]}
+  ]
+}
