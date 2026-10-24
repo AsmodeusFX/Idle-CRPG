@@ -3,6 +3,7 @@
 - 开发前阅读 `docs/README.md`、`docs/design/dungeon_combat.md`、`docs/design/world.md`、`docs/technical/architecture.md`。
 - 五章正式地图及V0.2拓扑见 docs/design/campaign_five_acts.md；转换器tools/import_campaign.py，--check只校验。用户明确的自动支线、同级随机优先于源AI文本手动支线/稳定排序；冲突裁定见docs/reviews/2026-10-19_campaign.md。legacy目录只用于显式旧回归，不是正式地图。
 - Godot 工程仅在 `Idle-CRPG/`；归档文档在根目录 `docs/`。目录约定：`design/` 规则、`technical/` 字段合同与架构、`reviews/` 执行归档（单 md，不建子目录、不放外部方案原件）、`data/` 专项统计与数据提取结果、`temp/` 用户外部方案输入区（工程只读不写）。
+- `docs/suggest/` 存放尚未获正式实施批准的设计建议及配套资产，不属于正式设计规范或必须执行的需求；后续检索、规划和实施不得将其中的候选方案、工作包、优先级或验收建议自动视为执行义务，采用范围以用户后续明确批准为准。相关 review 仅记录整理与校验事实，不构成批准。
 - **一个功能模块只维护一个 review 文件**：同一模块的后续开发（版本升级、切片、复跑、补救）一律更新该文件，用小节或版本标题追加，不得按阶段拆成 `_e1`/`_v2` 这类并列文件；已有拆分应合并并删除旧文件、同步修正引用。
 - **模拟统计统一交付单个 Markdown 文件**：文件名统一为 `YYYY-MM-DD_HH-mm_data_自定义名称.md`（Asia/Shanghai 时间，含小时和分钟）；后续模拟以 `docs/data/2026-10-23_core_experience_sim.md` 为结构模板，在 `docs/data/` 下输出本轮一份完整统计报告；同轮 A/B/C 等对照场景合并在该文件中，不按场景拆分目录或 `summary.md`，不向 `docs/data/` 复制原始 CSV/事件日志目录。报告包含执行与测试覆盖（环境、命令、配置、Seed、初始状态、动作开关、模拟时长、采样周期、未覆盖项）、成长时间轴、资源收支、挑战与效率曲线、关键成长事件、异常清单、功能断点、后续建议及复跑方法；按采样周期列出各场景数据，突出适用的 30/120/240 分钟与关键事件时点。区分实测、配置推算、推测及未验证结论；缺失指标标为 `unavailable` 并说明限制，不以零值代替。机器原始数据保留在忽略的 `artifacts/` 下，报告注明路径；模块 review 记录实现与验收事实并链接该单份统计报告。模板仅约束格式，不继承旧结论或玩法调整建议。
 - 使用 C#。纯逻辑在 `Scripts/Core/`，不得引用 Godot；节点、绘制、输入在 `Scripts/UI/`。

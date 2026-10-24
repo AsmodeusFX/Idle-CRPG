@@ -1,10 +1,13 @@
-# P2-3-M1 正式内容蓝图与规模规划
+# P2-3-M1 内容蓝图与规模规划建议（未批准）
 
-状态：`P2_3_M1_DESIGN_DELIVERED_PENDING_REVIEW`。本轮为设计提案交付，未批准机制、未投放内容、未验证30分钟玩家体验。时间：2026-10-24_08-59（Asia/Shanghai）。不使用现有模拟的等级/金币推断职业强弱或正式平衡。
+> 文档性质：`SUGGESTION_ONLY / NOT_APPROVED / NOT_EXECUTION_AUTHORITY`。
+> 本文及同名目录内全部CSV仅为一次设计建议，不属于正式设计规范、已批准需求或必须执行的待办。后续检索、规划、代码生成不得仅依据本文的“目标”“必须”“验收”“优先级”或工作包安排推定实施授权；这些措辞只描述候选方案内部约束。是否采用、采用哪些条目及实施顺序，须以用户后续明确批准的范围为准。引用的既有规则和代码事实仍以各自权威来源为准。
+
+状态：`P2_3_M1_SUGGESTION_ARCHIVED_NOT_APPROVED`。本轮为设计提案交付，未批准机制、未投放内容、未验证30分钟玩家体验。时间：2026-10-24_08-59（Asia/Shanghai）。不使用现有模拟的等级/金币推断职业强弱或正式平衡。
 
 ## 1. 输入、事实与边界
 
-已读取项目AGENTS、Agent工作流、game-development技能、README、地牢/世界/架构、星图与天赋规则；输入M1五表、M2/M3八类审计表及M3报告、P2-1-M3验收（reviews/2026-10-23_p0_a_simulation.md）。输入哈希与逐表结构检查见 `artifacts/p2_3_m1/input_validation.json`。31系统全部映射见 `content_scope_plan.csv`，16原工作包重组为7条设计主线，见 `blueprint_work_packages.csv`。所有机器表在 [资产目录](p2_3_m1_content_blueprint/)；报告是唯一正式设计正文。
+已读取项目AGENTS、Agent工作流、game-development技能、README、地牢/世界/架构、星图与天赋规则；输入M1五表、M2/M3八类审计表及M3报告、P2-1-M3验收（reviews/2026-10-23_p0_a_simulation.md）。输入哈希与逐表结构检查见 `artifacts/p2_3_m1/input_validation.json`。31系统全部映射见 `content_scope_plan.csv`，16原工作包重组为7条设计主线，见 `blueprint_work_packages.csv`。所有机器表在 [资产目录](p2_3_m1_content_blueprint/)；报告是本次建议的主文档，不是正式设计依据。
 
 当前复核：五职业61天赋（39主动/22被动，16绑定、23旧路径）；17星图节点/6效果；36属性Key中18零投放但已有战斗消费者。49怪物身份、17行为映射行、10词缀、34 Boss绑定；1515条楼层规划记录、4083规划层不是实际生成规模。当前所有数值仍为测试/原型，本文不规定伤害、经验、金币、价格或概率倍率。
 
