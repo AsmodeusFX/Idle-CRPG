@@ -1,0 +1,43 @@
+{
+  "schema_purpose": "TEST_ONLY semantic examples; not engine schema",
+  "status": "PROPOSAL_REQUIRES_PROJECT_AUDIT",
+  "activation": {
+    "monster_ai_delay": "INHERIT_PROJECT_EXISTING",
+    "party_entry_spread": "INHERIT_PROJECT_EXISTING",
+    "never_overwrite_with_old_immediate_activation_rule": true
+  },
+  "targeting": {
+    "ordinary_melee": "CAPACITY_PREFERRED_THEN_OTHER_LEGAL_THEN_OVERFLOW_IF_NO_OTHERS",
+    "ordinary_ranged": "NEAREST_LEGAL_NO_ENGAGEMENT_CAPACITY",
+    "flanker": "EXPLICIT_BACKLINE_PREFERENCE_ONLY",
+    "lock_change": "SAFE_ACTION_BOUNDARY",
+    "retreat": "INHERIT_EXISTING_IF_IMPLEMENTED"
+  },
+  "m07_test": {
+    "summoned_entity": "M01",
+    "alive_cap_test_fixture": 3,
+    "spawn_cooldown": "READ_EXISTING_OR_REQUEST_APPROVAL",
+    "summoned_rewards": "REQUIRE_AUDIT_APPROVAL",
+    "summoner_death_child_policy": "INHERIT_EXISTING_OR_REQUEST_APPROVAL",
+    "corpse_generation": "REQUIRE_AUDIT_APPROVAL",
+    "completion": "INHERIT_EXISTING"
+  },
+  "m08_test": {
+    "buff_type": "ATTRIBUTE_MODIFIER_EXISTING",
+    "duration": "READ_EXISTING_OR_REQUEST_APPROVAL",
+    "on_owner_death": "FOLLOW_EFFECT_LIFECYCLE_NOT_ALWAYS_DELETE"
+  },
+  "boss": {
+    "test_content": "EXISTING_BOSS_OR_EXPLICIT_TEST_PROXY",
+    "missing_real_boss": "BLOCKED_NOT_PASS"
+  },
+  "fixed_values": {
+    "monster_HP": "UNDEFINED",
+    "attack": "UNDEFINED",
+    "move_speed": "UNDEFINED",
+    "attack_interval": "UNDEFINED",
+    "skill_cd": "UNDEFINED",
+    "ai_activation_delay": "UNDEFINED",
+    "valid_room_coordinates": "UNDEFINED"
+  }
+}

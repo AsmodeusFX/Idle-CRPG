@@ -1,0 +1,87 @@
+{
+  "not_runtime_schema": true,
+  "test_only": true,
+  "authoritative_product_numbers": false,
+  "note": "纯语义示例，不含正式平衡数字、公共DTO或Godot配置；字段名不得强制用于真实工程",
+  "scenarios": [
+    {
+      "id": "BD01",
+      "given": [
+        "PAL_PRAYER active slot",
+        "PAL_FANATICISM active slot"
+      ],
+      "expect": [
+        "both active if each slot is legal",
+        "buff contributions tracked by source",
+        "no aura-only independent damage multiplier"
+      ]
+    },
+    {
+      "id": "BD04",
+      "given": [
+        "NEC_AMPLIFY_DAMAGE on monster",
+        "NEC_LOWER_RESIST on same monster"
+      ],
+      "expect": [
+        "both curses valid simultaneously",
+        "physical vulnerable uses existing bucket",
+        "elemental resistance updated once"
+      ]
+    },
+    {
+      "id": "BD19",
+      "given": [
+        "one eligible corpse",
+        "CorpseExplosion and Revive consume requests same tick"
+      ],
+      "expect": [
+        "one atomic consumer success",
+        "second request rejected or handled under approved action failure rules",
+        "kill rewards unchanged"
+      ]
+    },
+    {
+      "id": "BD11",
+      "given": [
+        "weapon hit",
+        "item triggers lightning damage",
+        "triggered lightning might match same trigger"
+      ],
+      "expect": [
+        "no unapproved infinite self-trigger",
+        "causal chain provenance tracked"
+      ]
+    },
+    {
+      "id": "BD16",
+      "given": [
+        "owner buffed by Fanaticism",
+        "skeleton within same Fanaticism radius"
+      ],
+      "expect": [
+        "skeleton inherited baseline/approved owner stats",
+        "dynamic aura not inherited and applied a second time"
+      ]
+    }
+  ],
+  "conceptual_source_labels": [
+    "cast",
+    "attack_action",
+    "damage_instance",
+    "hit_confirmed",
+    "damage_dealt",
+    "kill_confirmed",
+    "death_confirmed",
+    "trigger_origin"
+  ],
+  "non_decisions": [
+    "dot_numbers",
+    "cd_seconds",
+    "damage_coefficients",
+    "proc_chance",
+    "chain_depth",
+    "schema_fields",
+    "ability_api",
+    "corpse_damage_type"
+  ]
+}
