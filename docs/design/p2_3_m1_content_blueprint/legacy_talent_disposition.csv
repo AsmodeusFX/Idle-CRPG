@@ -1,0 +1,24 @@
+talent_id,hero_id,current_name,legacy_effect,candidate_disposition,reason,decision_id,blueprint_package,status,migration_gate
+barb_shout,warrior,战斗吼叫,shout,重做,同质攻击强化需重做为该职业明确职责；共享haste Buff目标需复核,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+barb_weaken,warrior,挫锐吼叫,weaken,重做,同质攻击吼叫/削弱重复；需明确职业职责；weaken实际降低暴击而非文案攻击,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+barb_leap,warrior,跳斩,leap,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+barb_whirlwind,warrior,旋风斩,whirlwind,淘汰,候选并入持续旋风；保留旧ID行为或批准退款兼容后才能退役,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+ranger_shot,ranger,单体射击,shot,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+ranger_explosive,ranger,爆裂箭,shot,重做,确立命中后范围扩散，不能沿旧单体数值换皮,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+ranger_poison,ranger,毒液箭,shot,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+ranger_rally,ranger,狩猎号令,shout,重做,同质攻击强化需重做为该职业明确职责；共享haste Buff目标需复核,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+ranger_suppress,ranger,压制号令,weaken,重做,同质攻击吼叫/削弱重复；需明确职业职责；weaken实际降低暴击而非文案攻击,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+mage_flame_burst,mage,烈焰爆破,nova,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+mage_icebolt,mage,冰弹,shot,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+mage_frost_nova,mage,霜冻新星,nova,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+mage_lightning,mage,闪电箭,shot,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+mage_storm,mage,雷暴,nova,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+paladin_hammer,priest,祝福之锤,nova,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+paladin_resolve,priest,守护誓言,shout,重做,同质攻击强化需重做为该职业明确职责；共享haste Buff目标需复核,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+paladin_shock,priest,神圣冲击,nova,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+paladin_zeal,priest,狂热祷言,shout,淘汰,候选并入狂热光环职责；保留旧ID行为或批准退款兼容后才能退役,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+necro_teeth,necromancer,剔骨之牙,shot,保留并正式化,保留职业基本施法形态；正式同名skill/effect表达,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+necro_soulbolt,necromancer,灵魂箭,shot,待定,与骨牙/毒素BD定位重叠，M2确认DoT与贯穿表达成本后裁决,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+necro_spear,necromancer,骨矛,shot,待定,与骨牙/毒素BD定位重叠，M2确认DoT与贯穿表达成本后裁决,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+necro_weakness,necromancer,虚弱诅咒,weaken,重做,同质攻击吼叫/削弱重复；需明确职业职责；weaken实际降低暴击而非文案攻击,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移
+necro_frailty,necromancer,衰老诅咒,weaken,重做,同质攻击吼叫/削弱重复；需明确职业职责；weaken实际降低暴击而非文案攻击,D-04,BP-02,PROPOSED,先正式节点审定；再逐ID迁移/退款/装配兼容；本轮零迁移

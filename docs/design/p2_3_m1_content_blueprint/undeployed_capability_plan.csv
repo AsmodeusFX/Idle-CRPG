@@ -1,0 +1,25 @@
+capability_id,classification,candidate_use,existing_consumer,deployment_route,approval,verification_dependency
+all_damage_pct,暂不需要,全局乘区储备，避免首片同时打开,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+skill_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+basic_attack_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+physical_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+fire_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+cold_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+lightning_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+poison_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+ranged_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+boss_damage_pct,暂不需要,全局乘区储备，避免首片同时打开,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+power_damage_pct,暂不需要,全局乘区储备，避免首片同时打开,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+skill_coefficient_bonus,暂不需要,全局乘区储备，避免首片同时打开,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+vulnerable_damage_pct,暂不需要,全局乘区储备，避免首片同时打开,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+fire_vulnerable_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+cold_vulnerable_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+lightning_vulnerable_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+poison_vulnerable_damage_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+cooldown_reduction_pct,有明确BD/星图用途,元素/普攻/远程/诅咒或冷却分支,DamagePipeline/SkillRuntime,Buff现有属性可配置；天赋被动MX-08、星图MX-04需扩展,D-05;D-08,P2-4手算与D-13逐技能
+AbilityAttack,有明确BD/星图用途,强化普攻/持续效果/冷却窗口；镜像后置；SpawnEntity无独立玩法价值,BuffEffect/SpawnGeneric,ability form=buff与配套表；现有分支无需新Effect,D-06,D-13逐技能及递归/生命周期
+AbilityDot,有明确BD/星图用途,强化普攻/持续效果/冷却窗口；镜像后置；SpawnEntity无独立玩法价值,BuffEffect/SpawnGeneric,ability form=buff与配套表；现有分支无需新Effect,D-06,D-13逐技能及递归/生命周期
+AbilityCooldown,有明确BD/星图用途,强化普攻/持续效果/冷却窗口；镜像后置；SpawnEntity无独立玩法价值,BuffEffect/SpawnGeneric,ability form=buff与配套表；现有分支无需新Effect,D-06,D-13逐技能及递归/生命周期
+AbilityMirror,暂不需要,强化普攻/持续效果/冷却窗口；镜像后置；SpawnEntity无独立玩法价值,BuffEffect/SpawnGeneric,ability form=buff与配套表；现有分支无需新Effect,D-06,D-13逐技能及递归/生命周期
+SpawnEntity,暂不需要,强化普攻/持续效果/冷却窗口；镜像后置；SpawnEntity无独立玩法价值,BuffEffect/SpawnGeneric,ability form=buff与配套表；现有分支无需新Effect,D-06,D-13逐技能及递归/生命周期
+new_summon_star_scope,机制缺失,按来源强化召唤，保留上限,SummonRuntime尚无星图来源接线,MX-05，非新增属性Key既成事实,D-08,D-13

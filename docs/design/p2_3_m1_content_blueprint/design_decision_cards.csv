@@ -1,0 +1,15 @@
+decision_id,topic,option_a,option_b,option_c,recommendation,cost_and_tradeoff,design_dependency,verification_dependency,approval_owner,status
+D-04,旧23节点,先审正式节点再按ID迁移,全部原样迁移,长期保留双路径,A,保留/重做/淘汰/待定逐节点；兼容退款另审批,BP-02,D-13仅验证,策划+技术,PENDING_APPROVAL
+D-08,星图定位与功能类别,基础+特色属性+经验/金币择一试点，逐功能审批,仅现有六类作为过渡,一次全投经验/金币/召唤/协同,A,MX-02~07均未实现；经济正反馈与兼容成本分开,BP-01,账本与D-13,策划+技术,PENDING_APPROVAL
+D-09,席位/技能槽上限,维持5人/5槽；非人数特色承接长期,提高上限,减少上限重排,A,现有用户规则保留；提高需承载/UI单独评估,BP-01,群战/表现,策划；变更另需技术,PENDING_APPROVAL
+D-10,事件配置化,先批准最小schema，收益恢复为首批,保持两类，接受切片事件范围降级,立即做风险战斗与发现全套,A,Room.Event/EventUsed旧档映射；新payload冻结；四处扩展,BP-03,存档/事件顺序,策划+技术,PENDING_APPROVAL
+D-11,Boss有效差异,先2类既有技能+组合，阶段后置,增加单一血量阶段试点,所有Boss阶段化,A,34是绑定数仅2种技能；可辨识不足再批准B,BP-04,D-13与视觉,策划+技术,PENDING_APPROVAL
+D-01,规划schema,设计期保留；P2-4前统一公共列,永久保留漂移并维护字典,拆公共/章节扩展表,A,1515记录；不能顺便改生成器,—,P2-4前治理裁决,策划+技术,PENDING_APPROVAL
+D-02,等级权威,FloorMonsterLevel标规划；沿现有MonsterLevel/池/POI实际链,删除未消费列,让规划列驱动生成,A,不能将规划字段当怪物等级权威,—,多入口等级来源对照,策划+技术,PENDING_APPROVAL
+D-12,预算与生成,保持预算仅报表，目标用实测生成验收,预算驱动生成,重做布局,A,本轮B/C超范围，不改变房间生成算法,—,FloorReports,策划+技术,PENDING_APPROVAL
+D-13,只读CombatFacts,批准后实现有界采集并做开关一致性,维持聚合，逐技能结论unavailable,外部采样但接受归因缺失,A,PENDING_APPROVAL；不因本轮执行授权推定通过,—,P2-4全技能/召唤/Proc验收前置,技术负责人,PENDING_APPROVAL
+D-05,零投放属性,按BD选择子集，暂不填满18类,全部投放,新增Key,A,Buff可配不等于天赋/星图被动可配；MX-08/04,BP-02,公式手算与逐技能,策划+技术,PENDING_APPROVAL
+D-06,Ability形态,只设计普攻/持续/冷却窗口，镜像后置,五分支全部不投放,镜像首片投放,A,已有分支不等于正式行为已验；SpawnEntity无须凑内容,BP-02,D-13与生命周期,策划,PENDING_APPROVAL
+D-07,Proc存在与规模,首片0–1演示；2小时1–2构筑,继续空表,大量随机触发,A,首片可降级为0；设计先行，投放前ICD/限次验证,BP-02,D-13,策划+技术,PENDING_APPROVAL
+D-20,30分钟切片,保留正式地图门禁，目标完成首个统治区攻城闭环,仅承诺准备攻城，范围降级需审阅,另建QA切片但不称正式完成,A,当前配置未证明30分钟可达；M4/P2-4验证，若失败回到策划,BP-01;BP-02;BP-04,真实玩家/多seed时长,策划,PENDING_APPROVAL
+D-21,五职BD和首次决策,每职2条主构筑+第3扩展；低门槛分支，不改1级1点,三系全量并行制作,只做初始三职,A,逐节点required_points/rank可达核算；不赠点补门槛,BP-02,新角色合法操作链,策划,PENDING_APPROVAL

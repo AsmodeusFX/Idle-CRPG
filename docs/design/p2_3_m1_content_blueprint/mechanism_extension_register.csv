@@ -1,0 +1,16 @@
+mechanism_id,candidate,system_ids,config_interface,existing_consumer_and_gap,extension_class,core_touchpoints,save_impact,ui_impact,effort_and_reason,risk_and_guard,minimum_acceptance,approval_required
+MX-01,基础与既有功能星,stars;follow_formation;talents,star三表：attack/hp/party_slots/skill_slots/talent_reset/discount,StarProgression/Stars,DATA_ONLY,否,否（兼容原ID）,既有展示,小：行与连线校验,基础不构成长期全部内容；折扣封顶,购买失败不扣费/HP上限不治疗/已购兼容,D-08;D-09
+MX-02,经验效率星,stars;heroes_levels,候选star attr_id=experience_efficiency,HeroExperience存在；星图接线不存在,EXISTING_SYSTEM_EXTENSION,是：白名单+经验奖励入口,评估版本和贡献来源；不重复应用,预览下一收益与来源,中：跨奖励与回放,等级→效率→金币→效率正反馈；只设单一有界来源,等级差公式不变/分数余量/读档不重发/账本,D-08
+MX-03,金币效率星,stars;items_loot;village_trade,候选gold_efficiency，择一掉落快照或售卖消费点,RollDrops/SellJunk存在；星图未接线,EXISTING_SYSTEM_EXTENSION,是：仅选一个奖励入口,掉落快照锁价/待拾取兼容需评估,金币来源与生效时机,中：现金与杂物口径对齐,禁止掉落与售卖双乘；禁止购买自返金币,快照后购买不追涨/读档拾取售卖一次,D-08
+MX-04,战斗特色属性星,stars;damage_formula,候选通用属性映射；既有fire_damage_pct等Key,DamagePipeline已消费；StarTotals仅attack/hp,EXISTING_SYSTEM_EXTENSION,是：星图聚合/统一属性来源,贡献差量或按来源重建，兼容旧聚合,来源分解/编辑器,中：刷新与战斗快照,同桶加算，限制跨桶与通用伤害同时堆叠,购买/候补/升级/读档不重复；公式手算,D-08;D-05
+MX-05,召唤专精星,stars;summons,优先映射既有召唤继承/持续字段；候选作用域,SummonRuntime存在；星图消费者不存在,EXISTING_SYSTEM_EXTENSION,是：受控来源注入,首次召唤与进房检查点策略需定义,继承/存续显示,中：实体生命周期,不提高上限，禁止召唤→收益→无限补员链,生成/超时/回城/读档/容量回收,D-08;D-13
+MX-06,冒险效率星,stars;world_campaign,候选world_travel_efficiency，仅室外速度,WorldCampaign移动存在；星图未接线,EXISTING_SYSTEM_EXTENSION,是：室外速度消费点,进度无需增现场；来源重算需核验,室外速度与上限说明,中：路径与表现联动,不影响攻击/开门距离/门禁；有界加算,路径同门禁/走近交易/同seed推进,D-08
+MX-07,职业协同里程碑,stars;talents;follow_formation,候选按上阵职业作用域；不新增协同系统,现有编队可读；条件效果消费者缺失,EXISTING_SYSTEM_EXTENSION,是：条件聚合与队伍变更刷新,换队后重算；旧档缺值零,条件与受益英雄说明,大：队伍边界+互斥条件,不按人数指数乘算；单人须可走平行分支,候补/倒地/换队/洗点/读档一致,D-08;D-09
+MX-08,天赋被动属性扩展,talents;damage_formula,talent.effect现仅atk/armor/crit_rate/engagement_capacity,Talents校验+HeroTalentAttribute；新Key未接线,EXISTING_SYSTEM_EXTENSION,是：白名单+属性映射+战斗消费,按来源重算并兼容旧节点,被动来源展示,中：不能仅填表,直接填18个Key会加载失败,学习/洗点/候补/快照/手算对照,D-04;D-05
+MX-09,有界Proc内容,buffs_triggers;skills,trigger/proc_icd/proc_limit现有列,React/ProcAllowed已存在,DATA_ONLY,否（既有触发语义内）,沿现有房间重开，不新增现场,触发反馈复用，新增资源另验,中：表行少但组合验收多,ICD+限次+OriginCast不可递归；镜像不再镜像,Proc/ICD检查；P2-4逐次事实D-13,D-07;D-13
+MX-10,表驱动房间事件,room_events;persistence,候选event_id/kind/eligibility/weight/payload/once/version,Reveal/TickDungeon仅宝箱营火字符串,EXISTING_SYSTEM_EXTENSION,是：schema+执行+校验,Room.Event旧字符串映射+EventUsed+已生成payload冻结,名称/读条/收益反馈,大：一次性状态与兼容,奖励调用原入口；不做事件新货币,旧档营火宝箱/已用未用/清房救援拾取顺序/不重复,D-10
+MX-11,固定遭遇配方,monster_pools,候选encounter_id/成员与数量/条件,加权池存在；固定配方消费者缺失,DATA_PLUS_CONFIG_SCHEMA,是：配方加载与快照生成扩展,进房内容快照兼容,威胁识别表现,大：不可承诺加权抽取必出组合,保持怪量与等级权威/Boss名额,多seed组合覆盖/无回访刷新,D-11;D-12
+MX-12,Boss血量阶段,monster_content,候选phase_id/threshold/skill_set/once,无阶段状态机,EXISTING_SYSTEM_EXTENSION,是：阶段状态与事件队列,正式读档重开房间；测试快照需阶段状态,阈值提示/技能预警,大：阶段/死亡同tick边界,不叠加强制回血/无限召唤；先用既有技能包,跨阈值多次命中/死亡/重开/确定性,D-11;D-13
+MX-13,楼层schema收敛,floor_planning,floor_plan公共列与章节扩展列,FloorPlanning按列名读取,DATA_PLUS_CONFIG_SCHEMA,仅导入/校验如裁决需要,否,规划与实际标签,中：1515记录字段对齐,不把预算自动接成生成目标,加载全五章/实际生成与预算分列,D-01;D-02;D-12
+MX-14,逐技能只读事实,combat_stats;simulation,候选有界只读采集接口,CombatStats目前仅聚合,EXISTING_SYSTEM_EXTENSION,是，未批准不得实施,禁止进入正式进度存档,导出至artifacts，不加玩家流程,中：采集点和开关一致性,采样不得影响随机与结算,开关前后业务哈希/事件/存档一致,D-13
+MX-15,装备/商店/新养成,items_loot,无本轮接口,无,OUT_OF_SCOPE,不实施,不实施,不实施,大：独立系统,超出系统总量边界,本轮无交付,—

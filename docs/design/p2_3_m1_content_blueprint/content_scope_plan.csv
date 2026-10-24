@@ -1,0 +1,32 @@
+scope_id,system_id,disposition,current_content,candidate_30m,extension_2h,interface_4h_plus,blueprint_package,source_work_package,design_purpose,approval_required,authority,consumer,status
+SC-01,world_campaign,本轮设计,5 章 5 城堡 42 统治区 415 区域 231 地牢,1个初始统治区闭环及1次后继区域开放,30分钟不要求清章；2小时铺开2–3个区域主题,沿既有五章三难度扩投，不增第六章,BP-04,WP-13,验证自动循环和手动扩张,D-20,chapters/act*/world/*.csv；world/chapter.csv,WorldCampaign.Tick/BeginPortal/RequestCastle,PROPOSED
+SC-02,dungeon_session,本轮设计,231 地牢 1515 条规划记录（合计 4083 层）,3–5类遭遇组合；普通房仍为主体,引入区域组合变化,保留首次入房快照和清层换层,BP-04,WP-11,避免重复房间仅换皮,D-10,dungeon/dungeon_rule.csv,GameSession.TickDungeon/Reveal,PROPOSED
+SC-03,entry_flow,维持现状,13 个 combat_entry_* 参数,连续穿门与警觉保持,只观察，不预调,复用现有参数,BP-06,WP-14,保留移动真实性,—,system/config.csv(combat_entry_*),CombatTargeting.AdvanceRoomEntry,KEEP_OR_DEFER
+SC-04,targeting,维持现状,engagement_capacity 1 Key（已投放）,近战/远程/猎手3类压力可辨,用组合验证容量,不增加新索敌系统,BP-04,WP-14,让BD面对不同局部压力,—,system/config.csv(targeting_*)；unit_attributes.engagement_capacity,CombatTargeting,KEEP_OR_DEFER
+SC-05,damage_formula,本轮设计,36 Key 中 18 投放（8 运行验证 + 10 静态）,4–6种属性价值方向，不穷举乘区,逐步开放元素/易伤搭配,保留现行公式，限制跨乘区同时增长,BP-02,WP-02,避免全伤害成为唯一答案,D-05,combat/fightattr*.csv；armor_curve；damage_rule,DamagePipeline.Resolve,PROPOSED
+SC-06,skills,本轮设计,21 skill / 25 effect / 1 ability,每职业2–3个主动候选；五职业共10–15个,每职业4–6主动，强化组合,既有10类Effect优先,BP-02,WP-02,技能形态应有可视差异,D-04;D-06,skill/skill.csv；effect.csv；ability.csv,SkillRuntime.Commit/DrainEffects,PROPOSED
+SC-07,buffs_triggers,本轮设计,13 buff 行,0–1个有界Proc演示候选,1–2条触发构筑,ICD/限次/不可递归沿既有规则,BP-02,WP-08,触发服务BD而非无目的填表,D-07;D-13,skill/buff.csv；trigger.csv(0 行)；proc_icd.csv；proc_limit.csv,SkillRuntime.React/ProcAllowed,PROPOSED
+SC-08,summons,本轮设计,2 summon 行,保留骷髅/女武神2个召唤角色,补员/持续时间的取舍,容量保持，暂不新增召唤Key,BP-02,WP-02,召唤承担前排与尸体链差异,D-08;D-13,skill/summon.csv；skill/ability.csv,SummonRuntime,PROPOSED
+SC-09,talents,本轮设计,61 节点（16 数据驱动主动）,每职业6–9个可审阅核心节点，其中主动2–3、被动/强化4–6,每职业12–18节点；共60–90,每系最多3列、同系前置与点数守恒,BP-02,WP-01,首次分支可达，不要求30分钟五职全练,D-04;D-21,skill/talent.csv；system/config.csv(talent_*),TalentConfiguration.Load/LearnTalent/CastTalent,PROPOSED
+SC-10,stars,本轮设计,17 节点（attack 4 / hp 3 / party_slots 4 / skill_slots 4 / talent_reset 1 / talent_reset_discount 1）,18–26节点候选：基础8–12/特色4–6/功能6–8,累计36–54，增量18–28,4小时后累计60–90仅布局容量建议；有限等级价目,BP-01,WP-03,长期金币目标覆盖多个既有系统,D-08;D-09,star/star.csv；star_layout.csv；star_plan.csv,Stars/StarProgression/ApplyStarTotals,PROPOSED
+SC-11,heroes_levels,本轮设计,5 职业；等级表 10000 行,每升级一次供给1点规则保持,M4定经验曲线，现阶段不定等级,既有等级表容量,BP-05,WP-12,内容门槛与点数供给联动,D-21,hero/herolevel.csv；hero/experience_level_rate.csv；hero/heroes.csv,HeroExperience/GrantHeroExperience,PROPOSED
+SC-12,hero_unlock,本轮设计,2 解锁条件,初始3职可选；另2职保留解锁条件,目标2小时内可触及另2职为待验证方向,不改累计条件类型,BP-05,WP-12,五职业设计覆盖不等于同时开放,D-20,hero/hero_unlocks.csv,HeroChecks/WorldCampaign,PROPOSED
+SC-13,items_loot,维持现状,153 掉落行；4 物品 2 类型,现有金币与杂物，不加装备,M4设计收支,保留掉落锁价与走近拾取,BP-05,WP-12,收益接入既有循环,—,monster/monster_drop.csv；item/item.csv；item/itemtype.csv,RollDrops/CollectLoot/SellJunk,KEEP_OR_DEFER
+SC-14,village_trade,维持现状,村庄与 NPC 表,每轮回村治疗再售卖,M4只定成本框架,不新增商店,BP-05,WP-12,避免收益绕过交易流程,—,village/*.csv；item sell_price,SellJunk/BuySupplies（回城自动）,KEEP_OR_DEFER
+SC-15,town_scene,维持现状,城镇布局表,现有NPC流程,新内容只补说明,六职能与空间交互保留,BP-06,WP-16,城镇仍是编队/洗点执行点,—,village/town_*.csv；npc.csv；portal_rule.csv,TownScene/WalkTo,KEEP_OR_DEFER
+SC-16,castle_progression,本轮设计,5 章城堡与统治区,1次可手动发起的正式攻城及区域反馈目标,2–3次有区别的攻城机会候选,不缩减辖区全部普通地牢清空条件,BP-04,WP-13,扩张由玩家推动,D-20,castle_region.csv；areapart.csv；region_prerequisite.csv；poi_challenge.csv,WorldCampaign.RequestCastle/CompleteDungeon,PROPOSED
+SC-17,portals,维持现状,传送点表,1次解锁/使用反馈目标,随统治区进展开放,本章本难度最近可达点,BP-04,WP-13,降低重复赶路但不跳门禁,—,world/waypoint.csv；portal_rule.csv,WorldCampaign.BeginPortal/Tick,KEEP_OR_DEFER
+SC-18,monster_content,本轮设计,49 / 17 / 10 / 34,6–9身份映射4类压力；2–3词缀；1–2Boss遭遇角色,10–16身份、4–6词缀、3–5Boss角色,身份/表现/AI/技能/投放分开登记,BP-04,WP-05,组合形成有效战术变化,D-11,monster/act_monsters.csv；act_behaviors.csv；elite.csv；boss_skill.csv,MonsterContent/TryApplyElite/ApplyMonsterContent,PROPOSED
+SC-19,monster_pools,本轮设计,act1 32 池行（其余章同构）,3–5种组合目标，现有加权池近似,2–3区域主题池,固定配方需新schema，当前不承诺,BP-04,WP-05,加权抽取不保证每场固定组合,D-11,chapters/act*/monster/region_pool.csv；monster/spawn_rule.csv,PickSpawnMonster/LoadMonsterPools,PROPOSED
+SC-20,monster_preview,后置,8 原型,复用GM原型辅助设计,P2-4加内容夹具,不得作为正式投放证据,BP-06,WP-16,预览与正式样本分开,—,monster/preview_archetypes.csv；preview_enemy_summon.csv,SkillPreview（仅 GM 入口）,KEEP_OR_DEFER
+SC-21,room_events,本轮设计,2 类事件,3–4类别目标；未批schema时仅现有2类可交付,5–6类别候选,收益/恢复优先，风险/发现后置,BP-03,WP-04,短事件丰富观看，不替代战斗,D-10,dungeon/dungeon_rule.csv(event_chance),GameSession.TickDungeon,PROPOSED
+SC-22,rescue_revive,维持现状,读条参数,清房先救援,只采集时间占比,保持全员救完再拾取/事件,BP-06,WP-14,防止事件绕过救援,—,system/config.csv（救援读条参数）；dungeon_rule,GameSession 救援流程,KEEP_OR_DEFER
+SC-23,failure_retry,维持现状,1 表,失败返村交易后重试,观测失败循环而非自动攻城,保留累计资源与门禁,BP-06,WP-13,失败不中断放置收益,—,world/recovery.csv,FailureRecovery.TryRecovery,KEEP_OR_DEFER
+SC-24,follow_formation,本轮设计,上限 5,1次扩编和NPC实际入队目标,2–4人可选搭配目标，非强制五人,上限5，连续跟随不变,BP-01,WP-03,扩编和技能深度共享金币预算,D-09;D-20,star.csv(party_slots)；system/config.csv(world_follow_spacing_milli),FormationPlanner/FormationCapacity,PROPOSED
+SC-25,floor_planning,后置,1515 条规划记录（合计 4083 层）,只记录预算，不能声称生成量,P2-4前裁决schema处理,不改生成器,BP-07,WP-06,避免规划量冒充实际规模,D-01;D-02;D-12,chapters/act*/dungeon/floor_plan.csv,FloorPlanning.LoadFloorPlans/FloorReports,KEEP_OR_DEFER
+SC-26,combat_stats,后置,—,聚合数据可用；逐技能unavailable,P2-4前审批D-13,固定容量只读事实提案,BP-06,WP-07,观测不阻断内容设计,D-13,无正式配置（只读诊断）,CombatStats/FloorRunReport,KEEP_OR_DEFER
+SC-27,persistence,维持现状,autosave_min_seconds 等,保留正式房间检查点,新事件/星图功能需兼容设计,未知ID保护与关键状态保存,BP-06,WP-07,设计审批包含迁移策略,D-10;D-18,system/client.csv；user://,SaveStore/ClientSettings,KEEP_OR_DEFER
+SC-28,settings_audio,后置,音频表 10 行,现有设置；新技能音画需求清单,P2-4实机验证,新增资源沿现有入口,BP-06,WP-16,当前无视觉/音频验收结论,—,audio/audio.csv；system/window.csv,SettingsStore/AudioBus,KEEP_OR_DEFER
+SC-29,camera_render,后置,相机参数,完整房间入镜规则保持,P2-4验证技能/事件可读性,不预调镜头,BP-06,WP-16,观看能区分战术差异,—,system/camera.csv,CameraController/WorldRenderer,KEEP_OR_DEFER
+SC-30,gm_tools,维持现状,—,复用GM编辑器和试场,新效果需编辑器白名单同步,草稿/冲突/已购保护必留,BP-06,WP-16,不暴露开发入口给玩家,D-08,star_layout/star_plan 草稿；GM 菜单,GmChecks/StarEditorStore,KEEP_OR_DEFER
+SC-31,simulation,后置,现有场景集,仅定义30/120/240采样与合法操作策略,P2-4新增覆盖场景,不改历史场景,BP-06,WP-15,目标时长须实测验证,D-13,tests/Simulation/**,SimulationRunner,KEEP_OR_DEFER

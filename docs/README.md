@@ -1,5 +1,8 @@
 # 文档索引
 
+- [P2-3-M1 正式内容蓝图与规模规划](design/p2_3_m1_content_blueprint.md)：31系统、16包归7主线；五专项与30分钟/2小时候选规模、23旧节点去留、星图跨系统功能成本、14张待审批裁决卡；审计工作包结构修正版附于同名资产目录。[执行归档](reviews/2026-10-24_p2_3_content_blueprint.md)。设计交付待策划审阅，未改正式代码配置。
+
+
 - [工程代码健康审计（只读）](reviews/2026-10-23_code_health_audit.md)：AUD-001~012；**P0 入口坐标带死锁**（单人队伍在门口永久停滞，存读档不可恢复，已复现并定位到 0.001/0.0001/0.00001 三处阈值死区）、P1 阈值语义分散与纯挂机 Lv.7 平台期口径、P2/P3 存档捕获/缺表降级/读档重复重建等；含环境快照、调用链、金币四分账与复跑方法。
 
 - [P2-2-M1 全系统配置与内容资产普查](data/2026-10-24_00-03_data_p2_2_m1_inventory.md)：`P2_2_M1_PASS`。391 份配置资产（ACTIVE 142/LEGACY 9/TEST_ONLY 41/PREVIEW 2/未引用 1/残留 1/import 195）、31 个系统、4278 条内容 ID（悬挂 0）、7 项扩容缺口、14 项问题；机器字典归档在 `docs/data/2026-10-24_00-03_data_p2_2_m1_inventory/{system_inventory,config_manifest,content_registry,content_expansion_gaps,issues_and_decisions}.csv`（与报告同名同夹），只读复跑 `--inventory-audit`。

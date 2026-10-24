@@ -1,0 +1,8 @@
+blueprint_package,name,source_work_packages,priority,extension_class,effort,reason_and_boundary,design_dependency,verification_dependency,minimum_acceptance
+BP-01,星图长期结构,WP-03,P0,EXISTING_SYSTEM_EXTENSION,中,跨系统来源聚合/兼容；现有效果子集DATA_ONLY,D-08;D-09,—,购买原子性/候补/重开/编辑器保护
+BP-02,五职BD和属性触发,WP-01;WP-02;WP-08;WP-09,P0,EXISTING_SYSTEM_EXTENSION,中,正式技能数据优先；新被动属性才扩Core,D-04;D-05;D-06;D-07;D-21,D-13,逐节点/公式/触发/洗点兼容
+BP-03,短事件目录与兼容,WP-04,P1,EXISTING_SYSTEM_EXTENSION,大,表驱动执行和存档四处边界,D-10,D-13仅战斗变种,事件一次性/旧档/交互距离
+BP-04,遭遇与冒险切片,WP-05;WP-10;WP-11;WP-13,P1,DATA_ONLY,中,复用行为/词缀/池；新阶段和固定配方另批,D-11;D-20,实际FloorReports；D-13战斗归因,多seed/门禁/手动攻城/返村
+BP-05,经济成长框架输入,WP-12,P2,DATA_ONLY,中,M4数值任务，本轮只列消费关系,BP-01;BP-02;BP-04设计审定,P2-4账本/实际时长,收益支出分账/点数可达/无死循环
+BP-06,观测与表现验收,WP-07;WP-14;WP-15;WP-16,验证前置,EXISTING_SYSTEM_EXTENSION,中,D-13需Core；UI和采样场景按审批结果,D-13技术批准（实施前）,Godot实机与多平台,采集开关哈希/正式场景可读性
+BP-07,规划schema治理,WP-06,后置,DATA_PLUS_CONFIG_SCHEMA,中,保持生成规则，字段对齐须裁决,—,D-01;D-02;D-12在P2-4前处置,全章按列加载/预算与实际分列
