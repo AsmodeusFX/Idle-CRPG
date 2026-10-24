@@ -1,6 +1,6 @@
 # 第一章：地图、攻略与失败回刷
 
-2026-10-18实施版本。以用户确认覆盖AI参考文档；来源冻结归档（V0.4/V0.5 规范、MAP/REGION/POI/FLOOR_PLAN 原件与 sha256）已于 2026-10-23 从工作区删除，仅保留在 Git 历史，来源到配置的映射见 [第一章配置](../technical/act1_config.md#来源映射历史)。字段见 [第一章配置](../technical/act1_config.md)，验证见 [验收记录](../reviews/2026-10-18_act1_combat_chapters.md#一第一章地图与自动攻略)。
+2026-10-18实施版本。以用户确认覆盖AI参考文档；原始资料及哈希见 [来源归档](../references/act1/2026-10-18/manifest.md)。字段见 [第一章配置](../technical/act1_config.md)，验证见 [验收记录](../reviews/2026-10-18_act1_combat_chapters.md#一第一章地图与自动攻略)。
 
 ## 地图与主线
 

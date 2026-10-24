@@ -1,0 +1,50 @@
+{
+  "notice": "TEST_ONLY semantic catalogue; not production AI config or current project schema",
+  "status": "RECOMMENDED pending current Game.Core audit and user approval when conflicting",
+  "condition_ids": [
+    "HAS_LEGAL_ENEMY",
+    "ENEMY_COUNT_IN_EFFECT_AREA",
+    "MELEE_THREAT_NEAR_SELF",
+    "ALLY_HP_BELOW_THRESHOLD",
+    "ALLY_UNDER_MELEE_THREAT",
+    "SUMMON_ALIVE_COUNT_BELOW_CAP",
+    "CURSE_NOT_EFFECTIVELY_COVERED",
+    "ACTIVE_AURA_EQUIPPED",
+    "CORPSE_AVAILABLE_WITH_TARGETS"
+  ],
+  "target_policy_ids": [
+    "CURRENT_TARGET",
+    "THREATENING_ENEMY",
+    "AREA_ENEMIES",
+    "SELF_AURA",
+    "SELF_AREA",
+    "CHAIN_START",
+    "SUMMON_POSITION",
+    "CURRENT_UNCURSED_ENEMY",
+    "AVAILABLE_CORPSE"
+  ],
+  "allowed_action_kinds_in_fixture": [
+    "CastSkill", "BasicAttack", "MoveOrWait", "Defer", "Cancel", "Rejected",
+    "NoAuraRecast", "MaintainAuras", "RemoveAuraSource", "AllowBoth",
+    "SkipDuplicateCurse", "SkipSummon", "PreserveSummon", "SkipCorpseSkill",
+    "AtMostOneConsume", "RejectSkill", "IndependentDecisions", "DeterministicSequence"
+  ],
+  "status_rules": {
+    "CD_start": "COMMIT_ONLY_CONFIRMED",
+    "max_equipped_slots": 5,
+    "initial_equipped_slots": 1,
+    "active_auras": "MULTIPLE_EACH_OCCUPIES_SLOT_CONFIRMED",
+    "different_curses": "CAN_COEXIST_CONFIRMED",
+    "ranger_weapon": "BOW_ONLY_CONFIRMED",
+    "basic_skeleton_requires_corpse": false,
+    "hero_auto_retreat": "EXISTING_V0_1_IMPLEMENTATION_STATUS_UNKNOWN",
+    "enemy_ai_start_delay": "PRESERVE_EXISTING",
+    "party_entry_spread": "PRESERVE_EXISTING"
+  },
+  "unapproved_product_defaults": [
+    "AOE_min_target_count", "healing_threshold", "summon_replenishment_priority",
+    "curse_refresh_window", "aura_activation_implementation", "ties_priority_sort",
+    "out_of_range_skill_chase_choice", "retreat_vs_healing_precedence",
+    "cast_cancel_cost_on_new_unconfirmed_cases"
+  ]
+}
