@@ -1,0 +1,37 @@
+[
+  {
+    "file": "2026-10-25_p2_4_first_batch(2).md",
+    "purpose": "用户上传主Review（最新包含WP0～WP9）",
+    "sha256": "4bad1a58b4820190643e32a7c17e237c3d455f278d770ad9151eabb268c9ba25"
+  },
+  {
+    "file": "2026-10-25_p2_4_detail_fixes.md",
+    "purpose": "用户上传F-01～F-09细节修正Review",
+    "sha256": "3308a0ab482fabd1df82d1b725fceafd3f249e7ed0b2ef751db602d6a26653e6"
+  },
+  {
+    "file": "Steam_D2_P2-3-M5_WP4_技能天赋与星图行为规格_V0.6.md",
+    "purpose": "WP4新版功能权威合同",
+    "sha256": "32fd384d766cccc0c1c1fa32a4d13ac882fa2c7894cb63dd6e8cdee5957462ba"
+  },
+  {
+    "file": "Steam_D2_P2-4_WP4-WP9_第二批工程执行任务包_V1.0_待授权.md",
+    "purpose": "原授权执行包（用户随后已授权整包）",
+    "sha256": "1814f6105f73bb947ccf8cce2b429b5105a76a0427ab0544b752689b1b8caf5e"
+  },
+  {
+    "file": "01_设计Owner_WP4-WP9与F01-F09独立Review_V1.5.md",
+    "purpose": "V1.5设计合流基线",
+    "sha256": "83c43b8180d7b37a4dce1c0110051bb42c969823a7709120159ccd6c9cde78ac"
+  },
+  {
+    "file": "02_工程缺口与新能力追加需求_分批授权_V1.5.md",
+    "purpose": "V1.5设计合流基线",
+    "sha256": "0f570ce839a641aca16b12bbabf438fa6ae096ac928b9c355b52f31c77d75c5d"
+  },
+  {
+    "file": "03_S15首轮完整配置生产与数值校准合同_V0.1.md",
+    "purpose": "V1.5设计合流基线",
+    "sha256": "bb4fabe8067c4870f41af3714fbd046952ac730c5224f7b93c8e122e2f97ee98"
+  }
+]
