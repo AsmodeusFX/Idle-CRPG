@@ -115,6 +115,35 @@ public sealed partial class GameSession
         var best=state.Candidates.GetValueOrDefault(previous.Slot);
         if(best==null||previous.Value>best.Value)state.Candidates[previous.Slot]=previous;
     }
+    /// <summary>某部位是否存在"可替换"候选：空位或同属性且更高（跨属性视为人工取舍，不算自动可替换）。</summary>
+    public bool HasReplaceable(Actor hero,string slot)
+    {
+        var state=GearOf(hero);var candidate=state.Candidates.GetValueOrDefault(slot);
+        if(candidate==null)return false;
+        var worn=state.Worn.GetValueOrDefault(slot);
+        return worn==null||(worn.Attr==candidate.Attr&&candidate.Value>worn.Value);
+    }
+    /// <summary>该英雄可替换部位数量。</summary>
+    public int ReplaceableCount(Actor hero)=>Config.EquipmentBases.Count(b=>HasReplaceable(hero,b.Slot));
+    /// <summary>该英雄是否还有可升级空间且余额足够（右栏只显示可升级角色）。</summary>
+    public bool CanUpgradeHero(Actor hero)=>hero.Level<Config.MaxHeroLevel&&PublicExperience>=ExperienceRequired(hero);
+    /// <summary>"穿戴更好装备"：把该英雄所有可替换部位一次穿上（单英雄操作，不是全队批量门槛）。</summary>
+    public int EquipBestFor(Actor hero)
+    {
+        int applied=0;
+        foreach(var baseSpec in Config.EquipmentBases)if(HasReplaceable(hero,baseSpec.Slot)&&EquipCandidate(hero.HeroInstanceId,baseSpec.Slot))applied++;
+        if(applied>0)Note($"{hero.Name} 一键穿上 {applied} 件更好的装备");
+        return applied;
+    }
+    /// <summary>穿戴全队所有可替换部位（右栏"穿戴所有可替换装备"按钮；单次点击代表玩家明确操作）。</summary>
+    public int EquipAllReplaceable()
+    {
+        int applied=0;
+        foreach(var hero in Heroes)foreach(var baseSpec in Config.EquipmentBases)
+            if(HasReplaceable(hero,baseSpec.Slot)&&EquipCandidate(hero.HeroInstanceId,baseSpec.Slot))applied++;
+        if(applied>0)Note($"穿戴所有可替换装备：{applied} 件");
+        return applied;
+    }
     /// <summary>可批量换装的数量（供 UI 显示门槛与是否可点）。</summary>
     public int BatchEquipReadyCount()
     {

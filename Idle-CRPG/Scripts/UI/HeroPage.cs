@@ -34,14 +34,73 @@ public partial class Main
         heroDetails=UiLabel("请选择英雄",17);scroll.AddChild(heroDetails);
         var tabs=new TabContainer {Position=new Vector2(352,126),Size=new Vector2(1024,636)};heroPage.AddChild(tabs);
         BuildTalentContent(tabs);
-        foreach(var name in new[]{"装备"}){var content=new VBoxContainer {Name=name};tabs.AddChild(content);content.AddChild(UiLabel(name+"内容后续开放",18));}
+        BuildEquipmentContent(tabs);
     }
     private void TickHeroPage()
     {
         heroPage.Visible=viewMode==4;if(!heroPage.Visible)return;
         string stamp=session==null?"none":$"{session.Revision}:{session.Heroes.Count}:{selectedHero}:{session.Heroes.Sum(h=>h.Hp):0}";
-        if(stamp!=heroStamp){heroStamp=stamp;RefreshHeroes();}
+        if(stamp!=heroStamp){heroStamp=stamp;RefreshHeroes();RefreshEquipmentPage();}
         RefreshTalentPage();
+    }
+    private VBoxContainer? equipmentSlotsBox,equipmentBagBox;
+    private Label? equipmentHint;
+    private Button? wearBestButton;
+    /// <summary>装备页签：上半区为六部位槽位与详情，下半区为背包（已拾取候选）与"穿戴更好装备"。</summary>
+    private void BuildEquipmentContent(TabContainer tabs)
+    {
+        var content=new VBoxContainer {Name="装备",SizeFlagsVertical=Control.SizeFlags.ExpandFill};
+        tabs.AddChild(content);
+        content.AddChild(UiLabel("已装备道具",18));
+        equipmentSlotsBox=new VBoxContainer {Name="EquippedSlots"};content.AddChild(equipmentSlotsBox);
+        equipmentHint=UiLabel("",12);content.AddChild(equipmentHint);
+        var bagHeader=new HBoxContainer {Name="BagHeader"};
+        bagHeader.AddChild(UiLabel("背包",18));
+        var spacer=new Control {SizeFlagsHorizontal=Control.SizeFlags.ExpandFill};bagHeader.AddChild(spacer);
+        wearBestButton=new Button {Name="WearBestEquipment",Text="穿戴更好装备",CustomMinimumSize=new Vector2(160,36)};bagHeader.AddChild(wearBestButton);
+        wearBestButton.Pressed+=()=>{
+            if(session==null)return;var hero=CurrentHero();if(hero==null)return;
+            int applied=session.EquipBestFor(hero);
+            equipmentHint!.Text=applied>0?$"已穿戴 {applied} 件更好的装备":$"{hero.Name} 没有可替换的装备";
+            heroStamp="";Refresh();
+        };
+        content.AddChild(bagHeader);
+        equipmentBagBox=new VBoxContainer {Name="BagItems",SizeFlagsHorizontal=Control.SizeFlags.ExpandFill};
+        var scroll=new ScrollContainer {SizeFlagsVertical=Control.SizeFlags.ExpandFill,CustomMinimumSize=new Vector2(0,280)};
+        scroll.AddChild(equipmentBagBox);content.AddChild(scroll);
+        RefreshEquipmentPage();
+    }
+    private Actor? CurrentHero()=>session?.Heroes.FirstOrDefault(h=>h.HeroInstanceId==selectedHero)??session?.Heroes.FirstOrDefault();
+    private void RefreshEquipmentPage()
+    {
+        if(equipmentSlotsBox==null||equipmentBagBox==null)return;
+        foreach(var child in equipmentSlotsBox.GetChildren())child.QueueFree();
+        foreach(var child in equipmentBagBox.GetChildren())child.QueueFree();
+        var hero=CurrentHero();
+        if(hero==null){equipmentHint!.Text="请先选择一位英雄。";return;}
+        foreach(var baseSpec in config.EquipmentBases)
+        {
+            var worn=session!.WornEquipment(hero,baseSpec.Slot);
+            string attr=worn?.Attr=="hp"?"HP":"ATK";
+            equipmentSlotsBox.AddChild(UiLabel(worn==null?$"{baseSpec.Name}：空":$"{baseSpec.Name}：Lv.{worn.Level} {config.EquipmentQualityOf(worn.Quality).Name} · {attr}+{worn.Value:0.#}"+(worn.Attr=="hp"?$"（当前生命）":""),15));
+        }
+        int candidates=0;
+        foreach(var baseSpec in config.EquipmentBases)
+        {
+            var candidate=session!.CandidateEquipment(hero,baseSpec.Slot);
+            if(candidate==null)continue;
+            candidates++;
+            var row=new HBoxContainer {Name="BagRow_"+baseSpec.Slot};
+            string attr=candidate.Attr=="atk"?"ATK":"HP";
+            var label=UiLabel($"{baseSpec.Name} · Lv.{candidate.Level} {config.EquipmentQualityOf(candidate.Quality).Name} · {attr}+{candidate.Value:0.#}",14);
+            label.SizeFlagsHorizontal=Control.SizeFlags.ExpandFill;row.AddChild(label);
+            var equip=new Button {Name="BagEquip_"+baseSpec.Slot,Text="装备",CustomMinimumSize=new Vector2(84,32)};
+            equip.Pressed+=()=>{if(session==null)return;session.EquipCandidate(hero.HeroInstanceId,baseSpec.Slot);heroStamp="";Refresh();};
+            row.AddChild(equip);equipmentBagBox.AddChild(row);
+        }
+        if(candidates==0)equipmentBagBox.AddChild(UiLabel("背包为空：击杀怪物有概率获得装备。",13));
+        int wornCount=config.EquipmentBases.Count(b=>session!.WornEquipment(hero,b.Slot)!=null);
+        equipmentHint!.Text=$"{hero.Name}：已装备 {wornCount}/6 部位 · 背包候选 {candidates} 件";
     }
     private void RefreshHeroes()
     {

@@ -14,12 +14,12 @@ public partial class Main
     private ScrollContainer interactionScroll=null!;
     private readonly Button[] potionButtons=new Button[4];
     private readonly Button[] potionDiscards=new Button[4];
-    private Label scrollBarLabel=null!;
-    private Button scrollUseButton=null!;
+    /// <summary>卷轴快捷栏固定 5 槽；槽位按 Config.Scrolls 顺序映射，未投放的槽显示为空。</summary>
+    private readonly Button[] scrollSlotButtons=new Button[5];
     private Label teamChallengeLabel=null!;
     /// <summary>小队区公共XP余额；旧个人经验条语义已改为公共池，不保留每人私有账户。</summary>
     private Label teamExperienceLabel=null!;
-    private readonly Label[] currencies=new Label[2];
+    private readonly Label[] currencies=new Label[3];
     private readonly Button[] heroAdd=new Button[5];
     private readonly Label[] heroExperience=new Label[5];
     private readonly Label[] heroNames=new Label[5],heroStats=new Label[5];
@@ -63,9 +63,9 @@ public partial class Main
         HudPanel(gameHud,new Vector2(1080,92),new Vector2(336,558));
         for(int i=0;i<currencies.Length;i++)
         {
-            float x=1092+i*156,y=104;
+            float x=1088+i*108,y=104;
             string hint=i==0?"金币":"KP · 本轮击杀点；背包杂物仍在回城自动售卖";
-            gameHud.AddChild(new HudIcon {Kind=i==0?"coin":"junk",Position=new Vector2(x,y),Size=new Vector2(24,24),TooltipText=hint});
+            gameHud.AddChild(new HudIcon {Kind=i==0?"coin":i==1?"junk":"xp",Position=new Vector2(x,y),Size=new Vector2(24,24),TooltipText=hint});
             currencies[i]=HudText(gameHud,"0",new Vector2(x+28,y+1),16);
             currencies[i].TooltipText=hint;currencies[i].MouseFilter=Control.MouseFilterEnum.Stop;
         }
@@ -114,19 +114,23 @@ public partial class Main
             discard.Pressed+=()=>DiscardPotionFromHud(slotIndex);
             gameHud.AddChild(discard);potionDiscards[i]=discard;
         }
+        // 卷轴快捷栏：固定 5 个槽位，点击即对最近敌人释放该槽卷轴（图标待美术，先用文字+数量）。
         var scrollBar=HudPanel(gameHud,new Vector2(24,610),new Vector2(1040,40));scrollBar.Name="ScrollQuickBar";
-        scrollBarLabel=HudText(scrollBar,"卷轴快捷栏：暂无卷轴（击杀掉落）",new Vector2(12,10),13);
-        scrollUseButton=new Button {Name="ScrollUse",Text="对最近敌人使用",Position=new Vector2(760,4),Size=new Vector2(170,30)};
-        scrollUseButton.Pressed+=()=>{if(session==null)return;var room=session.Floor.Rooms[session.CurrentRoom];int index=room.Monsters.FindIndex(m=>m.Alive);
-            var stock=session.ScrollStock.FirstOrDefault(p=>p.Value>0);if(index<0||stock.Key==null){help.Text=index<0?"当前没有可攻击目标":"没有卷轴库存";return;}
-            help.Text=session.UseScroll(stock.Key,index,out string reason)?$"已使用{config.ScrollOf(stock.Key).Name}":reason;Refresh();SaveNow();};
-        scrollBar.AddChild(scrollUseButton);
+        for(int i=0;i<scrollSlotButtons.Length;i++)
+        {
+            int slotIndex=i;
+            var slotButton=new Button {Name="ScrollSlot_"+i,Position=new Vector2(8+i*204,4),Size=new Vector2(196,32),Text=""};
+            slotButton.TooltipText="点击对最近的敌人释放该槽卷轴";
+            slotButton.Pressed+=()=>UseScrollFromHud(slotIndex);
+            scrollBar.AddChild(slotButton);scrollSlotButtons[i]=slotButton;
+        }
         roster=new Label();journal=new Label();gameHud.AddChild(roster);gameHud.AddChild(journal);roster.Hide();journal.Hide();
         help=HudText(gameHud,"",new Vector2(32,879),12);help.Modulate=new Color("91a6b7");
     }
 
+    private static string CompactXp(long value)=>value>=1000?$"{value/1000d:0.#}K":value.ToString("N0");
     private static string CompactAmount(long value)=>value>=1000000?$"{value/1000000d:0.#}M":value>=10000?$"{value/1000d:0.#}K":value.ToString("N0");
-    /// <summary>卷轴库存只显示数量；药剂槽显示待用/生效中（生效中仍占槽且不可丢弃）。</summary>
+    /// <summary>药剂槽显示待用/生效中（生效中仍占槽且不可丢弃）；卷轴改由固定 5 槽刷新，只显示名称与库存数量。</summary>
     private void RefreshConsumablesHud()
     {
         var slots=session?.PotionSlots;
@@ -140,12 +144,31 @@ public partial class Main
             discard.Visible=has;discard.Disabled=session==null||slot!.Active;
             discard.TooltipText=has&&slot!.Active?"生效中不可丢弃：产品尚未裁决是否允许提前结束效果":"丢弃待用药剂以腾槽";
         }
-        if(scrollBarLabel!=null)
+        RefreshScrollSlots();
+    }
+    private void RefreshScrollSlots()
+    {
+        for(int i=0;i<scrollSlotButtons.Length;i++)
         {
-            var stock=session==null?Array.Empty<System.Collections.Generic.KeyValuePair<string,int>>():session.ScrollStock.Where(p=>p.Value>0).ToArray();
-            scrollBarLabel.Text=stock.Length==0?"卷轴快捷栏：暂无卷轴（击杀掉落）":"卷轴快捷栏："+string.Join(" · ",stock.Select(p=>$"{config.ScrollOf(p.Key).Name} ×{p.Value}"));
-            if(scrollUseButton!=null)scrollUseButton.Disabled=session==null||stock.Length==0;
+            var button=scrollSlotButtons[i];if(button==null)continue;
+            var spec=i<config.Scrolls.Count?config.Scrolls[i]:null;
+            int stock=spec==null?0:(session?.ScrollStock.GetValueOrDefault(spec.Id)??0);
+            button.Text=spec==null?"空槽（未投放）":$"{spec.Name} ×{stock}";
+            button.Disabled=session==null||stock<=0;
+            button.TooltipText=spec==null?"该槽位尚无卷轴定义":stock<=0?$"{spec.Name}：库存0（击杀掉落）":"点击对最近敌人释放";
         }
+    }
+    private void UseScrollFromHud(int slot)
+    {
+        if(session==null)return;
+        if(slot<0||slot>=config.Scrolls.Count){help.Text="该槽位尚无卷轴定义";return;}
+        var spec=config.Scrolls[slot];
+        if(session.Floors.Count==0){help.Text="当前没有战斗房间";return;}
+        int room=session.CurrentRoom;if(room<0||room>=session.Floor.Rooms.Count){help.Text="当前没有战斗房间";return;}
+        int index=session.Floor.Rooms[room].Monsters.FindIndex(m=>m.Alive);
+        if(index<0){help.Text="当前没有可攻击目标";return;}
+        help.Text=session.UseScroll(spec.Id,index,out string reason)?$"已使用{spec.Name}":reason;
+        Refresh();SaveNow();
     }
     private void UsePotionFromHud(int slot)
     {
@@ -185,7 +208,7 @@ public partial class Main
         RefreshGrowthInteractions();
         RefreshHudSkills();
         RefreshConsumablesHud();
-        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text="KP "+CompactAmount(session?.Kp??0);currencies[1].TooltipText=$"KP本轮余额 · 背包杂物 {session?.Inventory.Values.Sum()??0}，回城自动售卖";
+        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text="KP "+CompactAmount(session?.Kp??0);currencies[1].TooltipText=$"KP本轮余额 · 背包杂物 {session?.Inventory.Values.Sum()??0}，回城自动售卖";currencies[2].Text="XP "+CompactXp(session?.PublicExperience??0);currencies[2].TooltipText="公共XP：击杀全额入池，无等级差衰减；在右栏/英雄页逐人消费";
     }
 
     /// <summary>按功能类型、首次刷新次序保留独立交互卡；目前仅投放城堡挑战，免费卡不显示消耗。</summary>
@@ -231,7 +254,7 @@ public partial class Main
             button.GetNode<Label>("Content/Words/Retry").Visible=world.IsCastleRetry(castle.Id);
         }
         // 当前只有第四类功能；未来前三类依次排在城堡之前，同类沿用首次刷新序号。
-        RefreshGrowthInteractions();int index=upgradeCards.Count+3;
+        RefreshGrowthInteractions();int index=growthTailIndex;
         foreach(var id in castleCards.Keys.OrderBy(id=>interactionArrival[id]))interactionList.MoveChild(castleCards[id],index++);
         interactionEmpty.Visible=castleCards.Count==0;
         RefreshBranchInteractions();
@@ -248,7 +271,7 @@ public partial class Main
             SeedQaLmax(config.MaxMonsterLevel);var world=session.World!;world.Progress.Cleared.Add("c1");
             foreach(var dungeon in config.Dungeons.Where(d=>!d.Castle))world.Progress.Cleared.Add(dungeon.Id);
             Refresh();
-            if(castleCards.Count!=3||heroNames.Length!=5||currencies.Length!=2||partySetup.Visible)throw new Exception("五区布局或独立城堡按钮不完整");
+            if(castleCards.Count!=3||heroNames.Length!=5||currencies.Length!=3||partySetup.Visible)throw new Exception("五区布局或独立城堡按钮不完整");
             var order=castleCards.Keys.OrderBy(id=>interactionArrival[id]).ToArray();
             var buttons=order.Select(id=>castleCards[id]).ToArray();
             buttons[2].EmitSignal(Button.SignalName.Pressed);
@@ -274,7 +297,19 @@ public partial class Main
             SelectStarView(0);
             if(!rateButton.IsVisibleInTree()||!SceneRect.HasPoint(rateButton.Position)||!SceneRect.HasPoint(rateButton.Position+rateButton.Size))throw new Exception("倍速未限定在游戏视口内");
             if(pause.Size!=uiLayer.GetNode<Button>("SettingsButton").Size||pause.Size!=uiLayer.GetNode<Button>("GmMenuButton").Size)throw new Exception("右上角按钮尺寸不一致");
-            GD.Print("HUD_SMOKE_OK: independent castle cards, queue, full-page castle list/map, linked selection, game-only speed and equal header buttons");
+            // 货币栏三格等距，且数值不越过右侧面板边界（F-08）。
+            if(Math.Abs(currencies[1].Position.X-currencies[0].Position.X-(currencies[2].Position.X-currencies[1].Position.X))>0.5f)throw new Exception("货币三格间距不一致");
+            foreach(var currency in currencies)if(currency.Size.X>0&&currency.Position.X+currency.Size.X>1416)throw new Exception("货币数值超出右侧面板");
+            // 卷轴快捷栏固定 5 槽：槽位按配置顺序映射，未定义或库存为 0 一律禁用（F-09）。
+            if(scrollSlotButtons.Length!=5||scrollSlotButtons.Any(b=>b==null||b.GetParent()?.Name!="ScrollQuickBar"))throw new Exception("卷轴快捷栏不是 5 个固定槽位");
+            for(int i=0;i<scrollSlotButtons.Length;i++)
+            {
+                var slotButton=scrollSlotButtons[i];var spec=i<config.Scrolls.Count?config.Scrolls[i]:null;
+                if(spec==null){if(!slotButton.Disabled||!slotButton.Text.Contains("未投放"))throw new Exception("未定义的卷轴槽未禁用");continue;}
+                int stock=session?.ScrollStock.GetValueOrDefault(spec.Id)??0;
+                if(slotButton.Disabled!=(stock<=0)||!slotButton.Text.Contains("×"))throw new Exception("卷轴槽库存与禁用状态不一致");
+            }
+            GD.Print("HUD_SMOKE_OK: independent castle cards, queue, full-page castle list/map, linked selection, game-only speed, equal header buttons, equal currency cells and five fixed scroll slots");
         }
         catch(Exception error){GD.PushError(error.ToString());QuitSafely(1);}
         finally{session=original;config=originalConfig;viewMode=originalView;selectedRegion=originalSelected;Refresh();TickStarPanels();}

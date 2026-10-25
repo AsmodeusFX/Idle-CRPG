@@ -37,13 +37,13 @@ public partial class Main
             session!.GrantGmResources(experience:10000);
             var fixture=session.CaptureProgress();fixture.Kp=100;fixture.KpEarned=100;session=GameSession.Restore(config,fixture);Refresh();
             long xp=session.PublicExperience;
-            kpPurchase!.EmitSignal(BaseButton.SignalName.Pressed);Need(session.Kp==100&&session.MonsterLevelMax==1&&growthFeedback!.Text.Contains("AR不足"),"评级不足的UI拒绝");
+            kpUnlock!.EmitSignal(BaseButton.SignalName.Pressed);Need(session.Kp==100&&session.MonsterLevelMax==1&&growthFeedback!.Text.Contains("AR不足"),"评级不足的UI拒绝");
             await Picture("kp-rating-rejected");
             upgradeCards[session.Heroes[0].HeroInstanceId].EmitSignal(BaseButton.SignalName.Pressed);
             Need(session.Heroes[0].Level==2&&session.Heroes.Skip(1).All(h=>h.Level==1)&&session.PublicExperience<xp,"指定英雄升级UI");
             await Picture("specified-hero-upgraded");
             foreach(var hero in session.Heroes.Skip(1))upgradeCards[hero.HeroInstanceId].EmitSignal(BaseButton.SignalName.Pressed);
-            kpPurchase!.EmitSignal(BaseButton.SignalName.Pressed);Need(session.MonsterLevelMax==2&&session.Kp==90,"KP点击购买");
+            kpUnlock!.EmitSignal(BaseButton.SignalName.Pressed);Need(session.MonsterLevelMax==2&&session.Kp==90,"KP点击购买");
             await Picture("lmax-purchased");
             // WP5 装备卡：六部位各一件候选 → 出现"一键换装（6件）"，点击后实际穿戴并入档。
             foreach(var spec in config.EquipmentBases)session.QaOfferEquipment(session.Heroes[0].HeroInstanceId,spec.Id,3,"rare");
@@ -65,6 +65,24 @@ public partial class Main
             potionSlot!.EmitSignal(BaseButton.SignalName.Pressed);
             Need(session.PotionSlots[0].Active&&session.PotionAttackPct>0,"药剂点击未生效");
             await Picture("potions-active");
+            // 右栏排序：英雄升级 → 装备 → KP购买 → 城堡（此处断言装备按钮在 KP 之前）。
+            var equipNode=uiLayer.FindChild("BatchEquip",true,false);var kpNode=uiLayer.FindChild("BuyMonsterLevelMaximum",true,false);
+            Need(equipNode!=null&&kpNode!=null&&equipNode.GetIndex()<kpNode.GetIndex(),"右栏顺序错误：装备应在KP购买之前");
+
+            // 英雄页·装备页签：六部位详情 + 背包列表 + "穿戴更好装备"。
+            session.QaOfferEquipment(session.Heroes[0].HeroInstanceId,config.EquipmentBases[0].Id,9,"legendary");
+            Refresh();SelectStarView(4);await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+            var tabs=heroPage.FindChild("装备",true,false)?.GetParent() as TabContainer;
+            Need(tabs!=null,"英雄页缺少页签容器");
+            tabs!.CurrentTab=tabs.GetTabIdxFromControl(heroPage.FindChild("装备",true,false) as Control);
+            await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+            var wearBest=heroPage.FindChild("WearBestEquipment",true,false) as Button;
+            Need(wearBest!=null&&heroPage.FindChild("EquippedSlots",true,false)!=null&&heroPage.FindChild("BagItems",true,false)!=null,"装备页签结构缺失");
+            await Picture("hero-equipment-bag");
+            wearBest!.EmitSignal(BaseButton.SignalName.Pressed);
+            Need(session.WornEquipment(session.Heroes[0],config.EquipmentBases[0].Slot)!=null,"穿戴更好装备未生效");
+            await Picture("hero-equipment-worn");
+            SelectStarView(0);
             Need(gameHud.FindChild("ScrollQuickBar",true,false)!=null&&heroHealth.All(h=>h!=null)&&hudSkillBars.All(b=>b!=null),"七分区缺失");
             SaveNow(true);var stored=saveStore.Load(config)!;Need(stored.Run!=null&&stored.Run.MonsterLevelMax==2&&stored.Run.Kp==90,"真实存档接线");
             uiLayer.GetNode<Button>("GmMenuButton").EmitSignal(BaseButton.SignalName.Pressed);Need(gmRoot.Visible,"GM入口丢失");ToggleGm();
