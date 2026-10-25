@@ -1,0 +1,25 @@
+﻿DesignID,最新设计要求,历史工程接口标签,截至2026-10-24的旧工程证据或缺口,预计差异类型_仅假设,必须现场核实的工程证据,审计优先级,当前最新工程状态
+D01,Run/Account状态分离与重生归属,persistence; save,历史P2-2存档被标为DATA_PLUS_CONFIG_SCHEMA，需要新存档字段迁移,MIGRATE,Core存档根/存读模块、账户字段、本轮Reset,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D02,玩家指定1-4人、开局4槽、职业可重复且英雄实例独立,party formation; hero unlock,历史星图含party_slots 4节点，旧逻辑编队上限1+Σ，上限5,MODIFY,英雄创建/编队容量/重复职业ID/开局初始化,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D03,单轮开始后锁队、放弃本轮与正式重生区分,formation; run progression,旧P2-2没有新版固定编队与轮次结算的证据,NEW,回城与UI换人入口、队伍编辑器、Reset与奖励,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D04,公共XP池，玩家指定英雄手动升级,hero levels; XP events,历史旧XP路径/自动成长不能证明已改为公共池,MODIFY,经验归属/LevelUp UI/经验来源账本,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D05,怪物XP不按等级差衰减、角色成本陡增,XP formulas,需查旧经验等级差逻辑与消费时机,MODIFY,XP计算函数/配置/可重复XP守恒测试,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D06,角色自然成长AR/DR为KP准入主来源,combat stats; hero level,P2-2投放属性列表包含atk/hp/armor，未证新版AR/DR,NEW,fightattr注册/成长配置/快照/各职业曲线,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D07,移除独立Armor减伤，DMG3新增AR/DR倍率,DamagePipeline; Armor,P2-2历史仍有armor投放/护甲消费链,MODIFY,DMG1/2/3、怪物属性、Buff、伤害类型、旧Armor引用,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D08,五职业每职4固定技能+职业特性小树，学会即生效,skills; talents,P2-2历史天赋61，其中23旧CastTalent；技能槽购买还存在,MODIFY,skill runtime/AI/CastTalent/slot policy/天赋UI,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D09,单技能互斥选择组、免费局部重置,talent tree,旧天赋重置归星图，未证局部免费重置,NEW,UI切换/依赖节点回收/重置数据模型,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D10,单轮全局Lmin/Lmax权威；城堡也用全局区间,monster spawning; region,P2-2指出FloorMonsterLevel及MonsterLevel等多套权威漂移,MODIFY,区域/章节/城堡生成及存档/动态刷新,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D11,KP购买提升上限/下限/怪量/掉率与XP经济,KP rules; resource ledger,旧P2-2审计未证明新版KP升级链已存在,NEW,击杀账本、怪物全局等级、购买配置、掉落分工,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D12,Lmin严格安全规则待审批，不能零收益死锁,KP Lmin,代理V0.4发现断供反例；非最新工程事实,UNVERIFIED,购买准入/持久安全/失败恢复/极端队伍测试点,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D13,装备按英雄实例掉落、等级品质线性强化,loot; items,P2-2 items_loot列为DATA_ONLY，但仅历史接口分类,MODIFY,装备归属/掉率/品质/评分/ARDR/ATKHP,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D14,回城卖杂物前保留最佳候选；>=5可换装备批量点击,village trade; UI,旧回村售卖能力据历史存在，保留候选及批量逻辑未证,MODIFY,回村事件/最佳候选/替换队列/整批执行,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D15,金币星图按轮重置、属性/卷轴/药剂等分支,stars,P2-2仅有17个旧节点含party_slots/skill_slots/talent_reset,MODIFY,星图效果白名单、购买消费、单轮Reset、UI,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D16,账号成就点货币及永久购物列表/第5席,achievements; shop,P2-2未证账号成就点与商店层,NEW,成就记账/账号状态/首轮奖励/职业解锁,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D17,首轮四章，后续轮次第五章开放,castle; chapters,P2-2存在5章规划记录，但不是新版首轮开放规则,MODIFY,章节锁、最终城堡、轮次通关触发,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D18,卷轴掉率KP管，星图强化/容量/自动释放,scrolls,历史系统没有新版分工验收证据,NEW,掉落配置/背包/AI释放/库存减少,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D19,药剂用后生效期仍占槽，结束释放,potions,历史接口无此新版规则证据,NEW,药剂槽状态/持续时间/离线时间语义,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D20,后台资源积累不自动升战力；真关闭有限离线结算,offline; events,旧项目已有挂机/模拟，但不代表符合新版主动升级,MODIFY,前后台生命周期/离线收益/装备候选,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D21,右侧操作队列英雄升级优先，其余需独立决策,UI; action queue,P2-2无新版右侧队列的运行证明,NEW,任务提示/合并规则/用户操作/输入队列,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D22,可重复模拟：XP金币KP守恒/技能事实与失败归因,simulator; checks,P2-2旧账本SIM_LEDGER diff=0，缺逐技能/失败事件事实,MODIFY,P2-1/2测试入口复核、日志事件、随机种子,P0,UNVERIFIED — 需由执行AI审计最新仓库
+D23,单窗口全屏游戏，取消原Mini/Management切换,Godot UI; window,旧双模式窗口设计历史存在，现状待查,MODIFY,Godot窗口设置/Scene Tree/HUD布局/尺寸,P1,UNVERIFIED — 需由执行AI审计最新仓库
+D24,固定阵容少人/同职业多开特殊配置不应意外共享Buff/召唤,summons; buff,P2-2已审计Summon和Buff部分能力，但无重复实例实测,MODIFY,EntityId/OwnerId/Buff叠层/召唤实例/性能,P1,UNVERIFIED — 需由执行AI审计最新仓库
