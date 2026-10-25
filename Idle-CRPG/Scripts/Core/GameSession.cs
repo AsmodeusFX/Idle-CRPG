@@ -12,6 +12,8 @@ public sealed class Actor
     public string HeroInstanceId="",SummonOwnerInstanceId="";
     /// <summary>后续装备/星图评级贡献预留；自然评级仍由等级确定，AR与DR独立消费。</summary>
     public double AttackRatingBonus,DefenseRatingBonus;
+  /// <summary>当前装备已计入 Attack/MaxHp 的攻击与生命总和；用于换装差量计算与读档一致性校验。</summary>
+  public float EquipmentAttack,EquipmentHp;
     public string Name = "";
     public Vector2 Position;
     public float Hp, MaxHp, Attack, Defense, Speed, Range, Cooldown, Timer;
@@ -167,7 +169,7 @@ public sealed partial class GameSession
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
         // 瞬时位移标记按逻辑步重置：只剩异常恢复的脱队闪现使用，正常入场部署不再瞬移。
         summonBlinkTick.Clear();
-        AdvanceSwapLocks(dt);World?.ObserveApprovalWait();
+        AdvanceSwapLocks(dt);AdvanceConsumables();World?.ObserveApprovalWait();
         if(World!=null && World.Stage!=CampaignStage.Dungeon){World.Tick(this,dt);if(World.InDungeonScene&&Floors.Count>0)FollowDungeonSummons(dt);return;}
         var tickFloor=Floor;bool fighting=!Floor.Rooms[CurrentRoom].Clear&&Floor.Rooms[CurrentRoom].Generated;
         var positions=Heroes.Select(h=>h.Position).ToArray();
@@ -620,6 +622,8 @@ public sealed partial class GameSession
             if(!Config.ItemTypes.Single(t=>t.Id==item.TypeId).AutoSell)continue;
             total=checked(total+entry.Key.Price*entry.Value);inventory.Remove(entry.Key);
         }
+        // 回城交易同时结算次优装备：保留更优/跨属性候选，只卖出同属性不优于已穿者（金币由本函数统一入账）。
+        total=checked(total+SellInferiorEquipment());
         Gold=checked(Gold+total);return total;
     }
     /// <summary>只检查实际自动售卖的背包物品，与售卖结算共用配置条件。</summary>

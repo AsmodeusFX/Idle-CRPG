@@ -1,0 +1,5 @@
+id,name,multiplier,weight
+common,普通,1,60
+uncommon,优秀,1.25,25
+rare,稀有,1.6,12
+legendary,传奇,2.1,3

@@ -33,3 +33,7 @@ summon_blink_delay_milli,500
 summon_entry_speed_pct,150
 ranged_retreat_distance_milli,1200
 ranged_retreat_cooldown_milli,4000
+offline_cap_seconds,7200
+offline_xp_per_hour,60
+offline_kp_per_hour,1
+offline_gold_per_hour,30

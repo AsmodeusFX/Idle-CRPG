@@ -12,7 +12,7 @@ public static class SkillMigrationChecks
         void Need(bool ok,string why){if(!ok)throw new Exception("SKILL_MIGRATION: "+why);}
         var c=LegacySkillConfig.Load(Path.Combine(root,"Idle-CRPG/config"));
         var nodes=c.Talents.Nodes;
-        Need(nodes.Count==61,"正式天赋节点数量");
+        Need(nodes.Count==66,"正式天赋节点数量");
         Need(nodes.Values.Select(n=>n.Hero).Distinct().Count()==5&&c.Heroes.All(h=>nodes.Values.Count(n=>n.Hero==h.Id)>0&&nodes.Values.Where(n=>n.Hero==h.Id).Select(n=>n.Tree).Distinct().Count()==3),"五职业三系覆盖");
         // 旧节点 ID 全部保留，保证同 ID 存档不丢等级；新节点使用自己的 ID 并绑定同名主动定义。
         string[] legacyIds=("barb_voice barb_shout barb_weaken barb_courage barb_mastery barb_attack barb_defense barb_focus barb_bash barb_leap barb_whirlwind barb_power "+
@@ -99,6 +99,6 @@ public static class SkillMigrationChecks
         for(int i=0;i<40;i++){volley.Tick(.05f);arrows=Math.Max(arrows,volley.ActiveFlightCount);}
         Need(arrows==3,"多重箭未生成三支箭矢");
         Need(volley.Floor.Rooms[volley.CurrentRoom].Monsters.Any(m=>m.Hp<100000),"绑定伤害技能未命中");
-        Console.WriteLine("PASS: 61-node three-tree layout, skill_id binding, legacy starter retention, merged-tree save migration, incompatible-node refund/log cleanup, unknown-node rejection, idempotence, bound support and volley execution");
+        Console.WriteLine("PASS: 66-node three-tree layout, skill_id binding, legacy starter retention, merged-tree save migration, incompatible-node refund/log cleanup, unknown-node rejection, idempotence, bound support and volley execution");
     }
 }

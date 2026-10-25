@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "scenario_id": "U_upgrade_greedy",
+  "scenario_note": "最小验证：只开手动升级策略，证明模拟器能表达玩家逐次点击升级（不自动分配天赋）。",
+  "seed": 20261025,
+  "duration_minutes": 30,
+  "sample_interval_minutes": 10,
+  "dense_sample_minutes": 10,
+  "dense_every_minutes": 1,
+  "starting_heroes": ["warrior"],
+  "player_policy": {
+    "upgrade": { "mode": "greedy", "interval_seconds": 30 },
+    "diagnostics": { "stall_window_seconds": 600, "recheck_seconds": 300, "max_alerts": 5 }
+  }
+}

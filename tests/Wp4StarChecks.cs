@@ -20,7 +20,7 @@ public static class Wp4StarChecks
 
         // 未购买特性解锁前，两个同职业实例都学不了职业特性；其他职业同样锁定。
         var warriorOne=game.Heroes[0];var warriorTwo=game.Heroes[1];
-        Check(!game.CanLearnTalent(warriorOne,"barb_voice",out string locked)&&locked.Contains("星图"),"未解锁时职业特性未被拒绝："+locked);
+        Check(!game.CanLearnTalent(warriorOne,"warrior_trait",out string locked)&&locked.Contains("星图"),"未解锁时职业特性未被拒绝："+locked);
         Check(!game.CanLearnTalent(game.Heroes[2],"ranger_archery",out _),"游侠特性在未解锁时可学");
 
         // 成长类节点：购买后公共XP获取按比例提高，且只扣一次金币。
@@ -39,8 +39,8 @@ public static class Wp4StarChecks
         Check(game.BuyStar("s_trait_warrior",out string traitWhy),$"特性解锁购买失败：{traitWhy}");
         Check(game.ClassTraitUnlocked("warrior")&&!game.ClassTraitUnlocked("ranger"),"职业特性资格未按职业隔离");
         int pointsTwo=game.TalentPoints(warriorTwo);
-        Check(game.LearnTalent(warriorOne.HeroInstanceId,"barb_voice",out string learnOne),$"本职业特性学习失败：{learnOne}");
-        Check(game.LearnTalent(warriorTwo.HeroInstanceId,"barb_voice",out string learnTwo),$"同职业另一实例学习失败：{learnTwo}");
+        Check(game.LearnTalent(warriorOne.HeroInstanceId,"warrior_trait",out string learnOne),$"本职业特性学习失败：{learnOne}");
+        Check(game.LearnTalent(warriorTwo.HeroInstanceId,"warrior_trait",out string learnTwo),$"同职业另一实例学习失败：{learnTwo}");
         Check(game.TalentPoints(warriorTwo)==pointsTwo-1,"同职业另一实例的天赋点未被独立扣除");
         Check(!game.CanLearnTalent(game.Heroes[2],"ranger_archery",out _),"其他职业被误开放特性");
 

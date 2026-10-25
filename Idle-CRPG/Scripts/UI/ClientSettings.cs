@@ -66,6 +66,12 @@ public partial class Main
             savedRevision=session.Revision;
         }
         if(saveStore.LastWarning!=null)help.Text=saveStore.LastWarning;
+        // 有限离线结算只在打开存档时发生一次，结果明确告知玩家，且不含自动升级/换装等动作。
+        if(saveStore.LastOffline is {Seconds:>0} offline)
+        {
+            string summary=$"离线 {offline.Seconds/60} 分钟：公共XP +{offline.Experience}、KP +{offline.Kp}、金币 +{offline.Gold}。不会自动升级或换装。";
+            help.Text=summary;var notice=new AcceptDialog {Title="离线收益（有限时长）",DialogText=summary};AddChild(notice);notice.PopupCentered(new Vector2I(520,180));
+        }
         if(saveStore.RecoveryReset)
         {
             var notice=new AcceptDialog {Title="存档已自动重置",DialogText=saveStore.LastWarning};AddChild(notice);notice.PopupCentered(new Vector2I(560,180));
@@ -205,6 +211,21 @@ public partial class Main
         box.AddChild(new Label {Text="重置会清除队伍成长、星图、金币、背包与世界进度。\n窗口和音量设置保留。",AutowrapMode=TextServer.AutowrapMode.WordSmart});
         var abandon=new Button {Text="放弃本轮并重新选队（保留账号）",CustomMinimumSize=new Vector2(0,42)};
         abandon.Pressed+=()=>{if(session==null)return;var dialog=new ConfirmationDialog {Title="确认放弃本轮",DialogText="清除本轮等级、XP、KP、星图和地图进度；账号永久状态保留，不发重生奖励。"};AddChild(dialog);dialog.Confirmed+=AbandonCurrentRun;dialog.PopupCentered(new Vector2I(580,210));};box.AddChild(abandon);
+        // WP7：正式重生与放弃本轮是不同命令，只结算已批准的账号事实。
+        var rebirth=new Button {Text="正式重生（需完成第4章主线）",CustomMinimumSize=new Vector2(0,42)};
+        rebirth.Pressed+=()=>{
+            if(session==null)return;
+            if(!session.CanRebirth(out string why)){help.Text="暂不能重生："+why;return;}
+            var dialog=new ConfirmationDialog {Title="确认正式重生",DialogText="本轮英雄、等级、XP、KP、金币、星图、装备、卷轴、药剂与地图进度将清零；\n账号通关事实与轮次序号保留，随后重新选队。此操作不可撤销。"};
+            AddChild(dialog);
+            dialog.Confirmed+=()=>{
+                if(!session!.Rebirth(out IdleCrpg.Core.AccountState account,out string reason)){help.Text="重生失败："+reason;return;}
+                saveStore.WriteEncoded(SaveStore.Encode(new SaveDocument {Account=account}));
+                session=null;pendingAccount=account;UpdatePartyControls();settingsRoot.Hide();
+                help.Text="已正式重生：账号权益保留，请重新选队开启新的一轮。";
+            };
+            dialog.PopupCentered(new Vector2I(620,230));
+        };box.AddChild(rebirth);
         var reset=new Button {Text="清除所有进度",CustomMinimumSize=new Vector2(0,42)};reset.AddThemeColorOverride("font_color",new Color("e89a91"));reset.Pressed+=RequestReset;box.AddChild(reset);
         resetConfirmation=new ConfirmationDialog {Title="确认重置进度",DialogText="确定清除全部游戏进度吗？\n角色成长、星图加点、金币、背包、探索与占领进度都会清除。\n此操作无法撤销，画面和音量设置不受影响。",OkButtonText="确认重置",CancelButtonText="取消",Exclusive=true};AddChild(resetConfirmation);
         resetConfirmation.Confirmed+=ResetProgress;

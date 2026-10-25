@@ -45,6 +45,26 @@ public partial class Main
             foreach(var hero in session.Heroes.Skip(1))upgradeCards[hero.HeroInstanceId].EmitSignal(BaseButton.SignalName.Pressed);
             kpPurchase!.EmitSignal(BaseButton.SignalName.Pressed);Need(session.MonsterLevelMax==2&&session.Kp==90,"KP点击购买");
             await Picture("lmax-purchased");
+            // WP5 装备卡：六部位各一件候选 → 出现"一键换装（6件）"，点击后实际穿戴并入档。
+            foreach(var spec in config.EquipmentBases)session.QaOfferEquipment(session.Heroes[0].HeroInstanceId,spec.Id,3,"rare");
+            Refresh();await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+            var batchCard=uiLayer.FindChild("BatchEquip",true,false) as Button;Need(batchCard!=null&&!batchCard.Disabled,"批量换装卡缺失或被禁用");
+            // 装备卡位于右栏滚动区底部：拍照前滚到底，让证据图真实可见。
+            interactionScroll.ScrollVertical=(int)interactionScroll.GetVScrollBar().MaxValue;
+            await Picture("equipment-batch");
+            batchCard!.EmitSignal(BaseButton.SignalName.Pressed);
+            Need(session.EquipmentTotals(session.Heroes[0]).Attack+session.EquipmentTotals(session.Heroes[0]).Hp>0,"批量换装未生效");
+            await Picture("equipment-equipped");
+            // WP6：卷轴库存显示与药剂槽点击（生效占槽、空槽灰态）。
+            session.QaGrantConsumable(config.Scrolls[0].Id);
+            session.QaGrantConsumable(config.Potions[0].Id);
+            Refresh();await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+            Need(gameHud.FindChild("ScrollQuickBar",true,false)!=null,"卷轴快捷栏缺失");
+            var potionSlot=gameHud.FindChild("PotionSlot_0",true,false) as Button;Need(potionSlot!=null&&!potionSlot.Disabled,"药剂槽不可点");
+            await Picture("consumables-slots");
+            potionSlot!.EmitSignal(BaseButton.SignalName.Pressed);
+            Need(session.PotionSlots[0].Active&&session.PotionAttackPct>0,"药剂点击未生效");
+            await Picture("potions-active");
             Need(gameHud.FindChild("ScrollQuickBar",true,false)!=null&&heroHealth.All(h=>h!=null)&&hudSkillBars.All(b=>b!=null),"七分区缺失");
             SaveNow(true);var stored=saveStore.Load(config)!;Need(stored.Run!=null&&stored.Run.MonsterLevelMax==2&&stored.Run.Kp==90,"真实存档接线");
             uiLayer.GetNode<Button>("GmMenuButton").EmitSignal(BaseButton.SignalName.Pressed);Need(gmRoot.Visible,"GM入口丢失");ToggleGm();

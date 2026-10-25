@@ -19,7 +19,7 @@ public sealed class TalentConfiguration
     {
         var c=new TalentConfiguration();
         foreach(var r in CsvTable.Load("system/config.csv",File.ReadAllText(Path.Combine(root,"system/config.csv")),"id","value").Rows)c.Rules.Add(r.Id,r.Integer("value"));
-        foreach(string id in new[]{"talent_initial_points","talent_points_per_level","talent_row_points","active_skill_max_slots","active_skill_initial_slots","talent_reset_base_cost","talent_reset_cost_per_point","talent_leap_ticks","talent_windup_ticks","talent_recovery_ticks","world_follow_spacing_milli"})if(!c.Rules.TryGetValue(id,out int v)||v<0||v>100000)throw new InvalidDataException("系统规则缺失或越界："+id);
+        foreach(string id in new[]{"talent_initial_points","talent_points_per_level","talent_row_points","active_skill_max_slots","active_skill_initial_slots","talent_reset_base_cost","talent_reset_cost_per_point","talent_leap_ticks","talent_windup_ticks","talent_recovery_ticks","world_follow_spacing_milli","offline_cap_seconds","offline_xp_per_hour","offline_kp_per_hour","offline_gold_per_hour"})if(!c.Rules.TryGetValue(id,out int v)||v<0||v>100000)throw new InvalidDataException("系统规则缺失或越界："+id);
         if(c.Rule("talent_leap_ticks")<1||c.Rule("talent_windup_ticks")<1)throw new InvalidDataException("技能前摇必须大于0");
         if(c.Rule("active_skill_max_slots") is <1 or >5||c.Rule("active_skill_initial_slots")>c.Rule("active_skill_max_slots"))throw new InvalidDataException("主动槽位须在0～5内");
         if(c.Rule("world_follow_spacing_milli") is <1 or >1000)throw new InvalidDataException("世界跟随间距无效");

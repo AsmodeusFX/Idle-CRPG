@@ -39,6 +39,13 @@ public sealed class SessionSnapshot
     public string Status="", ActiveDungeonId="";
     public List<Actor> ReserveHeroes=new();public string[] PendingFormation=Array.Empty<string>();public int FormationCapacityFloor;
     public List<Actor> Heroes=new();
+    /// <summary>卷轴库存与药剂槽；旧档为空表示没有消耗品。</summary>
+    public Dictionary<string,int> Scrolls=new();
+    public List<PotionSlotSave> Potions=new();
+    /// <summary>六部位装备（穿戴与候选），按英雄索引绑定；旧档为空表示无装备。</summary>
+    public List<EquipmentSave> Equipment=new();
+    /// <summary>存档时间戳（Unix 秒），仅用于有限离线结算锚点；不参与确定性哈希。</summary>
+    public long SavedAtUnix;
     /// <summary>玩家侧独立召唤物；ID 追加在当前房怪物之后，正式检查点按进房快照恢复。</summary>
     public List<Actor> Summons=new();
     public List<Actor> RoomEntrySummons=new();
@@ -109,7 +116,7 @@ public sealed partial class GameSession
     public SessionSnapshot CaptureProgress()
     {
         // 直接复制持久字段，不先序列化整场战斗；后台不访问活跃模型。
-        var s=Capture();s.Heroes=Heroes.Select(h=>h.Copy()).ToList();
+        var s=Capture();s.Heroes=Heroes.Select(h=>h.Copy()).ToList();s.Equipment=CaptureGear();s.Scrolls=CaptureScrolls();s.Potions=CapturePotions();
         foreach(var hero in s.Heroes)hero.Hp=Math.Min(hero.Hp,hero.MaxHp);
         s.Floors=Floors.Select(f=>new Floor {
             Seed=f.Seed,ActualSpawned=f.ActualSpawned,ActualKillFacts=f.ActualKillFacts,ElapsedTicks=f.ElapsedTicks,BattleTicks=f.BattleTicks,WalkTicks=f.WalkTicks,
@@ -179,7 +186,7 @@ public sealed partial class GameSession
         game.Kp=s.Kp;game.KpEarned=s.KpEarned;game.KpSpent=s.KpSpent;game.dungeonEntrySerial=s.DungeonEntrySerial;game.MonsterLevelMax=s.MonsterLevelMax;game.kpKillReceipts.UnionWith(s.KpKillReceipts);
         game.PublicExperience=s.PublicExperience;game.PublicExperienceFraction=s.PublicExperienceFraction;game.Account=s.Account.Copy();game.RunId=s.RunId;game.TeamLocked=s.TeamLocked;
         game.RestoreChapters(s);
-        game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.Summons.AddRange(s.Summons);game.roomEntrySummons.AddRange(s.RoomEntrySummons);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
+        game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.RestoreGear(s.Equipment??new());game.RestoreConsumables(s.Scrolls??new(),s.Potions??new());game.Summons.AddRange(s.Summons);game.roomEntrySummons.AddRange(s.RoomEntrySummons);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
         game.Floors=s.Floors;game.dungeonSeed=s.DungeonSeed;game.FloorIndex=s.FloorIndex;game.CurrentRoom=s.CurrentRoom;
         game.Kills=s.Kills;game.Retries=s.Retries;game.Gold=s.Gold;game.Revision=s.Revision;game.HitCount=s.HitCount;
         game.lootRandom.State=s.LootRandomState;game.Won=s.Won;game.destination=s.Destination;game.phase=s.Phase;game.regroup=s.Regroup;
@@ -288,7 +295,9 @@ public sealed partial class GameSession
         static bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y);
         Need(s.CombatVersion==3,"战斗存档版本");
         Need(s.CampaignVersion is 0 or 2,"远征存档版本");
-        Need(s.ReserveHeroes!=null&&s.PendingFormation!=null&&s.Heroes!=null&&s.Summons!=null&&s.RoomEntrySummons!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null,"缺少状态字段");
+        Need(s.ReserveHeroes!=null&&s.PendingFormation!=null&&s.Heroes!=null&&s.Summons!=null&&s.RoomEntrySummons!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null&&s.Equipment!=null,"缺少状态字段");
+        ValidateGear(c,s.Equipment!,s.Heroes!.Count);
+        ValidateConsumables(c,s.Scrolls,s.Potions);
         Need(s.Heroes!.Count is >=1 and <=4&&s.Heroes.Select(h=>h.HeroInstanceId).Distinct().Count()==s.Heroes.Count&&s.Heroes.All(h=>c.Heroes.Any(t=>t.Id==h.SpecId)),"队伍引用");
         Need(s.Gold>=0&&s.Experience>=0&&s.Kills>=0&&s.Retries>=0&&s.Revision>=0&&s.HitCount>=0&&s.LootRandomState!=0,"资源/随机源");
         Need(s.Log!.Count<=40&&s.ReviveTarget>=-1&&s.ReviveTarget<s.Heroes.Count&&s.Rescuer>=-1&&s.Rescuer<s.Heroes.Count&&Finite(s.ReviveElapsed)&&s.ReviveElapsed>=0&&s.ReviveElapsed<=c.ReviveSeconds&&Finite(s.Regroup)&&s.Regroup>=0,"行动计时");

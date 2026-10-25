@@ -56,6 +56,8 @@ public sealed partial class GameSession
     {
         var declarations=ActorBuffs(CombatId(actor)).SelectMany(b=>SkillConfig.Buffs[b.Id].Attributes).Where(a=>a.Attribute==attribute);
         basis+=PassiveTalentValue(actor,attribute);
+  // 药剂只提升队伍攻击，属于本轮临时加成，不写回 Actor.Attack，避免存档叠加。
+  if(attribute=="atk"&&IsFriendlyActor(actor)&&PotionAttackPct>0)basis*=1+PotionAttackPct;
         foreach(var b in ActorBuffs(CombatId(actor)))if(attribute=="atk"&&(b.Id=="talent_battle_shout"||b.Id=="talent_weaken"))basis*=b.Id=="talent_weaken"?Math.Max(0,1-b.Value):1+b.Value;
         return Config.Attributes.Aggregate(attribute,basis,declarations);
     }
@@ -133,7 +135,7 @@ public sealed partial class GameSession
         }
         if(killed&&Floor.Rooms[CurrentRoom].Monsters.Contains(target))
         {
-            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);GainKillKp(target);var loot=RollDrops(target);
+            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);GainKillKp(target);TryDropEquipment(target);TryDropConsumable(target);var loot=RollDrops(target);
             if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
             RecordCorpse(target);
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}

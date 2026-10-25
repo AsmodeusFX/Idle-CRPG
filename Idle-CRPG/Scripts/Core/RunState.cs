@@ -29,7 +29,8 @@ public sealed partial class GameSession
     /// <summary>放弃本轮仅保留账号状态，丢弃本轮成长；不发正式重生奖励。</summary>
     public AccountState AbandonRun()=>Account.Copy();
     /// <summary>本批只提供正式重生的禁止入口，资格和奖励在WP7实施。</summary>
-    public bool TryRebirth(out string reason){reason="正式重生尚未开放（WP7），请勿以放弃本轮代替重生";return false;}
+    private bool RebirthCompat(out string reason){return Rebirth(out _,out reason);}
+    public bool TryRebirth(out string reason)=>RebirthCompat(out reason);
     public static GameSession StartRun(Config config,int seed,IEnumerable<string> heroes,AccountState account)
     {
         account.Validate();var game=CreateNewWorld(config,seed,heroes);game.Account=account.Copy();game.Account.RunOrdinal=checked(account.RunOrdinal+1);

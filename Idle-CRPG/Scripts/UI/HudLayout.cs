@@ -12,6 +12,10 @@ public partial class Main
     private Label interactionEmpty=null!;
     private Label interactionHeading=null!;
     private ScrollContainer interactionScroll=null!;
+    private readonly Button[] potionButtons=new Button[4];
+    private readonly Button[] potionDiscards=new Button[4];
+    private Label scrollBarLabel=null!;
+    private Button scrollUseButton=null!;
     private Label teamChallengeLabel=null!;
     /// <summary>小队区公共XP余额；旧个人经验条语义已改为公共池，不保留每人私有账户。</summary>
     private Label teamExperienceLabel=null!;
@@ -99,20 +103,62 @@ public partial class Main
             hudSkillBars[i]=new HBoxContainer {Position=new Vector2(480,y),Size=new Vector2(375,28)};hudSkillBars[i].AddThemeConstantOverride("separation",2);gameHud.AddChild(hudSkillBars[i]);
         }
         HudPanel(gameHud,new Vector2(880,662),new Vector2(536,214));
-        HudText(gameHud,"药剂",new Vector2(896,669),16);
-        HudText(gameHud,"后续开放",new Vector2(1300,671),13);
+        HudText(gameHud,"药剂（点击使用 · 待用可丢弃）",new Vector2(896,669),15);
         for(int i=0;i<4;i++)
         {
-            var slot=HudPanel(gameHud,new Vector2(896+i%2*252,704+i/2*76),new Vector2(240,64));
-            slot.AddChild(new HudIcon {Kind="potion",Position=new Vector2(12,15),Size=new Vector2(32,32),Accent=new Color("536575")});
-            HudText(slot,"药剂槽位",new Vector2(58,10),14);HudText(slot,"尚未开放",new Vector2(58,34),12);
+            int slotIndex=i;
+            var button=new Button {Name="PotionSlot_"+i,Position=new Vector2(896+i%2*252,700+i/2*76),Size=new Vector2(240,62),Text=""};
+            button.Pressed+=()=>UsePotionFromHud(slotIndex);
+            gameHud.AddChild(button);potionButtons[i]=button;
+            var discard=new Button {Name="PotionDiscard_"+i,Text="丢弃",Position=new Vector2(1100+i%2*252,724+i/2*76),Size=new Vector2(32,24),TooltipText="丢弃待用药剂以腾槽；生效中不可丢弃"};
+            discard.Pressed+=()=>DiscardPotionFromHud(slotIndex);
+            gameHud.AddChild(discard);potionDiscards[i]=discard;
         }
-        var scrollBar=HudPanel(gameHud,new Vector2(24,610),new Vector2(1040,40));scrollBar.Name="ScrollQuickBar";HudText(scrollBar,"卷轴快捷栏 · 后续开放",new Vector2(12,10),13);
+        var scrollBar=HudPanel(gameHud,new Vector2(24,610),new Vector2(1040,40));scrollBar.Name="ScrollQuickBar";
+        scrollBarLabel=HudText(scrollBar,"卷轴快捷栏：暂无卷轴（击杀掉落）",new Vector2(12,10),13);
+        scrollUseButton=new Button {Name="ScrollUse",Text="对最近敌人使用",Position=new Vector2(760,4),Size=new Vector2(170,30)};
+        scrollUseButton.Pressed+=()=>{if(session==null)return;var room=session.Floor.Rooms[session.CurrentRoom];int index=room.Monsters.FindIndex(m=>m.Alive);
+            var stock=session.ScrollStock.FirstOrDefault(p=>p.Value>0);if(index<0||stock.Key==null){help.Text=index<0?"当前没有可攻击目标":"没有卷轴库存";return;}
+            help.Text=session.UseScroll(stock.Key,index,out string reason)?$"已使用{config.ScrollOf(stock.Key).Name}":reason;Refresh();SaveNow();};
+        scrollBar.AddChild(scrollUseButton);
         roster=new Label();journal=new Label();gameHud.AddChild(roster);gameHud.AddChild(journal);roster.Hide();journal.Hide();
         help=HudText(gameHud,"",new Vector2(32,879),12);help.Modulate=new Color("91a6b7");
     }
 
     private static string CompactAmount(long value)=>value>=1000000?$"{value/1000000d:0.#}M":value>=10000?$"{value/1000d:0.#}K":value.ToString("N0");
+    /// <summary>卷轴库存只显示数量；药剂槽显示待用/生效中（生效中仍占槽且不可丢弃）。</summary>
+    private void RefreshConsumablesHud()
+    {
+        var slots=session?.PotionSlots;
+        for(int i=0;i<potionButtons.Length;i++)
+        {
+            var button=potionButtons[i];var discard=potionDiscards[i];if(button==null||discard==null)continue;
+            var slot=slots==null?null:slots[i];
+            bool has=slot!=null&&slot.ItemId!="";
+            button.Text=!has?"空槽（击杀掉落药剂）":$"{slot!.Name}\n"+(slot.Active?$"生效中 {slot.RemainingSeconds:0}s · 占槽":$"待用 · 点击使用");
+            button.Disabled=session==null||!has||slot!.Active;
+            discard.Visible=has;discard.Disabled=session==null||slot!.Active;
+            discard.TooltipText=has&&slot!.Active?"生效中不可丢弃：产品尚未裁决是否允许提前结束效果":"丢弃待用药剂以腾槽";
+        }
+        if(scrollBarLabel!=null)
+        {
+            var stock=session==null?Array.Empty<System.Collections.Generic.KeyValuePair<string,int>>():session.ScrollStock.Where(p=>p.Value>0).ToArray();
+            scrollBarLabel.Text=stock.Length==0?"卷轴快捷栏：暂无卷轴（击杀掉落）":"卷轴快捷栏："+string.Join(" · ",stock.Select(p=>$"{config.ScrollOf(p.Key).Name} ×{p.Value}"));
+            if(scrollUseButton!=null)scrollUseButton.Disabled=session==null||stock.Length==0;
+        }
+    }
+    private void UsePotionFromHud(int slot)
+    {
+        if(session==null)return;
+        help.Text=session.UsePotion(slot,out string reason)?$"已饮用药剂：{session.PotionSlots[slot].Name}":reason;
+        Refresh();SaveNow();
+    }
+    private void DiscardPotionFromHud(int slot)
+    {
+        if(session==null)return;
+        help.Text=session.DiscardPotion(slot,out string reason)?"已丢弃待用药剂":reason;
+        Refresh();SaveNow();
+    }
     private void RefreshHud()
     {
         int waiting=session?.World==null?0:config.Dungeons.Count(d=>d.Castle&&!session.World.Progress.Cleared.Contains(d.Id)&&session.World.Progress.CastleUnlocked(config,d.Id)&&!session.World.PendingCastles.Contains(d.Id)&&session.World.Target.Dungeon.Id!=d.Id);
@@ -138,6 +184,7 @@ public partial class Main
         }
         RefreshGrowthInteractions();
         RefreshHudSkills();
+        RefreshConsumablesHud();
         currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text="KP "+CompactAmount(session?.Kp??0);currencies[1].TooltipText=$"KP本轮余额 · 背包杂物 {session?.Inventory.Values.Sum()??0}，回城自动售卖";
     }
 

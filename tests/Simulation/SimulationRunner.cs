@@ -78,7 +78,7 @@ internal sealed class SimulationRun
     private readonly Dictionary<string, long> starPlanLevels = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> lastReject = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> learnedPlan = new(StringComparer.Ordinal);
-    private long nextCastle, nextStar, nextParty, nextTalent;
+    private long nextCastle, nextStar, nextParty, nextTalent, nextUpgrade;
     private int castleRequests;
     private long starGoldSpent;
     private bool starDone, partySettled, talentSettled;
@@ -325,6 +325,7 @@ internal sealed class SimulationRun
         if (policy.StarMode != "none" && IsDue(nextStar, tick)) due.Add("starmap");
         if (policy.PartyMode != "none" && IsDue(nextParty, tick)) due.Add("party");
         if (policy.TalentMode != "none" && IsDue(nextTalent, tick)) due.Add("talents");
+        if (policy.UpgradeMode != "none" && IsDue(nextUpgrade, tick)) due.Add("upgrade");
         if (due.Count == 0) return;
         string chosen = due[0];
         if (due.Count > 1) rec.Event(tick, "policy_order", chosen, "single_group", "same_tick_contention", string.Join('|', due));
@@ -334,11 +335,22 @@ internal sealed class SimulationRun
             case "starmap": Advance(ref nextStar, tick, policy.StarIntervalSeconds); ExecStarmap(tick); break;
             case "party": Advance(ref nextParty, tick, policy.PartyIntervalSeconds); ExecParty(tick); break;
             case "talents": Advance(ref nextTalent, tick, policy.TalentIntervalSeconds); ExecTalents(tick); break;
+            case "upgrade": Advance(ref nextUpgrade, tick, policy.UpgradeIntervalSeconds); ExecUpgrade(tick); break;
         }
     }
 
     private static bool IsDue(long next, long tick) => next == 0 || next <= tick;
     private static void Advance(ref long next, long tick, int intervalSeconds) => next = tick + intervalSeconds * 20L;
+
+    /// <summary>模拟玩家点击：每次只升一名英雄一级，优先选择当前最便宜的可升级英雄；不自动分配天赋点。</summary>
+    private void ExecUpgrade(long tick)
+    {
+        var target = game.Heroes.Where(h => h.Level < config.MaxHeroLevel).OrderBy(h => game.ExperienceRequired(h)).ThenBy(h => game.Heroes.IndexOf(h)).FirstOrDefault();
+        if (target == null || game.PublicExperience < game.ExperienceRequired(target)) return;
+        int level = target.Level;
+        if (!game.UpgradeHero(target.HeroInstanceId, out _)) return;
+        rec.Event(tick, "upgrade_applied", target.HeroInstanceId, "applied", "player_click", $"lv={level}->{target.Level} xp={game.PublicExperience}");
+    }
 
     private void ExecCastle(long tick)
     {

@@ -16,6 +16,8 @@ public sealed class SaveDocument
     public SessionSnapshot? Run;
     /// <summary>迁移隔离区：跨本轮存续，普通放弃/重生不清除，只有"清除全部进度"会清除。</summary>
     public LegacyQuarantine Legacy=new();
+    /// <summary>存档时刻（Unix 秒）；0 表示旧档无时间戳，不做离线结算。</summary>
+    public long SavedAtUnix;
     /// <summary>仅供工程调用兼容；JSON中的本轮权威只有Run。</summary>
     [JsonIgnore] public SessionSnapshot? Session {get=>Run;set {Run=value;if(value!=null)Account=value.Account.Copy();}}
     public int Speed=1,ViewMode,SelectedRegion=-1;
@@ -32,6 +34,8 @@ public sealed class SaveStore(string path)
     public static readonly JsonSerializerOptions JsonOptions=new() {IncludeFields=true,IgnoreReadOnlyProperties=true,WriteIndented=false};
     public string PathName=>path;
     public string? LastWarning { get; private set; }
+    /// <summary>最近一次读档触发的离线结算（秒数与入账额），供界面说明与审计。</summary>
+    public OfflineSettlement? LastOffline { get; private set; }
     public bool RecoveryReset {get;private set;}
     public static string Encode(SaveDocument document)
     {
@@ -75,7 +79,7 @@ public sealed class SaveStore(string path)
     }
     public SaveDocument? Load(Config c)
     {
-        LastWarning=null;RecoveryReset=false;bool existed=File.Exists(path)||File.Exists(path+".bak");
+        LastWarning=null;RecoveryReset=false;LastOffline=null;bool existed=File.Exists(path)||File.Exists(path+".bak");
         foreach(var candidate in new[]{path,path+".bak"})
         {
             if(!File.Exists(candidate))continue;
@@ -89,6 +93,15 @@ public sealed class SaveStore(string path)
                 }
                 if(candidate!=path){LastWarning="主存档无法读取，已恢复备份进度";protectBackup=true;}
                 legacy=result.Legacy.Copy();
+                // 有限离线结算：以存档时间为锚点、按上限封顶，只结算 XP/KP/金币，并立即回写防重复领取。
+                if(result.Run!=null&&result.SavedAtUnix>0)
+                {
+                    long now=DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    var report=GameSession.SettleOffline(c,result.Run,now);
+                    bool settled=report.Seconds>0;
+                    result.SavedAtUnix=now;
+                    if(settled){LastOffline=report;WriteEncoded(Encode(result));}
+                }
                 return result;
             }
             // 配置删除导致的非法技能/天赋引用也进入备份恢复和自动重置，不能让旧账号启动时直接抛错。
@@ -104,7 +117,8 @@ public sealed class SaveStore(string path)
     }
     public void Save(GameSession game,int speed=1,bool paused=false,int viewMode=0,int selectedRegion=-1)
     {
-        WriteEncoded(Encode(new SaveDocument {Session=game.CaptureProgress(),Legacy=legacy.Copy(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion}));
+        var snapshot=game.CaptureProgress();snapshot.SavedAtUnix=DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        WriteEncoded(Encode(new SaveDocument {Session=snapshot,Legacy=legacy.Copy(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion}));
     }
     /// <summary>当前文件的迁移隔离区副本（只读用途：UI 说明与回归断言）。</summary>
     public LegacyQuarantine Legacy=>legacy.Copy();

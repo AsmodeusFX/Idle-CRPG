@@ -10,7 +10,7 @@ public static class SkillPreviewChecks
         var config=Config.Load(Path.Combine(root,"Idle-CRPG/config"));int cases=0;
         // M7 的 15 个 skill_XX 保持退役；48 个稳定天赋节点（含未绑定 skill_id 的旧主动）仍是正式内容。
         if(config.Skills.Skills.Keys.Any(id=>id.StartsWith("skill_")))throw new Exception("退役 skill_XX 仍混入正式配置/预览");
-        if(config.Talents.Nodes.Count!=61||config.Talents.Nodes.Values.Count(n=>n.Kind=="active")!=39)throw new Exception("正式节点/主动数量错误");
+        if(config.Talents.Nodes.Count!=66||config.Talents.Nodes.Values.Count(n=>n.Kind=="active")!=39)throw new Exception("正式节点/主动数量错误");
         // 只在QA目录验证：引用已删 skill_XX 且主备份均不兼容时自动重置，设置不受影响。
         {
             var directory=Path.Combine(root,"artifacts/qa/retired-save-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);

@@ -127,6 +127,13 @@ public sealed record TalentPolicyRule
     public List<SkillEquipRule>? Equip { get; init; }
 }
 
+/// <summary>玩家手动升级策略：none/greedy（按最便宜可升级英雄逐次点击，代表显式玩家决策）。</summary>
+public sealed record UpgradePolicyRule
+{
+    public string Mode { get; init; } = "none";
+    public int IntervalSeconds { get; init; } = 60;
+}
+
 /// <summary>可疑停滞观察器参数；默认 600 游戏秒仅作为嫌疑触发条件。</summary>
 public sealed record DiagnosticsRule
 {
@@ -142,6 +149,7 @@ public sealed record PlayerPolicyRule
     public StarPolicyRule? Starmap { get; init; }
     public PartyPolicyRule? Party { get; init; }
     public TalentPolicyRule? Talents { get; init; }
+    public UpgradePolicyRule? Upgrade { get; init; }
     public DiagnosticsRule? Diagnostics { get; init; }
 }
 
@@ -162,6 +170,8 @@ public sealed record SimulationPolicy
     public int TalentIntervalSeconds { get; init; }
     public IReadOnlyList<TalentLearnRule> TalentLearn { get; init; } = Array.Empty<TalentLearnRule>();
     public IReadOnlyList<SkillEquipRule> SkillEquip { get; init; } = Array.Empty<SkillEquipRule>();
+    public string UpgradeMode { get; init; } = "none";
+    public int UpgradeIntervalSeconds { get; init; }
     public int StallWindowSeconds { get; init; } = 600;
     public int RecheckSeconds { get; init; } = 300;
     public int MaxAlerts { get; init; } = 5;
@@ -189,7 +199,9 @@ public sealed record SimulationPolicy
                 PartyMode = a.AutoPartyManagement ? "legacy" : "none",
                 PartyIntervalSeconds = CheckInterval(cfg.ActionCheckIntervalSeconds, "action_check_interval_seconds"),
                 TalentMode = a.AutoHeroGrowth ? "legacy" : "none",
-                TalentIntervalSeconds = CheckInterval(cfg.ActionCheckIntervalSeconds, "action_check_interval_seconds")
+                TalentIntervalSeconds = CheckInterval(cfg.ActionCheckIntervalSeconds, "action_check_interval_seconds"),
+                UpgradeMode = "none",
+                UpgradeIntervalSeconds = CheckInterval(cfg.ActionCheckIntervalSeconds, "action_check_interval_seconds")
             };
         }
         if (cfg.PlayerPolicy == null) throw new ArgumentException("版本 2 场景必须提供 player_policy");
@@ -199,10 +211,12 @@ public sealed record SimulationPolicy
         var star = p.Starmap ?? new StarPolicyRule();
         var party = p.Party ?? new PartyPolicyRule();
         var talents = p.Talents ?? new TalentPolicyRule();
+        var upgrade = p.Upgrade ?? new UpgradePolicyRule();
         var diagnostics = p.Diagnostics ?? new DiagnosticsRule();
         if (!Modes.Contains(star.Mode)) throw new ArgumentException("未知星图策略：" + star.Mode);
         if (!Modes.Contains(party.Mode)) throw new ArgumentException("未知编队策略：" + party.Mode);
         if (!Modes.Contains(talents.Mode)) throw new ArgumentException("未知天赋策略：" + talents.Mode);
+        if (upgrade.Mode is not ("none" or "greedy")) throw new ArgumentException("未知升级策略：" + upgrade.Mode);
         if (castle.MaxRequests < 0) throw new ArgumentException("castle.max_requests 不能为负");
 
         IReadOnlyList<StarStepRule> starNodes = Array.Empty<StarStepRule>();
@@ -277,6 +291,8 @@ public sealed record SimulationPolicy
             TalentIntervalSeconds = CheckInterval(talents.IntervalSeconds, "talents.interval_seconds"),
             TalentLearn = learn,
             SkillEquip = equip,
+                UpgradeMode = upgrade.Mode,
+                UpgradeIntervalSeconds = CheckInterval(upgrade.IntervalSeconds, "upgrade.interval_seconds"),
             StallWindowSeconds = CheckWindow(diagnostics.StallWindowSeconds, "diagnostics.stall_window_seconds"),
             RecheckSeconds = CheckInterval(diagnostics.RecheckSeconds, "diagnostics.recheck_seconds"),
             MaxAlerts = Math.Clamp(diagnostics.MaxAlerts, 1, 50)

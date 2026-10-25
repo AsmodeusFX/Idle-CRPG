@@ -1,0 +1,7 @@
+id,slot,attr,base_value,per_level,name
+eq_weapon,weapon,atk,6,1.4,武器
+eq_helm,helm,hp,18,3.2,头盔
+eq_chest,chest,hp,30,5.0,胸甲
+eq_gloves,gloves,atk,4,0.9,手套
+eq_boots,boots,hp,14,2.4,长靴
+eq_ring,ring,atk,3,0.7,指环
