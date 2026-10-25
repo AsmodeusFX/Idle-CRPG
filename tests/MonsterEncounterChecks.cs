@@ -48,7 +48,7 @@ public static class MonsterEncounterChecks
             return game;
         }
         foreach(string scene in new[]{"T01","T02","T03","T04"})
-        foreach(var party in new[]{new[]{"warrior"},new[]{"mage"},new[]{"warrior","mage"},config.Heroes.Select(x=>x.Id).ToArray()})
+        foreach(var party in new[]{new[]{"warrior"},new[]{"mage"},new[]{"warrior","mage"},config.Heroes.Take(4).Select(x=>x.Id).ToArray(),new[]{"necromancer"}})
         {
             var game=Create(scene,785,party);var room=game.Floor.Rooms[game.CurrentRoom];
             Need(room.Monsters.Count==(scene=="T02"?12:scene=="T03"?3:8),"房间数量");

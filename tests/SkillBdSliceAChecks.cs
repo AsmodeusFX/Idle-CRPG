@@ -52,7 +52,7 @@ public static class SkillBdSliceAChecks
                 for(int t=0;t<20;t++){g.Tick(.05f);copy.Tick(.05f);}
                 Need(Encode(g)==Encode(copy),"多弹道完整快照续行不一致");
                 Need(g.HitCount-hits==arrows.Length,"同一目标应允许被同次施法的每支箭命中一次");
-                Need(Math.Abs(before-victim.Hp-10*node.Value*arrows.Length)<.01,"在途升级/加攻击改变了旧箭伤害或单箭重复命中");
+                Need(Math.Abs(before-victim.Hp-10*node.Value*arrows.Length*Math.Clamp(Math.Pow(arrows[0].Snapshot.AttackRating/g.DefenseRating(victim),c.Progression.RatingExponent),c.Progression.RatingMinimum,c.Progression.RatingMaximum))<.01,"在途升级/加攻击改变了旧箭伤害或单箭重复命中");
                 Need(g.LastDamage?.OriginCast==arrows[0].OriginCast,"伤害事实未继承箭矢施法来源");
             }
             else

@@ -156,6 +156,7 @@ public partial class Main : Node2D
         string? bdSkillCapture=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--capture-bd-skill="));
         if(capture&&bdSkillCapture!=null)PrepareSkillBdSkillCapture(bdSkillCapture.Substring("--capture-bd-skill=".Length));
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
+        if(OS.GetCmdlineUserArgs().Contains("--first-batch-smoke"))RunFirstBatchSmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
     }
@@ -163,9 +164,10 @@ public partial class Main : Node2D
     private void Start()
     {
         if(!int.TryParse(seed.Text,out int value)) { summary.Text="Seed 请输入有效整数。"; return; }
-        var ids=config.Heroes.Where((_,i)=>choices[i].ButtonPressed).Select(h=>h.Id).ToArray();
-        if(ids.Length!=1) {summary.Text="请选择一位初始英雄。";return;}
-        session=GameSession.CreateNewWorld(config,value,ids.Single()); paused=false; accumulator=0; pause.Text="暂停";
+        if(progressReadBlocked){summary.Text="旧档已保留，请先处理迁移提示或在设置明确清除所有进度";return;}
+        var ids=config.Heroes.SelectMany((h,i)=>Enumerable.Repeat(h.Id,(int)partyCounts[i].Value)).ToArray();
+        if(ids.Length is <1 or >4) {summary.Text="请选择1–4名英雄，允许重复职业；本轮确认后锁定。";return;}
+        session=GameSession.StartRun(config,value,ids,pendingAccount); paused=false; accumulator=0; pause.Text="暂停";
         cameraReady=false;
         UpdatePartyControls();ResetSoundBaseline();SaveNow();PlaySound("sfx_reward");
         Refresh(); QueueRedraw();

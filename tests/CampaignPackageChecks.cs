@@ -42,7 +42,7 @@ public static class CampaignPackageChecks
         {
             if(tick%50==0)
             {
-                var map=run.Config;foreach(var castle in map.Dungeons.Where(d=>d.Castle&&!map.Optional(d.Id)&&!run.World!.Progress.Cleared.Contains(d.Id)&&run.World.Progress.CastleUnlocked(map,d.Id)))run.RequestCastleChallenge(castle.Id);
+                var map=run.Config;foreach(var castle in map.Dungeons.Where(d=>d.Castle&&!map.Optional(d.Id)&&!run.World!.Progress.Cleared.Contains(d.Id)&&run.World.Progress.CastleUnlocked(map,d.Id)))TestPlayerActions.RequestCastle(run,castle.Id);
             }
             run.Tick(.05f);
             if(run.LatestMapIndex==14&&run.Config.MainCleared(run.World!.Progress))break;

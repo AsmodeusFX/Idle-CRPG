@@ -16,7 +16,7 @@ public sealed partial class Config
     private void LoadLevels(string root)
     {
         CsvTable Table(string relative,params string[] columns){string path=Path.Combine(root,relative);return CsvTable.Load(path,File.ReadAllText(path),columns);}
-        LoadExperienceRates(root);
+        Progression=PrototypeProgression.Load(root);
         var heroes=new Dictionary<int,HeroLevelDefinition>();
         foreach(var r in Table("hero/herolevel.csv","id","exp","attack_bonus","hp_bonus").Rows)
         {

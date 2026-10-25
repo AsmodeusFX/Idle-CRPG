@@ -19,7 +19,7 @@ public static class RoomEntryChecks
         void Tick(GameSession g,int n=1){for(int i=0;i<n;i++)g.Tick(.05f);}
         GameSession Entered(int party=0)
         {
-            var ids=(party<=0?c.Heroes:c.Heroes.Take(party)).Select(h=>h.Id).ToArray();
+            var ids=(party<=0?c.Heroes.Take(4):c.Heroes.Take(party)).Select(h=>h.Id).ToArray();
             var g=new GameSession(c,785,ids);
             for(int t=0;t<10000&&g.CurrentRoom==0;t++)g.Tick(.05f);
             return g;
@@ -161,7 +161,7 @@ public static class RoomEntryChecks
             int seed=20261023;
             for(int attempt=0;attempt<6&&seen.Count<4;attempt++)
             {
-                var g=new GameSession(c,seed+attempt,c.Heroes.Select(h=>h.Id));
+                var g=new GameSession(c,seed+attempt,c.Heroes.Take(4).Select(h=>h.Id));
                 int last=g.CurrentRoom;
                 for(int t=0;t<200000&&seen.Count<4;t++)
                 {
@@ -186,7 +186,7 @@ public static class RoomEntryChecks
             // 相同 seed 的出生随机不得因避让重试变得不确定。
             string Spawn(int s)
             {
-                var g=new GameSession(c,s,c.Heroes.Select(h=>h.Id));
+                var g=new GameSession(c,s,c.Heroes.Take(4).Select(h=>h.Id));
                 for(int t=0;t<20000&&g.CurrentRoom==0;t++)g.Tick(.05f);
                 return string.Join(";",g.Floor.Rooms[g.CurrentRoom].Monsters.Select(m=>$"{m.SpecId}:{m.Position.X:F4},{m.Position.Y:F4}"));
             }

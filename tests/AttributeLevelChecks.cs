@@ -19,7 +19,7 @@ public static class AttributeLevelChecks
         var hp=game.Heroes.Select(h=>h.MaxHp).ToArray();var attack=game.Heroes.Select(h=>h.Attack).ToArray();var armor=game.Heroes.Select(h=>h.Defense).ToArray();
         game.Heroes[0].Hp-=10;game.Heroes[1].Hp=0;
         game.GrantGmResources(experience:config.HeroLevels[1].Experience-1);Check(game.Heroes[0].Level==1,"未达到表中经验就升级");
-        game.GrantGmResources(experience:1);
+        game.GrantGmResources(experience:1+2*config.HeroLevels[1].Experience);foreach(var h in game.Heroes)Check(game.UpgradeHero(h.HeroInstanceId,out _),"手动单级升级");
         for(int i=0;i<3;i++)Check(game.Heroes[i].Level==2&&game.Heroes[i].Attack==attack[i]+4&&game.Heroes[i].MaxHp==hp[i]+18&&game.Heroes[i].Defense==armor[i],"英雄升级不只改变 ATK/HP 或表值错误");
         Check(game.Heroes[0].Hp==hp[0]+8&&game.Heroes[1].Hp==0,"升级治疗不是原有增量规则，或复活了阵亡队员");
         var restored=GameSession.Restore(config,SaveStore.Decode(config,SaveStore.Encode(new(){Session=game.CaptureProgress()})).Session!);
@@ -35,7 +35,7 @@ public static class AttributeLevelChecks
         foreach(var file in Directory.EnumerateFiles(source,"*",SearchOption.AllDirectories))
         {string target=Path.Combine(qa,Path.GetRelativePath(source,file));Directory.CreateDirectory(Path.GetDirectoryName(target)!);File.Copy(file,target);}
         string heroFile=Path.Combine(qa,"hero/herolevel.csv");var heroLines=File.ReadAllLines(heroFile);File.WriteAllLines(heroFile,heroLines.Take(4));
-        var capped=LegacySkillConfig.LoadLegacy(qa);var cappedGame=GameSession.CreateWorld(capped,1,new[]{"warrior","ranger","mage"});cappedGame.GrantGmResources(experience:10000);
+        var capped=LegacySkillConfig.LoadLegacy(qa);var cappedGame=GameSession.CreateWorld(capped,1,new[]{"warrior","ranger","mage"});cappedGame.GrantGmResources(experience:10000);TestPlayerActions.UpgradeWithClicks(cappedGame);
         Check(capped.MaxHeroLevel==3&&cappedGame.Heroes.All(h=>h.Level==3)&&cappedGame.Heroes[0].Attack==capped.Heroes[0].Attack+8,"英雄表尾没有作为上限");
         File.WriteAllLines(heroFile,new[]{heroLines[0],heroLines[1],heroLines[3]});
         rejected=false;try{LegacySkillConfig.LoadLegacy(qa);}catch(CsvConfigurationException){rejected=true;}Check(rejected,"等级缺行未拒绝");File.WriteAllLines(heroFile,heroLines);

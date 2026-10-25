@@ -37,10 +37,13 @@ public partial class Main
     private void OpenFormation(int slot)
     {
         if(session==null){heroNotice.DialogText="请先开始远征。";heroNotice.PopupCentered();return;}
+        heroNotice.DialogText="本轮队伍已锁定。更换队伍请在设置中选择放弃本轮并重新选队；账号保留。";heroNotice.PopupCentered();return;
+#pragma warning disable CS0162
         var ids=session.PendingFormation.Count>0?session.PendingFormation.ToArray():session.Heroes.Select(h=>h.SpecId).ToArray();
         for(int i=0;i<5;i++)formationDraft[i]=i<ids.Length?ids[i]:"";
         formationSeatChosen=false;formationSelected=Math.Clamp(slot,0,4);formationRoot.Show();formationRoot.MoveToFront();RefreshFormationDraft();
     }
+#pragma warning restore CS0162
     private void RefreshFormationDraft()
     {
         foreach(var child in formationSeats.GetChildren()){formationSeats.RemoveChild(child);child.QueueFree();}

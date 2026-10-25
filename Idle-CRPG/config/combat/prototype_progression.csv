@@ -1,0 +1,9 @@
+id,value,status
+hero_rating_base,10,H
+hero_rating_per_level,10,H
+monster_rating_per_level,10,H
+rating_exponent,1.5,H
+rating_minimum,0.4,H
+rating_maximum,1.5,H
+kill_kp,1,H
+lmax_cost,10,H

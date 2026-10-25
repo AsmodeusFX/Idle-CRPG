@@ -22,7 +22,7 @@ public partial class Main
             session.World.Progress.Cleared.Remove("A01-C01");RefreshWorldPage();Check(!session.World.Progress.AreaPartUnlocked(config,"ap4"),"AND未满足仍开放");
             config=Config.Load(ProjectSettings.GlobalizePath("res://config"));session=GameSession.CreateWorld(config,963,new[]{"warrior","ranger","mage"});
             session.World!.Progress.Cleared.UnionWith(config.Dungeons.Where(d=>!d.Castle&&config.Rulers[d.RegionId]=="A01-C01").Select(d=>d.Id));
-            Check(session.RequestCastleChallenge("A01-C01"),"测试要塞请求");
+            SeedQaLmax(session.CastleRequiredMonsterLevel("A01-C01"));Check(session.RequestCastleChallenge("A01-C01"),"测试要塞请求");
             for(int fail=0;fail<2;fail++)
             {
                 for(int i=0;i<20000&&session.World.Stage!=CampaignStage.Dungeon;i++)session.Tick(.05f);

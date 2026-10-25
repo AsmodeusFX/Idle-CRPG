@@ -108,11 +108,11 @@ public static class Act1Checks
         }
         void Wipe(GameSession g){foreach(var h in g.Heroes)h.Hp=0;g.Tick(.05f);Check(g.World!.Stage==CampaignStage.Village,"全灭未返村");}
         var retry=GameSession.CreateWorld(c,12,new[]{"warrior","ranger","mage"});retry.World!.Progress.Cleared.UnionWith(c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]=="A01-C01").Select(d=>d.Id));
-        Check(retry.RequestCastleChallenge("A01-C01"),"手动要塞请求");Enter(retry,"A01-C01");Wipe(retry);retry=Trade(retry);Enter(retry,"A01-C01");Wipe(retry);retry=Trade(retry);
+        Check(TestPlayerActions.RequestCastle(retry,"A01-C01"),"手动要塞请求");Enter(retry,"A01-C01");Wipe(retry);retry=Trade(retry);Enter(retry,"A01-C01");Wipe(retry);retry=Trade(retry);
         Check(retry.World!.Target.Farming&&c.Challenge(retry.World.Target.Dungeon.Id,0).Challenge==1&&retry.World.IsCastleRetry("A01-C01"),"2次失败未匹配等级回刷/刷新要塞重试");
         retry=Copy(retry);foreach(var h in retry.Heroes)h.Level=2;retry=Trade(retry);
         Check(!retry.World!.Target.Dungeon.Castle&&c.Challenge(retry.World.Target.Dungeon.Id,0).Challenge==2,"升级后自动重试了要塞或未选择最高匹配复刷");
-        Check(retry.RequestCastleChallenge("A01-C01")&&!retry.World.IsCastleRetry("A01-C01"),"再次挑战无法由玩家授权");
+        Check(TestPlayerActions.RequestCastle(retry,"A01-C01")&&!retry.World.IsCastleRetry("A01-C01"),"再次挑战无法由玩家授权");
         var normal=GameSession.CreateWorld(c,13,new[]{"warrior","ranger","mage"});normal.World!.Progress.Cleared.UnionWith(c.Dungeons.Where(d=>c.Challenge(d.Id,0).Challenge<7).Select(d=>d.Id));
         normal=Trade(normal);Check(normal.World!.Target.Dungeon.Id=="A04-D04","普通地牢全局ChallengeLevel排序");Enter(normal,"A04-D04");Wipe(normal);normal=Trade(normal);Enter(normal,"A04-D04");Wipe(normal);normal=Trade(normal);
         Check(normal.World!.Target.Farming,"普通地牢失败未回刷");foreach(var h in normal.Heroes)h.Level=2;normal=Trade(normal);Check(normal.World!.Target.Dungeon.Id=="A04-D04"&&!normal.World.Target.Farming,"小队等级变化未重试失败普通地牢");
@@ -124,14 +124,14 @@ public static class Act1Checks
             if(tick%50==0)
             {
                 var ready=c.Dungeons.FirstOrDefault(d=>d.Castle&&!c.Optional(d.Id)&&!run.World!.Progress.Cleared.Contains(d.Id)&&run.World.Progress.CastleUnlocked(c,d.Id));
-                if(ready!=null)run.RequestCastleChallenge(ready.Id);
+                if(ready!=null)TestPlayerActions.RequestCastle(run,ready.Id);
             }
             run.Tick(.05f);
             if(run.ActiveDungeon?.Id=="A08-C01")foreach(var monster in run.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters).Where(m=>m.Name.Contains("安达利尔")))if(seen.Add(monster))andarielSpawns++;
             Check(!run.World!.Progress.Cleared.Contains("A03-C01"),"支线被自动攻略");
         }
         Check(run.LatestMapIndex==1&&run.ChapterIndex==1&&run.MapProgress(0,0).Cleared.Count==40&&andarielSpawns==1,"主线真实通关或唯一安达利尔/支线非阻断失败");
-        Check(run.RequestBranchChallenge(0,0,"A03-C01"),"旧章支线不能授权");run=Trade(run);Check(run.ActiveBranch!=null&&run.ChapterIndex==0&&run.LatestMapIndex==1,"支线未传送到原章");
+        Check(TestPlayerActions.RequestBranch(run,0,0,"A03-C01"),"旧章支线不能授权");run=Trade(run);Check(run.ActiveBranch!=null&&run.ChapterIndex==0&&run.LatestMapIndex==1,"支线未传送到原章");
         var oldBranch=run.CaptureProgress();oldBranch.SuspendedWorld!.TownLayoutVersion=0;
         oldBranch.SuspendedWorld.VillagePaths[run.Heroes[0].SpecId]=new(){new(23,10),new(18,5)};
         var branchPositions=run.Heroes.Select(h=>h.Position).ToArray();
@@ -141,7 +141,7 @@ public static class Act1Checks
         for(int i=0;i<200000&&run.ActiveBranch!=null;i++)run.Tick(.05f);
         Check(run.ActiveBranch==null&&run.ChapterIndex==1&&run.LatestMapIndex==1&&run.MapProgress(0,0).Cleared.Contains("A03-C01"),"支线未真实完成并返回最新章");
         var recovered=Copy(run);Check(recovered.MapProgress(0,0).Cleared.Count==41,"跨章支线进度读档丢失");
-        var store=new SaveStore(Path.Combine(root,"artifacts/qa/act1-reset/progress.json"));store.Reset();File.WriteAllText(store.PathName,"{bad");File.WriteAllText(store.PathName+".bak","{bad");Check(store.Load(c)?.Session==null&&store.RecoveryReset&&store.LastWarning!=null,"损坏主备份未提示自动重置");store.Reset();
+        var store=new SaveStore(Path.Combine(root,"artifacts/qa/act1-reset/progress.json"));store.Reset();File.WriteAllText(store.PathName,"{bad");File.WriteAllText(store.PathName+".bak","{bad");bool migrationBlocked=false;try{store.Load(c);}catch(MigrationRequiredException){migrationBlocked=true;}Check(migrationBlocked&&!store.RecoveryReset&&File.ReadAllText(store.PathName)=="{bad"&&File.ReadAllText(store.PathName+".bak")=="{bad","损坏主备份应保留并提示迁移，不能自动重置");store.Reset();
         Console.WriteLine("PASS: production Act1 8x8 topology, 41 POIs, 8 gates and single central town");
         Console.WriteLine("PASS: V0.5 207 floor budgets, AND/OR, manual castles, 2-failure recovery, level-based retry, actual 40-POI main plus optional dungeon clear, cross-chapter branch return, unique Andariel, town heal/sell/exit, portal stages and reset notice");
     }

@@ -19,6 +19,8 @@ public partial class Main
     private SettingsStore settingsStore=null!;
     private SaveStore saveStore=null!;
     private bool automation,closing;
+    private bool progressReadBlocked;
+    private AccountState pendingAccount=new();
     private bool quitRequested;
     private double sinceSave,settingsDelay;
     private long savedRevision=-1;
@@ -40,7 +42,7 @@ public partial class Main
     private void InitializeClient()
     {
         var args=OS.GetCmdlineUserArgs();bool reopen=args.Contains("--persistence-write")||args.Contains("--persistence-read");
-        automation=args.Contains("--smoke-test")||args.Contains("--capture")||args.Contains("--performance-test")||reopen;
+        automation=args.Contains("--first-batch-smoke")||args.Contains("--smoke-test")||args.Contains("--capture")||args.Contains("--performance-test")||reopen;
         string directory=automation?ProjectSettings.GlobalizePath("res://../artifacts/qa/"+(reopen?"reopen":Guid.NewGuid().ToString("N"))):ProjectSettings.GlobalizePath("user://");
         saveStore=new SaveStore(Path.Combine(directory,"progress_v1.json"));settingsStore=new SettingsStore(Path.Combine(directory,"settings.json"));
         preferences=settingsStore.Load();
@@ -51,7 +53,10 @@ public partial class Main
     }
     private void ResumeProgress()
     {
-        var document=saveStore.Load(config);
+        SaveDocument? document;
+        try{document=saveStore.Load(config);}
+        catch(MigrationRequiredException e){progressReadBlocked=true;start.Disabled=true;help.Text=e.Message;var notice=new AcceptDialog {Title="旧档已保留 · 需确认迁移",DialogText=e.Message};AddChild(notice);notice.PopupCentered(new Vector2I(680,240));return;}
+        pendingAccount=document?.Account.Copy()??new();
         if(document?.Session!=null)
         {
             session=GameSession.Restore(config,document.Session);config=session.Config;OpenCurrentChapter();speed=document.Speed;paused=document.Paused;viewMode=0;selectedRegion=document.SelectedRegion;
@@ -67,10 +72,11 @@ public partial class Main
     private void UpdatePartyControls()
     {
         partySetup.Visible=session==null;RefreshHud();RefreshCastleInteractions();
-        start.Visible=session==null;seed.Editable=session==null;
+        start.Visible=session==null;start.Disabled=progressReadBlocked;seed.Editable=session==null;
         for(int i=0;i<choices.Length;i++)
         {
             choices[i].Disabled=session!=null||config.HeroUnlockKills[config.Heroes[i].Id]>0;
+            partyCounts[i].Editable=!choices[i].Disabled;
             if(session!=null)choices[i].SetPressedNoSignal(session.Heroes.Any(h=>h.SpecId==config.Heroes[i].Id));
         }
         pause.Text=paused?"继续":"暂停";rateButton.Text=$"速度 ×{speed}";
@@ -156,7 +162,9 @@ public partial class Main
         soundSlider=new HSlider {MinValue=0,MaxValue=100,Step=1};soundSlider.ValueChanged+=value=>{preferences.SoundVolume=(float)value;ApplyAudio();RefreshVolumeText();QueueSettingsSave();};soundSlider.DragEnded+=_=>PlaySound("sfx_click");box.AddChild(soundSlider);
         box.AddChild(new HSeparator());saveStatus=new Label {Text="进度自动保存 · 下次打开自动继续"};box.AddChild(saveStatus);
         box.AddChild(new Label {Text="重置会清除队伍成长、星图、金币、背包与世界进度。\n窗口和音量设置保留。",AutowrapMode=TextServer.AutowrapMode.WordSmart});
-        var reset=new Button {Text="重置进度",CustomMinimumSize=new Vector2(0,42)};reset.AddThemeColorOverride("font_color",new Color("e89a91"));reset.Pressed+=RequestReset;box.AddChild(reset);
+        var abandon=new Button {Text="放弃本轮并重新选队（保留账号）",CustomMinimumSize=new Vector2(0,42)};
+        abandon.Pressed+=()=>{if(session==null)return;var dialog=new ConfirmationDialog {Title="确认放弃本轮",DialogText="清除本轮等级、XP、KP、星图和地图进度；账号永久状态保留，不发重生奖励。"};AddChild(dialog);dialog.Confirmed+=AbandonCurrentRun;dialog.PopupCentered(new Vector2I(580,210));};box.AddChild(abandon);
+        var reset=new Button {Text="清除所有进度",CustomMinimumSize=new Vector2(0,42)};reset.AddThemeColorOverride("font_color",new Color("e89a91"));reset.Pressed+=RequestReset;box.AddChild(reset);
         resetConfirmation=new ConfirmationDialog {Title="确认重置进度",DialogText="确定清除全部游戏进度吗？\n角色成长、星图加点、金币、背包、探索与占领进度都会清除。\n此操作无法撤销，画面和音量设置不受影响。",OkButtonText="确认重置",CancelButtonText="取消",Exclusive=true};AddChild(resetConfirmation);
         resetConfirmation.Confirmed+=ResetProgress;
     }
@@ -182,9 +190,22 @@ public partial class Main
         forceProgressSave=false;
         try {saveStore.Reset();}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException) {help.Text="重置失败，原进度保留："+e.Message;return;}
+        pendingAccount=new();progressReadBlocked=false;
         session=null;formationRoot.Hide();talentEditor.Hide();foreach(var choice in choices)choice.SetPressedNoSignal(false);choices[0].SetPressedNoSignal(true);paused=false;speed=1;accumulator=0;sinceSave=0;savedRevision=-1;viewMode=0;selectedRegion=-1;
+        for(int i=0;i<partyCounts.Length;i++)partyCounts[i].Value=i==0?1:0;
         UpdatePartyControls();ResetSoundBaseline();settingsRoot.Hide();
         summary.Text="进度已重置，请选择一位英雄开始远征。";roster.Text="";journal.Text="";help.Text="世界无遭遇战 · 通关后必先回村交易 · 无新目标时自动复刷";PlaySound("sfx_reward");QueueRedraw();
+    }
+    private void AbandonCurrentRun()
+    {
+        if(session==null)return;FinishProgressWrite();
+        var account=session.AbandonRun();
+        try{saveStore.WriteEncoded(SaveStore.Encode(new SaveDocument {Account=account,Run=null}));}
+        catch(Exception e) when(e is IOException or UnauthorizedAccessException){help.Text="放弃失败，原轮次保留："+e.Message;return;}
+        pendingAccount=account;session=null;forceProgressSave=false;savedRevision=-1;viewMode=0;paused=false;accumulator=0;
+        config=config.ChapterMaps[0];OpenCurrentChapter();formationRoot.Hide();talentEditor.Hide();settingsRoot.Hide();
+        for(int i=0;i<partyCounts.Length;i++)partyCounts[i].Value=i==0?1:0;
+        UpdatePartyControls();ResetSoundBaseline();Refresh();help.Text="已放弃本轮，账号保留，请重新选队。";
     }
     private void RefreshVolumeText() {musicValue.Text=$"{preferences.MusicVolume:0}%";soundValue.Text=$"{preferences.SoundVolume:0}%";}
     private void QueueSettingsSave() {settingsDirty=true;settingsDelay=.5;}

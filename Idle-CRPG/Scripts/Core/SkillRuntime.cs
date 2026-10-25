@@ -23,7 +23,7 @@ public sealed partial class GameSession
     /// <summary>显式装备技能的会话命令；默认职业没有主动技能，迁移不会自动投放这 15 项内容。</summary>
     public void EquipSkills(string heroId,IEnumerable<string> skillIds)
     {
-        var hero=Heroes.Single(h=>h.SpecId==heroId);var ids=skillIds.ToArray();
+        var hero=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");var ids=skillIds.ToArray();
         if(hero.SkillIds.Any(Config.Talents.Nodes.ContainsKey)||ids.Any(Config.Talents.Nodes.ContainsKey)){if(!SetTalentLoadout(heroId,ids,out var reason))throw new ArgumentException(reason);return;}
         if(ids.Distinct().Count()!=ids.Length||ids.Any(id=>!SkillConfig.Skills.TryGetValue(id,out var s)||s.Kind!="ActiveSkill"))throw new ArgumentException("技能引用重复或不是主动技能");
         hero.SkillIds=ids;PruneSummons();PruneAuraActivations();ResetSkillRoom();MarkChanged();
@@ -80,7 +80,7 @@ public sealed partial class GameSession
         }
         return result;
     }
-    private SkillAttackSnapshot AttackSnapshot(Actor actor)=>new(){Attack=EffectiveValue(actor,"atk",actor.Attack),Level=actor.Level,Attributes=EffectiveAttributes(actor)};
+    private SkillAttackSnapshot AttackSnapshot(Actor actor)=>new(){Attack=EffectiveValue(actor,"atk",actor.Attack),AttackRating=AttackRating(actor),Level=actor.Level,Attributes=EffectiveAttributes(actor)};
     /// <summary>包含临时 Buff 的有效生命上限；临时增加上限不自动治疗。</summary>
     public float CombatMaximumHp(Actor actor)
     {
@@ -114,7 +114,7 @@ public sealed partial class GameSession
         }
         if(powerBonus!=0)attributes.Modifiers.Add(new(DamageBucket.Power,powerBonus));
         if(!double.IsFinite(baseScale)||baseScale<0)throw new InvalidDataException("伤害本体比例无效");
-        var input=new DamageInput(skill,snapshot.Attack*(friendly?1:Gm.MonsterAttack)*baseScale,EffectiveValue(target,"armor",target.Defense),coefficient,type,ranged,target.Boss,attributes,EffectiveAttributes(target),debuffs,snapshot.Level,portions);
+        var input=new DamageInput(skill,snapshot.Attack*(friendly?1:Gm.MonsterAttack)*baseScale,EffectiveValue(target,"armor",target.Defense),coefficient,type,ranged,target.Boss,attributes,EffectiveAttributes(target),debuffs,snapshot.Level,portions,snapshot.AttackRating,DefenseRating(target));
         var result=DamagePipeline.Resolve(input,Config.CombatRules,combatRandom,critical) with {OriginCast=originCast};LastDamage=result;HitCount++;
         double amount=result.FinalDamage/(friendly?Gm.MonsterHp:1);
         if(!friendly&&Gm.Invincible)amount=0;
@@ -133,7 +133,7 @@ public sealed partial class GameSession
         }
         if(killed&&Floor.Rooms[CurrentRoom].Monsters.Contains(target))
         {
-            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);var loot=RollDrops(target);
+            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);GainKillKp(target);var loot=RollDrops(target);
             if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
             RecordCorpse(target);
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}

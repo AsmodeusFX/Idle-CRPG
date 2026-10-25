@@ -61,7 +61,7 @@ internal sealed class SimulationRun
     private Vector2[] heroPosBefore = Array.Empty<Vector2>();
     private string heroSignature = "";
     private int lastKills, lastRetries, lastTrades, lastChapter = -1;
-    private long lastGold, lastHitCount;
+    private long lastGold, lastHitCount,lastPublicXp;
     private string lastStage = "", lastDungeon = "", castleAttempt = "";
     private int lastFloor = -1, lastRoom = -1;
     private readonly Dictionary<Actor, bool> monsterAlive = new();
@@ -85,8 +85,9 @@ internal sealed class SimulationRun
 
     // 对账与计数
     private long goldIn, goldOut, goldUnattributed;
-    private int xpTicksVerified, xpTicksLevelUp, xpTicksEvent, xpTicksUnexplained;
-    private long xpEarnedVerified, xpEarnedLevelUp, xpEarnedUnexplained;
+    /// <summary>公共XP由玩家点击消费，模拟策略本批不含升级动作，故等级不再随击杀变化（level_up_ticks 恒 0）。</summary>
+    private int xpTicksVerified, xpTicksEvent, xpTicksUnexplained;
+    private long xpEarnedVerified, xpEarnedUnexplained;
     private int castlesWon, wipes, trades;
     private long[] levelPrefix = Array.Empty<long>();
     private long heapPeakBytes;
@@ -134,7 +135,7 @@ internal sealed class SimulationRun
 
     private void CaptureBefore()
     {
-        EnsureHeroArrays();
+        EnsureHeroArrays();lastPublicXp=game.PublicExperience;
         for (int i = 0; i < game.Heroes.Count; i++)
         {
             var hero = game.Heroes[i];
@@ -303,41 +304,14 @@ internal sealed class SimulationRun
     /// <summary>经验对账：累计经验按“升级门槛前缀 + 当前经验”求增量，逐 Tick 与击杀/事件基础值核对。</summary>
     private void ObserveExperience(long tick, List<Actor> killed, long eventXpBasis)
     {
-        if (game.Heroes.Count == 0) return;
-        EnsureHeroArrays();
-        for (int i = 0; i < game.Heroes.Count; i++)
+        long actual=checked((game.PublicExperience-lastPublicXp)*100);
+        long expected=checked((killed.Sum(m=>(long)m.RewardXp)+eventXpBasis)*100);
+        if(actual!=0||expected!=0)
         {
-            var hero = game.Heroes[i];
-            long after = CumulativeHundredths(hero);
-            long actual = after - heroXpCumulative[i];
-            bool levelChanged = hero.Level != heroLevels[i];
-            long expected = 0;
-            if (!levelChanged && (killed.Count > 0 || eventXpBasis > 0))
-            {
-                foreach (var monster in killed) expected += (long)monster.RewardXp * game.Config.MonsterExperiencePercent(hero.Level, monster.Level);
-                if (eventXpBasis > 0 && game.Floors.Count > 0)
-                    expected += eventXpBasis * game.Config.MonsterExperiencePercent(hero.Level, Math.Max(1, game.Floor.Rooms[game.CurrentRoom].SnapshotLevel));
-            }
-            if (levelChanged)
-            {
-                xpTicksLevelUp++; xpEarnedLevelUp += actual;
-                rec.Event(tick, "level_up", hero.SpecId, hero.Level.ToString(CultureInfo.InvariantCulture), $"xp_after={hero.Experience}+{hero.ExperienceFraction}/100", $"hundredths_delta={actual} expected_before_level={expected}");
-            }
-            else if (actual != 0 || expected != 0)
-            {
-                if (actual == expected)
-                {
-                    xpTicksVerified++; xpEarnedVerified += actual;
-                    if (eventXpBasis > 0) xpTicksEvent++;
-                }
-                else
-                {
-                    xpTicksUnexplained++; xpEarnedUnexplained += actual;
-                    rec.Event(tick, "xp_mismatch", hero.SpecId, "unexplained", $"actual={actual} expected={expected}", $"lv={hero.Level} kills={killed.Count} event_basis={eventXpBasis}");
-                }
-            }
-            heroXpCumulative[i] = after; heroLevels[i] = hero.Level;
+            if(actual==expected){xpTicksVerified++;xpEarnedVerified+=actual;if(eventXpBasis>0)xpTicksEvent++;}
+            else {xpTicksUnexplained++;xpEarnedUnexplained+=actual;rec.Event(tick,"xp_mismatch","run_public_pool","unexplained",$"actual={actual} expected={expected}");}
         }
+
     }
 
     // ---------- 玩家策略（每次最多执行一组，避免同 Tick 多动作） ----------
@@ -501,7 +475,7 @@ internal sealed class SimulationRun
         else RecordReject(tick, "party", string.Join('|', requested), reason);
     }
 
-    private Actor? HeroById(string id) => game.Heroes.FirstOrDefault(h => h.SpecId == id);
+    private Actor? HeroById(string id) => game.Heroes.SingleOrDefault(h=>h.HeroInstanceId==id)??(game.Heroes.Count(h=>h.SpecId==id)==1?game.Heroes.Single(h=>h.SpecId==id):null);
 
     private void ExecTalents(long tick)
     {
@@ -627,7 +601,7 @@ internal sealed class SimulationRun
             var hero = game.Heroes.FirstOrDefault(h => h.Alive);
             if (hero != null && !SpatialTolerance.InsideRoom(game.Floor.Rooms[game.CurrentRoom], hero.Position)) tags.Add("hero_outside_room");
         }
-        long xp = 0; foreach (var hero in game.Heroes) xp += CumulativeHundredths(hero);
+        long xp=checked(game.PublicExperience*100+game.PublicExperienceFraction);
         return new SimulationObservation
         {
             Tick = tick,
@@ -719,7 +693,7 @@ internal sealed class SimulationRun
             game.World?.WaitingApproval ?? false, game.Floors.Count > 0 ? game.FloorIndex + 1 : 0, game.CurrentRoom, game.Status);
     }
 
-    private string HeroText() => string.Join('|', game.Heroes.Select(h => $"{h.SpecId}:{h.Level}:{h.Experience}:{h.ExperienceFraction}"));
+    private string HeroText() => string.Join('|', game.Heroes.Select(h => $"{h.SpecId}:{h.Level}:public={game.PublicExperience}:{game.PublicExperienceFraction}"));
 
     private void SyncMirrors()
     {
@@ -755,7 +729,7 @@ internal sealed class SimulationRun
 
         var diagnosticCounts = diag.Alerts.GroupBy(a => a.Classification).ToDictionary(g => g.Key, g => g.Count());
         string ledgerLine = $"in={goldIn} out={goldOut} expected={expected} actual={game.Gold} diff={diff} unattributed={goldUnattributed}";
-        string xpLine = $"verified_ticks={xpTicksVerified} level_up_ticks={xpTicksLevelUp} event_ticks={xpTicksEvent} unexplained_ticks={xpTicksUnexplained} verified_hundredths={xpEarnedVerified} unexplained_hundredths={xpEarnedUnexplained}";
+        string xpLine = $"verified_ticks={xpTicksVerified} level_up_ticks=0 event_ticks={xpTicksEvent} unexplained_ticks={xpTicksUnexplained} verified_hundredths={xpEarnedVerified} unexplained_hundredths={xpEarnedUnexplained}";
         string diagLine = diag.Alerts.Count == 0 ? "none" : string.Join(",", diagnosticCounts.Select(kv => $"{kv.Key}={kv.Value}"));
         string endLine = $"chapter={game.ChapterIndex + 1} stage={game.World?.Stage} gold={game.Gold} kills={game.Kills} retries={game.Retries} cleared={game.World?.Progress.Cleared.Count ?? 0} castles_won={castlesWon} party={game.Heroes.Count} levels={string.Join('/', game.Heroes.Select(h => h.Level))}";
         long bytes = new[] { "snapshots.csv", "events.csv", "ledger.csv", "diagnostics.csv", "metadata.json" }
@@ -817,7 +791,7 @@ internal sealed class SimulationRun
                 trades = trades,
                 kills = game.Kills,
                 xp_verified_ticks = xpTicksVerified,
-                xp_level_up_ticks = xpTicksLevelUp,
+                xp_level_up_ticks = 0,
                 xp_event_ticks = xpTicksEvent,
                 xp_unexplained_ticks = xpTicksUnexplained,
                 xp_verified_hundredths = xpEarnedVerified,

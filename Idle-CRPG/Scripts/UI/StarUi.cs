@@ -111,7 +111,19 @@ public partial class Main
         }
         StarEditorAction(() =>
         {
-            _starStore = new StarEditorStore(starEditorConfigRoot??ProjectSettings.GlobalizePath("res://config"));
+            if(starEditorConfigRoot==null)
+            {
+                string workspace=ProjectSettings.GlobalizePath("res://..");
+                string qa=QaOutput.NewDirectory(workspace,"star-editor");
+                foreach(string relative in new[]{StarConfiguration.ContentPath,StarConfiguration.LayoutPath,StarConfiguration.PlanPath})
+                {
+                    string target=System.IO.Path.Combine(qa,relative);System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(target)!);
+                    string source=System.IO.Path.Combine(ProjectSettings.GlobalizePath("res://config"),relative);
+                    if(System.IO.File.Exists(source))System.IO.File.Copy(source,target);
+                }
+                starEditorConfigRoot=qa;
+            }
+            _starStore = new StarEditorStore(starEditorConfigRoot);
             _starDraft = _starStore.Load(); _starSelected = ""; _editingStars = true; _starMode = "选择";
         });
     }
@@ -216,9 +228,9 @@ public partial class Main
             if (!System.IO.File.Exists(ProjectSettings.GlobalizePath("res://Idle-CRPG.csproj"))) throw new InvalidOperationException("仅源码工程允许保存配置。");
             if(session!=null)session.ValidateStarConfiguration(_starDraft.Validate());
             _starStore.Save(_starDraft, session?.Stars.Capture()??new StarProgressSave(Array.Empty<StarRankSave>()));
-            var configuration = _starDraft.Validate(); if(session!=null)session.ReloadStars(configuration);else config.Stars=configuration;
+            // QA草稿不发布到玩家会话或生产配置；正式发布必须由用户专项授权后走工程修改流程。
             _starDraft = _starStore.Load(); SaveNow();
-            _starMessage = "已保存内容/布局/意图三表，当前会话已刷新。";
+            _starMessage = "已保存QA副本，未发布到生产配置："+starEditorConfigRoot;
         });
     }
 }

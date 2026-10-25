@@ -27,7 +27,7 @@ public sealed class BattleAttributes
 }
 /// <summary>混合伤害权重非负且合计1；同实例共享命中事实，最终只应用一次HP。</summary>
 public record DamagePortion(DamageType Type,double Weight);
-public record DamageInput(string SkillId,double Attack,double Armor,double Coefficient,DamageType Type,bool Ranged,bool Boss,BattleAttributes Attacker,BattleAttributes Defender,IReadOnlySet<string> Debuffs,int AttackerLevel=1,IReadOnlyList<DamagePortion>? Portions=null);
+public record DamageInput(string SkillId,double Attack,double Armor,double Coefficient,DamageType Type,bool Ranged,bool Boss,BattleAttributes Attacker,BattleAttributes Defender,IReadOnlySet<string> Debuffs,int AttackerLevel=1,IReadOnlyList<DamagePortion>? Portions=null,double AttackRating=1,double DefenseRating=1);
 public record CombatOutcome(bool Dodged,bool Blocked,bool Critical);
 /// <summary>可审阅的三阶段明细；FinalDamage 是扣护盾/无敌/GM 之前的伤害，实际扣血与奖励只由 GameSession 应用一次。</summary>
 public record DamageComponent(DamageType Type,double Weight,double Skill,double General,double Power,double Vulnerable,double Critical,double Defense,double Damage);
@@ -38,6 +38,9 @@ public record DamageBreakdown(double Dmg1,CombatOutcome Dmg2,double Skill,double
 }
 public sealed record CombatRules(double BaseCritical,double ResistanceMinimum,double ResistanceMaximum,IReadOnlyList<(int Level,double K)> ArmorCurve)
 {
+    public double RatingExponent {get;init;}=1.5;
+    public double RatingMinimum {get;init;}=.4;
+    public double RatingMaximum {get;init;}=1.5;
     /// <summary>按攻击者等级在CSV控制点间线性插值，禁止目标等级或英雄实时升级改变在途快照。</summary>
     public double ArmorK(int attackerLevel)
     {
@@ -55,7 +58,8 @@ public sealed record CombatRules(double BaseCritical,double ResistanceMinimum,do
         foreach(var row in CsvTable.Load(curvePath,File.ReadAllText(curvePath),"id","k").Rows)
         {int level=row.Integer("id");double k=row.Number("k");if(level<1||k<=0||curve.Count>0&&(level<=curve[^1].Level||k<curve[^1].K))throw new InvalidDataException("护甲K控制点须等级递增、K为正且不倒退");curve.Add((level,k));}
         if(curve.Count==0||curve[0].Level!=1||curve[^1].Level<maximumLevel)throw new InvalidDataException("护甲K曲线必须从1级覆盖全部角色及怪物等级");
-        return new(critical,min,max,curve);
+        var prototype=PrototypeProgression.Load(root);
+        return new(critical,min,max,curve){RatingExponent=prototype.RatingExponent,RatingMinimum=prototype.RatingMinimum,RatingMaximum=prototype.RatingMaximum};
     }
 }
 
@@ -66,7 +70,8 @@ public static class DamagePipeline
     {
         input.Attacker.Validate();input.Defender.Validate();
         if(!double.IsFinite(input.Attack)||!double.IsFinite(input.Armor)||!double.IsFinite(input.Coefficient)||input.Attack<0||input.Armor<0||input.Coefficient<0||!Enum.IsDefined(input.Type)||input.Debuffs==null)throw new InvalidDataException("伤害输入无效");
-        double k=rules.ArmorK(input.AttackerLevel),basis=input.Attack;
+        if(input.AttackerLevel<1||input.AttackerLevel>rules.ArmorCurve[^1].Level||!double.IsFinite(input.AttackRating)||!double.IsFinite(input.DefenseRating)||input.AttackRating<=0||input.DefenseRating<=0)throw new InvalidDataException("攻击等级或AR/DR无效");
+        double rating=Math.Clamp(Math.Pow(input.AttackRating/input.DefenseRating,rules.RatingExponent),rules.RatingMinimum,rules.RatingMaximum),basis=input.Attack;
         var portions=input.Portions??new[]{new DamagePortion(input.Type,1)};
         if(portions.Count is <1 or >5||portions.Any(p=>p==null||!Enum.IsDefined(p.Type)||!double.IsFinite(p.Weight)||p.Weight<0)||portions.Select(p=>p.Type).Distinct().Count()!=portions.Count||Math.Abs(portions.Sum(p=>p.Weight)-1)>.000001)throw new InvalidDataException("伤害分量须类型唯一、权重非负且合计1");
         bool Roll(double rate)=>rate>=1||rate>0&&random.NextDouble()<rate;
@@ -82,7 +87,7 @@ public static class DamagePipeline
             if(power<0)throw new InvalidDataException("威能加算后倍率不能为负");
             double vulnerable=1+mods.Where(m=>m.Bucket==DamageBucket.Vulnerable&&input.Debuffs.Contains(m.DebuffId)).Sum(m=>m.Value);
             double factor=critical?rules.BaseCritical+input.Attacker.CriticalDamage+Sum(DamageBucket.Critical):1;
-            double defense=portion.Type==DamageType.Physical?k/(input.Armor+k):1-Math.Clamp(input.Defender.Resistance(portion.Type),rules.ResistanceMinimum,rules.ResistanceMaximum);
+            double defense=rating*(portion.Type==DamageType.Physical?1:1-Math.Clamp(input.Defender.Resistance(portion.Type),rules.ResistanceMinimum,rules.ResistanceMaximum));
             double damage=basis*portion.Weight*skill*general*power*vulnerable*factor*defense*blocked;
             if(!double.IsFinite(damage)||damage<0)throw new InvalidDataException("伤害分量溢出");
             components.Add(new(portion.Type,portion.Weight,skill,general,power,vulnerable,factor,defense,damage));

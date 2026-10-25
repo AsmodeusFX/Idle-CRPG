@@ -107,6 +107,7 @@ public sealed partial class WorldCampaign
     /// <summary>新开局及传送到新章节从营地门内出发；无需凭空经历一次交易。</summary>
     internal void StartTownDeparture(GameSession game)
     {
+        SyncMonsterLevelRange(game);
         if(config.Town==null)return;
         Stage=CampaignStage.Village;route.Clear();SpawnTown(game,TownVisitPhase.Exit);Status=config.Town.Name+(HasTownPortal?" · 前往固定传送阵":" · 前往唯一出口");
     }
@@ -127,7 +128,7 @@ public sealed partial class WorldCampaign
         {
             if(Vector2.Distance(hero.Position,target)<=town.InteractionRange)continue;
             arrived=false;
-            if(!villagePaths.TryGetValue(hero.SpecId,out var path)){path=new(town.FindPath(hero.Position,target));villagePaths[hero.SpecId]=path;}
+            if(!villagePaths.TryGetValue(hero.HeroInstanceId,out var path)){path=new(town.FindPath(hero.Position,target));villagePaths[hero.HeroInstanceId]=path;}
             // 消耗完整步长的距离预算；倍速由 UI 增加固定步数量，不能在此重复乘倍速。速度按章配置，补偿固定城镇缩放。
             float remaining=dt*town.WalkSpeed;
             while(path.Count>0&&remaining>0)

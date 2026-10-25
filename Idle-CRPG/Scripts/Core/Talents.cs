@@ -105,7 +105,7 @@ public sealed partial class GameSession
     }
     public bool LearnTalent(string heroId,string id,out string reason)
     {
-        var h=Heroes.Concat(reserveHeroes).Single(a=>a.SpecId==heroId);if(!CanLearnTalent(h,id,out reason))return false;
+        var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");if(!CanLearnTalent(h,id,out reason))return false;
         bool first=!h.Talents.ContainsKey(id);h.Talents[id]=h.Talents.GetValueOrDefault(id)+1;
         // 仅首次学会主动技能时填空位；升级、被动及满槽均不改装配，战斗冷却共用装配命令。
         if(first&&Config.Talents.Nodes[id].Kind=="active"&&Heroes.Contains(h)&&h.SkillIds.Length<ActiveSkillSlots&&!h.SkillIds.Contains(id))
@@ -116,7 +116,7 @@ public sealed partial class GameSession
     /// <summary>洗点需星图解锁，城镇无传送时扣费并返还全部投入，不修改其他英雄。</summary>
     public bool ResetTalents(string heroId,out string reason)
     {
-        var h=Heroes.Concat(reserveHeroes).Single(a=>a.SpecId==heroId);
+        var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");
         if(StarValue("talent_reset")<1)reason="请先在星图解锁洗点";
         else if(World?.Stage!=CampaignStage.Village||World.PortalPhase!=PortalPhase.None)reason="请在城镇且传送结束后洗点";
         else if(TalentInvestment(h)==0)reason="没有需要重置的天赋";
@@ -126,15 +126,15 @@ public sealed partial class GameSession
     /// <summary>供装备/强化来源替换贡献；同一来源幂等更新，卸下传空列表。</summary>
     public void SetTalentBonuses(string heroId,string source,IEnumerable<TalentBonus> bonuses)
     {
-        var h=Heroes.Concat(reserveHeroes).Single(a=>a.SpecId==heroId);var next=bonuses.ToArray();
-        if(string.IsNullOrWhiteSpace(source)||next.Any(b=>b.Source!=source||b.Levels is <0 or >1000||b.Scope is not ("node" or "tree" or "all")||b.Scope=="node"&&(!Config.Talents.Nodes.TryGetValue(b.Target,out var n)||n.Hero!=heroId)||b.Scope=="tree"&&b.Target is not ("0" or "1" or "2")))throw new ArgumentException("技能加成来源或目标无效");
+        var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");var next=bonuses.ToArray();
+        if(string.IsNullOrWhiteSpace(source)||next.Any(b=>b.Source!=source||b.Levels is <0 or >1000||b.Scope is not ("node" or "tree" or "all")||b.Scope=="node"&&(!Config.Talents.Nodes.TryGetValue(b.Target,out var n)||n.Hero!=h.SpecId)||b.Scope=="tree"&&b.Target is not ("0" or "1" or "2")))throw new ArgumentException("技能加成来源或目标无效");
         h.TalentBonuses.RemoveAll(b=>b.Source==source);h.TalentBonuses.AddRange(next);MarkChanged();
     }
     /// <summary>玩家装配只接受已学习主动技能，按槽位顺序自动施放；不重置全房间技能现场。</summary>
     public bool SetTalentLoadout(string heroId,IEnumerable<string> ids,out string reason)
     {
-        var h=Heroes.Single(a=>a.SpecId==heroId);var next=ids.ToArray();
-        if(next.Length>ActiveSkillSlots||next.Distinct().Count()!=next.Length||next.Any(id=>!Config.Talents.Nodes.TryGetValue(id,out var n)||n.Kind!="active"||n.Hero!=heroId||h.Talents.GetValueOrDefault(id)==0)){reason="技能未学习、重复或超过已解锁槽位";return false;}
+        var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");var next=ids.ToArray();
+        if(next.Length>ActiveSkillSlots||next.Distinct().Count()!=next.Length||next.Any(id=>!Config.Talents.Nodes.TryGetValue(id,out var n)||n.Kind!="active"||n.Hero!=h.SpecId||h.Talents.GetValueOrDefault(id)==0)){reason="技能未学习、重复或超过已解锁槽位";return false;}
         bool fighting=(World==null||World.Stage==CampaignStage.Dungeon)&&Floors.Count>0&&!Floor.Rooms[CurrentRoom].Clear;
         foreach(string id in next.Except(h.SkillIds))if(fighting)h.SkillSwapLocks[id]=Math.Max(h.SkillSwapLocks.GetValueOrDefault(id),Config.Skills.Skills[id].Cooldown/20d);
         if(Floors.Count>0){var a=skillState.Actions.FirstOrDefault(a=>a.Owner==Heroes.IndexOf(h));if(a!=null&&!next.Contains(a.Active)){a.Active="";a.Windup=0;}}

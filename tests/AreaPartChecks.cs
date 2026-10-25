@@ -43,7 +43,7 @@ public static class AreaPartChecks
             Check(c.AreaPart(world.CurrentRegion).Id==initial.Id&&c.AreaPart(world.Target.Dungeon.RegionId).Id==initial.Id&&!world.Target.Dungeon.Castle,"未点击城堡就推进到新统治区");
         }
         Check(world.DungeonVisits>visits&&game.Gold>gold,"等待攻城时停止挂机积累");
-        Check(game.RequestCastleChallenge(initial.CastleId),"无法主动挑战初始城堡");
+        Check(TestPlayerActions.RequestCastle(game,initial.CastleId),"无法主动挑战初始城堡");
         for(int i=0;i<100000&&!world.Progress.Cleared.Contains(initial.CastleId);i++)game.Tick(.05f);
         Check(world.Progress.Cleared.Contains(initial.CastleId)&&world.Stage==CampaignStage.TravelVillage,"攻城后没有先返村");
         Check(c.AreaParts.Where(a=>world.Progress.AreaPartUnlocked(c,a.Id)).Select(a=>a.Id).ToHashSet().SetEquals(expected),"实际攻城没有解锁对应前置");

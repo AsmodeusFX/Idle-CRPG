@@ -10,6 +10,10 @@ namespace IdleCrpg.Core;
 public sealed class SessionSnapshot
 {
     public int CampaignVersion,LatestMapIndex;
+    public long Kp,KpEarned,KpSpent,DungeonEntrySerial;public int MonsterLevelMin=1,MonsterLevelMax=1;public List<string> KpKillReceipts=new();
+    public long PublicExperience;public int PublicExperienceFraction,PublicExperienceVersion;
+    public int RunVersion;public string RunId="";public bool TeamLocked=true;
+    [System.Text.Json.Serialization.JsonIgnore] public AccountState Account=new();
     public BranchRequest? ActiveBranch;
     public List<BranchRequest> BranchQueue=new();
     public WorldSnapshot? SuspendedWorld;
@@ -93,10 +97,10 @@ public sealed partial class GameSession
 {
     /// <summary>快照包含房间生成结果、尸体、计时与随机源。序列化必须紧随快照，期间不推进模拟。</summary>
     public SessionSnapshot Capture() => new() {
-        CampaignVersion=2,LatestMapIndex=LatestMapIndex,ActiveBranch=ActiveBranch,BranchQueue=branchQueue.ToList(),SuspendedWorld=suspendedWorld?.Capture(),
+        Kp=Kp,KpEarned=KpEarned,KpSpent=KpSpent,DungeonEntrySerial=dungeonEntrySerial,MonsterLevelMin=MonsterLevelMin,MonsterLevelMax=MonsterLevelMax,KpKillReceipts=kpKillReceipts.ToList(),PublicExperience=PublicExperience,PublicExperienceFraction=PublicExperienceFraction,PublicExperienceVersion=1,RunVersion=1,RunId=RunId,TeamLocked=TeamLocked,Account=Account.Copy(),CampaignVersion=2,LatestMapIndex=LatestMapIndex,ActiveBranch=ActiveBranch,BranchQueue=branchQueue.ToList(),SuspendedWorld=suspendedWorld?.Capture(),
         DifficultyIndex=DifficultyIndex,ChapterIndex=ChapterIndex,CompletedMaps=CaptureChapters(),
-        Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=Experience,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
-        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=2,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,DoorWait=destination>=0&&phase==1&&doorOpener is {Alive:true}?doorWait:0,DoorFallback=destination>=0&&phase==1&&doorOpener is {Alive:true}&&doorFallback,DoorOpenerHero=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Heroes.Contains(doorOpener)?Heroes.IndexOf(doorOpener):-1,DoorOpenerSummon=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Summons.Contains(doorOpener)?Summons.IndexOf(doorOpener):-1,Regroup=regroup,
+        Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=0,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
+        Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=3,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,DoorWait=destination>=0&&phase==1&&doorOpener is {Alive:true}?doorWait:0,DoorFallback=destination>=0&&phase==1&&doorOpener is {Alive:true}&&doorFallback,DoorOpenerHero=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Heroes.Contains(doorOpener)?Heroes.IndexOf(doorOpener):-1,DoorOpenerSummon=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Summons.Contains(doorOpener)?Summons.IndexOf(doorOpener):-1,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
         Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
@@ -142,15 +146,11 @@ public sealed partial class GameSession
     /// <summary>校验后恢复；正式检查点重建未清房战斗，保留到账成长和待拾取奖励，不结算离线时间。</summary>
     public static GameSession Restore(Config config,SessionSnapshot s)
     {
+        MigrateRunIdentity(s);
         if(s.DifficultyIndex<0||s.DifficultyIndex>2||s.ChapterIndex<0||s.ChapterIndex>4)throw new InvalidDataException("难度/章节越界");
         config=config.ChapterMaps[s.ChapterIndex];
         foreach(var oldWorld in new[]{s.World,s.SuspendedWorld})if(oldWorld!=null&&(oldWorld.AreaPartAccessVersion==0||oldWorld.NavigationVersion==0||oldWorld.LayoutVersion==0||oldWorld.TerrainVersion==0)){oldWorld.OutdoorTrail=new();oldWorld.FollowGather=0;}
-        if(s.HeroExperienceVersion is not (0 or 1))throw new InvalidDataException("不支持的英雄经验版本");
-        if(s.HeroExperienceVersion==0)
-        {
-            foreach(var hero in s.Heroes.Concat(s.ReserveHeroes)){hero.Experience=s.Experience;hero.ExperienceFraction=0;}
-            s.HeroExperienceVersion=1;
-        }
+        MigratePublicExperience(s);ValidateKpState(config,s);
         MigrateCampaignPatch(config,s);
         if(config.MapVersion>1&&s.World!=null&&s.World.MapVersion!=config.MapVersion)throw new InvalidDataException("第一章地图结构已更换，旧地图编号不能映射到新POI；需要重置不兼容存档");
         MigrateWorldLayout(config,s);
@@ -176,6 +176,8 @@ public sealed partial class GameSession
         MigrateSkillTree(config,s);
         ValidateSnapshot(config,s);
         var game=new GameSession(config,s.Seed,s.Heroes.Select(h=>h.SpecId));
+        game.Kp=s.Kp;game.KpEarned=s.KpEarned;game.KpSpent=s.KpSpent;game.dungeonEntrySerial=s.DungeonEntrySerial;game.MonsterLevelMax=s.MonsterLevelMax;game.kpKillReceipts.UnionWith(s.KpKillReceipts);
+        game.PublicExperience=s.PublicExperience;game.PublicExperienceFraction=s.PublicExperienceFraction;game.Account=s.Account.Copy();game.RunId=s.RunId;game.TeamLocked=s.TeamLocked;
         game.RestoreChapters(s);
         game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.Summons.AddRange(s.Summons);game.roomEntrySummons.AddRange(s.RoomEntrySummons);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
         game.Floors=s.Floors;game.dungeonSeed=s.DungeonSeed;game.FloorIndex=s.FloorIndex;game.CurrentRoom=s.CurrentRoom;
@@ -201,6 +203,7 @@ public sealed partial class GameSession
         game.ValidateStarTotals(game.Stars.Totals());game.ApplyStarTotals(game.Stars.Totals());
         foreach(var i in s.Inventory)game.inventory.Add((i.ItemId,i.Price),i.Count);
         game.World=s.World==null?null:WorldCampaign.Restore(config,s.World,s.DifficultyIndex);
+        game.World?.SyncMonsterLevelRange(game);
         if(townMigrated)game.Note("主城布局更新：保留成长、背包、通关和补给阶段，移动到安全落点");
         if(config.Town!=null&&game.World?.Stage==CampaignStage.Village)
         {
@@ -283,10 +286,10 @@ public sealed partial class GameSession
         static void Need([DoesNotReturnIf(false)] bool value,string reason) {if(!value)throw new InvalidDataException("存档无效："+reason);}
         static bool Finite(float n)=>float.IsFinite(n);
         static bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y);
-        Need(s.CombatVersion==2,"战斗存档版本");
+        Need(s.CombatVersion==3,"战斗存档版本");
         Need(s.CampaignVersion is 0 or 2,"远征存档版本");
         Need(s.ReserveHeroes!=null&&s.PendingFormation!=null&&s.Heroes!=null&&s.Summons!=null&&s.RoomEntrySummons!=null&&s.Floors!=null&&s.Inventory!=null&&s.Log!=null&&s.Modifiers!=null,"缺少状态字段");
-        Need(s.Heroes!.Count is >=1 and <=5&&s.Heroes.Select(h=>h.SpecId).Distinct().Count()==s.Heroes.Count&&s.Heroes.All(h=>c.Heroes.Any(t=>t.Id==h.SpecId)),"队伍引用");
+        Need(s.Heroes!.Count is >=1 and <=4&&s.Heroes.Select(h=>h.HeroInstanceId).Distinct().Count()==s.Heroes.Count&&s.Heroes.All(h=>c.Heroes.Any(t=>t.Id==h.SpecId)),"队伍引用");
         Need(s.Gold>=0&&s.Experience>=0&&s.Kills>=0&&s.Retries>=0&&s.Revision>=0&&s.HitCount>=0&&s.LootRandomState!=0,"资源/随机源");
         Need(s.Log!.Count<=40&&s.ReviveTarget>=-1&&s.ReviveTarget<s.Heroes.Count&&s.Rescuer>=-1&&s.Rescuer<s.Heroes.Count&&Finite(s.ReviveElapsed)&&s.ReviveElapsed>=0&&s.ReviveElapsed<=c.ReviveSeconds&&Finite(s.Regroup)&&s.Regroup>=0,"行动计时");
         Need((s.ReviveTarget<0)==(s.Rescuer<0)&&(s.ReviveTarget<0||(!s.Heroes[s.ReviveTarget].Alive&&s.Heroes[s.Rescuer].Alive)),"救援引用");
@@ -400,7 +403,7 @@ public sealed partial class WorldCampaign
         if(s.AreaPartAccessVersion is not (0 or 1))throw new InvalidDataException("统治区前置存档版本无效");
         if(s.NavigationVersion is not (0 or 1))throw new InvalidDataException("不支持的世界寻路版本");
         bool Point(Vector2 p)=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&p.X>=0&&p.Y>=0&&p.X<c.WorldWidth&&p.Y<c.WorldHeight;
-        if(s.VillagePaths==null||s.VillagePaths.Count>5||s.VillagePaths.Any(p=>!c.Heroes.Any(h=>h.Id==p.Key)||p.Value.Count>20000||p.Value.Any(v=>s.TownVersion==1&&c.Town!=null?!c.Town.Walkable(v):!Point(v))))throw new InvalidDataException("村庄路径无效");
+        if(s.VillagePaths==null||s.VillagePaths.Count>4||s.VillagePaths.Any(p=>string.IsNullOrWhiteSpace(p.Key)||p.Value.Count>20000||p.Value.Any(v=>s.TownVersion==1&&c.Town!=null?!c.Town.Walkable(v):!Point(v))))throw new InvalidDataException("村庄路径无效");
         if(!Enum.IsDefined(s.Stage)||!Point(s.Position)||!c.Dungeons.Any(d=>d.Id==s.TargetId)||!c.Villages.Any(v=>v.Id==s.VillageId)||s.Explored==null||s.Cleared==null||s.Route==null||s.Explored.Any(id=>!c.Regions.Any(r=>r.Id==id))||s.Cleared.Any(id=>!c.Dungeons.Any(d=>d.Id==id))||s.Route.Count>c.Regions.Count*WorldNavigation.CellsPerRegion*WorldNavigation.CellsPerRegion+2||s.Route.Any(p=>!Point(p))||s.Trades<0||s.DungeonVisits<0||!float.IsFinite(s.TradeElapsed)||s.TradeElapsed<0||s.TradeElapsed>(s.TownVersion==0?c.TradeSeconds:c.Town?.ServiceSeconds??c.TradeSeconds)||s.PendingCastle!=""&&!c.Dungeons.Any(d=>d.Id==s.PendingCastle&&d.Castle))
             throw new InvalidDataException("存档世界状态/引用无效");
         if(s.PendingCastles==null||s.PendingCastles.Distinct().Count()!=s.PendingCastles.Count||s.PendingCastles.Any(id=>!c.Dungeons.Any(d=>d.Id==id&&d.Castle)))throw new InvalidDataException("城堡挑战队列无效");

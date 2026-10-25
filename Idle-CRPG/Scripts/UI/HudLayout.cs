@@ -7,11 +7,14 @@ using System.Linq;
 public partial class Main
 {
     private Control partySetup=null!,gameHud=null!;
+    private SpinBox[] partyCounts=Array.Empty<SpinBox>();
     private VBoxContainer interactionList=null!;
     private Label interactionEmpty=null!;
     private Label interactionHeading=null!;
     private ScrollContainer interactionScroll=null!;
     private Label teamChallengeLabel=null!;
+    /// <summary>小队区公共XP余额；旧个人经验条语义已改为公共池，不保留每人私有账户。</summary>
+    private Label teamExperienceLabel=null!;
     private readonly Label[] currencies=new Label[2];
     private readonly Button[] heroAdd=new Button[5];
     private readonly Label[] heroExperience=new Label[5];
@@ -50,14 +53,14 @@ public partial class Main
         pause=new Button {Text="暂停",Position=new Vector2(1312,32),Size=new Vector2(80,36)};
         pause.Pressed+=()=>{paused=!paused;pause.Text=paused?"继续":"暂停";PlaySound("sfx_click");SaveNow();};canvas.AddChild(pause);
         gameHud=new Control {Size=new Vector2(1440,900),MouseFilter=Control.MouseFilterEnum.Ignore};canvas.AddChild(gameHud);
-        rateButton=new Button {Text="速度 ×1",Position=new Vector2(38,602),Size=new Vector2(116,36)};
+        rateButton=new Button {Text="速度 ×1",Position=new Vector2(38,564),Size=new Vector2(116,36)};
         rateButton.Pressed+=()=>{speed=speed==4?1:speed*2;rateButton.Text=$"速度 ×{speed}";PlaySound("sfx_click");SaveNow();};gameHud.AddChild(rateButton);
 
         HudPanel(gameHud,new Vector2(1080,92),new Vector2(336,558));
         for(int i=0;i<currencies.Length;i++)
         {
             float x=1092+i*156,y=104;
-            string hint=i==0?"金币":"背包杂物数量：回城后自动售卖为金币";
+            string hint=i==0?"金币":"KP · 本轮击杀点；背包杂物仍在回城自动售卖";
             gameHud.AddChild(new HudIcon {Kind=i==0?"coin":"junk",Position=new Vector2(x,y),Size=new Vector2(24,24),TooltipText=hint});
             currencies[i]=HudText(gameHud,"0",new Vector2(x+28,y+1),16);
             currencies[i].TooltipText=hint;currencies[i].MouseFilter=Control.MouseFilterEnum.Stop;
@@ -72,15 +75,17 @@ public partial class Main
         // 开局选择占用交互区，进入远征后隐藏，避免永久占据战斗构图。
         partySetup=new Control {Position=CreationOffset,Size=new Vector2(1060,650)};canvas.AddChild(partySetup);
         seed=new LineEdit {Text="20261017",Position=new Vector2(416,520),Size=new Vector2(240,32)};partySetup.AddChild(seed);
-        var group=new ButtonGroup();
-        choices=config.Heroes.Select((s,i)=>new CheckBox {Text=s.Name,ButtonGroup=group,ButtonPressed=i==0,Disabled=config.HeroUnlockKills[s.Id]>0,Position=new Vector2(85+i*182,i%2==0?380:315),Size=new Vector2(180,40),TooltipText=config.HeroUnlockKills[s.Id]>0?$"累计击杀 {config.HeroUnlockKills[s.Id]} 后解锁":"初始可用"}).ToArray();
-        foreach(var choice in choices){choice.Toggled+=_=>{PlaySound("sfx_click");sceneCanvas.QueueRedraw();};partySetup.AddChild(choice);}
+        partyCounts=config.Heroes.Select((s,i)=>new SpinBox {MinValue=0,MaxValue=4,Step=1,Value=i==0?1:0,Position=new Vector2(100+i*182,425),Size=new Vector2(120,36),Editable=config.HeroUnlockKills[s.Id]==0}).ToArray();
+        for(int i=0;i<partyCounts.Length;i++){int n=i;partyCounts[i].ValueChanged+=v=>{choices[n].SetPressedNoSignal(v>0);sceneCanvas.QueueRedraw();};partySetup.AddChild(partyCounts[i]);}
+        choices=config.Heroes.Select((s,i)=>new CheckBox {Text=s.Name,ButtonPressed=i==0,Disabled=config.HeroUnlockKills[s.Id]>0,Position=new Vector2(85+i*182,i%2==0?380:315),Size=new Vector2(180,40),TooltipText=config.HeroUnlockKills[s.Id]>0?$"累计击杀 {config.HeroUnlockKills[s.Id]} 后解锁":"初始可用"}).ToArray();
+        for(int i=0;i<choices.Length;i++){int n=i;var choice=choices[i];choice.Toggled+=on=>{partyCounts[n].Value=on?Math.Max(1,partyCounts[n].Value):0;PlaySound("sfx_click");sceneCanvas.QueueRedraw();};partySetup.AddChild(choice);}
         AddCampHitTargets();start=new Button {Text="开始游戏",Position=new Vector2(416,566),Size=new Vector2(240,48)};start.Pressed+=Start;partySetup.AddChild(start);
         summary=HudText(gameHud,"选择一位英雄，开启远征。",new Vector2(38,100),14);summary.Size=new Vector2(1008,40);summary.AutowrapMode=TextServer.AutowrapMode.WordSmart;summary.MouseFilter=Control.MouseFilterEnum.Ignore;
         HudPanel(gameHud,new Vector2(24,662),new Vector2(840,214));
         HudText(gameHud,"小队状态",new Vector2(38,669),16);
         teamChallengeLabel=HudText(gameHud,"",new Vector2(260,671),13);
-        HudText(gameHud,"上阵席位  /  5",new Vector2(715,671),13);
+        teamExperienceLabel=HudText(gameHud,"",new Vector2(560,671),13);teamExperienceLabel.Name="TeamPublicExperience";
+        HudText(gameHud,"普通席位 / 4 · 已锁队",new Vector2(715,671),13);
         for(int i=0;i<5;i++)
         {
             float y=696+i*34;
@@ -102,6 +107,7 @@ public partial class Main
             slot.AddChild(new HudIcon {Kind="potion",Position=new Vector2(12,15),Size=new Vector2(32,32),Accent=new Color("536575")});
             HudText(slot,"药剂槽位",new Vector2(58,10),14);HudText(slot,"尚未开放",new Vector2(58,34),12);
         }
+        var scrollBar=HudPanel(gameHud,new Vector2(24,610),new Vector2(1040,40));scrollBar.Name="ScrollQuickBar";HudText(scrollBar,"卷轴快捷栏 · 后续开放",new Vector2(12,10),13);
         roster=new Label();journal=new Label();gameHud.AddChild(roster);gameHud.AddChild(journal);roster.Hide();journal.Hide();
         help=HudText(gameHud,"",new Vector2(32,879),12);help.Modulate=new Color("91a6b7");
     }
@@ -111,6 +117,8 @@ public partial class Main
     {
         int waiting=session?.World==null?0:config.Dungeons.Count(d=>d.Castle&&!session.World.Progress.Cleared.Contains(d.Id)&&session.World.Progress.CastleUnlocked(config,d.Id)&&!session.World.PendingCastles.Contains(d.Id)&&session.World.Target.Dungeon.Id!=d.Id);
         teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel} · 待批 {waiting} · 排队 {session.World?.PendingCastles.Count??0}";
+        teamExperienceLabel.Text=session==null?"":$"公共XP {session.PublicExperience:N0} · 逐人点击升级";
+        teamExperienceLabel.TooltipText=session==null?"":"公共XP由击杀全额入池，无等级差衰减；只有点击右侧指定英雄升级才消耗，且每次恰好升1级。";
         teamChallengeLabel.TooltipText=session?.World==null?"":string.Join("\n",session.World.PendingCastles.Select(id=>config.Dungeons.Single(d=>d.Id==id).Name+(session.World.Progress.CastleUnlocked(config,id)?" · 已批准待执行":" · 已批准，等待新前置满足")));
         partySetup.Visible=session==null;
         interactionHeading.Visible=session!=null;interactionScroll.Visible=session!=null;
@@ -118,17 +126,18 @@ public partial class Main
         {
             var hero=session?.Heroes.ElementAtOrDefault(i);
             heroIcons[i].Modulate=hero==null?new Color("536575"):Colors.White;
-            heroAdd[i].Visible=session!=null&&hero==null&&i<session.PartyCapacity;
-            heroNames[i].TooltipText=hero==null?"":$"{hero.Name} Lv.{hero.Level}\n个人经验 {HeroExperienceText(hero)}\n近战优先接敌容量 {session!.EngagementCapacity(hero)}（不是受击人数上限）\n只结算上阵英雄（含倒地者）；按本人等级计算怪物经验倍率。";
+            heroAdd[i].Visible=false;
+            heroNames[i].TooltipText=hero==null?"":$"{hero.Name} Lv.{hero.Level}\n公共XP {session!.PublicExperience} · 下一等级费用 {session.ExperienceRequired(hero)}\n近战优先接敌容量 {session!.EngagementCapacity(hero)}（不是受击人数上限）\n公共池无等级差衰减；指定实例手动升级。";
             heroNames[i].MouseFilter=Control.MouseFilterEnum.Stop;
-            heroNames[i].Text=hero==null?(i<(session?.PartyCapacity??1)?"席位空缺":"席位未解锁"):$"{hero.Name}  Lv.{hero.Level}";
+            heroNames[i].Text=hero==null?(i<4?"本轮空席（锁定）":"未来永久第五席"):$"{hero.Name}  Lv.{hero.Level}";
             heroHealth[i].Visible=hero!=null;
-            heroExperience[i].Text=hero==null?"":"XP "+HeroExperienceText(hero);
+            heroExperience[i].Text=hero==null?"":$"HP {hero.Hp:0}/{hero.MaxHp:0} · AR {session!.AttackRating(hero):0} DR {session.DefenseRating(hero):0}";
             heroHealth[i].MaxValue=hero?.MaxHp??1;heroHealth[i].Value=hero?.Hp??0;
             heroStats[i].Text=hero==null?"—":$"HP {Math.Ceiling(hero.Hp)} / {hero.MaxHp:0}     ATK {hero.Attack:0}";
         }
+        RefreshGrowthInteractions();
         RefreshHudSkills();
-        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text=CompactAmount(session?.Inventory.Values.Sum()??0);
+        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text="KP "+CompactAmount(session?.Kp??0);currencies[1].TooltipText=$"KP本轮余额 · 背包杂物 {session?.Inventory.Values.Sum()??0}，回城自动售卖";
     }
 
     /// <summary>按功能类型、首次刷新次序保留独立交互卡；目前仅投放城堡挑战，免费卡不显示消耗。</summary>
@@ -165,15 +174,16 @@ public partial class Main
             var button=castleCards[castle.Id];
             bool active=world!.Target.Dungeon.Id==castle.Id&&world.Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon;
             int queue=world.PendingCastles.ToList().IndexOf(castle.Id);
-            button.Disabled=active||queue>=0;
+            button.Disabled=active||queue>=0||!session!.CanChallengeCastle(castle.Id,out _);
             string state=active?(world.Stage==CampaignStage.Dungeon?"挑战中":"正在前往"):queue>=0?$"计划攻击 · 队列第 {queue+1} 位":"攻略城堡，占领整个统治区";
             var level=config.Challenge(castle.Id,session!.DifficultyIndex);
             button.GetNode<Label>("Content/Words/Description").Text=$"挑战等级 {level.Challenge} · 推荐小队等级 {level.Recommended}\n{state}"+(config.PoiProfiles.ContainsKey(castle.Id)?" · 原型内容":"");
-            button.TooltipText=castle.Name+"\n"+state;
+            session!.CanChallengeCastle(castle.Id,out string gateReason);button.TooltipText=castle.Name+"\n"+state+"\n"+gateReason;
+            if(gateReason!="")button.GetNode<Label>("Content/Words/Description").Text+="\n"+gateReason;
             button.GetNode<Label>("Content/Words/Retry").Visible=world.IsCastleRetry(castle.Id);
         }
         // 当前只有第四类功能；未来前三类依次排在城堡之前，同类沿用首次刷新序号。
-        int index=1;
+        RefreshGrowthInteractions();int index=upgradeCards.Count+3;
         foreach(var id in castleCards.Keys.OrderBy(id=>interactionArrival[id]))interactionList.MoveChild(castleCards[id],index++);
         interactionEmpty.Visible=castleCards.Count==0;
         RefreshBranchInteractions();
@@ -187,7 +197,7 @@ public partial class Main
         {
             // 保留旧35城堡排队回归样本；正式第一章与支线由独立冒烟覆盖。
             config=Config.LoadLegacy(ProjectSettings.GlobalizePath("res://config"));session=GameSession.CreateWorld(config,123,new[]{"warrior","ranger","mage"});
-            var world=session.World!;world.Progress.Cleared.Add("c1");
+            SeedQaLmax(config.MaxMonsterLevel);var world=session.World!;world.Progress.Cleared.Add("c1");
             foreach(var dungeon in config.Dungeons.Where(d=>!d.Castle))world.Progress.Cleared.Add(dungeon.Id);
             Refresh();
             if(castleCards.Count!=3||heroNames.Length!=5||currencies.Length!=2||partySetup.Visible)throw new Exception("五区布局或独立城堡按钮不完整");

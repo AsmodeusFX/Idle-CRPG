@@ -139,7 +139,7 @@ public static class ProcIcdChecks
         for(int i=0;i<20;i++){RootHit(replay);RootHit(copy);Tick(replay);Tick(copy);}Need(Encode(copy)==Encode(replay),"ICD读回后续跑不确定");
         var compact=replay.CaptureProgress();Need(compact.SkillState.ProcTick==0&&compact.SkillState.ProcIcds.Count==0&&compact.SkillState.ProcFires.Count==0,"长期进度保存ICD/限次现场");
         var reopened=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=compact})).Session!);Need(reopened.Capture().SkillState.ProcIcds.Count==0,"重建房间继承ICD");
-        var oldJson=JsonNode.Parse(Encode(copy))!;var oldState=oldJson["Session"]!["SkillState"]!.AsObject();oldState.Remove("ProcTick");oldState.Remove("ProcIcds");
+        var oldJson=JsonNode.Parse(Encode(copy))!;var oldState=oldJson["Run"]!["SkillState"]!.AsObject();oldState.Remove("ProcTick");oldState.Remove("ProcIcds");
         Need(SaveStore.Decode(c,oldJson.ToJsonString()).Session!.SkillState.ProcIcds.Count==0,"旧内部快照缺少ICD字段无法兼容");
         var invalidClock=copy.Capture();invalidClock.SkillState.ProcIcds[0].ReadyTick=invalidClock.SkillState.ProcTick+16;
         bool badClock=false;try{GameSession.Restore(c,invalidClock);}catch(InvalidDataException){badClock=true;}Need(badClock,"非法ICD未来Tick未拒绝");

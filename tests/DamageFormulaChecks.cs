@@ -17,11 +17,11 @@ public static class DamageFormulaChecks
         var input=new DamageInput("mixed",100,100,1,DamageType.Physical,true,false,attack,new(){BlockChance=1,BlockReduction=.5,FireResistance=.2},new HashSet<string>{"physical","fire"},1,new[]{new DamagePortion(DamageType.Physical,.6),new(DamageType.Fire,.4)});
         var rng=new PersistentRandom(123);uint before=rng.State;
         var mixed=DamagePipeline.Resolve(input,rules,rng);
-        Near(mixed.Components[0].Damage,52.65,"物理分量手算");Near(mixed.Components[1].Damage,51.48,"火分量手算");Near(mixed.FinalDamage,104.13,"单实例混合总伤害");
+        Near(mixed.Components[0].Damage,105.3,"物理分量手算");Near(mixed.Components[1].Damage,51.48,"火分量手算");Near(mixed.FinalDamage,156.78,"单实例混合总伤害");
         Need(mixed.Dmg2.Blocked&&mixed.Dmg2.Critical&&rng.State==before,"混合分量不能额外掷随机数");
         var plain=input with {Attacker=new(),Defender=new(),Coefficient=1,Portions=null};
-        Near(DamagePipeline.Resolve(plain,rules,new(1)).FinalDamage,50,"1级护甲K");
-        Near(DamagePipeline.Resolve(plain with {AttackerLevel=101},rules,new(1)).FinalDamage,100d*200/300,"攻击者等级控制K");
+        Near(DamagePipeline.Resolve(plain,rules,new(1)).FinalDamage,100,"同评级不受旧Armor减伤");
+        Near(DamagePipeline.Resolve(plain with {AttackerLevel=101},rules,new(1)).FinalDamage,100,"旧等级K不再参与伤害");
         Near(rules.ArmorK(51),150,"控制点线性插值");
         Near(DamagePipeline.Resolve(plain with {Attack=0},rules,new(1)).FinalDamage,0,"零基础无隐含保底");
         Near(DamagePipeline.Resolve(plain with {Coefficient=0},rules,new(1)).FinalDamage,0,"零技能系数无隐含保底");
@@ -69,7 +69,7 @@ public static class DamageFormulaChecks
         var basic=c.Skills.Skills["basic_player"];c.Skills.Skills["basic_player"]=basic with {Effects=new[]{"hit_player","hit_player"}};
         int kills=mixed.Kills;long hits=mixed.HitCount;mixed.Tick(.05f);
         Need(mixed.Kills==kills+1&&mixed.HitCount==hits+1&&mixed.LastDamage?.Components.Count==2,"混合致死或同Tick再次致死重复应用HP/奖励");
-        Need(!victim.Alive&&mixed.Heroes[0].Experience>0,"混合致死未走正式击杀经验入口");
+        Need(!victim.Alive&&mixed.PublicExperience>0,"混合致死未走正式击杀经验入口");
         c.Skills.Effects["hit_player"]=original;c.Skills.Skills["basic_player"]=basic;
 
         var flightGame=Battle();flightGame.Heroes[0].Level=7;flightGame.EquipSkills("warrior",new[]{"skill_01"});
@@ -85,7 +85,7 @@ public static class DamageFormulaChecks
         var scaledFlight=scaled.Capture().SkillState.Flights.First();scaledFlight.PowerScale=.5;
         scaledFlight.Snapshot.Attributes.Modifiers.Add(new(DamageBucket.Skill,.3));
         scaled.Floor.Rooms[scaled.CurrentRoom].Monsters[0].Defense=0;scaled.Heroes[0].SkillIds=Array.Empty<string>();
-        double scaledExpected=scaledFlight.Snapshot.Attack*.5*(scaledFlight.Coefficient+.3);
+        double scaledExpected=scaledFlight.Snapshot.Attack*.5*(scaledFlight.Coefficient+.3)*Math.Clamp(Math.Pow(scaledFlight.Snapshot.AttackRating/scaled.DefenseRating(scaled.Floor.Rooms[scaled.CurrentRoom].Monsters[0]),c.Progression.RatingExponent),c.Progression.RatingMinimum,c.Progression.RatingMaximum);
         for(int i=0;i<20;i++)scaled.Tick(.05f);
         Need(scaled.LastDamage!=null&&Math.Abs(scaled.LastDamage.FinalDamage-scaledExpected)<.000001,"分身/周期比例必须同时缩放技能系数加值，不得泄露额外伤害");
 

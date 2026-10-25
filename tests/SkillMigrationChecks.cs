@@ -40,7 +40,7 @@ public static class SkillMigrationChecks
         GameSession Reopen(SessionSnapshot snap)=>GameSession.Restore(c,Round(snap));
 
         // 旧布局移动到新三系后仍合法的投入必须原样保留，且第二次读档不再迁移。
-        var merge=new GameSession(c,31,new[]{"necromancer"});merge.GrantGmResources(0,100000);
+        var merge=new GameSession(c,31,new[]{"necromancer"});merge.GrantGmResources(0,100000);TestPlayerActions.UpgradeWithClicks(merge);
         var mergeSnap=merge.CaptureProgress();var mh=mergeSnap.Heroes[0];
         Need(mh.Level>=6,"迁移样本等级不足");
         mh.Talents.Clear();mh.Talents["necro_bone_armor"]=2;mh.Talents["necro_teeth"]=1;mh.Talents["necro_soulbolt"]=1;mh.Talents["necro_soul_mastery"]=1;mh.Talents["necro_will"]=1;mh.Talents["nec_raise_skeleton"]=1;
@@ -54,7 +54,7 @@ public static class SkillMigrationChecks
         Need(second.Heroes[0].Talents.Count==6&&second.Heroes[0].Talents["necro_will"]==1&&second.CaptureProgress().SkillTreeVersion==1,"二次读档重复迁移");
 
         // 重排后前置/系内投入不再成立的节点退款，并同步清空装配、换入冷却、光环与装备加成。
-        var refund=new GameSession(c,32,new[]{"warrior"});refund.GrantGmResources(0,100000);
+        var refund=new GameSession(c,32,new[]{"warrior"});refund.GrantGmResources(0,100000);TestPlayerActions.UpgradeWithClicks(refund);
         var refundSnap=refund.CaptureProgress();var rh=refundSnap.Heroes[0];
         Need(rh.Level>=6,"退款样本等级不足");
         rh.Talents.Clear();rh.Talents["barb_shout"]=1;rh.Talents["barb_whirlwind_window"]=1;

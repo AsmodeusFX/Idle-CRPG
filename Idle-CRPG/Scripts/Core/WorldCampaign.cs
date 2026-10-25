@@ -67,6 +67,9 @@ public static class ExpeditionPlanner
 
 public sealed partial class WorldCampaign
 {
+    private int runMonsterLevelMax=1;
+    internal void SyncMonsterLevelRange(GameSession game)=>runMonsterLevelMax=game.MonsterLevelMax;
+    private bool CastleLevelReady(string id)=>runMonsterLevelMax>=(config.PoiProfiles.ContainsKey(id)?config.Challenge(id,difficulty).Challenge:config.Dungeons.Single(d=>d.Id==id).LevelMin);
     private readonly Config config;
     private readonly int difficulty;
     public string BranchCastle {get;private set;}="";
@@ -112,12 +115,12 @@ public sealed partial class WorldCampaign
     {
         WaitingApproval=false;
         pendingCastles.RemoveAll(id=>Progress.Cleared.Contains(id));
-        bool headReady=pendingCastles.Count>0&&Progress.CastleUnlocked(config,pendingCastles[0]);
+        bool headReady=pendingCastles.Count>0&&Progress.CastleUnlocked(config,pendingCastles[0])&&CastleLevelReady(pendingCastles[0]);
         if(!headReady&&TryRecovery(out var recovery))
         {
             Target=recovery;Stage=CampaignStage.TravelDungeon;BuildRoute(Target.Dungeon.RegionId,WorldPoint(Target.Dungeon.RegionId,Target.Dungeon.X,Target.Dungeon.Y));Status="失败回刷 · "+Target.Dungeon.Name;return;
         }
-        if(BranchCastle!="")
+        if(BranchCastle!=""&&CastleLevelReady(BranchCastle))
         {
             var candidates=config.Dungeons.Where(d=>config.Rulers[d.RegionId]==BranchCastle&&!d.Castle&&!Progress.Cleared.Contains(d.Id)).OrderBy(d=>config.Challenge(d.Id,difficulty).Challenge).ThenBy(d=>d.Id).ToArray();
             var same=candidates.Where(d=>config.Challenge(d.Id,difficulty).Challenge==config.Challenge(candidates[0].Id,difficulty).Challenge).ToArray();
@@ -145,6 +148,7 @@ public sealed partial class WorldCampaign
     /// <summary>玩家请求城堡；地牢/返村/交易中只排队，确保交易流程不会被跳过。</summary>
     internal bool RequestCastle(string id)
     {
+        if(!config.Dungeons.Any(d=>d.Id==id&&d.Castle)||!CastleLevelReady(id))return false;
         if(!config.Dungeons.Any(d=>d.Id==id&&d.Castle)||Progress.Cleared.Contains(id)||!Progress.CastleUnlocked(config,id))return false;
         if(pendingCastles.Contains(id)||(Target.Dungeon.Id==id&&Stage is CampaignStage.TravelDungeon or CampaignStage.Dungeon))return false;
         pendingCastles.Add(id);
@@ -156,6 +160,13 @@ public sealed partial class WorldCampaign
     /// <summary>世界与村庄没有战斗；交易完成后才产生下一次地牢选择。</summary>
     internal void Tick(GameSession game,float dt)
     {
+        SyncMonsterLevelRange(game);
+        if(Stage==CampaignStage.TravelDungeon&&Target.Dungeon.Castle&&!CastleLevelReady(Target.Dungeon.Id))
+        {
+            // 旧档已批准但尚未进入的城堡保留排队，先回到合法普通地牢，不能借读档绕过新门槛。
+            if(!pendingCastles.Contains(Target.Dungeon.Id))pendingCastles.Insert(0,Target.Dungeon.Id);
+            Plan(false);game.Note("城堡Lmax准入尚未满足，保留批准并继续普通远征");
+        }
         teamLevel=game.TeamChallengeLevel;
         if(TickPortal(game,dt))return;
         if(Stage==CampaignStage.Dungeon)return;if(game.PendingFormation.Count>0&&Stage==CampaignStage.TravelDungeon)ReturnForFormation(game,false);
@@ -170,9 +181,9 @@ public sealed partial class WorldCampaign
                 {
                     var anchor=WorldPoint(Village.RegionId,Village.X,Village.Y);
                     var from=anchor+h.Position/config.WorldUnits;var target=anchor+npc.Position/config.WorldUnits;
-                    if(!villagePaths.TryGetValue(h.SpecId,out var path))
+                    if(!villagePaths.TryGetValue(h.HeroInstanceId,out var path))
                     {
-                        path=new Queue<Vector2>(WorldNavigation.FindPath(config,from,target,Progress.Explored));villagePaths[h.SpecId]=path;
+                        path=new Queue<Vector2>(WorldNavigation.FindPath(config,from,target,Progress.Explored));villagePaths[h.HeroInstanceId]=path;
                     }
                     while(path.Count>0&&Vector2.DistanceSquared(path.Peek(),from)<.00000001f)path.Dequeue();
                     var waypoint=path.Count>0?path.Peek():target;

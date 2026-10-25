@@ -11,9 +11,14 @@ namespace IdleCrpg.Core;
 public sealed class StarEditorStore
 {
     private readonly string[] _paths;
+    private readonly bool productionWriteAllowed;
+    private readonly bool productionRoot;
     private string[] _baseline = Array.Empty<string>();
-    public StarEditorStore(string configRoot) => _paths = new[] { StarConfiguration.ContentPath, StarConfiguration.LayoutPath, StarConfiguration.PlanPath }
-        .Select(p => Path.Combine(configRoot, p)).ToArray();
+    public StarEditorStore(string configRoot,bool allowProductionWrite=false)
+    {
+        _paths=new[] {StarConfiguration.ContentPath,StarConfiguration.LayoutPath,StarConfiguration.PlanPath}.Select(p=>Path.Combine(configRoot,p)).ToArray();
+        productionRoot=File.Exists(Path.Combine(configRoot,"..","Idle-CRPG.csproj"));productionWriteAllowed=allowProductionWrite;
+    }
     public StarEditorDocument Load()
     {
         string[] texts = _paths.Select((p, i) => File.Exists(p) ? File.ReadAllText(p, Encoding.UTF8) : i == 2 ? "id,intent\n" : throw new FileNotFoundException("缺少星图配置", p)).ToArray();
@@ -21,6 +26,7 @@ public sealed class StarEditorStore
     }
     public void Save(StarEditorDocument document, StarProgressSave liveRanks)
     {
+        if(productionRoot&&!productionWriteAllowed)throw new InvalidOperationException("生产星图发布需要专项授权；默认仅保存QA副本");
         var config = document.Validate(); _ = new StarProgression(config, liveRanks);
         if (_baseline.Length != 3) throw new InvalidOperationException("保存前必须重新加载源表。");
         for (int i = 0; i < 3; i++)

@@ -12,7 +12,7 @@ public partial class SceneCanvas : Node2D
 public partial class Main
 {
     private static readonly Vector2 CreationOffset=new(176,90);
-    private Rect2 SceneRect=>session==null?new Rect2(24,92,1392,784):new Rect2(24,92,1040,558);
+    private Rect2 SceneRect=>session==null?new Rect2(24,92,1392,784):new Rect2(24,92,1040,510);
     private SceneCanvas sceneCanvas=null!;
     private SceneCanvas townBackdropCanvas=null!;
     private IdleCrpg.Core.TownScene? drawnTown;

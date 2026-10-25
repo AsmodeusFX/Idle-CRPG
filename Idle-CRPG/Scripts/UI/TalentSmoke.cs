@@ -28,7 +28,7 @@ public partial class Main
         var original=session;var oldConfig=config;int oldMode=viewMode;
         try
         {
-            session=GameSession.CreateNewWorld(config,20261017,"warrior");session.GrantGmResources(10000,10000);selectedHero="warrior";
+            session=GameSession.CreateNewWorld(config,20261017,"warrior");session.GrantGmResources(10000,10000);while(session.UpgradeHero(session.Heroes[0].HeroInstanceId,out _)){}selectedHero="warrior";
             SelectStarView(4);talentStamp="";RefreshTalentPage();
             if(talentTrees.GetChildCount()!=3||!talentContent.IsVisibleInTree())throw new Exception("三系天赋未显示");
             var column=talentTrees.GetChild<VBoxContainer>(2);var canvas=column.GetChild<ScrollContainer>(1).GetChild<Panel>(0);
@@ -57,7 +57,7 @@ public partial class Main
         string? classArg=OS.GetCmdlineUserArgs().FirstOrDefault(a=>a.StartsWith("--qa-class="));
         string requested=classArg?.Substring("--qa-class=".Length)??"warrior";
         var h=session.Heroes.FirstOrDefault(h=>h.SpecId==requested);if(h==null)return;
-        selectedHero=h.SpecId;session.GrantGmResources(10000,10000);
+        selectedHero=h.SpecId;session.GrantGmResources(10000,10000);while(session.UpgradeHero(session.Heroes[0].HeroInstanceId,out _)){}
         session.BuyStar("s_root",out _);for(int i=1;i<=4;i++)session.BuyStar("s_skill_"+i,out _);
         foreach(var node in config.Talents.Nodes.Values.Where(n=>n.Hero==h.SpecId).OrderBy(n=>n.Tree).ThenBy(n=>n.Row).ThenBy(n=>n.Col))
             session.LearnTalent(h.SpecId,node.Id,out _);

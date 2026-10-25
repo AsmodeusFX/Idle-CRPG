@@ -27,12 +27,12 @@ public static class SceneChecks
         oldSave.Session!.World!.NavigationVersion=0;oldSave.Session.World.Route=new(){to};
         var oldRestored=GameSession.Restore(c,oldSave.Session);
         Check(oldRestored.World!.Route.Count>1&&oldRestored.World.Route.Last()==to,"旧版路径没有迁移到避障网格");
-        Check(!game.RequestCastleChallenge("c1"),"未解锁城堡可点击挑战");
+        Check(!TestPlayerActions.RequestCastle(game,"c1"),"未解锁城堡可点击挑战");
         for(int i=0;i<3000&&w.Stage!=CampaignStage.Dungeon;i++)game.Tick(.05f);
         foreach(var region in c.Rulers.Where(p=>p.Value=="c1"))w.Progress.Explored.Add(region.Key);
         foreach(var d in c.Dungeons.Where(d=>!d.Castle&&c.Rulers[d.RegionId]=="c1"))w.Progress.Cleared.Add(d.Id);
         Check(!ExpeditionPlanner.Select(c,w.Progress,1,false).Dungeon.Castle,"未点击就自动挑战城堡");
-        string current=w.Target.Dungeon.Id;Check(game.RequestCastleChallenge("c1")&&w.PendingCastle=="c1"&&w.Target.Dungeon.Id==current&&w.Stage==CampaignStage.Dungeon,"战斗中城堡请求跳过当前地牢");
+        string current=w.Target.Dungeon.Id;Check(TestPlayerActions.RequestCastle(game,"c1")&&w.PendingCastle=="c1"&&w.Target.Dungeon.Id==current&&w.Stage==CampaignStage.Dungeon,"战斗中城堡请求跳过当前地牢");
         string json=SaveStore.Encode(new SaveDocument {Session=game.Capture()});var resumed=GameSession.Restore(c,SaveStore.Decode(c,json).Session!);
         Check(resumed.World!.PendingCastle=="c1","排队城堡请求未保存");
         foreach(var h in resumed.Heroes){h.Hp=h.MaxHp=100000;h.Attack=100000;}
@@ -45,9 +45,9 @@ public static class SceneChecks
         var castles=c.Dungeons.Where(d=>d.Castle&&d.Id!="c1"&&qw.Progress.AreaPartUnlocked(c,c.AreaPart(d.RegionId).Id)).Take(3).Reverse().ToArray();
         Check(castles.Length==3,"queue sample");
         foreach(var d in c.Dungeons.Where(d=>!d.Castle))qw.Progress.Cleared.Add(d.Id);
-        foreach(var castle in castles)Check(queued.RequestCastleChallenge(castle.Id),"enqueue failed");
+        foreach(var castle in castles)Check(TestPlayerActions.RequestCastle(queued,castle.Id),"enqueue failed");
         Check(qw.Target.Dungeon.Id==castles[0].Id&&qw.PendingCastles.SequenceEqual(castles.Skip(1).Select(d=>d.Id)),"queue overwritten");
-        Check(!queued.RequestCastleChallenge(castles[0].Id)&&!queued.RequestCastleChallenge(castles[1].Id),"duplicate accepted");
+        Check(!TestPlayerActions.RequestCastle(queued,castles[0].Id)&&!TestPlayerActions.RequestCastle(queued,castles[1].Id),"duplicate accepted");
         Check(castles.All(d=>c.Rulers.Where(r=>r.Value==d.Id).All(r=>qw.RegionState(r.Key)==RegionStatus.PlannedAttack)),"planned dominion color");
         queued=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new SaveDocument {Session=queued.CaptureProgress()})).Session!);qw=queued.World!;
         Check(qw.PendingCastles.SequenceEqual(castles.Skip(1).Select(d=>d.Id)),"queue persistence");

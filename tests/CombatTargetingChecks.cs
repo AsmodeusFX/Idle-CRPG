@@ -134,7 +134,7 @@ public static class CombatTargetingChecks
         var passing=GameSession.Restore(c,traversal);Tick(passing);
         Need(passing.CurrentRoom==previous&&passing.CombatEntryRemaining==0,"已清理房间错误启动警觉或等待队尾");Tick(passing);
         Need(passing.MovingBetweenRooms,"已清理房间通过时仍在门口等待队尾");
-        var five=new GameSession(c,789,c.Heroes.Select(h=>h.Id));
+        var five=new GameSession(c,789,c.Heroes.Take(4).Select(h=>h.Id));
         for(int t=0;t<10000&&five.CurrentRoom==0;t++)five.Tick(.05f);
         var entry=five.Capture().SkillState.Targeting.EntryAnchor;
         foreach(var hero in five.Heroes)hero.Position=entry;Tick(five,16);
@@ -149,7 +149,7 @@ public static class CombatTargetingChecks
         // 五职业实际展开：高容量远程也留在后排；分组不受接敌容量影响，四向入门均适用。
         foreach(var inward in new[]{Vector2.UnitX,-Vector2.UnitX,Vector2.UnitY,-Vector2.UnitY})
         {
-            var formation=Battle(c.Heroes.Select(h=>h.Id).ToArray());var arena=formation.Floor.Rooms[formation.CurrentRoom];arena.HalfWidth=arena.HalfHeight=5;
+            var formation=Battle(c.Heroes.Take(4).Select(h=>h.Id).ToArray());var arena=formation.Floor.Rooms[formation.CurrentRoom];arena.HalfWidth=arena.HalfHeight=5;
             var doorway=arena.Center-inward*5;var lateral=new Vector2(-inward.Y,inward.X);var state=formation.Capture().SkillState.Targeting;
             state.EntryPrepared=true;state.EntryAnchor=doorway;state.EntryDirection=inward;state.FloorIndex=formation.FloorIndex;state.RoomIndex=formation.CurrentRoom;
             foreach(var h in formation.Heroes)h.Position=doorway+inward*.4f;

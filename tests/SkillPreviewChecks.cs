@@ -18,8 +18,8 @@ public static class SkillPreviewChecks
             var snapshot=GameSession.CreateWorld(config,12,new[]{"warrior"}).CaptureProgress();
             snapshot.Heroes[0].SkillIds=new[]{"skill_01"};
             string text=SaveStore.Encode(new(){Session=snapshot});File.WriteAllText(file,text);File.WriteAllText(file+".bak",text);
-            var store=new SaveStore(file);var reset=store.Load(config);
-            if(!store.RecoveryReset||reset?.Session!=null||SaveStore.Decode(config,File.ReadAllText(file)).Session!=null||SaveStore.Decode(config,File.ReadAllText(file+".bak")).Session!=null||File.ReadAllText(settings)!="keep-settings")throw new Exception("退役技能账号未安全重置主备份或误改设置");
+            var store=new SaveStore(file);bool refused=false;try{store.Load(config);}catch(MigrationRequiredException){refused=true;}
+            if(!refused||store.RecoveryReset||File.ReadAllText(file)!=text||File.ReadAllText(file+".bak")!=text||File.ReadAllText(settings)!="keep-settings")throw new Exception("不兼容账号必须保留主备份并明确提示，不能自动清档");
         }
         var compatible=GameSession.CreateWorld(config,13,new[]{"warrior"}).CaptureProgress();
         if(SaveStore.Decode(config,SaveStore.Encode(new(){Session=compatible})).Session==null)throw new Exception("兼容进度被误重置");

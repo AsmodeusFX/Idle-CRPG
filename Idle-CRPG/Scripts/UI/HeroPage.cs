@@ -9,7 +9,7 @@ public partial class Main
     private HBoxContainer heroSlots=null!;
     private Button heroManageButton=null!;
 
-    private string HeroExperienceText(Actor h)=>session==null?"—":h.Level>=config.MaxHeroLevel?"已满级":(h.Experience+h.ExperienceFraction/100d).ToString("0.##")+" / "+session.ExperienceRequired(h);
+    private string HeroExperienceText(Actor h)=>session==null?"—":h.Level>=config.MaxHeroLevel?"已满级":session.PublicExperience.ToString("N0")+" / "+session.ExperienceRequired(h);
     private string selectedHero="";
     private string heroStamp="";
     private void BuildHeroPage()
@@ -24,7 +24,7 @@ public partial class Main
             button.Pressed+=()=>
             {
                 var hero=session?.Heroes.ElementAtOrDefault(slot);
-                if(hero!=null){selectedHero=hero.SpecId;heroStamp="";}else OpenHeroPicker(slot);
+                if(hero!=null){selectedHero=hero.HeroInstanceId;heroStamp="";}else OpenHeroPicker(slot);
             };
             heroSlots.AddChild(button);
         }
@@ -50,12 +50,12 @@ public partial class Main
             var hero=session?.Heroes.ElementAtOrDefault(i);
             bool locked=i>=(session?.PartyCapacity??1);
             var b=heroSlots.GetChild<Button>(i);
-            b.Text=hero==null?(!locked?"+\n席位空缺 · 选择英雄":"席位未解锁\n前往星图扩编"):$"{hero.Name}\nLv.{hero.Level}  XP {HeroExperienceText(hero)}\nHP {hero.Hp:0}/{hero.MaxHp:0}";
-            b.Disabled=locked;b.TooltipText=locked?"此席位尚未解锁，请在星图购买远征扩编节点。":hero==null?"点击此槽位调整编队":"点击查看英雄";
+            b.Text=hero==null?(!locked?"本轮空席\n已锁定":"未来永久第五席\n尚未解锁"):$"{hero.Name}\nLv.{hero.Level}  XP {HeroExperienceText(hero)}\nHP {hero.Hp:0}/{hero.MaxHp:0}";
+            b.Disabled=locked;b.TooltipText=locked?"未来永久席位尚未解锁。":hero==null?"本轮队伍锁定，设置中可放弃本轮重新选队。":"点击查看英雄";
         }
-        heroManageButton.Disabled=session==null;
-        var h=session?.Heroes.FirstOrDefault(h=>h.SpecId==selectedHero)??session?.Heroes.FirstOrDefault();
-        heroDetails.Text=h==null?"英雄\n\n请先选择一位英雄开始游戏。":$"{h.Name}\n\n角色成长\n等级：{h.Level}\n个人经验：{HeroExperienceText(h)}\n自动升级 · 上限 {config.MaxHeroLevel}\n\n基础属性\n生命：{h.Hp:0} / {h.MaxHp:0}\n攻击：{session!.HeroTalentAttribute(h,"atk",h.Attack):0}\n护甲：{session.HeroTalentAttribute(h,"armor",h.Defense):0}\n移动速度：{h.Speed:0.##}\n攻击距离：{h.Range:0.##}\n普攻间隔：{h.Cooldown:0.##} 秒\n\n战斗属性\n闪避：{h.Battle.Dodge:P0}\n暴击：{Math.Clamp(session!.HeroTalentAttribute(h,"crit_rate",h.Battle.CriticalChance),0,1):P0}\n格挡：{h.Battle.BlockChance:P0}\n\n队伍：{session.Heroes.Count}/{session.PartyCapacity}\n累计击杀：{session.Kills}\n\n可用天赋点：{session.TalentPoints(h)}";
+        heroManageButton.Disabled=session==null;heroManageButton.Text="本轮已锁队";heroManageButton.TooltipText="更换队伍：设置 → 放弃本轮并重新选队";
+        var h=session?.Heroes.FirstOrDefault(h=>h.HeroInstanceId==selectedHero)??session?.Heroes.FirstOrDefault();
+        heroDetails.Text=h==null?"英雄\n\n请先选择一位英雄开始游戏。":$"{h.Name}\n\n角色成长\n等级：{h.Level}\n公共XP / 升级费用：{HeroExperienceText(h)}\n右栏指定英雄升级 · 原型上限 {config.MaxHeroLevel}\n\n基础属性\n生命：{h.Hp:0} / {h.MaxHp:0}\n攻击：{session!.HeroTalentAttribute(h,"atk",h.Attack):0}\nAR：{session.AttackRating(h):0} / DR：{session.DefenseRating(h):0}\n移动速度：{h.Speed:0.##}\n攻击距离：{h.Range:0.##}\n普攻间隔：{h.Cooldown:0.##} 秒\n\n战斗属性\n闪避：{h.Battle.Dodge:P0}\n暴击：{Math.Clamp(session!.HeroTalentAttribute(h,"crit_rate",h.Battle.CriticalChance),0,1):P0}\n格挡：{h.Battle.BlockChance:P0}\n\n队伍：{session.Heroes.Count}/{session.PartyCapacity}\n累计击杀：{session.Kills}\n\n可用天赋点：{session.TalentPoints(h)}";
     }
     private void OpenHeroPicker(int slot)
     {
@@ -65,8 +65,8 @@ public partial class Main
     private void PaintCreationCamp()
     {
         painter.DrawSetTransform(-SceneRect.Position+CreationOffset);
-        DrawString(font,new Vector2(360,180),"选择你的第一位英雄",HorizontalAlignment.Left,-1,28,new Color("e7ba71"));
-        DrawString(font,new Vector2(312,220),"一人启程 · 在星图扩编 · 最多五人同行",HorizontalAlignment.Left,-1,18,new Color("91a6b7"));
+        DrawString(font,new Vector2(360,180),"选择本轮 1–4 名英雄",HorizontalAlignment.Left,-1,28,new Color("e7ba71"));
+        DrawString(font,new Vector2(312,220),"下方选择各职业人数 · 同职可重复 · 确认后本轮锁队",HorizontalAlignment.Left,-1,18,new Color("91a6b7"));
         float flicker=Mathf.Sin(Time.GetTicksMsec()*.009f);var fire=new Vector2(530,458);DrawCircle(fire,74+flicker*3,new Color(.8f,.35f,.1f,.12f));
         DrawLine(fire+new Vector2(-34,12),fire+new Vector2(34,-4),new Color("765335"),9,true);
         DrawLine(fire+new Vector2(-34,-4),fire+new Vector2(34,12),new Color("765335"),9,true);

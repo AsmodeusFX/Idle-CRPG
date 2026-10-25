@@ -151,7 +151,7 @@ public partial class Main
             gmButtons["GmSkipSupplies"].EmitSignal(Button.SignalName.Pressed);
             if(!session.Gm.SkipSupplies||!gmSkipSupplies.Text.EndsWith("开"))throw new Exception("跳过补给按钮状态不同步");
             if(!session.Gm.InstantDungeonClear||!gmInstantClear.Text.EndsWith("开"))throw new Exception("进入瞬间通关按钮状态不同步");
-            if(!gmRoot.Visible||session.Gold!=before+10000||session.Kills!=beforeKills+10000||session.Heroes[0].Level<=1||!session.Gm.Invincible||session.Gm.MonsterHp!=2||session.Gm.MonsterAttack!=.5f||session.Gm.RoomCountBonus!=1)throw new Exception("GM 按钮未生效或意外关闭面板");
+            if(!gmRoot.Visible||session.Gold!=before+10000||session.Kills!=beforeKills+10000||session.PublicExperience!=10000||session.Heroes.Any(h=>h.Level!=1)||!session.Gm.Invincible||session.Gm.MonsterHp!=2||session.Gm.MonsterAttack!=.5f||session.Gm.RoomCountBonus!=1)throw new Exception($"GM 按钮未生效或绕过手动升级 visible={gmRoot.Visible} gold={session.Gold}/{before+10000} kills={session.Kills}/{beforeKills+10000} xp={session.PublicExperience} levels={string.Join(',',session.Heroes.Select(h=>h.Level))} inv={session.Gm.Invincible} hp={session.Gm.MonsterHp} atk={session.Gm.MonsterAttack} count={session.Gm.RoomCountBonus}");
             if(gmButtons["GmGold"].GetParent()==gmButtons["StarEditorEntry"].GetParent())throw new Exception("GM 指令与编辑器没有分区");
             gmButtons["GmResetBattle"].EmitSignal(Button.SignalName.Pressed);
             if(session.Gm!=new GmBattleSettings()||session.Gold!=before+10000||session.Kills!=beforeKills+10000)throw new Exception("重置战斗调试清除了资源或没有重置开关");

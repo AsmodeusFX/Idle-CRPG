@@ -12,7 +12,7 @@ public static class TalentChecks
         var c=LegacySkillConfig.LoadLegacy(Path.Combine(root,"Idle-CRPG/config"));
         var auto=new GameSession(c,8,new[]{"warrior","mage"});var ah=auto.Heroes[0];
         Need(auto.LearnTalent("warrior","barb_bash",out _)&&ah.SkillIds.SequenceEqual(new[]{"barb_bash"}),"首次学习主动未自动填空槽");
-        auto.GrantGmResources(10000,10000);auto.SetTalentLoadout("warrior",Array.Empty<string>(),out _);auto.LearnTalent("warrior","barb_bash",out _);
+        auto.GrantGmResources(10000,10000);TestPlayerActions.UpgradeWithClicks(auto);auto.SetTalentLoadout("warrior",Array.Empty<string>(),out _);auto.LearnTalent("warrior","barb_bash",out _);
         Need(ah.SkillIds.Length==0,"升级技能重新装配了手动卸下技能");
         auto.LearnTalent("warrior","barb_mastery",out _);Need(ah.SkillIds.Length==0,"被动占用主动槽");
         auto.LearnTalent("warrior","barb_shout",out _);Need(ah.SkillIds.SequenceEqual(new[]{"barb_shout"}),"第二个新技能未填入空槽");
@@ -26,7 +26,7 @@ public static class TalentChecks
         Need(!g.SetTalentLoadout("warrior",new[]{"barb_bash"},out _),"未学习主动技能可装配");
         Need(g.LearnTalent("warrior","barb_mastery",out _)&&g.TalentPoints(h)==0,"首级点数消费");
         Need(!g.LearnTalent("warrior","barb_attack",out _)&&!g.LearnTalent("mage","barb_attack",out _),"不足点数/职业门禁");
-        g.GrantGmResources(100000,100000);
+        g.GrantGmResources(100000,100000);TestPlayerActions.UpgradeWithClicks(g);
         Need(g.TalentPoints(h)==h.Level-1,"等级补齐点数");
         Need(!g.LearnTalent("warrior","barb_leap",out _),"其他系投入解锁了战斗技能");
         for(int i=0;i<5;i++)Need(g.LearnTalent("warrior","barb_bash",out _),"基础猛击投入");
@@ -75,7 +75,7 @@ public static class TalentChecks
         var copied=Reopen(g,false);copied.SetGmBattle(g.Gm);for(int i=0;i<10;i++){g.Tick(.05f);copied.Tick(.05f);}
         Need(SaveStore.Encode(new(){Session=g.Capture()})==SaveStore.Encode(new(){Session=copied.Capture()}),"天赋战斗完整快照不确定");
         var bad=g.CaptureProgress();bad.Heroes[0].Talents["barb_bash"]=999;bool rejected=false;try{GameSession.Restore(c,bad);}catch(InvalidDataException){rejected=true;}Need(rejected,"非法学习等级存档未拒绝");
-        var formal=Config.Load(Path.Combine(root,"Idle-CRPG/config"));var town=GameSession.CreateNewWorld(formal,3,"warrior");town.GrantGmResources(10000,5000);
+        var formal=Config.Load(Path.Combine(root,"Idle-CRPG/config"));var town=GameSession.CreateNewWorld(formal,3,"warrior");town.GrantGmResources(10000,5000);TestPlayerActions.UpgradeWithClicks(town);
         var th=town.Heroes[0];town.LearnTalent("warrior","barb_mastery",out _);town.LearnTalent("warrior","barb_bash",out _);town.SetTalentLoadout("warrior",new[]{"barb_bash"},out _);
         Need(!town.ResetTalents("warrior",out _),"未解锁洗点可重置");town.BuyStar("s_root",out _);town.BuyStar("s_respec",out _);town.BuyStar("s_respec_discount",out _);
         long cost=town.TalentResetCost(th);Need(cost==36,"洗点原型费用与折扣向上取整");

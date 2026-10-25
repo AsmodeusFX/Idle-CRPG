@@ -55,6 +55,7 @@ public sealed class SkillActionState
 public sealed class SkillAttackSnapshot
 {
     public double Attack;
+    public double AttackRating=1;
     // 与攻方属性同时快照，弹道飞行中升级不改旧攻击的护甲K等级。
     public int Level=1;
     public BattleAttributes Attributes=new();

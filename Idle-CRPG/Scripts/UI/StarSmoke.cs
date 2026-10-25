@@ -33,10 +33,10 @@ public partial class Main
             _tnName.Text="UI 验证星辰";_tnMax.Text="1";_tnCost.Text="1";_tnValue.Text="1";_tnParents.Text="s_root";_tnAttribute.Select(2);_tnIntent.Text="验证编辑器保存功能";
             starPage.FindChild("StarEditorApply",true,false).EmitSignal(BaseButton.SignalName.Pressed);
             starPage.FindChild("StarEditorSave",true,false).EmitSignal(BaseButton.SignalName.Pressed);
-            Check(!_starDraft.Dirty&&session.Stars.Configuration.Nodes.ContainsKey(id)&&new StarEditorStore(starEditorConfigRoot).Load().Nodes.ContainsKey(id),"字段或三表没有保存并刷新会话");
+            Check(!_starDraft.Dirty&&!session.Stars.Configuration.Nodes.ContainsKey(id)&&new StarEditorStore(starEditorConfigRoot).Load().Nodes.ContainsKey(id),"QA三表保存失败或错误发布玩家会话");
             Check(!File.ReadAllText(Path.Combine(source,"star.csv")).Contains(id),"检查修改了源表");
             ToggleStarEditor();Check(!_editingStars,"编辑器未返回玩家页");
-            GD.Print("STAR_UI_SMOKE_OK: canvas purchase, ATK/HP, GM editor, draft guard, fields, three-table save, session refresh");
+            GD.Print("STAR_UI_SMOKE_OK: canvas purchase, ATK/HP, GM editor, draft guard, fields, QA three-table save without production/session publication");
         }
         catch(Exception e){GD.PushError(e.ToString());QuitSafely(1);}
         finally

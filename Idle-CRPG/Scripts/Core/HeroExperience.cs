@@ -1,55 +1,53 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
 namespace IdleCrpg.Core;
-
 public sealed partial class Config
 {
-    public IReadOnlyDictionary<int,int> ExperienceLevelRates {get;private set;}=null!;
-    private void LoadExperienceRates(string root)
-    {
-        var rates=new SortedDictionary<int,int>();
-        foreach(var r in CsvTable.Load("hero/experience_level_rate.csv",File.ReadAllText(Path.Combine(root,"hero/experience_level_rate.csv")),"id","percent").Rows)
-        {
-            int gap=r.Integer("id"),percent=r.Integer("percent");
-            if(Math.Abs((long)gap)>10000||percent is <0 or >10000)throw new InvalidDataException("等级经验倍率越界");rates.Add(gap,percent);
-        }
-        if(!rates.ContainsKey(0)||rates[0]!=100||rates.First().Key>=0||rates.Last().Key<=0||rates.Zip(rates.Skip(1)).Any(p=>p.Second.Key!=p.First.Key+1||p.Second.Value>p.First.Value))throw new InvalidDataException("经验倍率须连续覆盖负/零/正等级差，零差100%，随角色相对等级上升不递增");
-        ExperienceLevelRates=rates;
-    }
-    /// <summary>等级差=英雄等级-怪物等级；超出表边界沿用首/末行，首版最高300%，低5级及以上为0。</summary>
-    public int MonsterExperiencePercent(int heroLevel,int monsterLevel)
-    {
-        int gap=Math.Clamp(heroLevel-monsterLevel,ExperienceLevelRates.Keys.Min(),ExperienceLevelRates.Keys.Max());return ExperienceLevelRates[gap];
-    }
+    /// <summary>旧审计接口；等级差表已退出运行消费，无衰减统一100%。</summary>
+    public IReadOnlyDictionary<int,int> ExperienceLevelRates {get;}=new Dictionary<int,int>();
+    public int MonsterExperiencePercent(int heroLevel,int monsterLevel)=>100;
 }
 public sealed partial class GameSession
 {
-    /// <summary>兼容旧检查/API的排头经验投影；实际成长以每名Actor.Experience/Fraction为唯一来源。</summary>
-    public int Experience=>Heroes.Count==0?0:Heroes[0].Experience;
+    /// <summary>Run公共余额，无玩法池上限；64位溢出报错，禁止截断吞奖励。</summary>
+    public long PublicExperience {get;private set;}
+    public int PublicExperienceFraction {get;private set;}
+    /// <summary>兼容API也只读公共池，不投影Heroes[0]。</summary>
+    public long Experience=>PublicExperience;
     public int ExperienceRequired(Actor hero)=>hero.Level>=Config.MaxHeroLevel?0:Config.HeroLevels[hero.Level].Experience;
-    /// <summary>同一基础奖励发给全部上阵者（包括倒地者），各按本人等级结算；候补不参与。</summary>
-    private void GainMonsterExperience(int amount,int monsterLevel)
-    {
-        foreach(var hero in Heroes)GrantHeroExperience(hero,amount,Config.MonsterExperiencePercent(hero.Level,monsterLevel));
-    }
+    private void GainMonsterExperience(int amount,int monsterLevel)=>GainExperience(amount);
     private void GainExperience(int amount)
-    {foreach(var hero in Heroes)GrantHeroExperience(hero,amount,100);}
-    /// <summary>整数百分之一经验避免倍率取整丢失；每人独立跨级，倒地升级仍保持0血量。</summary>
-    private void GrantHeroExperience(Actor hero,int basis,int percent)
+    {if(amount<=0)return;PublicExperience=checked(PublicExperience+amount);MarkChanged();}
+    /// <summary>指定实例一次恰升一级；验证属性及余额后提交，失败零变更。</summary>
+    public bool UpgradeHero(string heroInstanceId,out string reason)
     {
-        if(basis<=0||percent<=0)return;
-        long hundredths=Math.Min((long)int.MaxValue*100+99,(long)hero.Experience*100+hero.ExperienceFraction+(long)basis*percent);
-        hero.Experience=(int)(hundredths/100);hero.ExperienceFraction=(int)(hundredths%100);MarkChanged();
-        while(hero.Level<Config.MaxHeroLevel&&hero.Experience>=Config.HeroLevels[hero.Level].Experience)
+        var hero=Heroes.SingleOrDefault(h=>h.HeroInstanceId==heroInstanceId);
+        if(hero==null){reason="英雄实例不存在";return false;}
+        int cost=ExperienceRequired(hero);
+        if(cost==0){reason="已达原型等级表上限";return false;}
+        if(PublicExperience<cost){reason=$"公共XP不足：需要{cost}，当前{PublicExperience}";return false;}
+        var before=Config.HeroLevels[hero.Level];var after=Config.HeroLevels[hero.Level+1];
+        float hp=hero.MaxHp+after.HpBonus-before.HpBonus,attack=hero.Attack+after.AttackBonus-before.AttackBonus;
+        if(!float.IsFinite(hp)||!float.IsFinite(attack)||hp<=0||attack<0){reason="升级属性溢出";return false;}
+        PublicExperience-=cost;hero.Level++;hero.Attack=attack;
+        if(hero.Alive)hero.Hp=Math.Min(hp,hero.Hp+hp-hero.MaxHp);
+        hero.MaxHp=hp;Note($"手动升级 {hero.HeroInstanceId} {hero.Name} → Lv.{hero.Level}，公共XP -{cost}，余额{PublicExperience}");reason="升级成功";return true;
+    }
+    private static void MigratePublicExperience(SessionSnapshot s)
+    {
+        if(s.PublicExperienceVersion is not (0 or 1)||s.HeroExperienceVersion is not (0 or 1))throw new InvalidDataException("不支持的经验版本");
+        if(s.PublicExperienceVersion==0)
         {
-            var before=Config.HeroLevels[hero.Level];var after=Config.HeroLevels[hero.Level+1];
-            hero.Experience-=before.Experience;hero.Level++;
-            float hpBonus=after.HpBonus-before.HpBonus;hero.MaxHp+=hpBonus;hero.Attack+=after.AttackBonus-before.AttackBonus;
-            if(hero.Alive)hero.Hp=Math.Min(CombatMaximumHp(hero),hero.Hp+hpBonus);
-            Note($"{hero.Name}成长至等级 {hero.Level}");
+            if(s.Experience<0||s.Heroes.Any(h=>h.Experience<0||h.ExperienceFraction is <0 or >99))throw new InvalidDataException("旧经验余额无效，不能折算");
+            // v0共享余额只算一次；v1源码升级时已扣费，Actor.Experience仅是当前级未花余额，不能补发历史成本。
+            long hundredths=s.HeroExperienceVersion==0?checked((long)s.Experience*100):s.Heroes.Sum(h=>checked((long)h.Experience*100+h.ExperienceFraction));
+            s.PublicExperience=hundredths/100;s.PublicExperienceFraction=(int)(hundredths%100);s.PublicExperienceVersion=1;
+            foreach(var hero in s.Heroes){hero.Experience=0;hero.ExperienceFraction=0;}
+            s.Experience=0;s.HeroExperienceVersion=1;
         }
+        if(s.PublicExperience<0||s.PublicExperienceFraction is <0 or >99||s.Heroes.Any(h=>h.Experience!=0||h.ExperienceFraction!=0))throw new InvalidDataException("公共XP或退役个人经验字段无效");
     }
 }

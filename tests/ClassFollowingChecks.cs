@@ -40,29 +40,29 @@ public static class ClassFollowingChecks
         Need(player.ResetTalents("warrior",out _)&&player.Heroes[0].Talents.Count==0&&player.Heroes[0].SkillIds.Length==0&&player.TalentPoints(player.Heroes[0])==1,"洗点保留初始技能或没有返还一级点数");
         player=Reopen(player);Need(player.Heroes[0].Talents.Count==0&&player.TalentPoints(player.Heroes[0])==1,"洗点读档自动补回初始技能");
         var old=player.CaptureProgress();old.Heroes[0].StartingSkillGranted=false;var migrated=GameSession.Restore(c,old);Need(migrated.Heroes[0].Talents["barb_bash"]==1&&migrated.TalentPoints(migrated.Heroes[0])==0,"旧角色有空余点未初始化");
-        var party=GameSession.CreateWorld(c,20261017,c.Heroes.Select(h=>h.Id));party.SetGmBattle(new(Invincible:true));
+        var party=GameSession.CreateWorld(c,20261017,c.Heroes.Take(4).Select(h=>h.Id));party.SetGmBattle(new(Invincible:true));
         bool spread=false,turn=false,gather=false;Vector2 direction=Vector2.Zero;int samples=0;
         var motion=new MotionPresentation();
         for(int t=0;t<12000&&!(spread&&turn&&gather);t++)
         {
             var w=party.World!;bool travel=w.Stage is CampaignStage.TravelDungeon or CampaignStage.TravelVillage&&w.PortalPhase==PortalPhase.None;
-            var before=Enumerable.Range(0,5).Select(w.OutdoorPartyPosition).ToArray();var lead=w.Position;motion.BeforeTick(party);party.Tick(.05f);
+            var before=Enumerable.Range(0,4).Select(w.OutdoorPartyPosition).ToArray();var lead=w.Position;motion.BeforeTick(party);party.Tick(.05f);
             if(!travel||w.PortalPhase!=PortalPhase.None)continue;
-            var after=Enumerable.Range(0,5).Select(w.OutdoorPartyPosition).ToArray();
+            var after=Enumerable.Range(0,4).Select(w.OutdoorPartyPosition).ToArray();
             if(w.Stage is CampaignStage.TravelDungeon or CampaignStage.TravelVillage)
             {
                 foreach(var pos in after)Need(WorldNavigation.Walkable(party.Config,pos),"跟随角色进入障碍");
-                for(int i=0;i<5;i++)Need(Vector2.Distance(before[i],after[i])<=party.Config.TravelSpeed*.05f+.0001f,"跟随角色瞬移/超速");
+                for(int i=0;i<4;i++)Need(Vector2.Distance(before[i],after[i])<=party.Config.TravelSpeed*.05f+.0001f,"跟随角色瞬移/超速");
                 var delta=w.Position-lead;if(delta.LengthSquared()>.000001f){var next=Vector2.Normalize(delta);if(direction.LengthSquared()>0&&Vector2.Dot(direction,next)<.99f)turn=true;direction=next;}
-                if(after.Distinct().Count()==5){spread=true;samples++;}
-                var visual=motion.OutdoorPartyPosition(party,4,.5f);Need(Vector2.Distance(visual,Vector2.Lerp(before[4],after[4],.5f))<.00001f,"队尾未插值");
+                if(after.Distinct().Count()==4){spread=true;samples++;}
+                var visual=motion.OutdoorPartyPosition(party,3,.5f);Need(Vector2.Distance(visual,Vector2.Lerp(before[3],after[3],.5f))<.00001f,"队尾未插值");
             }
             if(w.Stage==CampaignStage.Dungeon){Need(after.All(p=>Vector2.Distance(p,w.Position)<.0001f),"队尾未集合即进入地牢");gather=true;}
         }
         Need(spread&&turn&&gather&&samples>0,"缺少队列展开、转弯或入口集合样本");
-        for(int t=0;t<20000&&!(party.World!.Stage==CampaignStage.TravelDungeon&&party.World.PortalPhase==PortalPhase.None&&Enumerable.Range(0,5).Select(party.World.OutdoorPartyPosition).Distinct().Count()==5);t++)party.Tick(.05f);
+        for(int t=0;t<20000&&!(party.World!.Stage==CampaignStage.TravelDungeon&&party.World.PortalPhase==PortalPhase.None&&Enumerable.Range(0,4).Select(party.World.OutdoorPartyPosition).Distinct().Count()==4);t++)party.Tick(.05f);
         var copy=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=party.Capture()})).Session!);copy.SetGmBattle(party.Gm);
-        Need(Enumerable.Range(0,5).All(i=>party.World!.OutdoorPartyPosition(i)==copy.World!.OutdoorPartyPosition(i)),"读档丢失跟随位置");
+        Need(Enumerable.Range(0,4).All(i=>party.World!.OutdoorPartyPosition(i)==copy.World!.OutdoorPartyPosition(i)),"读档丢失跟随位置");
         for(int i=0;i<20;i++){party.Tick(.05f);copy.Tick(.05f);}Need(SaveStore.Encode(new(){Session=party.Capture()})==SaveStore.Encode(new(){Session=copy.Capture()}),"跟随完整快照不确定");
         var bad=party.CaptureProgress();bad.World!.OutdoorTrail=new(){new Vector2(float.NaN,0)};bool rejected=false;try{GameSession.Restore(c,bad);}catch(InvalidDataException){rejected=true;}Need(rejected,"非法跟随轨迹未拒绝");
         Console.WriteLine("PASS: all five three-tree classes, typed starting attacks, level-one point consumption, removable starter/save migration, safe leader-trail following, turn/gather/interpolation and exact saves");

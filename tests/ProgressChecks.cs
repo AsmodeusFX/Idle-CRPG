@@ -21,7 +21,7 @@ public static class ProgressChecks
         var room=g.Floor.Rooms[g.CurrentRoom];Check(room.Monsters.Count(m=>m.Alive)>=2,"未构造战斗");
         foreach(var h in g.Heroes)h.Timer=999;
         while(g.CombatEntryRemaining>0)g.Tick(.05f);
-        int count=room.Monsters.Count;long revision=g.Revision,gold=g.Gold;int xp=g.Experience,kills=g.Kills;
+        int count=room.Monsters.Count;long revision=g.Revision,gold=g.Gold;long xp=g.Experience;int kills=g.Kills;
         g.Heroes[0].Timer=0;g.Tick(.05f);
         Check(room.Loot.Count==1&&room.Monsters.Any(m=>m.Alive)&&g.Gold==gold&&g.Kills==kills+1,"战斗中提前发放实物掉落或没有即时记录击杀");
         Check(g.Revision>revision&&(g.Experience!=xp||g.Heroes[0].Level>1),"击杀经验没有即时结算或触发存档");
@@ -34,7 +34,7 @@ public static class ProgressChecks
         string directory=Path.Combine(root,"artifacts","progress-checks",Guid.NewGuid().ToString("N"));
         var store=new SaveStore(Path.Combine(directory,"progress.json"));store.Save(g);
         var raw=JsonSerializer.Deserialize<SaveDocument>(File.ReadAllText(store.PathName),SaveStore.JsonOptions)!;
-        Check(raw.Version==4&&raw.Session!.RoomCheckpoint&&raw.Session.Floors.All(f=>f.Rooms.All(r=>r.Monsters.Count==0)),"磁盘版本错误或仍保存怪物现场");
+        Check(raw.Version==5&&raw.Session!.RoomCheckpoint&&raw.Session.Floors.All(f=>f.Rooms.All(r=>r.Monsters.Count==0)),"磁盘版本错误或仍保存怪物现场");
         var resumed=GameSession.Restore(c,store.Load(c)!.Session!);room=resumed.Floor.Rooms[resumed.CurrentRoom];
         Check(room.Monsters.Count==count&&room.Monsters.All(m=>m.Hp==m.MaxHp&&m.Timer==0)&&room.Loot.Count==0,"没有从进房重开");
         Check(resumed.Gold==gold&&resumed.Experience==xp&&resumed.Kills==kills&&resumed.Heroes.All(h=>h.Timer==0),"重开丢失累计成长或保留攻击冷却");

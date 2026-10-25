@@ -11,7 +11,7 @@ public static class PositionScenarioChecks
     {
         void Need(bool ok,string why){if(!ok)throw new Exception("POSITION_SCENARIO: "+why);}
         var c=LegacySkillConfig.Load(Path.Combine(root,"Idle-CRPG/config"));
-        string[] party={"warrior","priest","ranger","mage","necromancer"};
+        string[] party={"warrior","ranger","mage","necromancer"};
 
         (GameSession Game,Room Room) Scene(string name,int melee,int ranged,bool boss,bool hunter,bool area)
         {

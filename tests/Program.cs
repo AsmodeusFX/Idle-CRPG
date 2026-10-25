@@ -6,6 +6,11 @@ using IdleCrpg.Core;
 
 static void Check(bool value,string message) {if(!value)throw new Exception(message);}
 var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"));
+if(args.Contains("--execution-safety-checks")){ExecutionSafetyChecks.Run(root);return;}
+if(args.Contains("--first-batch-checks")){ExecutionSafetyChecks.Run(root);FirstBatchChecks.Run(root);return;}
+if(args.Contains("--legacy-run-migration")){LegacyRunMigrationChecks.Run(root);return;}
+if(args.Contains("--freeze-legacy-samples")){LegacyRunMigrationChecks.Freeze(root);return;}
+if(args.Contains("--regression-matrix")){RegressionMatrix.Run(root);return;}
 if(args.Contains("--simulation"))
 {
     int index=Array.IndexOf(args,"--simulation");
@@ -58,7 +63,7 @@ if(args.Contains("--dungeon-travel-checks")){DungeonTravelChecks.Run(root);retur
 if(args.Contains("--simulation-tool-checks")){SimulationToolChecks.Run(root);return;}
 if(args.Contains("--param-audit"))
 {
-    string outDir=Path.Combine(root,"docs/data",ParameterAudit.ArchiveFolder);
+    string outDir=Path.Combine(root,"artifacts/qa","param-audit-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff"));
     string? custom=args.FirstOrDefault(a=>a.StartsWith("--param-out=",StringComparison.Ordinal));
     if(custom!=null)outDir=custom.Substring("--param-out=".Length);
     ParameterAudit.Run(root,outDir);return;
@@ -128,7 +133,7 @@ for(int tick=0;tick<200000&&!s.Won;tick++)
     }
     foreach(var kv in snapshots)Check(kv.Key.SnapshotLevel==kv.Value.SnapshotLevel&&kv.Key.Monsters.Count==kv.Value.Count,"回访刷新");
     if(s.FloorIndex!=previousFloor){Check(s.Floors[previousFloor].Clear,"未清层进入下一层");previousFloor=s.FloorIndex;}
-    sawGrowth|=s.Heroes[0].Level>1;
+    TestPlayerActions.UpgradeWithClicks(s);sawGrowth|=s.Heroes[0].Level>1;
 }
 Check(s.Won,"完整地牢没有通关: "+s.Status);
 Check(s.Floors.All(f=>f.Clear&&f.Rooms.All(r=>r.Revealed)),"没有清空全部房间");
@@ -177,9 +182,10 @@ Check(combat.Heroes[0].Alive,"清怪后未救援");
 var retry=new GameSession(c,42,new[]{"warrior","ranger","mage"});
 foreach(var h in retry.Heroes)h.Hp=h.MaxHp=100000;
 for(int i=0;i<100000&&retry.FloorIndex==0;i++)retry.Tick(0.05f);
+TestPlayerActions.UpgradeWithClicks(retry);
 Check(retry.FloorIndex>0&&retry.Heroes[0].Level>1&&retry.Kills>0,"未构造跨层成长场景");
 var saved=retry.Heroes.Select(h=>(h,h.Level,h.MaxHp,h.Attack,h.Defense)).ToArray();
-int xp=retry.Experience,kills=retry.Kills;
+long xp=retry.Experience;int kills=retry.Kills;
 retry.Heroes[0].Hp=0; retry.Tick(0.05f);Check(retry.ReviveTarget!=null,"没有进入救援");
 foreach(var h in retry.Heroes){h.Hp=0;h.Timer=9;}
 retry.Tick(0.05f);
@@ -204,8 +210,8 @@ tech.SetSpawnModifiers(new SpawnModifiers(1,2,3,1.5f,2));
 for(int i=0;i<20000&&tech.Floor.Rooms[tech.CurrentRoom]==oldRoom;i++)tech.Tick(.05f);
 Check(oldMonster.MaxHp==oldHp&&oldMonster.Level==1,"科技追涨已生成怪物");
 var upgraded=tech.Floor.Rooms[tech.CurrentRoom];
-Check(upgraded.SnapshotLevel==4&&upgraded.Monsters.Count>=2&&upgraded.Monsters.Count<=7&&upgraded.Monsters.All(m=>m.Level==4),"独立科技增量未应用");
-Check(upgraded.Monsters.All(m=>m.RewardXp>=8&&m.ValueMultiplier>=3.5f),"等级未增加经验/物品价值");
+Check(upgraded.SnapshotLevel==1&&upgraded.Monsters.Count>=2&&upgraded.Monsters.Count<=7&&upgraded.Monsters.All(m=>m.Level==1),"Run怪级应覆盖旧科技等级，数量修饰保留");
+Check(upgraded.Monsters.All(m=>m.RewardXp>=2&&m.ValueMultiplier>=2),"等级未增加经验/物品价值");
 bool rejected=false;try{tech.SetSpawnModifiers(new SpawnModifiers(20,0));}catch(InvalidDataException){rejected=true;}Check(rejected,"非法刷怪区间未拒绝");
 Check(c.Regions.Count==256&&c.Villages.Count==256&&c.Rulers.Count==256,"世界配置覆盖错误");
 var progress=new WorldProgress();progress.Explored.Add(1);
@@ -244,7 +250,7 @@ for(int tick=0;tick<1500000&&w.Progress.Cleared.Count<worldConfig.Dungeons.Count
     if(tick%100==0&&w.PendingCastle==""&&!w.Target.Dungeon.Castle)
     {
         var ready=worldConfig.Dungeons.FirstOrDefault(d=>d.Castle&&!w.Progress.Cleared.Contains(d.Id)&&w.Progress.CastleUnlocked(worldConfig,d.Id));
-        if(ready!=null)Check(campaign.RequestCastleChallenge(ready.Id),"玩家无法安排已解锁城堡");
+        if(ready!=null)Check(TestPlayerActions.RequestCastle(campaign,ready.Id),"玩家无法安排已解锁城堡");
     }
     long beforeGold=campaign.Gold;
     long pendingSale=campaign.Inventory.Sum(entry=>entry.Key.Price*entry.Value);
@@ -282,7 +288,7 @@ Check(w.Stage==CampaignStage.Dungeon&&campaign.Inventory.Count>0,"未构造有�
 long keptGold=campaign.Gold;var keptItems=campaign.Inventory.ToArray();int keptProgress=w.Progress.Cleared.Count,keptRetries=campaign.Retries;
 int deathRegion=w.CurrentRegion,previousTrades=w.Trades,previousVisits=w.DungeonVisits;
 Check(deathRegion!=worldConfig.StartRegionId,"未构造非出生区域全灭场景");
-int keptExperience=campaign.Experience;
+long keptExperience=campaign.Experience;
 var keptHeroes=campaign.Heroes.Select(h=>(h,h.Level,h.MaxHp,h.Attack)).ToArray();
 foreach(var h in campaign.Heroes)h.Hp=0;campaign.Tick(.05f);
 Check(campaign.Retries==keptRetries+1&&campaign.Gold==keptGold&&campaign.Inventory.SequenceEqual(keptItems)&&w.Progress.Cleared.Count==keptProgress&&w.Stage==CampaignStage.Village,"全灭丢失金币/物品/世界进度或没有在村庄复活");
@@ -306,6 +312,8 @@ Check(battleWipe.World!.Stage==CampaignStage.Dungeon&&battleWipe.CurrentRoom!=0,
 while(battleWipe.CombatEntryRemaining>0)battleWipe.Tick(.05f);
 foreach(var h in battleWipe.Heroes){h.Hp=1;h.Defense=0;h.Timer=999;h.Position=battleWipe.Floor.Rooms[battleWipe.CurrentRoom].Center;}
 foreach(var m in battleWipe.Floor.Rooms[battleWipe.CurrentRoom].Monsters){m.Hp=100000;m.Attack=100000;m.Range=100;m.Cooldown=.05f;m.Timer=0;}
+// 该房可能在进入时已被清空：显式撤销清除标记，否则战斗分支不会启动，场景退化成"无人交战"。
+battleWipe.Floor.Rooms[battleWipe.CurrentRoom].ContentCleared=false;
 for(int i=0;i<10&&battleWipe.World.Stage==CampaignStage.Dungeon;i++)battleWipe.Tick(.05f);
 Check(battleWipe.World.Stage==CampaignStage.Village&&battleWipe.Retries==1&&battleWipe.Heroes.All(h=>h.Alive&&h.Hp==h.MaxHp),"战斗击杀触发全灭后未立即返村满血复活");
 void RejectConfig(Action<Config> mutate,string message)
@@ -352,3 +360,6 @@ SummonCapacityChecks.Run(root);
 CombatStatsChecks.Run(root);
 DungeonTravelChecks.Run(root);
 SimulationToolChecks.Run(root);
+// 本批（P2-4 首批 WP0–WP3）专项随之进入默认全量检查，避免只存在于单独开关。
+ExecutionSafetyChecks.Run(root);
+FirstBatchChecks.Run(root);

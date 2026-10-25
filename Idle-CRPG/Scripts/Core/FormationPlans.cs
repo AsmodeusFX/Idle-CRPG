@@ -13,15 +13,11 @@ public sealed partial class GameSession
     public IReadOnlyList<Actor> ReserveHeroes=>reserveHeroes.AsReadOnly();
     /// <summary>唯一待执行编队的有序职业列表；空列表表示没有计划。</summary>
     public IReadOnlyList<string> PendingFormation=>Array.AsReadOnly(pendingFormation);
-    private int FormationCapacity(StarProgression stars)=>Math.Min(5,Math.Max(formationCapacityFloor,1+stars.Capture().Ranks.Sum(r=>stars.Configuration.Nodes[r.Id].Attribute=="party_slots"?r.Level:0)));
+    private int FormationCapacity(StarProgression stars)=>4;
     /// <summary>编队只是计划，确认时不修改正在战斗的成员；新计划替换尚未执行的旧编队计划。</summary>
     public bool RequestFormation(IEnumerable<string> ids,out string reason)
     {
-        var chosen=ids?.ToArray()??Array.Empty<string>();
-        if(World==null||Config.Town==null){reason="请先开始世界远征";return false;}
-        if(!ValidFormation(chosen,PartyCapacity)){reason="请安排至少1名不同的已解锁英雄，且人数不能超过已解锁席位";return false;}
-        if(chosen.SequenceEqual(Heroes.Select(h=>h.SpecId))){reason="编队与当前队伍相同";return false;}
-        pendingFormation=chosen;Note("编队计划已加入：完成当前房间及救援拾取后回城，前往凯恩处变更队伍");reason="编队计划已加入，抵达凯恩处后生效";return true;
+        reason="本轮队伍已锁定；更换队伍请放弃本轮后重新选队";return false;
     }
     private bool ValidFormation(string[] ids,int capacity)=>ids.Length>=1&&ids.Length<=capacity&&ids.Distinct().Count()==ids.Length&&ids.All(id=>Config.Heroes.Any(h=>h.Id==id)&&(HeroUnlocked(id)||Heroes.Concat(reserveHeroes).Any(h=>h.SpecId==id)));
     /// <summary>撤销未执行的阵容变更；已经开始的回城表演照常完成。</summary>
@@ -44,7 +40,7 @@ public sealed partial class GameSession
         if(World?.Stage!=CampaignStage.Village||World.PortalPhase!=PortalPhase.None||World.TownPhase!=TownVisitPhase.Formation||World.TradeElapsed+.00001f<town.ServiceSeconds||Heroes.Any(h=>Vector2.Distance(h.Position,npc.Position)>town.InteractionRange))throw new InvalidOperationException("必须到达凯恩并完成编队交互");
         if(!ValidFormation(pendingFormation,PartyCapacity))throw new InvalidOperationException("编队计划已失效");
         ClearSummons();
-        var pool=Heroes.Concat(reserveHeroes).ToDictionary(h=>h.SpecId);var next=pendingFormation.Select(id=>pool.TryGetValue(id,out var hero)?hero:CreateFormationHero(id)).ToArray();
+        var pool=Heroes.Concat(reserveHeroes).ToDictionary(h=>h.HeroInstanceId);var next=pendingFormation.Select(id=>pool.TryGetValue(id,out var hero)?hero:CreateFormationHero(id)).ToArray();
         reserveHeroes.Clear();reserveHeroes.AddRange(pool.Values.Where(h=>!pendingFormation.Contains(h.SpecId)));
         Heroes.Clear();Heroes.AddRange(next);foreach(var h in Heroes){h.Position=npc.Position;h.Timer=0;}
         pendingFormation=Array.Empty<string>();ResetSkillRoom();roomEntry.Clear();ResetRescue();destination=-1;phase=0;regroup=0;
@@ -54,11 +50,7 @@ public sealed partial class GameSession
     {if(Heroes.Count>FormationCapacity(next)||pendingFormation.Length>FormationCapacity(next))throw new InvalidOperationException("星图变更不能使当前或计划编队超过已解锁席位");}
     private static void ValidateFormationSnapshot(Config c,SessionSnapshot s)
     {
-        if(s.ReserveHeroes==null||s.PendingFormation==null||s.PendingFormation.Any(string.IsNullOrWhiteSpace)||s.FormationCapacityFloor<0||s.FormationCapacityFloor>5||s.ReserveHeroes.Count>c.Heroes.Count||s.ReserveHeroes.Any(h=>h==null))throw new InvalidDataException("编队存档字段无效");
-        var all=s.Heroes.Concat(s.ReserveHeroes).ToArray();
-        if(all.Select(h=>h.SpecId).Distinct().Count()!=all.Length||all.Any(h=>!c.Heroes.Any(t=>t.Id==h.SpecId)))throw new InvalidDataException("候补英雄重复或引用无效");
-        int cap=Math.Min(5,Math.Max(s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor,1+s.Stars.Ranks.Sum(r=>c.Stars.Nodes[r.Id].Attribute=="party_slots"?r.Level:0)));
-        if(s.Heroes.Count>cap||s.PendingFormation.Length>cap||s.PendingFormation.Distinct().Count()!=s.PendingFormation.Length||s.PendingFormation.Any(id=>!c.HeroUnlockKills.TryGetValue(id,out var kills)||kills>s.Kills&&!all.Any(h=>h.SpecId==id))||s.PendingFormation.Length>0&&(s.World==null||c.Town==null))throw new InvalidDataException("编队计划容量、职业或解锁条件无效");
+        if(s.ReserveHeroes==null||s.PendingFormation==null||s.ReserveHeroes.Count!=0||s.PendingFormation.Length!=0||s.Heroes.Count is <1 or >4)throw new InvalidDataException("本轮阵容锁定或实例引用无效");
     }
 }
 public sealed partial class WorldCampaign

@@ -11,6 +11,7 @@ public sealed partial class GameSession
     public bool RequestBranchChallenge(int difficulty,int chapter,string castle)
     {
         if(!MapUnlocked(difficulty,chapter))return false;
+        var gateMap=Config.ChapterMaps[chapter];if(!gateMap.Dungeons.Any(d=>d.Id==castle&&d.Castle)||MonsterLevelMax<(gateMap.PoiProfiles.ContainsKey(castle)?gateMap.Challenge(castle,difficulty).Challenge:gateMap.Dungeons.Single(d=>d.Id==castle).LevelMin))return false;
         var map=Config.ChapterMaps[chapter];var progress=MapProgress(difficulty,chapter);var request=new BranchRequest(difficulty,chapter,castle);
             if(!map.Dungeons.Any(d=>d.Id==castle&&d.Castle&&map.Optional(d.Id))||!progress.AreaPartUnlocked(map,map.AreaParts.Single(a=>a.CastleId==castle).Id)||progress.Cleared.Contains(castle)||ActiveBranch==request||branchQueue.Contains(request))return false;
             if(difficulty==DifficultyIndex&&chapter==ChapterIndex)return RequestCastleChallenge(castle);

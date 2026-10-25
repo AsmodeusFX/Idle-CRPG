@@ -8,6 +8,10 @@ namespace IdleCrpg.Core;
 public sealed class Actor
 {
     public string SpecId = "";
+    /// <summary>永久英雄实例身份，职业SpecId不能代替实例。</summary>
+    public string HeroInstanceId="",SummonOwnerInstanceId="";
+    /// <summary>后续装备/星图评级贡献预留；自然评级仍由等级确定，AR与DR独立消费。</summary>
+    public double AttackRatingBonus,DefenseRatingBonus;
     public string Name = "";
     public Vector2 Position;
     public float Hp, MaxHp, Attack, Defense, Speed, Range, Cooldown, Timer;
@@ -106,9 +110,10 @@ public sealed partial class GameSession
         combatRandom=new PersistentRandom(unchecked((uint)seed^932701u));
         lootRandom=new PersistentRandom(unchecked((uint)seed^173831u));dungeonSeed=seed;
         var chosen = ids.ToArray();formationCapacityFloor=chosen.Length;
-        if (chosen.Length < 1 || chosen.Length > 5 || chosen.Distinct().Count() != chosen.Length) throw new ArgumentException("选择一至五个不同职业");
+        if (chosen.Length < 1 || chosen.Length > 4) throw new ArgumentException("选择一至四名英雄，允许重复职业");
         Heroes.AddRange(chosen.Select(id => Actor.From(config.Heroes.Single(s => s.Id == id))));
-        foreach(var hero in Heroes){config.ApplyCombatProfile(hero);if(config.Town!=null)GrantStarterSkill(hero);}
+        RunId=$"run-{seed}:0";
+        for(int i=0;i<Heroes.Count;i++){var hero=Heroes[i];hero.HeroInstanceId=$"{RunId}:hero:{i+1}";config.ApplyCombatProfile(hero);if(config.Town!=null)GrantStarterSkill(hero);}
         Floors = Dungeon.Generate(seed,config);
         EnterFloor();
     }
@@ -126,11 +131,12 @@ public sealed partial class GameSession
     public void SetSpawnModifiers(SpawnModifiers modifiers) {Config.Spawn.Validate(modifiers);if(Config.Dungeons.Any(d=>d.LevelMax+(long)Config.Spawn.Level-1+modifiers.LevelBonus>Config.MaxMonsterLevel))throw new ArgumentOutOfRangeException(nameof(modifiers));SpawnModifiers=modifiers;MarkChanged();}
     public bool RequestCastleChallenge(string castleId)
     {
-        if(World?.RequestCastle(castleId)!=true)return false;
+        if(!CanChallengeCastle(castleId,out _)||World?.RequestCastle(castleId)!=true)return false;
         Note("已安排城堡挑战，完成当前地牢及返村交易后出发");return true;
     }
     internal void BeginDungeon(DungeonSpec dungeon,int visit)
     {
+        dungeonEntrySerial=checked(dungeonEntrySerial+1);
         // 每次开始新副本重置普攻及所有主动技能/换入冷却；跨房和换层不清换入等待。
         foreach(var hero in Heroes.Concat(reserveHeroes)){hero.Timer=0;hero.SkillSwapLocks.Clear();}
         ActiveDungeon=dungeon;Won=false;FloorIndex=0;regroup=0;ResetRescue();
@@ -206,7 +212,7 @@ public sealed partial class GameSession
             MarkChanged();
             room.EventUsed=true;
             if (room.Event == "营火") { foreach(var h in Heroes.Where(h=>h.Alive)) h.Hp=Math.Min(h.MaxHp,h.Hp+h.MaxHp*0.3f); Note("营火：存活队员恢复 30% 生命"); }
-            if (room.Event == "宝箱") { GainMonsterExperience(8,Math.Max(1,room.SnapshotLevel)); Note("宝箱：每名上阵英雄按房间等级结算经验（基础8）"); }
+            if (room.Event == "宝箱") { GainMonsterExperience(8,Math.Max(1,room.SnapshotLevel)); Note("宝箱：公共XP +8"); }
         }
         if(pendingFormation.Length>0&&World!=null&&!(Floor.Clear&&FloorIndex==Floors.Count-1))
         {ResetSkillRoom();World.ReturnForFormation(this,true);return;}
@@ -462,11 +468,8 @@ public sealed partial class GameSession
         if(room.Generated) return;
         room.Generated=true;
         var rule=Config.Spawn;var modifiers=SpawnModifiers;
-        int levelMin=(ActiveDungeon?.LevelMin??1)+rule.Level-1+modifiers.LevelBonus;
-        int levelMax=(ActiveDungeon?.LevelMax??1)+rule.Level-1+modifiers.LevelBonus;
-        if(ActiveDungeon!=null&&Config.PoiProfiles.ContainsKey(ActiveDungeon.Id))levelMin=levelMax=Config.Challenge(ActiveDungeon.Id,DifficultyIndex).Challenge+rule.Level-1+modifiers.LevelBonus;
+        int levelMin=MonsterLevelMin,levelMax=MonsterLevelMax;
         var plan=ActiveDungeon==null?null:Config.FloorPlans.SingleOrDefault(p=>p.Poi==ActiveDungeon.Id&&p.Difficulty==DifficultyIndex&&p.Index==FloorIndex+1);
-        if(plan!=null)levelMin=levelMax=plan.MonsterLevel+rule.Level-1+modifiers.LevelBonus;
         room.SnapshotLevel=levelMin;
         var rng=new Random(unchecked(dungeonSeed*397 ^ FloorIndex*7919 ^ room.Id*104729));
         int count=rng.Next(rule.Min+modifiers.MinBonus,rule.Max+modifiers.MaxBonus+1);

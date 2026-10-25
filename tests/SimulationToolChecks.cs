@@ -80,7 +80,7 @@ public static class SimulationToolChecks
         Need(events.Contains("\"star_purchase\",\"s_root\",\"accepted\"") && events.Contains("cost=3"), "显式星图未按计划购买 s_root");
         Need(events.Contains("\"star_purchase\",\"s_party_1\",\"accepted\"") && events.Contains("cost=25"), "显式星图未按计划购买 s_party_1");
         Need(!events.Contains("\"star_purchase\",\"s_skill_1\""), "执行了配置之外的星图购买");
-        Need(events.Contains("\"formation_request\",\"warrior|ranger\",\"accepted\""), "显式编队未按名单请求");
+        Need(events.Contains("\"party_reject\",\"warrior|ranger\"")&&!events.Contains("\"formation_request\""), "锁队必须拒绝旧策略换人且保留拒绝证据");
         Need(!events.Contains("\"talent_learn\""), "talents.mode=none 仍执行了天赋学习");
         Need(!events.Contains("\"skill_equip\""), "talents.mode=none 仍执行了技能装配");
         var ledger = first["ledger.csv"];

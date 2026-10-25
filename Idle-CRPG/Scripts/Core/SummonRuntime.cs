@@ -59,7 +59,7 @@ public sealed partial class GameSession
             SpecId="summon:"+definition.Id,Name=definition.Name,Level=owner.Level,
             MaxHp=maxHp,Hp=maxHp,Attack=owner.Attack*(float)definition.AttackRatio,Defense=owner.Defense*(float)definition.DefenseRatio,
             Speed=definition.Speed,Range=definition.Range,Cooldown=(float)definition.Cooldown,Timer=0,Ranged=definition.RangedCombat,
-            SummonDefinitionId=definition.Id,SummonSkill=work.Skill,SummonOwner=work.Owner,SummonRemaining=(float)definition.Duration
+            SummonDefinitionId=definition.Id,SummonSkill=work.Skill,SummonOwner=work.Owner,SummonOwnerInstanceId=Heroes[work.Owner].HeroInstanceId,SummonRemaining=(float)definition.Duration
         };
         int slot=Summons.Count(s=>s.Alive&&s.SummonOwner==work.Owner);
         var offset=new Vector2(.35f+.2f*slot,(slot%2==0?.3f:-.3f));

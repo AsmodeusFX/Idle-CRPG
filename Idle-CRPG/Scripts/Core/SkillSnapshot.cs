@@ -25,7 +25,7 @@ public sealed partial class GameSession
         if(snapshot.RoomCheckpoint&&(state.ProcTick!=0||state.ProcIcds.Count>0))throw new InvalidDataException("正式检查点不得保存Proc ICD");
         void Attack(SkillAttackSnapshot attack)
         {
-            if(attack.Attributes==null||!Time(attack.Attack)||attack.Level<1||attack.Level>Math.Max(config.MaxHeroLevel,config.MaxMonsterLevel))throw new InvalidDataException("攻击属性/等级快照无效");
+            if(attack.Attributes==null||!Time(attack.Attack)||!double.IsFinite(attack.AttackRating)||attack.AttackRating<=0||attack.Level<1||attack.Level>Math.Max(config.MaxHeroLevel,config.MaxMonsterLevel))throw new InvalidDataException("攻击属性/评级/等级快照无效");
             attack.Attributes.Validate();
         }
         var targeting=state.Targeting;

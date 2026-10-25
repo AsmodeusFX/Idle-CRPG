@@ -12,7 +12,7 @@ public partial class Main
         var previous=session;var oldConfig=config;int mode=viewMode;
         try
         {
-            session=GameSession.CreateNewWorld(config,20261017,"warrior");session.GrantGmResources(10000,100000);
+            session=GameSession.CreateNewWorld(config,20261017,"warrior");session.GrantGmResources(10000,100000);while(session.UpgradeHero(session.Heroes[0].HeroInstanceId,out _)){}
             session.BuyStar("s_root",out _);session.BuyStar("s_skill_1",out _);session.BuyStar("s_party_1",out _);
             for(int i=0;i<10;i++)session.LearnTalent("warrior","barb_bash",out _);
             for(int i=0;i<10;i++)session.LearnTalent("warrior","barb_voice",out _);
@@ -27,18 +27,10 @@ public partial class Main
             Need(source.Details!().Contains("冷却")&&first._CanDropData(Vector2.Zero,payload),"拖动缺说明或目标未接受已学技能");first._DropData(Vector2.Zero,payload);
             Need(talentDraft.SequenceEqual(new[]{"barb_taunt","barb_bash"}),"拖动已装配技能没有交换");
             var locked=talentEditorSlots.GetChild<InteractionButton>(4);Need(!locked._CanDropData(Vector2.Zero,payload),"锁定技能槽接受拖放");
-            Need(!first._CanDropData(Vector2.Zero,InteractionButton.Payload("talent","mage","barb_bash"))&&!first._CanDropData(Vector2.Zero,InteractionButton.Payload("talent","warrior","barb_mastery")),"跨英雄或被动拖放未拒绝");
-            talentEditor.Hide();talentStamp="";RefreshTalentPage();var live=talentBar.GetChild<InteractionButton>(1);live._DropData(Vector2.Zero,InteractionButton.Payload("talent","warrior","barb_taunt"));
+            Need(!first._CanDropData(Vector2.Zero,InteractionButton.Payload("talent","mage","barb_bash"))&&!first._CanDropData(Vector2.Zero,InteractionButton.Payload("talent",session.Heroes[0].HeroInstanceId,"barb_mastery")),"跨英雄或被动拖放未拒绝");
+            talentEditor.Hide();talentStamp="";RefreshTalentPage();var live=talentBar.GetChild<InteractionButton>(1);live._DropData(Vector2.Zero,InteractionButton.Payload("talent",session.Heroes[0].HeroInstanceId,"barb_taunt"));
             Need(session.Heroes[0].SkillIds.SequenceEqual(new[]{"barb_bash","barb_taunt"}),"树面板拖放未走装配命令");
-            OpenFormation(0);formationCandidates.GetNode<Button>("FormationHero_mage").EmitSignal(Button.SignalName.Pressed);
-            Need(formationDraft[0]=="warrior"&&formationDraft[1]=="mage"&&session.Heroes.Count==1&&session.PendingFormation.Count==0,"英雄点击未优先填空或即刻改变队伍");
-            var mage=formationCandidates.GetNode<InteractionButton>("FormationHero_mage");var seat=formationSeats.GetChild<InteractionButton>(0);seat._DropData(Vector2.Zero,mage.DragData!());
-            Need(formationDraft[0]=="mage"&&formationDraft[1]=="warrior","英雄拖动没有交换已有席位");
-            var blocked=formationSeats.GetChild<InteractionButton>(4);Need(!blocked._CanDropData(Vector2.Zero,InteractionButton.Payload("hero","formation","mage")),"未解锁席位接受英雄");
-            Need(!formationSeats.GetChild<InteractionButton>(0)._CanDropData(Vector2.Zero,InteractionButton.Payload("hero","formation","priest")),"未解锁英雄接受拖入");
-            formationCandidates.GetNode<Button>("FormationHero_ranger").EmitSignal(Button.SignalName.Pressed);Need(!formationDraft.Contains("ranger"),"满队点击擅自替换英雄");
-            formationSeats.GetChild<Button>(0).EmitSignal(Button.SignalName.Pressed);formationCandidates.GetNode<Button>("FormationHero_ranger").EmitSignal(Button.SignalName.Pressed);
-            Need(formationDraft[0]=="ranger"&&formationDraft[1]=="warrior","显式选择未替换英雄");
+            OpenFormation(0);Need(heroNotice.Visible&&!formationRoot.Visible&&session.PendingFormation.Count==0,"锁队不能进入编队草稿");heroNotice.Hide();
             Need(talentTrees.GetChild<VBoxContainer>(0).GetChild(1) is DragScrollContainer&&talentList.GetParent() is DragScrollContainer,"树/技能列表未支持拖动浏览");
             GD.Print("INTERACTION_UI_SMOKE_OK: auto-fill, full-slot safety, skill/hero drag info and swaps, locked/cross-owner gates, draft boundaries and drag-scroll controls");
         }

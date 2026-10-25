@@ -25,7 +25,7 @@ public static class ParameterAudit
     public static void Run(string root, string outDir)
     {
         string configRoot = Path.Combine(root, "Idle-CRPG/config");
-        Directory.CreateDirectory(outDir);
+        outDir=QaOutput.NewDirectory(root,"param-audit",outDir);
         var config = Config.Load(configRoot);
         var manifest = ReadManifest(Path.Combine(root, "docs/data", M1Folder, "config_manifest.csv"));
         var registry = BuildRegistry(configRoot, config, manifest);
