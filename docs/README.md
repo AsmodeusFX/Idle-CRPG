@@ -85,7 +85,7 @@
 
 专项统计与数据提取结果统一放 `docs/data/`：用于对当前版本的部分数据做汇总、便于后续分析或执行修正，不当作玩法规则，也不属于执行归档。
 
-- [P2-3-M4 只读工程差异审计](data/2026-10-25_13-11_data_p2_3_m4_engineering_audit/M4_CURRENT_ENGINEERING_STATE.md)：`READY_WITH_OPEN_ITEMS`。按新版纲要 V1.2 逐项核对最新工程（D01–D27 差异矩阵、状态所有权与迁移、开放问题、证据索引）；结论为骨架可复用但需重建 Account/Run 分层、公共XP手动升级、AR/DR 替代 Armor、KP 货币四中心语义；未改任何业务源码/正式配置/存档。同目录 5 份交付（含 `M4_DIFF_MATRIX.csv`）。审计不等于编码授权。
+- [P2-3-M4 只读工程差异审计 V2](data/2026-10-25_13-11_data_p2_3_m4_engineering_audit/M4_CURRENT_ENGINEERING_STATE.md)：`READY_WITH_OPEN_ITEMS`（工程）/ `PASS_WITH_OPEN_ITEMS`（设计Owner Review）。按纲要 V1.2 核对最新工程：D01–D27 差异矩阵（含门禁分层 G-01~G-08）、Account/Run 所有权与迁移、开放问题、证据索引。V2 回填 Review R-01~R-06：工时修正 71–108 人日、补存档迁移硬约束与 914 份旧档样本、并实跑 Godot 引擎验证（headless 冒烟/跨进程存读/display-smoke/截图全部 OK）解除 R-05。未改业务源码、正式配置与存档；审计不等于编码授权。
 
 - [空间配置与显示比例审计](data/2026-10-23_spatial_configuration_audit.md)：房间/走廊/镜头/投影/显示比例的逐项实测汇总，标注单位、来源与“规划预算≠实际生成”的边界。
 
