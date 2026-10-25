@@ -27,6 +27,13 @@ namespace IdleCrpg.Core
     {
         /// <summary>仅测试程序集的隔离前置，旧门禁/路径套件单独测试其原本负责的边界。</summary>
         internal void QaMonsterRange(int maximum){MonsterLevelMax=maximum;World?.SyncMonsterLevelRange(this);}
+        /// <summary>仅测试程序集：构造弱队/极端 [Lmin,Lmax] 反例现场（如 [3,3]）。
+        /// 只作用于内存会话；该现场无法写入正式存档（读档校验要求 MonsterLevelMin==1），因此不会泄漏成玩家入口。</summary>
+        internal void QaRiskRange(int minimum,int maximum)
+        {
+            MonsterLevelMin=Math.Max(1,minimum);MonsterLevelMax=Math.Max(MonsterLevelMin,maximum);
+            World?.SyncMonsterLevelRange(this);
+        }
         internal void QaResolveHit(Actor target)=>SettleDamage(Heroes[0],target,"basic_player",100000,DamageType.Physical,false);
     }
 }

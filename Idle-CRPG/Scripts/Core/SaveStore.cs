@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -12,6 +14,8 @@ public sealed class SaveDocument
     [JsonRequired] public int Version=5;
     public AccountState Account=new();
     public SessionSnapshot? Run;
+    /// <summary>迁移隔离区：跨本轮存续，普通放弃/重生不清除，只有"清除全部进度"会清除。</summary>
+    public LegacyQuarantine Legacy=new();
     /// <summary>仅供工程调用兼容；JSON中的本轮权威只有Run。</summary>
     [JsonIgnore] public SessionSnapshot? Session {get=>Run;set {Run=value;if(value!=null)Account=value.Account.Copy();}}
     public int Speed=1,ViewMode,SelectedRegion=-1;
@@ -23,6 +27,8 @@ public sealed class SaveStore(string path)
 {
     private bool protectBackup;
     private string? migrationSource;
+    /// <summary>本文件的迁移隔离区：读取后驻留，后续任何一次写盘都原样保留，直到明确重置。</summary>
+    private LegacyQuarantine legacy=new();
     public static readonly JsonSerializerOptions JsonOptions=new() {IncludeFields=true,IgnoreReadOnlyProperties=true,WriteIndented=false};
     public string PathName=>path;
     public string? LastWarning { get; private set; }
@@ -49,6 +55,17 @@ public sealed class SaveStore(string path)
             else if(!json.RootElement.TryGetProperty("Run",out _)||!json.RootElement.TryGetProperty("Account",out _))throw new InvalidDataException("V5存档缺少Account或Run");
         }
         document.Account.Validate();if(document.Run!=null)document.Run.Account=document.Account.Copy();
+        // C-LEGACY-5：旧档超出4席或含候补时不得自动裁剪，也不得静默清档；交由玩家选择后走迁移事务。
+        if(document.Run!=null)
+        {
+            var run=document.Run;
+            if(run.Heroes.Count>4||run.ReserveHeroes.Count>0)
+            {
+                if(run.RunVersion!=0)throw new InvalidDataException("本轮阵容超出4席或含候补，存档无效");
+                throw new LegacySelectionRequiredException(document,"旧档含超额英雄或候补：请先确认本轮最多 4 名英雄。原档与备份保持不变，未做出选择前不会写入任何改动。");
+            }
+        }
+        document.Legacy.Validate();
         int chapter=document.Session?.ChapterIndex??0;
         if(chapter<0||chapter>=c.ChapterMaps.Count)throw new InvalidDataException("存档章节参数错误");
         var map=c.ChapterMaps[chapter];
@@ -71,6 +88,7 @@ public sealed class SaveStore(string path)
                     _=Decode(c,Encode(result));migrationSource=candidate;
                 }
                 if(candidate!=path){LastWarning="主存档无法读取，已恢复备份进度";protectBackup=true;}
+                legacy=result.Legacy.Copy();
                 return result;
             }
             // 配置删除导致的非法技能/天赋引用也进入备份恢复和自动重置，不能让旧账号启动时直接抛错。
@@ -86,7 +104,50 @@ public sealed class SaveStore(string path)
     }
     public void Save(GameSession game,int speed=1,bool paused=false,int viewMode=0,int selectedRegion=-1)
     {
-        WriteEncoded(Encode(new SaveDocument {Session=game.CaptureProgress(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion}));
+        WriteEncoded(Encode(new SaveDocument {Session=game.CaptureProgress(),Legacy=legacy.Copy(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion}));
+    }
+    /// <summary>当前文件的迁移隔离区副本（只读用途：UI 说明与回归断言）。</summary>
+    public LegacyQuarantine Legacy=>legacy.Copy();
+    /// <summary>
+    /// 旧档超额英雄迁移事务（C-LEGACY-5）：玩家选定的最多4名留在本轮，其余与候补进入迁移隔离区。
+    /// 可重复执行：重复调用不会重复冻结同一实例，也不会重复写入同一批冻结英雄。
+    /// </summary>
+    public GameSession LoadWithLegacySelection(Config c,SaveDocument document,IReadOnlyList<int> keep)
+    {
+        var run=document.Run??throw new InvalidDataException("没有可迁移的本轮状态");
+        if(keep.Count is <1 or >4||keep.Distinct().Count()!=keep.Count||keep.Any(i=>i<0||i>=run.Heroes.Count))
+            throw new ArgumentException("必须选择 1–4 名不同的本轮英雄");
+        string runId=$"legacy-{run.Seed}-{run.DungeonSeed}";
+        // 冻结ID按"来源槽位"确定性生成：同一旧档重复执行不会重复冻结，不同选择也不会互相覆盖。
+        var overflow=new List<(Actor Hero,string Id)>();
+        for(int i=0;i<run.Heroes.Count;i++)if(!keep.Contains(i))overflow.Add((run.Heroes[i],$"{runId}:frozen:{i+1}"));
+        for(int i=0;i<run.ReserveHeroes.Count;i++)overflow.Add((run.ReserveHeroes[i],$"{runId}:frozen:reserve:{i+1}"));
+        foreach(var (hero,id) in overflow)
+        {
+            if(string.IsNullOrWhiteSpace(hero.HeroInstanceId))hero.HeroInstanceId=id;
+            if(document.Legacy.Heroes.Any(h=>h.HeroInstanceId==hero.HeroInstanceId))continue;
+            document.Legacy.Heroes.Add(hero.Copy());
+        }
+        if(overflow.Count>0)
+        {
+            string note=$"冻结 {overflow.Count} 名旧档英雄：只读保留，不上阵、不参与战斗/天赋/装备，不能作为普通候补调换，也不解锁第5席；只有“清除全部进度”会删除。";
+            if(!document.Legacy.Notes.Contains(note))document.Legacy.Notes.Add(note);
+        }
+        run.Heroes=keep.Select(i=>run.Heroes[i]).ToList();
+        run.ReserveHeroes.Clear();run.PendingFormation=Array.Empty<string>();
+        run.TeamLocked=true;run.FormationCapacityFloor=4;run.RunVersion=0;
+        // 队伍成员变化后，旧战场的进房节点/召唤属主/救援索引按旧人数编码，必须整段作废，
+        // 让读档按现有"房间重开"规则从进房位置重建，避免新旧人数混用产生非法引用。
+        run.RoomEntry=new();
+        run.Summons.Clear();run.RoomEntrySummons.Clear();
+        run.ReviveTarget=-1;run.Rescuer=-1;run.ReviveElapsed=0;
+        run.DoorOpenerHero=-1;run.DoorOpenerSummon=-1;run.DoorWait=0;run.DoorFallback=false;
+        run.SkillState=new();
+        document.Legacy.Validate();
+        var session=GameSession.Restore(c,run);
+        legacy=document.Legacy.Copy();
+        Save(session);
+        return session;
     }
     /// <summary>写入已在逻辑线程序列化的不可变内容；调用方必须串行写入，并在重置/退出前等待完成。</summary>
     public void WriteEncoded(string content)
@@ -104,10 +165,12 @@ public sealed class SaveStore(string path)
     /// <summary>确认重置后写入空进度，同时覆盖备份，避免旧进度因备份恢复而重新出现；设置独立保存。</summary>
     public void Reset()
     {
+        // 清除全部进度：连同迁移隔离区一起清除（唯一允许销毁冻结旧档数据的入口）。
         string empty=Encode(new SaveDocument());AtomicWrite(path,empty);
         AtomicWrite(path+".bak",empty,false);
         protectBackup=false;
         migrationSource=null;
+        legacy=new();
     }
     internal static void AtomicWrite(string path,string text,bool backup=true)
     {

@@ -7,6 +7,8 @@ public sealed partial class GameSession
 {
     public StarProgression Stars {get;private set;}=null!;
     private double starAttack,starHp;
+    /// <summary>本轮公共XP获取倍率：星图成长类节点的合法加成，默认 1。不改变击杀经验本身的守恒对账口径。</summary>
+    public double XpGainMultiplier=>1+Stars.Configuration.Nodes.Values.Where(n=>n.Attribute=="xp_gain_pct").Sum(n=>n.ValuePerLevel*Stars.Level(n.Id));
     /// <summary>手动消耗金币升级；先预演全部角色属性，再一次提交金币和等级，失败不扣费。</summary>
     public bool BuyStar(string id,out string reason)
     {

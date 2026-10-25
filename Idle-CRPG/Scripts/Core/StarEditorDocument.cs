@@ -77,7 +77,7 @@ public sealed class StarEditorDocument
         foreach (var r in rows.Rows)
         {
             var attr=r["attr_id"]; var op=r["operation"];
-            Nodes[r.Id] = new(r.Id, r["name"], r.Integer("max_level"), r["cost_currency"], Array.AsReadOnly(r.List("cost").Select(v => long.Parse(v, CultureInfo.InvariantCulture)).ToArray()), attr, op, r.Number("value_per_level"), r["icon"]);
+            Nodes[r.Id] = new(r.Id, r["name"], r.Integer("max_level"), r["cost_currency"], Array.AsReadOnly(r.List("cost").Select(v => long.Parse(v, CultureInfo.InvariantCulture)).ToArray()), attr, op, r.Number("value_per_level"), r["icon"], r["target_id"]);
         }
         foreach (var r in CsvTable.Load(StarConfiguration.LayoutPath, text.Layout, StarConfiguration.LayoutHeader.Split(',')).Rows)
             Layout[r.Id] = new(r.Id, r.Integer("col"), r.Integer("row"), Array.AsReadOnly(r.List("prereq")), r["label"]);
@@ -89,7 +89,7 @@ public sealed class StarEditorDocument
         var nodes = Nodes.Values.OrderBy(n => n.Id, StringComparer.Ordinal).ToArray();
         string content = StarConfiguration.ContentHeader + "\n" + string.Join('\n', nodes.Select(n => Csv(n.Id, n.Name, n.MaxLevel, n.Currency,
             string.Join(';', n.Costs), n.Attribute == "" ? "" : n.Attribute,
-            n.Operation == "" ? "" : n.Operation, n.ValuePerLevel, n.Icon))) + "\n";
+            n.Operation == "" ? "" : n.Operation, n.ValuePerLevel, n.Icon, n.TargetId))) + "\n";
         string layout = StarConfiguration.LayoutHeader + "\n" + string.Join('\n', nodes.Select(n => { var l = Layout[n.Id]; return Csv(n.Id, l.Col, l.Row, string.Join(';', l.Prerequisites), l.Label); })) + "\n";
         string plan = StarConfiguration.PlanHeader + "\n" + string.Join('\n', nodes.Select(n => Csv(n.Id, Intents.GetValueOrDefault(n.Id, "")))) + "\n";
         return (content, layout, plan);

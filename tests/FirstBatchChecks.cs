@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -104,5 +105,80 @@ public static class FirstBatchChecks
         Check(!castleGame.RequestCastleChallenge(castle.Id),"城堡差一级未拒绝");castleGame.QaMonsterRange(required);
         Check(castleGame.Kills==0&&castleGame.RequestCastleChallenge(castle.Id),"城堡满Lmax但无同档实杀应可安排");
         Console.WriteLine("WP3_RECEIPT_CASTLE_PASS: repeated checkpoint kill no duplicate KP; exact Lmax castle gate without kill proof");
+
+        // R-03：升级必须带来可用天赋点，且"升级＋投点"读档后一致（WP4 依赖该来源）。
+        var talentGame=GameSession.CreateNewWorld(c,61,new[]{hero});var talentHero=talentGame.Heroes[0];
+        int pointsBefore=talentGame.TalentPoints(talentHero);
+        talentGame.GrantGmResources(experience:100000);
+        Check(talentGame.UpgradeHero(talentHero.HeroInstanceId,out _),"升级失败");
+        int gained=c.Talents.Rule("talent_points_per_level");
+        Check(gained>0&&talentGame.TalentPoints(talentHero)==pointsBefore+gained,$"升级未带来天赋点：{pointsBefore}->{talentGame.TalentPoints(talentHero)}");
+        var firstNode=c.Talents.Nodes.Values.First(n=>n.Hero==talentHero.SpecId&&n.Row==0&&!n.ClassTrait);
+        Check(talentGame.LearnTalent(talentHero.HeroInstanceId,firstNode.Id,out string learnWhy),$"首排天赋不可学习：{learnWhy}");
+        int pointsAfterLearn=talentGame.TalentPoints(talentHero);
+        var talentReload=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=talentGame.CaptureProgress()})).Session!);
+        Check(talentReload.TalentPoints(talentReload.Heroes[0])==pointsAfterLearn&&talentReload.Heroes[0].Talents.GetValueOrDefault(firstNode.Id)==1,"升级＋投点读档后天赋点或投入不一致");
+        Console.WriteLine("WP2_TALENT_PASS: level-up grants talent points and upgrade+investment survives save/reload");
+
+        // R-04：同一遭遇重复触发不得重复入账；新的一次合法遭遇（同模板/同场地/同Seed）必须正常获得KP。
+        c.Spawn=c.Spawn with {Min=2,Max=2};
+        var revisit=GameSession.CreateWorld(c,321,new[]{hero});
+        // 出生地块是营地，普通地牢须从默认开放统治区内取。
+        var farmCastle=c.AreaParts.First(p=>p.InitiallyUnlocked).CastleId;
+        var farm=c.Dungeons.First(d=>!d.Castle&&c.Rulers.TryGetValue(d.RegionId,out var owner)&&owner==farmCastle);
+        for(int i=0;i<20000&&revisit.World!.Stage!=CampaignStage.Dungeon;i++)revisit.Tick(.05f);
+        Check(revisit.World!.Stage==CampaignStage.Dungeon,"重访场景未进入地牢阶段");
+        long KillFirstMonster(GameSession game,int visit)
+        {
+            game.BeginDungeon(farm,visit);
+            Actor? target=null;
+            for(int i=0;i<3000&&target==null;i++)
+            {
+                game.Tick(.05f);
+                target=game.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters).FirstOrDefault(m=>m.Alive&&m.Hp>0);
+            }
+            if(target==null)throw new Exception("重访场景没有可击杀怪物");
+            long before=game.Kp;game.QaResolveHit(target);
+            Check(game.Kp==before+1,$"合法遭遇击杀没有获得KP：{before}->{game.Kp}");
+            return game.Kp;
+        }
+        long firstVisitKp=KillFirstMonster(revisit,1);
+        long secondVisitKp=KillFirstMonster(revisit,2);
+        Check(secondVisitKp==firstVisitKp+1,$"同一地牢再次进入的同位怪物被收据误杀：{firstVisitKp}->{secondVisitKp}");
+        Console.WriteLine("WP3_RECEIPT_REVISIT_PASS: same encounter deduplicated while a new legal revisit still earns KP");
+
+        // C-LMAX-SNAPSHOT：升档不改写已实例化房间；此后第一次生成怪物的房间使用新区间。
+        var snapshotGame=GameSession.CreateWorld(c,606,new[]{hero});
+        for(int i=0;i<20000&&(snapshotGame.World!.Stage!=CampaignStage.Dungeon||snapshotGame.CurrentRoom==0);i++)snapshotGame.Tick(.05f);
+        Check(snapshotGame.World!.Stage==CampaignStage.Dungeon&&snapshotGame.CurrentRoom!=0,"升档快照场景未进入战斗房间");
+        while(snapshotGame.CombatEntryRemaining>0)snapshotGame.Tick(.05f);
+        Check(snapshotGame.Floor.Rooms[snapshotGame.CurrentRoom].Monsters.Count>0,"升档快照场景房间没有怪物");
+        snapshotGame.GrantGmResources(experience:200000);
+        foreach(var heroInstance in snapshotGame.Heroes)Check(snapshotGame.UpgradeHero(heroInstance.HeroInstanceId,out string upWhy),$"升档前升级失败：{upWhy}");
+        var fundedSnapshot=snapshotGame.CaptureProgress();fundedSnapshot.Kp=10;fundedSnapshot.KpEarned=10;snapshotGame=GameSession.Restore(c,fundedSnapshot);
+        var beforeSnapshot=snapshotGame.Floor.Rooms[snapshotGame.CurrentRoom].Monsters.Select(m=>(m.SpecId,m.Level,m.Hp,m.MaxHp)).ToArray();
+        Check(snapshotGame.BuyKpUpgrade(KpPurchase.MonsterLevelMaximum,out string lmaxWhy),$"升档失败：{lmaxWhy}");
+        var afterSnapshot=snapshotGame.Floor.Rooms[snapshotGame.CurrentRoom].Monsters.Select(m=>(m.SpecId,m.Level,m.Hp,m.MaxHp)).ToArray();
+        Check(beforeSnapshot.SequenceEqual(afterSnapshot),"升档改写了已生成房间的怪物/奖励快照");
+        int previousRoom=snapshotGame.CurrentRoom;
+        foreach(var fighter in snapshotGame.Heroes)fighter.Attack=100000;
+        for(int i=0;i<20000&&snapshotGame.CurrentRoom==previousRoom;i++)snapshotGame.Tick(.05f);
+        var nextRoom=snapshotGame.Floor.Rooms[snapshotGame.CurrentRoom];
+        Check(snapshotGame.CurrentRoom!=previousRoom&&nextRoom.Monsters.Count>0,"升档后未生成新的房间怪物");
+        Check(nextRoom.Monsters.All(m=>m.Level>=1&&m.Level<=2),$"新房间怪物等级越出新区间：{string.Join(',',nextRoom.Monsters.Select(m=>m.Level))}");
+        Console.WriteLine("WP3_LMAX_SNAPSHOT_PASS: generated rooms keep their snapshot while newly instantiated rooms use the new [Lmin,Lmax]");
+
+        // R-06：Lmin 对玩家仍禁用，但保留隔离的极端区间反例能力；该现场不得写入正式存档。
+        var risk=GameSession.CreateNewWorld(c,881,new[]{hero});
+        risk.QaRiskRange(3,3);
+        for(int i=0;i<20000&&risk.CurrentRoom==0;i++)risk.Tick(.05f);
+        while(risk.CombatEntryRemaining>0)risk.Tick(.05f);
+        var riskMonsters=risk.Floors.SelectMany(f=>f.Rooms).SelectMany(r=>r.Monsters).ToArray();
+        Check(riskMonsters.Length>0&&riskMonsters.All(m=>m.Level==3),$"QA极端区间未生效：{string.Join(',',riskMonsters.Select(m=>m.Level))}");
+        rejected=false;
+        try{SaveStore.Decode(c,SaveStore.Encode(new(){Session=risk.CaptureProgress()}));}catch(InvalidDataException){rejected=true;}
+        Check(rejected,"含 Lmin≠1 的隔离现场被写进正式存档");
+        Check(!risk.BuyKpUpgrade(KpPurchase.MonsterLevelMinimum,out _),"玩家命令仍可购买 Lmin");
+        Console.WriteLine("WP3_LMIN_ISOLATION_PASS: extreme QA range spawns as designed and can neither persist nor be player-purchased");
     }
 }

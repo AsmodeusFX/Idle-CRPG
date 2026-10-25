@@ -18,7 +18,7 @@ public sealed class AccountState
 }
 
 /// <summary>需要用户介入的旧档迁移；调用方不得将此异常降级为重置新档。</summary>
-public sealed class MigrationRequiredException(string message):IOException(message);
+public class MigrationRequiredException(string message):IOException(message);
 
 public sealed partial class GameSession
 {

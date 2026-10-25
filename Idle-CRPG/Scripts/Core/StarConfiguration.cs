@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace IdleCrpg.Core;
 
-public sealed record StarNode(string Id,string Name,int MaxLevel,string Currency,IReadOnlyList<long> Costs,string Attribute,string Operation,double ValuePerLevel,string Icon);
+public sealed record StarNode(string Id,string Name,int MaxLevel,string Currency,IReadOnlyList<long> Costs,string Attribute,string Operation,double ValuePerLevel,string Icon,string TargetId="");
 public sealed record StarLayout(string Id,int Col,int Row,IReadOnlyList<string> Prerequisites,string Label);
 public sealed record StarRankSave(string Id,int Level);
 public sealed record StarProgressSave(StarRankSave[] Ranks);
@@ -15,7 +15,7 @@ public readonly record struct StarTotals(double Attack,double Hp);
 /// <summary>迁移 Idle-Diablo 三表合同；唯一根、任一前置、无环。首版仅全队固定攻击和生命上限。</summary>
 public sealed class StarConfiguration
 {
-    public const string ContentHeader="id,name,max_level,cost_currency,cost,attr_id,operation,value_per_level,icon";
+    public const string ContentHeader="id,name,max_level,cost_currency,cost,attr_id,operation,value_per_level,icon,target_id";
     public const string LayoutHeader="id,col,row,prereq,label",PlanHeader="id,intent";
     public const string ContentPath="star/star.csv",LayoutPath="star/star_layout.csv",PlanPath="star/star_plan.csv";
     public IReadOnlyDictionary<string,StarNode> Nodes {get;}
@@ -30,7 +30,7 @@ public sealed class StarConfiguration
             if(string.IsNullOrWhiteSpace(node.Id)||string.IsNullOrWhiteSpace(node.Name)||node.MaxLevel<1||node.MaxLevel>10000||node.Costs.Count!=node.MaxLevel||node.Costs.Any(c=>c<0)||node.Currency!="gold"||!double.IsFinite(node.ValuePerLevel)||node.ValuePerLevel<0||node.ValuePerLevel*node.MaxLevel>float.MaxValue||node.Icon is not ("attack" or "defense" or "utility"))throw new InvalidOperationException("星图节点名称、等级、金币价目或效果无效："+node.Id);
             if(node.Attribute=="")
             {if(node.Operation!=""||node.ValuePerLevel!=0)throw new InvalidOperationException("占位节点不能有效果");}
-            else if(node.Attribute=="party_slots"&&(node.MaxLevel!=1||node.ValuePerLevel!=1))throw new InvalidOperationException("扩编节点必须单级且增加一席");else if(node.Attribute is not ("attack" or "hp" or "party_slots" or "skill_slots" or "talent_reset" or "talent_reset_discount")||node.Operation!="flat")throw new InvalidOperationException("仅支持全队攻击/生命、扩编、主动技能槽、洗点解锁与折扣的 flat 效果");
+            else if(node.Attribute=="party_slots"&&(node.MaxLevel!=1||node.ValuePerLevel!=1))throw new InvalidOperationException("扩编节点必须单级且增加一席");else if(node.Attribute=="class_trait_unlock"&&(node.MaxLevel!=1||node.ValuePerLevel!=1||string.IsNullOrWhiteSpace(node.TargetId)))throw new InvalidOperationException("职业特性解锁节点必须单级、加一且指定职业："+node.Id);else if(node.Attribute!="class_trait_unlock"&&node.TargetId!="")throw new InvalidOperationException("只有职业特性解锁节点可以指定目标："+node.Id);else if(node.Attribute is not ("attack" or "hp" or "party_slots" or "skill_slots" or "talent_reset" or "talent_reset_discount" or "xp_gain_pct" or "class_trait_unlock")||node.Operation!="flat")throw new InvalidOperationException("仅支持攻击/生命、扩编、主动技能槽、洗点解锁与折扣、经验增益、职业特性解锁的 flat 效果");
         }
         if(n.Values.Any(x=>(x.Attribute is "skill_slots" or "talent_reset") && (x.MaxLevel!=1||x.ValuePerLevel!=1))||n.Values.Where(x=>x.Attribute=="talent_reset_discount").Sum(x=>x.ValuePerLevel*x.MaxLevel)>1)throw new InvalidOperationException("技能槽/洗点解锁必须单级加一，洗点折扣总和不得超过100%");
         if(l.Values.Count(x=>x.Prerequisites.Count==0)!=1)throw new InvalidOperationException("星图必须恰好一个根节点");
@@ -51,7 +51,7 @@ public sealed class StarConfiguration
     }
     public static StarConfiguration Load(string content,string layout)
     {
-        var nodes=CsvTable.Load(ContentPath,content,ContentHeader.Split(',')).Rows.Select(r=>new StarNode(r.Id,r.Required("name"),r.Integer("max_level"),r.Required("cost_currency"),Array.AsReadOnly(r.List("cost").Select(v=>long.Parse(v,CultureInfo.InvariantCulture)).ToArray()),r["attr_id"],r["operation"],r.Number("value_per_level"),r["icon"]));
+        var nodes=CsvTable.Load(ContentPath,content,ContentHeader.Split(',')).Rows.Select(r=>new StarNode(r.Id,r.Required("name"),r.Integer("max_level"),r.Required("cost_currency"),Array.AsReadOnly(r.List("cost").Select(v=>long.Parse(v,CultureInfo.InvariantCulture)).ToArray()),r["attr_id"],r["operation"],r.Number("value_per_level"),r["icon"],r["target_id"]));
         var positions=CsvTable.Load(LayoutPath,layout,LayoutHeader.Split(',')).Rows.Select(r=>new StarLayout(r.Id,r.Integer("col"),r.Integer("row"),Array.AsReadOnly(r.List("prereq")),r["label"]));
         return new(nodes,positions);
     }

@@ -16,3 +16,5 @@ s_skill_3,3,9,s_skill_2,主动技能槽 +1
 s_skill_4,4,9,s_skill_3,主动技能槽 +1
 s_respec,1,11,s_root,解锁城镇洗点
 s_respec_discount,2,11,s_respec,降低洗点费用
+s_xp_01,5,2,s_root,公共XP成长
+s_trait_warrior,6,2,s_root,野蛮人特性解锁

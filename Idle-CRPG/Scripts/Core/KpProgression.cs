@@ -11,7 +11,9 @@ public sealed partial class GameSession
     public long Kp {get;private set;}
     public long KpEarned {get;private set;}
     public long KpSpent {get;private set;}
-    public int MonsterLevelMin=>1;
+    /// <summary>本轮怪物等级下限。玩家入口恒为 1（Lmin 未通过安全验收）；只有测试程序集的隔离前置可构造极端区间，
+    /// 且该现场不可写入正式存档——读档校验会拒绝 MonsterLevelMin ≠ 1。</summary>
+    public int MonsterLevelMin {get;private set;}=1;
     public int MonsterLevelMax {get;private set;}=1;
     private readonly HashSet<string> kpKillReceipts=new();
     private long dungeonEntrySerial;

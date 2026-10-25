@@ -9,7 +9,14 @@ var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"))
 if(args.Contains("--execution-safety-checks")){ExecutionSafetyChecks.Run(root);return;}
 if(args.Contains("--first-batch-checks")){ExecutionSafetyChecks.Run(root);FirstBatchChecks.Run(root);return;}
 if(args.Contains("--legacy-run-migration")){LegacyRunMigrationChecks.Run(root);return;}
+if(args.Contains("--legacy-selection-checks")){LegacySelectionChecks.Run(root);
+Wp4TalentMechanicsChecks.Run(root);
+Wp4StarChecks.Run(root);return;}
+if(args.Contains("--wp4-talent-checks")){Wp4TalentMechanicsChecks.Run(root);
+Wp4StarChecks.Run(root);return;}
+if(args.Contains("--wp4-star-checks")){Wp4StarChecks.Run(root);return;}
 if(args.Contains("--freeze-legacy-samples")){LegacyRunMigrationChecks.Freeze(root);return;}
+if(args.Contains("--instance-isolation-checks")){InstanceIsolationChecks.Run(root);return;}
 if(args.Contains("--regression-matrix")){RegressionMatrix.Run(root);return;}
 if(args.Contains("--simulation"))
 {
@@ -363,3 +370,6 @@ SimulationToolChecks.Run(root);
 // 本批（P2-4 首批 WP0–WP3）专项随之进入默认全量检查，避免只存在于单独开关。
 ExecutionSafetyChecks.Run(root);
 FirstBatchChecks.Run(root);
+LegacySelectionChecks.Run(root);
+Wp4TalentMechanicsChecks.Run(root);
+Wp4StarChecks.Run(root);

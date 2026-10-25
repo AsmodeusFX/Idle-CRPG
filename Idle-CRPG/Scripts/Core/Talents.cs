@@ -7,7 +7,7 @@ using System.Numerics;
 namespace IdleCrpg.Core;
 
 /// <summary>学习等级与额外等级分开；加成不提供学习资格，不计入系内投入。SkillId 为空时沿用 CastTalent 旧分派，非空时引用同名 CSV 主动定义。</summary>
-public record TalentNode(string Id,string Hero,int Tree,string TreeName,int Row,int Col,string Name,string Description,int MaxRank,bool BonusAllowed,string Kind,string Prerequisite,int RequiredRank,int RequiredPoints,string Effect,double Value,double PerRank,double Cooldown,float Range,float Radius,DamageType DamageType,float ProjectileSpeed,string SkillId);
+public record TalentNode(string Id,string Hero,int Tree,string TreeName,int Row,int Col,string Name,string Description,int MaxRank,bool BonusAllowed,string Kind,string Prerequisite,int RequiredRank,int RequiredPoints,string Effect,double Value,double PerRank,double Cooldown,float Range,float Radius,DamageType DamageType,float ProjectileSpeed,string SkillId,string ExclusiveGroup="",bool ClassTrait=false);
 public record TalentBonus(string Source,string Scope,string Target,int Levels);
 public sealed class TalentConfiguration
 {
@@ -39,10 +39,10 @@ public sealed class TalentConfiguration
         // 敌方兜底上限必须高于基础警觉，否则参考前方入房进度没有意义。
         if(c.Rule("combat_entry_threat_range_milli")>=c.Rule("combat_entry_pass_depth_milli"))throw new InvalidDataException("入口近距离威胁距离必须小于通行深度");
         if(c.Rule("combat_entry_alert_cap_milli")<=c.Rule("combat_entry_delay_milli"))throw new InvalidDataException("敌方警觉兜底上限必须大于基础警觉时间");
-        string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed,skill_id".Split(',');
+        string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed,skill_id,exclusive_group,class_trait".Split(',');
         foreach(var r in CsvTable.Load("skill/talent.csv",File.ReadAllText(Path.Combine(root,"skill/talent.csv")),columns).Rows)
         {
-            var n=new TalentNode(r.Id,r.Required("hero"),r.Integer("tree"),r.Required("tree_name"),r.Integer("row"),r.Integer("col"),r.Required("name"),r.Required("description"),r.Integer("max_rank"),r.Integer("bonus_allowed") is 1,r.Required("kind"),r["prerequisite"],r.Integer("required_rank"),r.Integer("required_points"),r.Required("effect"),r.Number("value"),r.Number("per_rank"),r.Number("cooldown"),(float)r.Number("range"),(float)r.Number("radius"),r.Enum<DamageType>("damage_type"),(float)r.Number("projectile_speed"),r["skill_id"]);
+            var n=new TalentNode(r.Id,r.Required("hero"),r.Integer("tree"),r.Required("tree_name"),r.Integer("row"),r.Integer("col"),r.Required("name"),r.Required("description"),r.Integer("max_rank"),r.Integer("bonus_allowed") is 1,r.Required("kind"),r["prerequisite"],r.Integer("required_rank"),r.Integer("required_points"),r.Required("effect"),r.Number("value"),r.Number("per_rank"),r.Number("cooldown"),(float)r.Number("range"),(float)r.Number("radius"),r.Enum<DamageType>("damage_type"),(float)r.Number("projectile_speed"),r["skill_id"],r["exclusive_group"],r["class_trait"]=="1");
             if(r.Integer("bonus_allowed") is not (0 or 1)||!config.Heroes.Any(h=>h.Id==n.Hero)||n.Tree is <0 or >2||n.Col is <0 or >2||n.Row is <0 or >100||n.MaxRank is <1 or >100||n.RequiredPoints< -1||n.RequiredRank<0||n.Value<0||n.PerRank<0||n.Cooldown<0||n.Range<0||n.Radius<0||n.Kind is not ("active" or "passive")||n.Kind=="active"&&(n.Cooldown<0.05||n.Cooldown>5000||n.Range<=0)||n.Kind=="passive"&&n.Effect is not ("atk" or "armor" or "crit_rate" or "engagement_capacity")||!float.IsFinite(n.Range)||!float.IsFinite(n.Radius)||!float.IsFinite(n.ProjectileSpeed)||n.ProjectileSpeed<0||n.Effect=="shot"&&n.ProjectileSpeed<=0||n.Kind=="active"&&n.Effect is not ("bash" or "whirlwind" or "leap" or "shout" or "weaken" or "shot" or "nova" or "data"))throw new InvalidDataException("天赋节点无效："+n.Id);
             // 绑定节点只能引用同名主动定义，冷却/距离必须与 CSV 一致，避免界面与战斗读取两份不同数值。
             if(n.SkillId!=""&&(n.Kind!="active"||n.SkillId!=n.Id||!config.Skills.Skills.TryGetValue(n.SkillId,out var bound)||bound.Kind!="ActiveSkill"||bound.Cooldown!=checked((int)Math.Ceiling(n.Cooldown*20))||Math.Abs(bound.Range-n.Range)>.0001f))throw new InvalidDataException("天赋绑定技能无效："+n.Id);
@@ -100,8 +100,44 @@ public sealed partial class GameSession
         else if(hero.Talents.GetValueOrDefault(id)>=n.MaxRank)reason="已达可学习最高等级";
         else if(TreeInvestment(hero,n.Tree)<Config.Talents.Required(n))reason=$"需在{n.TreeName}投入{Config.Talents.Required(n)}点";
         else if(n.Prerequisite!=""&&hero.Talents.GetValueOrDefault(n.Prerequisite)<n.RequiredRank)reason=$"需学习{Config.Talents.Nodes[n.Prerequisite].Name} {n.RequiredRank}级";
+        // 同小树互斥分支：已选另一分支时拒绝，需先免费局部改选。
+        else if(n.ExclusiveGroup!=""&&hero.Talents.Any(p=>p.Value>0&&p.Key!=id&&Config.Talents.Nodes[p.Key].ExclusiveGroup==n.ExclusiveGroup))reason="与已选分支互斥：请先在英雄页免费改选";
+        else if(n.ClassTrait&&!ClassTraitUnlocked(hero.SpecId))reason="该职业特性需在本轮星图解锁后才能学习";
         else if(TalentPoints(hero)<=0)reason="可用天赋点不足";
         else{reason="";return true;}return false;
+    }
+    /// <summary>
+    /// 职业特性学习资格：本轮星图按职业购买解锁节点后共享给该职业全部上阵实例。
+    /// 当前内容尚未投放该星图节点时不做额外门槛，避免出现"有节点但永远不可学"的死内容。
+    /// </summary>
+    public bool ClassTraitUnlocked(string classId)
+    {
+        var gates=Config.Stars?.Nodes.Values.Where(n=>n.Attribute=="class_trait_unlock").ToArray()??Array.Empty<StarNode>();
+        if(gates.Length==0)return true;
+        // 约定：职业特性解锁节点 id 为 s_trait_<classId>，购买后本轮该职业全部实例共享资格。
+        return gates.Any(node=>node.Id==$"s_trait_{classId}"&&Stars.Level(node.Id)>0);
+    }
+    /// <summary>
+    /// 免费局部洗点：只重置指定技能区域（tree）的投入，点数按该区域已投总量返还；
+    /// 不改变等级、不删除其他区域投入、不返还星图金币；操作原子，失败不留半条状态。
+    /// </summary>
+    public bool ResetTalentRegion(string heroId,int tree,out string reason)
+    {
+        var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");
+        if(tree<0||!Config.Talents.Nodes.Values.Any(n=>n.Hero==h.SpecId&&n.Tree==tree)){reason="没有该技能区域";return false;}
+        var inRegion=h.Talents.Where(p=>Config.Talents.Nodes[p.Key].Tree==tree).Select(p=>p.Key).ToArray();
+        if(inRegion.Length==0){reason="该区域没有已投入点数";return false;}
+        int refunded=inRegion.Sum(id=>h.Talents[id]);
+        foreach(string id in inRegion)h.Talents.Remove(id);
+        // 只清理该区域技能引用：装配槽、光环维持、来源加成与换入等待各自保持一致。
+        h.SkillIds=h.SkillIds.Where(id=>!inRegion.Contains(id)).ToArray();
+        h.ActiveAuraSkills.RemoveAll(inRegion.Contains);
+        h.TalentBonuses.RemoveAll(b=>b.Scope=="node"&&inRegion.Contains(b.Target));
+        foreach(string id in inRegion)h.SkillSwapLocks.Remove(id);
+        if(Floors.Count>0){var action=skillState.Actions.FirstOrDefault(a=>a.Owner==Heroes.IndexOf(h));if(action!=null&&!h.SkillIds.Contains(action.Active)){action.Active="";action.Windup=0;}}
+        PruneSummons();PruneAuraActivations();ResetSkillRoom();MarkChanged();
+        Note($"局部洗点：{h.Name} 区域{tree} 返还{refunded}点");
+        reason="";return true;
     }
     public bool LearnTalent(string heroId,string id,out string reason)
     {

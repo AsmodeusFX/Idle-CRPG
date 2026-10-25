@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,7 +20,7 @@ public sealed partial class GameSession
     public int ExperienceRequired(Actor hero)=>hero.Level>=Config.MaxHeroLevel?0:Config.HeroLevels[hero.Level].Experience;
     private void GainMonsterExperience(int amount,int monsterLevel)=>GainExperience(amount);
     private void GainExperience(int amount)
-    {if(amount<=0)return;PublicExperience=checked(PublicExperience+amount);MarkChanged();}
+    {if(amount<=0)return;var scaled=amount*XpGainMultiplier;long gained=(long)Math.Floor(scaled);int fraction=PublicExperienceFraction+(int)Math.Round((scaled-gained)*100);if(fraction>=100){gained+=fraction/100;fraction%=100;}PublicExperience=checked(PublicExperience+gained);PublicExperienceFraction=fraction;MarkChanged();}
     /// <summary>指定实例一次恰升一级；验证属性及余额后提交，失败零变更。</summary>
     public bool UpgradeHero(string heroInstanceId,out string reason)
     {

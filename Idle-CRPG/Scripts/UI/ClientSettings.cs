@@ -55,6 +55,8 @@ public partial class Main
     {
         SaveDocument? document;
         try{document=saveStore.Load(config);}
+        // C-LEGACY-5：超额旧档不得自动裁剪，先让玩家明确选择本轮最多4名英雄。
+        catch(LegacySelectionRequiredException e){ShowLegacyMigration(e);return;}
         catch(MigrationRequiredException e){progressReadBlocked=true;start.Disabled=true;help.Text=e.Message;var notice=new AcceptDialog {Title="旧档已保留 · 需确认迁移",DialogText=e.Message};AddChild(notice);notice.PopupCentered(new Vector2I(680,240));return;}
         pendingAccount=document?.Account.Copy()??new();
         if(document?.Session!=null)
@@ -68,6 +70,45 @@ public partial class Main
         {
             var notice=new AcceptDialog {Title="存档已自动重置",DialogText=saveStore.LastWarning};AddChild(notice);notice.PopupCentered(new Vector2I(560,180));
         }
+    }
+    /// <summary>
+    /// 旧档超额迁移选择框（C-LEGACY-5）：玩家勾选要留在本轮的英雄（1–4名），其余进入只读迁移隔离区。
+    /// 未确认前不写盘；确认后走 SaveStore 的迁移事务，再按正常流程重新恢复进度。
+    /// </summary>
+    private void ShowLegacyMigration(LegacySelectionRequiredException e)
+    {
+        progressReadBlocked=true;start.Disabled=true;help.Text=e.Message;
+        var dialog=new ConfirmationDialog {Title="旧档迁移 · 选择本轮英雄（最多4名）",OkButtonText="确认迁移",CancelButtonText="暂不迁移"};
+        var columns=new VBoxContainer {CustomMinimumSize=new Vector2(520,0)};
+        columns.AddChild(new Label {Text=$"旧档含 {e.Candidates.Count} 名英雄或候补：新版本轮最多 4 名。\n未确认前不会改动原档；冻结的英雄只读保留，不上阵、不能作为候补、不解锁第5席。",AutowrapMode=TextServer.AutowrapMode.WordSmart});
+        var checks=new System.Collections.Generic.List<(int Index,CheckBox Box)>();
+        void Sync()
+        {
+            int count=checks.Count(c=>c.Box.ButtonPressed);
+            foreach(var c in checks)c.Box.Disabled=!c.Box.ButtonPressed&&count>=4;
+            var ok=dialog.GetOkButton();ok.Disabled=count is <1 or >4;
+        }
+        foreach(var candidate in e.Candidates)
+        {
+            bool locked=config.HeroUnlockKills[config.Heroes.FirstOrDefault(h=>h.Id==candidate.SpecId)?.Id??candidate.SpecId]>0;
+            var check=new CheckBox {Text=$"#{candidate.Index+1} {candidate.Name} Lv.{candidate.Level}"+(locked?"（旧档锁定职业）":"")};
+            check.Toggled+=_=>Sync();checks.Add((candidate.Index,check));columns.AddChild(check);
+        }
+        dialog.AddChild(columns);
+        dialog.Confirmed+=()=>{
+            var keep=checks.Where(c=>c.Box.ButtonPressed).Select(c=>c.Index).ToArray();
+            if(keep.Length is <1 or >4){help.Text="请选择 1–4 名英雄后再确认。";return;}
+            try
+            {
+                var migrated=saveStore.LoadWithLegacySelection(config,e.Document,keep);
+                help.Text=$"已完成迁移：本轮 {migrated.Heroes.Count} 名英雄；冻结 {saveStore.Legacy.Heroes.Count} 名只读保留。";
+                progressReadBlocked=false;start.Disabled=false;dialog.QueueFree();ResumeProgress();
+            }
+            catch(Exception error){help.Text="迁移失败，原档保持不变："+error.Message;}
+        };
+        dialog.Canceled+=()=>{help.Text="已暂不迁移：原档与备份保持不变。";dialog.QueueFree();};
+        AddChild(dialog);dialog.PopupCentered(new Vector2I(720,420));
+        Sync();
     }
     private void UpdatePartyControls()
     {

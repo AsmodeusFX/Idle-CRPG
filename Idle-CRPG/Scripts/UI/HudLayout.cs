@@ -117,7 +117,8 @@ public partial class Main
     {
         int waiting=session?.World==null?0:config.Dungeons.Count(d=>d.Castle&&!session.World.Progress.Cleared.Contains(d.Id)&&session.World.Progress.CastleUnlocked(config,d.Id)&&!session.World.PendingCastles.Contains(d.Id)&&session.World.Target.Dungeon.Id!=d.Id);
         teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel} · 待批 {waiting} · 排队 {session.World?.PendingCastles.Count??0}";
-        teamExperienceLabel.Text=session==null?"":$"公共XP {session.PublicExperience:N0} · 逐人点击升级";
+        // 小队标题行宽度有限：只显示余额，升级规则放悬停提示，避免与右侧"普通席位/已锁队"文字重叠。
+        teamExperienceLabel.Text=session==null?"":$"公共XP {session.PublicExperience:N0}";
         teamExperienceLabel.TooltipText=session==null?"":"公共XP由击杀全额入池，无等级差衰减；只有点击右侧指定英雄升级才消耗，且每次恰好升1级。";
         teamChallengeLabel.TooltipText=session?.World==null?"":string.Join("\n",session.World.PendingCastles.Select(id=>config.Dungeons.Single(d=>d.Id==id).Name+(session.World.Progress.CastleUnlocked(config,id)?" · 已批准待执行":" · 已批准，等待新前置满足")));
         partySetup.Visible=session==null;
