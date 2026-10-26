@@ -43,7 +43,7 @@ public sealed partial class GameSession
     public IReadOnlyDictionary<string,int> ScrollStock=>scrollStock;
     public IReadOnlyList<PotionSlotView> PotionSlots=>potionSlots.Select(s=>new PotionSlotView(s.ItemId,s.ItemId==""?"":Config.PotionOf(s.ItemId).Name,s.Active,s.Remaining/20d)).ToArray();
     /// <summary>生效中药剂的队伍攻击百分比加成；同类药剂同时只有一瓶生效。</summary>
-    public double PotionAttackPct=>potionSlots.Where(s=>s.Active).Sum(s=>Config.PotionOf(s.ItemId).AttackPct);
+    public double PotionAttackPct=>(potionSlots.Where(s=>s.Active).Sum(s=>Config.PotionOf(s.ItemId).AttackPct))*(1+StarPotionEffectPct);
 
     /// <summary>击杀掉落消耗品：[H] 概率来自配置；卷轴进库存，药剂进第一个空槽，满槽不自动覆盖。</summary>
     internal void TryDropConsumable(Actor monster)
@@ -91,7 +91,8 @@ public sealed partial class GameSession
         if(monsterIndex<0||monsterIndex>=room.Monsters.Count||!room.Monsters[monsterIndex].Alive){reason="目标已失效，请选择当前存活的敌人";return false;}
         var attacker=Heroes.FirstOrDefault(h=>h.Alive);if(attacker==null){reason="没有可施放卷轴的英雄";return false;}
         var spec=Config.ScrollOf(itemId);
-        var damage=SettleDamage(attacker,room.Monsters[monsterIndex],itemId,spec.DamagePct,DamageType.Physical,true);
+        // C1-B S01：卷轴威力只放大已持有的合法卷轴伤害，不生成第二个伤害源。
+        var damage=SettleDamage(attacker,room.Monsters[monsterIndex],itemId,spec.DamagePct*(1+StarScrollDamagePct),DamageType.Physical,true);
         if(damage==null){reason="卷轴未能造成伤害";return false;}
         // 击杀卷轴目标可能在同一伤害结算中再掉卷轴；从最新库存扣一张，不能覆盖掉落收入。
         int current=scrollStock.GetValueOrDefault(itemId);scrollStock[itemId]=current-1;if(current-1==0)scrollStock.Remove(itemId);
@@ -107,7 +108,9 @@ public sealed partial class GameSession
         var (itemId,active,_)=potionSlots[slot];
         if(active){reason="该药剂正在生效中";return false;}
         if(potionSlots.Any(s=>s.Active&&s.ItemId==itemId)){reason="同种药剂已有生效瓶，请等待其结束后再使用";return false;}
-        potionSlots[slot]=(itemId,true,Config.PotionOf(itemId).DurationTicks);
+        // C1-B P01：药剂时效在"使用瞬间"按星图延长，读档按剩余Tick保留，不重复加成。
+        int duration=(int)Math.Ceiling(Config.PotionOf(itemId).DurationTicks*(1+StarPotionDurationPct));
+        potionSlots[slot]=(itemId,true,duration);
         AuditAsset("player_command","activate","potion_slot",itemId,0,$"slot:{slot}:{itemId}:pending",$"slot:{slot}:{itemId}:active:{Config.PotionOf(itemId).DurationTicks}");
         Note($"饮用药剂：{Config.PotionOf(itemId).Name}");MarkChanged();reason="";return true;
     }

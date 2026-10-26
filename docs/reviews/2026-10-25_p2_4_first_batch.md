@@ -808,6 +808,88 @@ S15-C0 只读对账已完成：675/154/258 全量覆盖，21 份设计源哈希�
 
 ---
 
+## 24. S15-C1-B / B1 实施：星图 17 节点真实消费与四职业资格收口（2026-10-26）
+
+### 24.1 授权与范围
+
+用户明确批准（原文摘要）：按原 C1-B 执行包继续，不再整包申请；接受 B0 的 31 节点/78 阶唯一分类；B1 先做 WORKS+NEEDS_EXTENSION 共 56 阶；四职业 T 资格优先收口；O05/D04/G02 归 B2 子切片、未验收前禁售且不得用通用 ATK 替代；A02/A03 BLOCKED、G03 QA_ONLY、S02/S03/P03/C-NEC 禁售；价格继续 [H]；56/54/53 只是阶段条件容量，不降低 55–65 目标；B2 后再重算并按 57/55 路线验证。本轮未触碰 C2/C3、Lmin、第五席。
+
+### 24.2 ID 映射决定（旧档零损失）
+
+- **保留**现有 9 个可买节点与 10 个退休节点，不做重命名、不做等级压缩，因此旧档星图等级与金币价值不变。
+- **设计→生产映射**：`O01→s_atk`（攻击族）、`D01→s_hp`（生命族）、`G01→s_xp_01`、`C-BAR→s_trait_warrior`；其余 27 个设计节点使用设计 ID 新建（B1 先建 17 个可售节点）。
+- **唯一根约束**：设计中 `ROOT` 前置的节点（R01/R02/A01/F01）在布局里挂到既有根 `s_root`；语义仍是"起点直达"，引擎不变。
+- **等级门槛**：设计 `O01@1/@2` 这类"前置到某等级"在引擎只有"点亮即可"。本轮按点亮处理并在 24.6 记为差异，不为门槛新增运行时。
+
+### 24.3 代码变更
+
+| 文件 | 变更 |
+|---|---|
+| `StarConfiguration.cs` | 属性白名单从 8 项扩到 22 项（`KnownAttributes`/`IsKnownAttribute`），每项都必须有真实读取点，否则加载即拒绝 |
+| `Stars.cs` | `StarDerived()` 只读查询；`ApplyStarTotals` 同时写 `AttackRatingBonus/DefenseRatingBonus`；新增 7 个经济/消耗品乘率 getter（击杀金币、出售、卷轴、药剂效果、药剂时效、行进、离线） |
+| `SkillRuntime.cs` | `ApplyStarAttribute`：攻速/暴击/格挡/四抗在 `EffectiveValue` 统一出口叠加；`EffectiveAttributes` 注入元素伤害乘区与四抗；`MoveMultiplier` 仅在**非战斗**时应用行进效率 |
+| `GameSession.cs` | 击杀金币入账点按 `kill_gold_pct` 放大，账本记入账前后差额 |
+| `Equipment.cs` | 玩家确认出售按 `sell_gold_pct` 放大 |
+| `Consumables.cs` | 卷轴伤害乘 `scroll_damage_pct`；药剂强度乘 `potion_effect_pct`；使用瞬间按 `potion_duration_pct` 延长剩余 Tick |
+| `Rebirth.cs` | 离线结算按 `offline_pct` 放大 XP/KP/金币（仅合法离线渠道） |
+| `Tools` | `tools/Apply-S15C1B-B1.ps1`（幂等追加 17 节点/布局/意向）、`tools/S15-C1B-B0-Prep.ps1`（B0 投影） |
+
+### 24.4 17 个节点（46 阶）与消费点
+
+| 节点 | 属性 | 读取点 | 端点验证 |
+|---|---|---|---|
+| O02 连斩节奏 | attack_speed_pct | `EffectiveValue`→`Actor.Timer` 推进 | 同种子10秒伤害提升 |
+| O03 暴击潜力 | crit_rate | `EffectiveAttributes`→伤害掷骰 | 派生值+掷骰路径 |
+| O04 元素驾驭 | element_damage_pct | 四元素 `DamageBucket.General` | 火球伤害提升 |
+| D02 格挡练习 | block_rate | `EffectiveAttributes`→格挡判定 | 派生值+判定路径 |
+| D03 异常抵抗 | element_resistance | 四抗 `EffectiveAttributes` | 派生值+抗性字段 |
+| R01/R02 评级 | attack_rating/defense_rating | `Actor.*RatingBonus`→KpProgression/伤害公式 | 购买后 Bonus>0 |
+| C-RAN/C-SOR/C-PAL | class_trait_unlock | `ClassTraitUnlocked`→`CanLearnFixedTalent` | 未购锁定/购买解锁/不重复收费 |
+| S01 卷轴威力 | scroll_damage_pct | `UseScroll`→`SettleDamage` | 同一目标伤害提升 |
+| P01 药剂时效 | potion_duration_pct | `UsePotion` 剩余 Tick | 剩余时间变长 |
+| P02 药剂效力 | potion_effect_pct | `PotionAttackPct` | 百分比变高 |
+| A01 行进熟练 | travel_pct | `MoveMultiplier`（非战斗） | 派生值+仅战斗外生效 |
+| F01 财富积累 | kill_gold_pct | 击杀金币入账点 | 派生值+入账乘率 |
+| F02 售卖收益 | sell_gold_pct | 回城出售 | 派生值+售价乘率 |
+| F03 离线修行 | offline_pct | `SettleOffline` | 离线 XP/金币提升 |
+
+### 24.5 验证
+
+| 入口 | 结果 |
+|---|---|
+| 两工程构建 | 0 警告 0 错误 |
+| `--c1b-checks` | `C1B_STAR_PASS`：17 节点逐个购买（金币守恒/等级+1/派生值+满级拒绝）、四职业资格门禁（未购锁定→购买解锁→同职共享不重复收费→读档保持）、10 退休节点拒绝、7 类端到端 A/B、账本与存档二次读取幂等 |
+| `--c1a-checks` / `--c1a2-checks` | 通过（T 学习前改为先购资格，互斥/洗点/98 节点未回归） |
+| 全量 Core | 退出 0 |
+| Godot 无头 | 退出 0，`SMOKE_OK`（星图编辑器冒烟因 (4,2) 被 D02 占用已挪到 (8,2)） |
+| 真实窗口 UI | `FIRST_BATCH_UI_PASS`；星图页真实渲染新节点（攻击评级研习/防御评级研习/财富积累/行进熟练）与旧节点并存 |
+
+证据（`artifacts/qa/`）：
+- `s15-c1b1-*/star_purchase_ledger.csv`：逐笔 `gold_before,cost,gold_after,level,derived_before,derived_after`；
+- `s15-c1b1-*/star_effect_proof.csv`：同种子 A/B 对照（攻速/元素/评级/药剂×2/卷轴/金币/离线）；
+- `first-batch-ui-20261026-102436-…/star-class-trait-purchased.png`：新星图全屏、资格节点 1/1、四条新分支可见。
+
+### 24.6 差异与未完成
+
+**差异（累计到 C3 统一 Review）**
+1. 前置只支持"点亮"，设计的 `@1/@2` 等级门槛未实现（引擎限制，未新增运行时）。
+2. `O01/D01` 沿用旧攻击/生命族节点，容量为 5 阶而非设计 3 阶；购买次数统计按设计 78 阶口径，不按实际节点阶数。
+3. `A01` 只在非战斗移动生效（不影响战斗 Tick）；`F01` 在 loot 入账点放大（非逐个击杀结算）。
+4. `D02/D03` 本轮验证到"派生值+有效属性注入"，未做同种子长时格挡/抗性 A/B（爆炸半径大，留 B3 矩阵）。
+5. 价格沿用 `[H]` 受控测试值，`PriceApproved=false` 概念不落配置字段；未做经济定价。
+
+**未完成（按用户顺序）**
+- **B2**：O05 精英伤害（需精英身份权威字段+新乘区）、D04 受治疗增强（需 `healing_received_pct`+Heal 改造）、G02 精英击杀 XP 一次性收据。三者节点尚未建、不可售；验收前不得用 ATK 替代。
+- **B3**：31 节点交互矩阵（差1金币/重复命令/OR 前置反例/无角色/禁售注入）、两阵容 57/55 真实购买事务、`node_coverage.csv`、UI 全量截图；须在 B2 完成后按真实可售节点重算容量再跑。
+
+### 24.7 三方状态
+
+- **E：B1 PASS（工程自检）**；17 节点真实消费与四职业门禁有账本/对照/真机证据；B2/B3 未实施，不计入通过。
+- **V-Design：未复核**。需确认 24.6 的 5 项差异（尤其前置等级门槛与容量口径）。
+- **V-User：未验收**。可在游戏内星图页购买攻击评级/防御评级/财富积累/行进熟练，并在职业页确认 T 需先买资格。
+
+---
+
 ## 23. S15-C1-A-2 实施：98 节点天赋（2026-10-26）
 
 ### 23.1 授权与输入

@@ -57,9 +57,12 @@ public sealed partial class GameSession
         long seconds=Math.Clamp(nowUnix-saved,0,config.Talents.Rule("offline_cap_seconds"));
         if(seconds<60)return new(0,0,0,0);
         double hours=seconds/3600d;
-        long xp=(long)Math.Floor(config.Talents.Rule("offline_xp_per_hour")*hours);
-        long kp=(long)Math.Floor(config.Talents.Rule("offline_kp_per_hour")*hours);
-        long gold=(long)Math.Floor(config.Talents.Rule("offline_gold_per_hour")*hours);
+        // C1-B F03：离线修行只作用于合法离线结算渠道；纯在线不计入。
+        var offlineStars=new StarProgression(config.Stars,snapshot.Stars);
+        double offlineScale=1+offlineStars.Configuration.Nodes.Values.Where(n=>n.Attribute=="offline_pct").Sum(n=>n.ValuePerLevel*offlineStars.Level(n.Id));
+        long xp=(long)Math.Floor(config.Talents.Rule("offline_xp_per_hour")*hours*offlineScale);
+        long kp=(long)Math.Floor(config.Talents.Rule("offline_kp_per_hour")*hours*offlineScale);
+        long gold=(long)Math.Floor(config.Talents.Rule("offline_gold_per_hour")*hours*offlineScale);
         snapshot.PublicExperience=checked(snapshot.PublicExperience+xp);
         snapshot.Kp=checked(snapshot.Kp+kp);snapshot.KpEarned=checked(snapshot.KpEarned+kp);
         snapshot.Gold=checked(snapshot.Gold+gold);

@@ -77,6 +77,10 @@ public static class C1ASkillChecks
         var pal=GameSession.CreateWorld(c,20261027,new[]{"priest","priest"});
         var p0=pal.Heroes[0];pal.GrantGmResources(10000,100000);
         while(pal.UpgradeHero(p0.HeroInstanceId,out _)){}
+        // C1-B B1：四职业T资格已收口为真实门禁，学习T前必须先购买本职业资格节点。
+        Need(pal.BuyStar("s_root",out string gateRoot),$"购买星图根失败：{gateRoot}");
+        Need(pal.BuyStar("s_atk",out string gateAtk),$"购买攻击节点失败：{gateAtk}");
+        Need(pal.BuyStar("C-PAL",out string gatePal),$"购买圣骑士资格失败：{gatePal}");
         Need(pal.LearnTalent(p0.HeroInstanceId,"priest_trait",out string why3),$"学习守护T失败：{why3}");
         Need(!pal.LearnTalent(p0.HeroInstanceId,"pal_trait_zeal",out _),"互斥T仍可同时学习");
         Need(!pal.Heroes[1].Talents.ContainsKey("priest_trait"),"T投入串到同职另一实例");
@@ -92,7 +96,8 @@ public static class C1ASkillChecks
         var live=GameSession.CreateWorld(c,20261028,new[]{"priest"});
         var ph=live.Heroes[0];live.GrantGmResources(10000,100000);
         while(live.UpgradeHero(ph.HeroInstanceId,out _)){}
-        live.LearnTalent(ph.HeroInstanceId,"priest_trait",out _);
+        Need(live.BuyStar("s_root",out _)&&live.BuyStar("s_atk",out _)&&live.BuyStar("C-PAL",out _),"读档用例资格购买失败");
+        Need(live.LearnTalent(ph.HeroInstanceId,"priest_trait",out string whyTrait),$"读档用例学习守护T失败：{whyTrait}");
         live.LearnTalent(ph.HeroInstanceId,"pal_prayer",out _);
         for(int i=0;i<20;i++)live.Tick(.05f);
         var snap=live.CaptureProgress();

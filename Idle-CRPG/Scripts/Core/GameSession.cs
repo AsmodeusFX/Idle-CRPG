@@ -613,7 +613,9 @@ public sealed partial class GameSession
         Status="前往拾取战利品";
         var user=Heroes.Where(h=>h.Alive).OrderBy(h=>Vector2.DistanceSquared(h.Position,loot.Position)).First();
         if(Vector2.Distance(user.Position,loot.Position)>SpatialTolerance.InteractionRange){Move(user,loot.Position,dt);return true;}
-        long goldBefore=Gold;loot.Collected=true;Gold=checked(Gold+loot.Gold);if(loot.Gold>0)AuditCurrency("loot_pickup","receive","gold",goldBefore,Gold);
+        // C1-B F01：击杀金币乘率只在入账点应用一次，账本以入账前后差额记账。
+        long gained=loot.Gold<=0?0:checked(loot.Gold+(long)Math.Ceiling(loot.Gold*StarKillGoldPct));
+        long goldBefore=Gold;loot.Collected=true;Gold=checked(Gold+gained);if(gained>0)AuditCurrency("loot_pickup","receive","gold",goldBefore,Gold);
         foreach(var item in loot.Items)
         {
             var key=(item.ItemId,item.Price);inventory[key]=checked(inventory.GetValueOrDefault(key)+item.Count);

@@ -52,7 +52,12 @@ public sealed partial class GameSession
             ?group.OrderByDescending(b=>SkillConfig.Buffs[b.Id].StackStrength).ThenBy(b=>b.Owner).ThenBy(b=>b.Instance).Take(1):group);
     private string BuffGroup(string id)=>SkillConfig.Buffs[id].StackGroup==""?id:SkillConfig.Buffs[id].StackGroup;
     private bool Stunned(Actor actor)=>ActorBuffs(CombatId(actor)).Any(b=>SkillConfig.Buffs[b.Id].Mechanic=="stun");
-    private float MoveMultiplier(Actor actor)=>(float)ActorBuffs(CombatId(actor)).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="chill").Select(b=>1-b.Value).DefaultIfEmpty(1).Min();
+    /// <summary>减速只作用于战斗内；非战斗行进效率（星图A01）只作用于战斗外，避免影响战斗Tick计时。</summary>
+    private float MoveMultiplier(Actor actor)
+    {
+        float chill=(float)ActorBuffs(CombatId(actor)).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="chill").Select(b=>1-b.Value).DefaultIfEmpty(1).Min();
+        return InCombatRoom(actor)?chill:chill*(float)Math.Max(.2,1+StarTravelPct);
+    }
     private double EffectiveValue(Actor actor,string attribute,double basis)
     {
         var declarations=ActorBuffs(CombatId(actor)).SelectMany(b=>SkillConfig.Buffs[b.Id].Attributes).Where(a=>a.Attribute==attribute);
@@ -60,7 +65,21 @@ public sealed partial class GameSession
   // 药剂只提升队伍攻击，属于本轮临时加成，不写回 Actor.Attack，避免存档叠加。
   if(attribute=="atk"&&IsFriendlyActor(actor)&&PotionAttackPct>0)basis*=1+PotionAttackPct;
         foreach(var b in ActorBuffs(CombatId(actor)))if(attribute=="atk"&&(b.Id=="talent_battle_shout"||b.Id=="talent_weaken"))basis*=b.Id=="talent_weaken"?Math.Max(0,1-b.Value):1+b.Value;
+        // C1-B：星图战斗属性（攻速/暴击/格挡/四抗）在统一有效值出口叠加，来源唯一、不写回Actor。
+        basis=ApplyStarAttribute(attribute,basis);
         return Config.Attributes.Aggregate(attribute,basis,declarations);
+    }
+    /// <summary>星图属性分两类：比例类乘算、绝对值类加算；未列入的属性原样返回。</summary>
+    private double ApplyStarAttribute(string attribute,double basis)
+    {
+        switch(attribute)
+        {
+            case "attack_speed_pct":case "crit_damage":case "cooldown_reduction_pct":
+                return basis*(1+StarValue(attribute));
+            case "crit_rate":case "block_rate":case "fire_resistance":case "cold_resistance":case "lightning_resistance":case "poison_resistance":
+                return basis+StarValue(attribute);
+            default:return basis;
+        }
     }
     private BattleAttributes EffectiveAttributes(Actor actor)
     {
@@ -81,6 +100,15 @@ public sealed partial class GameSession
             else if(attr.Attribute=="skill_damage_pct")foreach(string id in actor.SkillIds)result.Modifiers.Add(new(DamageBucket.General,attr.Value,id));
             else result.Modifiers.Add(new(DamageBucket.General,attr.Value,Type:type,RangedOnly:attr.Attribute=="ranged_damage_pct",BossOnly:attr.Attribute=="boss_damage_pct"));
         }
+        // C1-B：元素伤害（分类型乘区）与元素抗性（四项同一数值）来自星图，只对友方生效。
+        if(IsFriendlyActor(actor))
+        {
+            double element=StarValue("element_damage_pct");
+            if(element>0)foreach(var type in new[]{DamageType.Fire,DamageType.Cold,DamageType.Lightning,DamageType.Poison})result.Modifiers.Add(new(DamageBucket.General,element,Type:type));
+            double resist=StarValue("element_resistance");
+            if(resist!=0){result.FireResistance+=resist;result.ColdResistance+=resist;result.LightningResistance+=resist;result.PoisonResistance+=resist;}
+        }
+        result.Validate();
         return result;
     }
     private SkillAttackSnapshot AttackSnapshot(Actor actor)=>new(){Attack=EffectiveValue(actor,"atk",actor.Attack),AttackRating=AttackRating(actor),Level=actor.Level,Attributes=EffectiveAttributes(actor)};

@@ -198,7 +198,9 @@ public sealed partial class GameSession
             {
                 if(!state.Worn.TryGetValue(pair.Key,out var worn))continue;
                 if(worn.Attr!=pair.Value.Attr||pair.Value.Value>worn.Value)continue;
-                gold+=checked((long)Math.Ceiling(pair.Value.Value*0.35));state.Candidates.Remove(pair.Key);AuditEquipment("village_trade","sell_candidate",hero,pair.Key,pair.Value,null);
+                // C1-B F02：出售收益乘率只作用于玩家确认的出售，不影响掉落或离线收益。
+                long price=checked((long)Math.Ceiling(pair.Value.Value*0.35*(1+StarSellGoldPct)));
+                gold+=price;state.Candidates.Remove(pair.Key);AuditEquipment("village_trade","sell_candidate",hero,pair.Key,pair.Value,null);
             }
         }
         if(gold>0){Note($"回城卖出次优装备，获得 {gold} 金币");MarkChanged();}

@@ -34,8 +34,23 @@ public sealed partial class GameSession
     }
     private void ApplyStarTotals(StarTotals totals)
     {
-        foreach(var h in Heroes.Concat(reserveHeroes)){h.Attack=(float)(h.Attack+totals.Attack-starAttack);h.MaxHp=(float)(h.MaxHp+totals.Hp-starHp);h.Hp=Math.Min(h.Hp,h.MaxHp);}
+        foreach(var h in Heroes.Concat(reserveHeroes))
+        {
+            h.Attack=(float)(h.Attack+totals.Attack-starAttack);h.MaxHp=(float)(h.MaxHp+totals.Hp-starHp);h.Hp=Math.Min(h.Hp,h.MaxHp);
+            // 评级类节点走预留Bonus字段（唯一来源），不修改等级推导的自然评级。
+            h.AttackRatingBonus=StarValue("attack_rating");h.DefenseRatingBonus=StarValue("defense_rating");
+        }
         for(int i=0;i<roomEntry.Count;i++)roomEntry[i]=roomEntry[i] with {Hp=Math.Min(roomEntry[i].Hp,Heroes[i].MaxHp)};
         starAttack=totals.Attack;starHp=totals.Hp;
     }
+    /// <summary>只读派生值查询（QA/UI 用）：与战斗/经济消费点同一来源，不产生第二套计算。</summary>
+    public double StarDerived(string attribute)=>StarValue(attribute);
+    /// <summary>经济/消耗品/离线类星图乘率：全部是"1+和"，读取点唯一，不写回Actor永久属性（StarValue 已在Talents.cs按属性求和）。</summary>
+    public double StarKillGoldPct=>StarValue("kill_gold_pct");
+    public double StarSellGoldPct=>StarValue("sell_gold_pct");
+    public double StarScrollDamagePct=>StarValue("scroll_damage_pct");
+    public double StarPotionEffectPct=>StarValue("potion_effect_pct");
+    public double StarPotionDurationPct=>StarValue("potion_duration_pct");
+    public double StarTravelPct=>StarValue("travel_pct");
+    public double StarOfflinePct=>StarValue("offline_pct");
 }

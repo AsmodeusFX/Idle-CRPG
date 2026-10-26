@@ -193,7 +193,12 @@ public partial class Main
             session=GameSession.CreateWorld(config,1706,new[]{"priest","priest","priest","priest"});
             for(int tick=0;tick<20000&&session.CurrentRoom==0;tick++)session.Tick(.05f);
             while(session.CombatEntryRemaining>0)session.Tick(.05f);
-            session.GrantGmResources(experience:10000);var auraRoom=session.Floor.Rooms[session.CurrentRoom];
+            session.GrantGmResources(gold:10000,experience:10000);
+            // C1-B B1：圣骑士T需要星图资格门禁，先购买根/攻击/资格三节点。
+            Need(session.BuyStar("s_root",out string gateWhy1),"根节点购买失败：{gateWhy1}");
+            Need(session.BuyStar("s_atk",out string gateWhy2),"攻击节点购买失败：{gateWhy2}");
+            Need(session.BuyStar("C-PAL",out string gateWhy3),"资格购买失败：{gateWhy3}");
+            var auraRoom=session.Floor.Rooms[session.CurrentRoom];
             // C1-A-1：持续光环移到职业特性T（守护光环），四同职各自投入T即产生四份独立来源。
             foreach(var priest in session.Heroes){session.UpgradeHero(priest.HeroInstanceId,out _);session.LearnTalent(priest.HeroInstanceId,"priest_trait",out _);priest.Position=auraRoom.Center;priest.Hp=priest.MaxHp=100000;priest.Attack=1;priest.Timer=999;}
             foreach(var monster in auraRoom.Monsters){monster.Position=auraRoom.Center+new System.Numerics.Vector2(1,0);monster.Hp=monster.MaxHp=100000;monster.Attack=0;monster.Timer=999;}

@@ -23,7 +23,9 @@ public static class FixedSkillClosureChecks
         foreach(string id in c.Stars.Nodes.Keys.Where(c.Stars.IsRetired))Need(!team.BuyStar(id,out _)&&!team.Stars.Visible(id),"旧星图槽位可购买/可见："+id);
         Need(!team.CanLearnTalent(team.Heroes[0],"barb_shout",out _),"旧主动仍可学习");
         // 已投放资格节点的职业仍须购买；尚未投放资格节点的职业按C1-A过渡规则可学。
-        Need(!team.ClassTraitUnlocked("warrior")&&team.ClassTraitUnlocked("mage"),"资格购买/过渡规则错误");
+        // C1-B B1 收口后：四职业资格节点均已投放，必须购买；尚未投放资格节点的死灵维持可学。
+        Need(!team.ClassTraitUnlocked("warrior")&&!team.ClassTraitUnlocked("mage")&&!team.ClassTraitUnlocked("ranger")&&!team.ClassTraitUnlocked("priest"),"四职业资格未收口为真实门禁");
+        Need(team.ClassTraitUnlocked("necromancer"),"未投放资格节点的职业被误锁死");
         Need(team.BuyStar("s_root",out _)&&team.BuyStar("s_trait_warrior",out _),"资格购买");
         var hero=team.Heroes[0];var other=team.Heroes[1];int otherPoints=team.TalentPoints(other);
         Need(team.LearnTalent(hero.HeroInstanceId,"warrior_trait",out _)&&other.Talents.GetValueOrDefault("warrior_trait")==0&&team.TalentPoints(other)==otherPoints,"职业资格共享但投资不独立");
@@ -83,7 +85,12 @@ public static class FixedSkillClosureChecks
         // 多来源Buff/撤销单源：守护光环（T）按来源区分，四同职各一份贡献。
         var priests=Battle(1605,new[]{"priest","priest","priest","priest"});
         priests.GrantGmResources(experience:10000);foreach(var priest in priests.Heroes)priests.UpgradeHero(priest.HeroInstanceId,out _);
-        foreach(var priest in priests.Heroes)Need(priests.LearnTalent(priest.HeroInstanceId,"priest_trait",out _),"四同职光环学习");
+        // C1-B B1：圣骑士T需先购买职业资格（同职业共享一次）。
+        priests.GrantGmResources(gold:10000);
+        Need(priests.BuyStar("s_root",out string auraRoot),$"圣骑士资格购买失败：{auraRoot}");
+        Need(priests.BuyStar("s_atk",out string auraAtk),$"圣骑士资格购买失败：{auraAtk}");
+        Need(priests.BuyStar("C-PAL",out string auraGate),$"圣骑士资格购买失败：{auraGate}");
+        foreach(var priest in priests.Heroes)Need(priests.LearnTalent(priest.HeroInstanceId,"priest_trait",out string auraWhy),"四同职光环学习："+auraWhy);
         for(int tick=0;tick<60;tick++)priests.Tick(.05f);
         var buffs=priests.Capture().SkillState.Buffs.Where(b=>b.Id=="pal_guard_buff"&&b.Target==0).ToArray();
         Need(buffs.Select(b=>b.Owner).Distinct().Count()==4,"同目标四来源Buff未真实存在");

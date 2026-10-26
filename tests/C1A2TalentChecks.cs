@@ -102,8 +102,11 @@ public static class C1A2TalentChecks
             // 设计T01要求星图职业资格：当前只投放了野蛮人资格节点，其余职业按C1-A过渡规则可学。
             if(!game.ClassTraitUnlocked(HeroOf[cls]))
             {
+                // C1-B B1 收口：四职业资格均为真实星图门禁，按职业购买对应节点。
+                string gate=cls switch{"BAR"=>"s_trait_warrior","RAN"=>"C-RAN","SOR"=>"C-SOR",_=>"C-PAL"};
                 Need(game.BuyStar("s_root",out string starWhy),"星图根节点购买失败："+starWhy);
-                Need(game.BuyStar("s_trait_warrior",out string traitWhy),"职业资格购买失败："+traitWhy);
+                Need(game.BuyStar("s_atk",out string atkWhy),"攻击节点购买失败："+atkWhy);
+                Need(game.BuyStar(gate,out string traitWhy),"职业资格购买失败："+gate+" "+traitWhy);
             }
             Need(game.TalentPoints(hero)==24,"Lv25可用点数不是24："+cls+route+" pts"+game.TalentPoints(hero));
             foreach(var (id,rank) in wish)

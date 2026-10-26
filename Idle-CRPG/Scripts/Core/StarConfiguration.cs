@@ -17,6 +17,16 @@ public sealed class StarConfiguration
 {
     internal bool AllowRetiredPurchases=false;
     public bool IsRetired(string id)=>Nodes.TryGetValue(id,out var node)&&node.Attribute is "skill_slots" or "party_slots" or "talent_reset" or "talent_reset_discount";
+    /// <summary>已实现真实消费者的星图属性清单（C1-B）：每项在Stars/战斗/经济/存档中有唯一读取点。</summary>
+    public static readonly string[] KnownAttributes=new[]{
+        // 旧9节点保留的既有属性
+        "attack","hp","xp_gain_pct","class_trait_unlock","party_slots","skill_slots","talent_reset","talent_reset_discount",
+        // C1-B B1：战斗属性（EffectiveValue/EffectiveAttributes 已有消费）
+        "attack_speed_pct","crit_rate","element_damage_pct","block_rate","element_resistance",
+        // C1-B B1：评级与消耗品/经济/离线
+        "attack_rating","defense_rating","scroll_damage_pct","potion_duration_pct","potion_effect_pct",
+        "travel_pct","kill_gold_pct","sell_gold_pct","offline_pct"};
+    public static bool IsKnownAttribute(string attribute)=>Array.IndexOf(KnownAttributes,attribute)>=0;
     public const string ContentHeader="id,name,max_level,cost_currency,cost,attr_id,operation,value_per_level,icon,target_id";
     public const string LayoutHeader="id,col,row,prereq,label",PlanHeader="id,intent";
     public const string ContentPath="star/star.csv",LayoutPath="star/star_layout.csv",PlanPath="star/star_plan.csv";
@@ -32,7 +42,7 @@ public sealed class StarConfiguration
             if(string.IsNullOrWhiteSpace(node.Id)||string.IsNullOrWhiteSpace(node.Name)||node.MaxLevel<1||node.MaxLevel>10000||node.Costs.Count!=node.MaxLevel||node.Costs.Any(c=>c<0)||node.Currency!="gold"||!double.IsFinite(node.ValuePerLevel)||node.ValuePerLevel<0||node.ValuePerLevel*node.MaxLevel>float.MaxValue||node.Icon is not ("attack" or "defense" or "utility"))throw new InvalidOperationException("星图节点名称、等级、金币价目或效果无效："+node.Id);
             if(node.Attribute=="")
             {if(node.Operation!=""||node.ValuePerLevel!=0)throw new InvalidOperationException("占位节点不能有效果");}
-            else if(node.Attribute=="party_slots"&&(node.MaxLevel!=1||node.ValuePerLevel!=1))throw new InvalidOperationException("扩编节点必须单级且增加一席");else if(node.Attribute=="class_trait_unlock"&&(node.MaxLevel!=1||node.ValuePerLevel!=1||string.IsNullOrWhiteSpace(node.TargetId)))throw new InvalidOperationException("职业特性解锁节点必须单级、加一且指定职业："+node.Id);else if(node.Attribute!="class_trait_unlock"&&node.TargetId!="")throw new InvalidOperationException("只有职业特性解锁节点可以指定目标："+node.Id);else if(node.Attribute is not ("attack" or "hp" or "party_slots" or "skill_slots" or "talent_reset" or "talent_reset_discount" or "xp_gain_pct" or "class_trait_unlock")||node.Operation!="flat")throw new InvalidOperationException("仅支持攻击/生命、扩编、主动技能槽、洗点解锁与折扣、经验增益、职业特性解锁的 flat 效果");
+            else if(node.Attribute=="party_slots"&&(node.MaxLevel!=1||node.ValuePerLevel!=1))throw new InvalidOperationException("扩编节点必须单级且增加一席");else if(node.Attribute=="class_trait_unlock"&&(node.MaxLevel!=1||node.ValuePerLevel!=1||string.IsNullOrWhiteSpace(node.TargetId)))throw new InvalidOperationException("职业特性解锁节点必须单级、加一且指定职业："+node.Id);else if(node.Attribute!="class_trait_unlock"&&node.TargetId!="")throw new InvalidOperationException("只有职业特性解锁节点可以指定目标："+node.Id);else if(!IsKnownAttribute(node.Attribute)||node.Operation!="flat")throw new InvalidOperationException("星图属性不在已实现消费清单内："+node.Id+" → "+node.Attribute);
         }
         if(n.Values.Any(x=>(x.Attribute is "skill_slots" or "talent_reset") && (x.MaxLevel!=1||x.ValuePerLevel!=1))||n.Values.Where(x=>x.Attribute=="talent_reset_discount").Sum(x=>x.ValuePerLevel*x.MaxLevel)>1)throw new InvalidOperationException("技能槽/洗点解锁必须单级加一，洗点折扣总和不得超过100%");
         if(l.Values.Count(x=>x.Prerequisites.Count==0)!=1)throw new InvalidOperationException("星图必须恰好一个根节点");
