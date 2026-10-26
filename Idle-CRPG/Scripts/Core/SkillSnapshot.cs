@@ -55,7 +55,7 @@ public sealed partial class GameSession
         {
             if(!Owner(b.Owner)||!Owner(b.Target)||!config.Skills.Buffs.ContainsKey(b.Id)||!config.Skills.Skills.ContainsKey(b.Ability)||!Time(b.Remaining)||!Time(b.Periodic)||!Time(b.Value)||!Time(b.Coefficient)||b.Instance<1||b.Instance>state.NextId)throw new InvalidDataException("Buff 现场无效");
             if(b.Cause!=null)Flight(b.Cause,true);
-            if(!Origin(b.OriginCast)||b.AuraSkill==null||b.AuraSkill!=""&&(!ActorFor(b.Owner).ActiveAuraSkills.Contains(b.AuraSkill)||b.Ability!=b.AuraSkill||!config.Skills.Skills[b.AuraSkill].Effects.Any(id=>config.Skills.Effects[id].Kind=="MaintainAura"&&config.Skills.Effects[id].BuffId==b.Id)))throw new InvalidDataException("光环来源/激活状态无效");
+            if(!Origin(b.OriginCast)||b.AuraSkill==null||b.AuraSkill!=""&&(!ActorFor(b.Owner).ActiveAuraSkills.Contains(b.AuraSkill)||b.Ability!=b.AuraSkill||!config.Skills.Skills[b.AuraSkill].Effects.Any(id=>config.Skills.Effects[id].Kind=="MaintainAura"&&config.Skills.Effects[id].BuffId==b.Id)))throw new InvalidDataException($"光环来源/激活状态无效：buff={b.Id} owner={b.Owner} aura={b.AuraSkill} contains={ActorFor(b.Owner).ActiveAuraSkills.Contains(b.AuraSkill??"")} abilityEq={b.Ability==b.AuraSkill} effOk={config.Skills.Skills[b.AuraSkill??""].Effects.Any(id=>config.Skills.Effects[id].Kind=="MaintainAura"&&config.Skills.Effects[id].BuffId==b.Id)}");
         }
         Actor ActorFor(int id)
         {

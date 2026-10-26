@@ -101,12 +101,13 @@ public partial class Main
             await Picture("hero-equipment-worn");
             SelectStarView(0);
             // 固定4+T真实控件状态：页面选择、学习、免费局部重置及同职资格共享。
-            selectedHero=session.Heroes[0].HeroInstanceId;selectedSkillRegion=2;SelectStarView(4);talentStamp="";RefreshTalentPage();
+            // C1-A-1 槽位重排：战吼为 S3（原 S2 改为旋风斩），真实控件断言跟随新顺位。
+            selectedHero=session.Heroes[0].HeroInstanceId;selectedSkillRegion=3;SelectStarView(4);talentStamp="";RefreshTalentPage();
             tabs.CurrentTab=tabs.GetTabIdxFromControl(talentContent);
-            await Picture("fixed-skills-s2-unlearned-t-locked");
+            await Picture("fixed-skills-s3-unlearned-t-locked");
             var s2=talentRegionNodes.GetChildren().OfType<Button>().Single(b=>b.Name=="LearnTalent_barb_taunt");
-            await Click(s2);Need(session.Heroes[0].SkillIds.Contains("barb_taunt"),"鼠标按下/松开未学S2");
-            await Picture("fixed-skills-s2-learned");
+            await Click(s2);Need(session.Heroes[0].SkillIds.Contains("barb_taunt"),"鼠标按下/松开未学S3");
+            await Picture("fixed-skills-s3-learned");
             await Click(talentRegionReset);Need(!session.Heroes[0].SkillIds.Contains("barb_taunt")&&session.Heroes[0].SkillIds.Contains("barb_bash"),"真实局部洗点未生效");
             await Picture("fixed-skills-local-reset");
             session.GrantGmResources(gold:10000);session.BuyStar("s_root",out _);
@@ -182,10 +183,11 @@ public partial class Main
             for(int tick=0;tick<20000&&session.CurrentRoom==0;tick++)session.Tick(.05f);
             while(session.CombatEntryRemaining>0)session.Tick(.05f);
             session.GrantGmResources(experience:10000);var auraRoom=session.Floor.Rooms[session.CurrentRoom];
-            foreach(var priest in session.Heroes){session.UpgradeHero(priest.HeroInstanceId,out _);session.LearnTalent(priest.HeroInstanceId,"pal_conviction",out _);priest.Position=auraRoom.Center;priest.Hp=priest.MaxHp=100000;priest.Attack=1;priest.Timer=999;}
+            // C1-A-1：持续光环移到职业特性T（守护光环），四同职各自投入T即产生四份独立来源。
+            foreach(var priest in session.Heroes){session.UpgradeHero(priest.HeroInstanceId,out _);session.LearnTalent(priest.HeroInstanceId,"priest_trait",out _);priest.Position=auraRoom.Center;priest.Hp=priest.MaxHp=100000;priest.Attack=1;priest.Timer=999;}
             foreach(var monster in auraRoom.Monsters){monster.Position=auraRoom.Center+new System.Numerics.Vector2(1,0);monster.Hp=monster.MaxHp=100000;monster.Attack=0;monster.Timer=999;}
             for(int tick=0;tick<60;tick++)session.Tick(.05f);
-            Need(session.Capture().SkillState.Buffs.Where(b=>b.Id=="pal_conviction_buff"&&b.Target==4).Select(b=>b.Owner).Distinct().Count()==4,"真实窗口四同职多来源Buff缺失");
+            Need(session.Capture().SkillState.Buffs.Where(b=>b.Id=="pal_guard_buff"&&b.Target==0).Select(b=>b.Owner).Distinct().Count()==4,"真实窗口四同职多来源Buff缺失");
             await Picture("four-same-class-buff-sources-and-cooldowns");session=priorFixture;
             // 64位长数值/长中文名为明确QA压力夹具；完整余额通过tooltip可访问。
             var longValues=session.CaptureProgress();longValues.Gold=long.MaxValue-1000;longValues.PublicExperience=long.MaxValue-1000;longValues.Kp=long.MaxValue-1000;longValues.KpEarned=long.MaxValue-1000;longValues.KpSpent=0;

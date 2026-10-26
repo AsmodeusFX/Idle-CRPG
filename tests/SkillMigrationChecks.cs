@@ -13,8 +13,9 @@ public static class SkillMigrationChecks
         void Need(bool ok,string why){if(!ok)throw new Exception("SKILL_MIGRATION: "+why);}
         var c=LegacySkillConfig.Load(Path.Combine(root,"Idle-CRPG/config"));
         var nodes=c.Talents.Nodes;
-        Need(nodes.Count==66,"正式天赋节点数量");
-        Need(nodes.Values.Select(n=>n.Hero).Distinct().Count()==5&&c.Heroes.All(h=>nodes.Values.Count(n=>n.Hero==h.Id)>0&&nodes.Values.Where(n=>n.Hero==h.Id).Select(n=>n.Tree).Distinct().Count()==3),"五职业三系覆盖");
+        // C1-A-1 追加 7 个节点（6 固定技能 + 1 互斥T）；新节点使用第4棵树承载，旧三系节点全部保留。
+        Need(nodes.Count==73,"正式天赋节点数量");
+        Need(nodes.Values.Select(n=>n.Hero).Distinct().Count()==5&&c.Heroes.All(h=>nodes.Values.Count(n=>n.Hero==h.Id)>0&&nodes.Values.Where(n=>n.Hero==h.Id).Select(n=>n.Tree).Distinct().Count()>=3),"五职业三系覆盖");
         // 旧节点 ID 全部保留，保证同 ID 存档不丢等级；新节点使用自己的 ID 并绑定同名主动定义。
         string[] legacyIds=("barb_voice barb_shout barb_weaken barb_courage barb_mastery barb_attack barb_defense barb_focus barb_bash barb_leap barb_whirlwind barb_power "+
             "ranger_archery ranger_shot ranger_precision ranger_explosive ranger_poison ranger_hide ranger_rally ranger_instinct ranger_suppress "+
@@ -24,13 +25,15 @@ public static class SkillMigrationChecks
         Need(legacyIds.All(nodes.ContainsKey),"旧节点 ID 丢失");
         foreach(var n in nodes.Values.Where(n=>n.SkillId!=""))
         {
-            Need(n.SkillId==n.Id&&n.Kind=="active","绑定节点必须与同名主动一致："+n.Id);
+            // 槽位技能节点必须同名；职业特性T按设计另绑光环技能（T不占S1-S4槽）。
+            Need((n.ClassTrait||n.SkillId==n.Id)&&n.Kind=="active","绑定节点必须与同名主动一致："+n.Id);
             Need(c.Skills.Skills.TryGetValue(n.SkillId,out var skill)&&skill.Kind=="ActiveSkill","绑定技能缺失："+n.Id);
             Need(skill!.Effects.All(c.Skills.Effects.ContainsKey),"绑定技能效果缺失："+n.Id);
             Need(skill.Cooldown==checked((int)Math.Ceiling(n.Cooldown*20))&&Math.Abs(skill.Range-n.Range)<.0001f,"绑定技能冷却/距离与节点不一致："+n.Id);
         }
         Need(nodes.Values.All(n=>n.Effect!="data"||n.SkillId!=""),"数据驱动节点缺少绑定");
-        var starters=new[]{("warrior","barb_bash"),("ranger","ran_multishot"),("mage","mage_fireball"),("priest","paladin_smite"),("necromancer","nec_raise_skeleton")};
+        // C1-A-1：游侠S1改为单箭 ran_shot，多重箭移到S2。
+        var starters=new[]{("warrior","barb_bash"),("ranger","ran_shot"),("mage","mage_fireball"),("priest","paladin_smite"),("necromancer","nec_raise_skeleton")};
         foreach(var (hero,starter) in starters)
         {
             Need(c.Talents.StartingSkills[hero]==starter,"初始技能映射："+hero);
@@ -88,14 +91,15 @@ public static class SkillMigrationChecks
             {
                 var h=game.Heroes[i];h.Position=room.Center+new Vector2((i-(game.Heroes.Count-1)/2f)*.3f,0);
                 h.Hp=h.MaxHp=100000;h.Attack=i==0?10:1;h.Timer=999;h.SkillIds=i==0?new[]{skill}:Array.Empty<string>();
+                // 固定技能系数取当前生效等级：夹具显式记为已学习等级1，避免0级系数导致0伤害。
+                if(i==0&&c.Talents.Nodes.ContainsKey(skill))h.Talents[skill]=1;
             }
             foreach(var m in room.Monsters){m.Position=room.Center+new Vector2(1,0);m.Hp=m.MaxHp=100000;m.Timer=999;m.Attack=0;}
             return game;
         }
-        // 光环以友方为目标，额外带一名队友确保范围语义；伤害技能只带本职业避免其他来源干扰。
-        var support=Battle(new[]{"priest","warrior"},"pal_prayer");
-        for(int i=0;i<25;i++)support.Tick(.05f);
-        Need(support.Capture().SkillState.Buffs.Any(b=>b.Id=="pal_prayer_buff")&&support.Heroes[0].ActiveAuraSkills.Contains("pal_prayer"),"祈祷光环未按绑定定义维持");
+        // C1-A-1：祈祷改为主动治疗脉冲；旧光环技能不再占S1-S4槽（退休隔离），T光环由正式运行时路径验证。
+        Need(c.ClassSkillSlots("priest")[2]=="pal_prayer"&&c.Skills.Skills["pal_prayer"].Effects.Any(e=>c.Skills.Effects[e].Kind=="Heal")&&c.Skills.Skills["pal_prayer"].TargetPolicy=="ally_lowest_hp","祈祷未改为主动治疗脉冲");
+        Need(!c.ClassSkillSlots("priest").Contains("pal_conviction")&&!c.ClassSkillSlots("priest").Contains("pal_fanaticism"),"旧光环仍占固定槽");
         var volley=Battle(new[]{"ranger"},"ran_multishot");int arrows=0;
         for(int i=0;i<40;i++){volley.Tick(.05f);arrows=Math.Max(arrows,volley.ActiveFlightCount);}
         Need(arrows==3,"多重箭未生成三支箭矢");

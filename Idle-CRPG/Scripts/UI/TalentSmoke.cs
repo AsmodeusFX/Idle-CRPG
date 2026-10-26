@@ -14,7 +14,11 @@ public partial class Main
             {
                 session=GameSession.CreateWorld(config,20261017,new[]{spec.Id});selectedHero=session.Heroes[0].HeroInstanceId;talentStamp="";SelectStarView(4);RefreshTalentPage();
                 var hero=session.Heroes[0];
-                if(hero.SkillIds.Single()!=config.Talents.StartingSkills[spec.Id]||talentBar.GetChildCount()!=4||talentTrees.GetChildCount()!=5||session.ClassTraitUnlocked(spec.Id))throw new Exception("固定四技能/T锁定错误："+spec.Id);
+                // C1-A：已投放资格节点的职业（当前仅野蛮人 s_trait_warrior）仍必须按星图购买解锁；
+                // 尚未投放资格节点的职业按过渡规则可学（C1-B 补节点后自动收紧）。
+                bool hasGate=config.Stars.Nodes.Values.Any(n=>n.Attribute=="class_trait_unlock"&&n.TargetId==spec.Id);
+                bool expectedUnlocked=!hasGate;
+                if(hero.SkillIds.Single()!=config.Talents.StartingSkills[spec.Id]||talentBar.GetChildCount()!=4||talentTrees.GetChildCount()!=5||session.ClassTraitUnlocked(spec.Id)!=expectedUnlocked)throw new Exception("固定四技能/T锁定错误："+spec.Id);
                 if(hudSkillBars[0].GetChildren().OfType<Button>().Any(b=>b.Text=="编辑"))throw new Exception("HUD旧编辑入口仍存在");
             }
             GD.Print("CLASS_TALENT_UI_SMOKE_OK: five class definitions, four fixed cards plus T, S1 present, no editor");
@@ -29,10 +33,11 @@ public partial class Main
             session=GameSession.CreateNewWorld(config,20261017,new[]{"warrior","warrior"});session.GrantGmResources(10000,100000);
             var hero=session.Heroes[0];while(session.UpgradeHero(hero.HeroInstanceId,out _)){}
             selectedHero=hero.HeroInstanceId;selectedSkillRegion=2;SelectStarView(4);talentStamp="";RefreshTalentPage();
-            var learn=talentRegionNodes.GetChildren().OfType<Button>().Single(b=>b.Name=="LearnTalent_barb_taunt");learn.EmitSignal(BaseButton.SignalName.Pressed);
-            if(!hero.SkillIds.Contains("barb_taunt")||session.Heroes[1].SkillIds.Contains("barb_taunt"))throw new Exception("学习未自动生效或实例串改");
+            // C1-A 槽位重排后 S2 为旋风斩；学习/洗点断言跟随新的固定顺位。
+            var learn=talentRegionNodes.GetChildren().OfType<Button>().Single(b=>b.Name=="LearnTalent_barb_whirlwind_window");learn.EmitSignal(BaseButton.SignalName.Pressed);
+            if(!hero.SkillIds.Contains("barb_whirlwind_window")||session.Heroes[1].SkillIds.Contains("barb_whirlwind_window"))throw new Exception("学习未自动生效或实例串改");
             talentStamp="";RefreshTalentPage();talentRegionReset.EmitSignal(BaseButton.SignalName.Pressed);
-            if(hero.SkillIds.Contains("barb_taunt")||!hero.SkillIds.Contains("barb_bash"))throw new Exception("局部洗点丢S1或残留S2");
+            if(hero.SkillIds.Contains("barb_whirlwind_window")||!hero.SkillIds.Contains("barb_bash"))throw new Exception("局部洗点丢S1或残留S2");
             selectedSkillRegion=5;talentStamp="";RefreshTalentPage();
             if(talentRegionNodes.GetChildren().OfType<Button>().Any(b=>!b.Disabled))throw new Exception("T未购资格可学习");
             session.BuyStar("s_root",out _);session.BuyStar("s_trait_warrior",out _);talentStamp="";RefreshTalentPage();

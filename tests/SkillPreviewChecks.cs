@@ -10,7 +10,8 @@ public static class SkillPreviewChecks
         var config=Config.Load(Path.Combine(root,"Idle-CRPG/config"));int cases=0;
         // M7 的 15 个 skill_XX 保持退役；48 个稳定天赋节点（含未绑定 skill_id 的旧主动）仍是正式内容。
         if(config.Skills.Skills.Keys.Any(id=>id.StartsWith("skill_")))throw new Exception("退役 skill_XX 仍混入正式配置/预览");
-        if(config.Talents.Nodes.Count!=66||config.Talents.Nodes.Values.Count(n=>n.Kind=="active")!=39)throw new Exception("正式节点/主动数量错误");
+        // C1-A-1 追加 7 个节点（6 个固定技能 + 1 条互斥T），并把圣骑士T改为光环主动。
+        if(config.Talents.Nodes.Count!=73||config.Talents.Nodes.Values.Count(n=>n.Kind=="active")!=47)throw new Exception("正式节点/主动数量错误");
         // 只在QA目录验证：引用已删 skill_XX 且主备份均不兼容时自动重置，设置不受影响。
         {
             var directory=Path.Combine(root,"artifacts/qa/retired-save-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
@@ -27,12 +28,14 @@ public static class SkillPreviewChecks
         foreach(int rank in new[]{1,node.MaxRank})
         {
             var game=GameSession.CreateSkillPreview(config,node.Hero,node.Id,rank,config.Monsters[0].Id,12,1);
-            if(game.TalentLevel(game.Heroes[0],node.Id)!=rank||game.Heroes[0].SkillIds.Single()!=node.Id)throw new Exception("试场技能等级/装配错误："+node.Id);
+            // 职业特性T的节点 id 与绑定光环技能 id 不同；试场按真实主动定义装配。
+            string castId=node.SkillId!=""?node.SkillId:node.Id;
+            if(game.TalentLevel(game.Heroes[0],node.Id)!=rank||game.Heroes[0].SkillIds.Single()!=castId)throw new Exception("试场技能等级/装配错误："+node.Id);
             bool cast=false;
             for(int i=0;i<400;i++)
             {
                 game.TickSkillPreview(.05f);
-                cast|=game.VisualEvents.Any(e=>e.Skill==node.Id);
+                cast|=game.VisualEvents.Any(e=>e.Skill==castId||e.Skill==node.Id);
             }
             if(!cast)throw new Exception("试场技能未产生表现："+node.Id+" Lv."+rank+" corpses="+game.Capture().SkillState.Corpses.Count+" hero="+game.Heroes[0].Position+" events="+string.Join(',',game.VisualEvents.Select(e=>e.Skill)));
             if(game.World!.Stage!=CampaignStage.Dungeon||game.Floors.Count!=1||game.Floor.Rooms.Count!=1)throw new Exception("试场离开独立房间");

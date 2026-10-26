@@ -37,7 +37,8 @@ public static class Wp4StarChecks
 
         // 职业特性解锁：购买一次，同职业全部实例共享资格，不需重复购买，也不自动扣天赋点。
         Check(game.BuyStar("s_trait_warrior",out string traitWhy),$"特性解锁购买失败：{traitWhy}");
-        Check(game.ClassTraitUnlocked("warrior")&&!game.ClassTraitUnlocked("ranger"),"职业特性资格未按职业隔离");
+        // C1-A过渡：已投放资格节点的职业按购买解锁（野蛮人）；尚未投放资格节点的职业保持可学以免死内容。
+        Check(game.ClassTraitUnlocked("warrior")&&game.ClassTraitUnlocked("ranger")&&game.ClassTraitUnlocked("priest"),"职业特性资格购买/过渡规则错误");
         int pointsTwo=game.TalentPoints(warriorTwo);
         Check(game.LearnTalent(warriorOne.HeroInstanceId,"warrior_trait",out string learnOne),$"本职业特性学习失败：{learnOne}");
         Check(game.LearnTalent(warriorTwo.HeroInstanceId,"warrior_trait",out string learnTwo),$"同职业另一实例学习失败：{learnTwo}");
@@ -48,7 +49,7 @@ public static class Wp4StarChecks
         long goldAfterTrait=game.Gold;
         var reloaded=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=game.CaptureProgress()})).Session!);
         Check(reloaded.Gold==goldAfterTrait&&reloaded.XpGainMultiplier==game.XpGainMultiplier,"读档后金币或经验增益不一致");
-        Check(reloaded.ClassTraitUnlocked("warrior")&&!reloaded.ClassTraitUnlocked("ranger"),"读档后职业特性资格丢失");
+        Check(reloaded.ClassTraitUnlocked("warrior")&&reloaded.ClassTraitUnlocked("ranger"),"读档后职业特性资格丢失");
         var again=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=reloaded.CaptureProgress()})).Session!);
         Check(again.Gold==goldAfterTrait&&again.Stars.Level("s_trait_warrior")==1,"二次读档重复扣金或等级漂移");
 

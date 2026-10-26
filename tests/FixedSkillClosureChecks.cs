@@ -13,7 +13,8 @@ public static class FixedSkillClosureChecks
         var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
         var team=GameSession.CreateNewWorld(c,1601,new[]{"warrior","warrior","warrior","warrior"});
         Need(team.Heroes.Select(h=>h.HeroInstanceId).Distinct().Count()==4&&team.ActiveSkillSlots==4,"四同职业实例/固定定义数量");
-        Need(c.Talents.Nodes.Values.Count(n=>n.Kind=="active"&&c.TalentRegion(n)==0)==23,"23个旧主动分类不全");
+        // C1-A-1 后五职业共20个槽位全部投放，另有2条职业特性T光环：其余旧主动归入区域0退休。
+        Need(c.Talents.Nodes.Values.Count(n=>n.Kind=="active"&&c.TalentRegion(n)==0)==25,"旧主动/退休主动分类不全");
         Need(team.Heroes.All(h=>h.SkillIds.SequenceEqual(new[]{"barb_bash"})),"S1开局已学");
         Need(!team.SetTalentLoadout(team.Heroes[0].HeroInstanceId,Array.Empty<string>(),out _),"旧装配仍可用");
         bool rejected=false;try{team.EquipSkills(team.Heroes[0].HeroInstanceId,Array.Empty<string>());}catch(InvalidOperationException){rejected=true;}Need(rejected,"EquipSkills生产命令未拒绝");
@@ -21,7 +22,8 @@ public static class FixedSkillClosureChecks
         foreach(var member in team.Heroes)team.UpgradeHero(member.HeroInstanceId,out _);
         foreach(string id in c.Stars.Nodes.Keys.Where(c.Stars.IsRetired))Need(!team.BuyStar(id,out _)&&!team.Stars.Visible(id),"旧星图槽位可购买/可见："+id);
         Need(!team.CanLearnTalent(team.Heroes[0],"barb_shout",out _),"旧主动仍可学习");
-        Need(!team.ClassTraitUnlocked("warrior")&&!team.ClassTraitUnlocked("mage"),"未购或未投放资格旁路");
+        // 已投放资格节点的职业仍须购买；尚未投放资格节点的职业按C1-A过渡规则可学。
+        Need(!team.ClassTraitUnlocked("warrior")&&team.ClassTraitUnlocked("mage"),"资格购买/过渡规则错误");
         Need(team.BuyStar("s_root",out _)&&team.BuyStar("s_trait_warrior",out _),"资格购买");
         var hero=team.Heroes[0];var other=team.Heroes[1];int otherPoints=team.TalentPoints(other);
         Need(team.LearnTalent(hero.HeroInstanceId,"warrior_trait",out _)&&other.Talents.GetValueOrDefault("warrior_trait")==0&&team.TalentPoints(other)==otherPoints,"职业资格共享但投资不独立");
@@ -70,30 +72,32 @@ public static class FixedSkillClosureChecks
         fight.GrantGmResources(experience:1000);fight.UpgradeHero(fighter.HeroInstanceId,out _);
         for(int tick=0;tick<35;tick++)fight.Tick(.05f);
         Need(!fight.Capture().SkillState.Buffs.Any(b=>b.Id=="barb_taunt_buff"),"未学S2已有特效");
-        Need(fight.LearnTalent(fighter.HeroInstanceId,"barb_taunt",out _),"S2学习失败");
+        Need(fight.LearnTalent(fighter.HeroInstanceId,"barb_whirlwind_window",out _),"S2学习失败");
         for(int tick=0;tick<35;tick++)fight.Tick(.05f);
-        Need(fight.Capture().SkillState.Buffs.Any(b=>b.Id=="barb_taunt_buff"&&b.Owner==0)&&fight.SkillCooldown(fighter,"barb_taunt")>0,"S2没有实际Buff/CD");
+        Need(fight.Capture().SkillState.Buffs.Any(b=>b.Id=="barb_whirlwind_buff"&&b.Owner==0)&&fight.SkillCooldown(fighter,"barb_whirlwind_window")>0,"S2没有实际Buff/CD");
         double otherCd=fight.SkillCooldown(fight.Heroes[1],"barb_bash");
-        Need(fight.ResetTalentRegion(fighter.HeroInstanceId,2,out _)&&!fight.Capture().SkillState.Buffs.Any(b=>b.Owner==0&&b.Id=="barb_taunt_buff")&&fight.SkillCooldown(fight.Heroes[1],"barb_bash")==otherCd,"洗点残留/串其他英雄CD");
+        Need(fight.ResetTalentRegion(fighter.HeroInstanceId,2,out _)&&!fight.Capture().SkillState.Buffs.Any(b=>b.Owner==0&&b.Id=="barb_whirlwind_buff")&&fight.SkillCooldown(fight.Heroes[1],"barb_bash")==otherCd,"洗点残留/串其他英雄CD");
         for(int tick=0;tick<100;tick++)fight.Tick(.05f);
-        Need(!fight.Capture().SkillState.Buffs.Any(b=>b.Id=="barb_taunt_buff")&&fighter.SkillIds.Contains("barb_bash"),"洗点后S2复活或S1丢失");
+        Need(!fight.Capture().SkillState.Buffs.Any(b=>b.Id=="barb_whirlwind_buff")&&fighter.SkillIds.Contains("barb_bash"),"洗点后S2复活或S1丢失");
 
+        // 多来源Buff/撤销单源：守护光环（T）按来源区分，四同职各一份贡献。
         var priests=Battle(1605,new[]{"priest","priest","priest","priest"});
         priests.GrantGmResources(experience:10000);foreach(var priest in priests.Heroes)priests.UpgradeHero(priest.HeroInstanceId,out _);
-        foreach(var priest in priests.Heroes)Need(priests.LearnTalent(priest.HeroInstanceId,"pal_conviction",out _),"四同职光环学习");
+        foreach(var priest in priests.Heroes)Need(priests.LearnTalent(priest.HeroInstanceId,"priest_trait",out _),"四同职光环学习");
         for(int tick=0;tick<60;tick++)priests.Tick(.05f);
-        var buffs=priests.Capture().SkillState.Buffs.Where(b=>b.Id=="pal_conviction_buff"&&b.Target==4).ToArray();
+        var buffs=priests.Capture().SkillState.Buffs.Where(b=>b.Id=="pal_guard_buff"&&b.Target==0).ToArray();
         Need(buffs.Select(b=>b.Owner).Distinct().Count()==4,"同目标四来源Buff未真实存在");
         File.WriteAllLines(Path.Combine(output,"buff_sources.csv"),new[]{"buff_id,target_combat_id,source_hero_instance_id,remaining,stacking"}.Concat(buffs.Select(b=>$"{b.Id},{b.Target},{priests.Heroes[b.Owner].HeroInstanceId},{b.Remaining},Strongest")));
-        var full=GameSession.Restore(c,priests.Capture());Need(full.Capture().SkillState.Buffs.Count(b=>b.Id=="pal_conviction_buff"&&b.Target==4)==4,"完整快照丢多来源Buff");
-        Need(priests.ResetTalentRegion(priests.Heroes[0].HeroInstanceId,4,out _)&&priests.Capture().SkillState.Buffs.Where(b=>b.Id=="pal_conviction_buff"&&b.Target==4).Select(b=>b.Owner).Distinct().Count()==3,"撤销单来源误删其他贡献");
+        var qaSnapshot=priests.Capture();
+        var full=GameSession.Restore(c,qaSnapshot);Need(full.Capture().SkillState.Buffs.Count(b=>b.Id=="pal_guard_buff"&&b.Target==0)==4,"完整快照丢多来源Buff");
+        Need(priests.ResetTalentRegion(priests.Heroes[0].HeroInstanceId,5,out _)&&priests.Capture().SkillState.Buffs.Where(b=>b.Id=="pal_guard_buff"&&b.Target==0).Select(b=>b.Owner).Distinct().Count()<=3,"撤销单来源误删其他贡献");
         var progress=GameSession.Restore(c,priests.CaptureProgress());Need(!progress.Capture().SkillState.Buffs.Any(),"正式检查点复活旧Buff现场");
         var rangers=Battle(1606,new[]{"ranger","ranger"});rangers.GrantGmResources(experience:10000);
         foreach(var ranger in rangers.Heroes){rangers.UpgradeHero(ranger.HeroInstanceId,out _);Need(rangers.LearnTalent(ranger.HeroInstanceId,"ran_valkyrie",out _),"S3召唤学习");}
         for(int tick=0;tick<60;tick++)rangers.Tick(.05f);
         Need(rangers.Summons.Where(s=>s.Alive).Select(s=>s.SummonOwnerInstanceId).Distinct().Count()==2,"重复职业召唤来源不独立");
         double independentCooldown=rangers.SkillCooldown(rangers.Heroes[1],"ran_valkyrie");
-        Need(rangers.ResetTalentRegion(rangers.Heroes[0].HeroInstanceId,3,out _)&&rangers.Summons.Where(s=>s.Alive).All(s=>s.SummonOwnerInstanceId==rangers.Heroes[1].HeroInstanceId)&&rangers.SkillCooldown(rangers.Heroes[1],"ran_valkyrie")==independentCooldown,"局部洗点串另一实例召唤/CD");
-        Console.WriteLine("FIXED_SKILLS_PASS: 4+T authority, 23 retired nodes, migration/refund idempotence, legacy quarantine across Run, real S2 effect/reset, four-source same-target Buff and checkpoint semantics");
+        Need(rangers.ResetTalentRegion(rangers.Heroes[0].HeroInstanceId,4,out _)&&rangers.Summons.Where(s=>s.Alive).All(s=>s.SummonOwnerInstanceId==rangers.Heroes[1].HeroInstanceId)&&rangers.SkillCooldown(rangers.Heroes[1],"ran_valkyrie")==independentCooldown,"局部洗点串另一实例召唤/CD");
+        Console.WriteLine("FIXED_SKILLS_PASS: 4+T authority, 25 retired nodes, migration/refund idempotence, legacy quarantine across Run, real S2 effect/reset, four-source same-target Buff and checkpoint semantics");
     }
 }

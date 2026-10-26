@@ -43,9 +43,9 @@ public sealed class TalentConfiguration
         foreach(var r in CsvTable.Load("skill/talent.csv",File.ReadAllText(Path.Combine(root,"skill/talent.csv")),columns).Rows)
         {
             var n=new TalentNode(r.Id,r.Required("hero"),r.Integer("tree"),r.Required("tree_name"),r.Integer("row"),r.Integer("col"),r.Required("name"),r.Required("description"),r.Integer("max_rank"),r.Integer("bonus_allowed") is 1,r.Required("kind"),r["prerequisite"],r.Integer("required_rank"),r.Integer("required_points"),r.Required("effect"),r.Number("value"),r.Number("per_rank"),r.Number("cooldown"),(float)r.Number("range"),(float)r.Number("radius"),r.Enum<DamageType>("damage_type"),(float)r.Number("projectile_speed"),r["skill_id"],r["exclusive_group"],r["class_trait"]=="1");
-            if(r.Integer("bonus_allowed") is not (0 or 1)||!config.Heroes.Any(h=>h.Id==n.Hero)||n.Tree is <0 or >2||n.Col is <0 or >2||n.Row is <0 or >100||n.MaxRank is <1 or >100||n.RequiredPoints< -1||n.RequiredRank<0||n.Value<0||n.PerRank<0||n.Cooldown<0||n.Range<0||n.Radius<0||n.Kind is not ("active" or "passive")||n.Kind=="active"&&(n.Cooldown<0.05||n.Cooldown>5000||n.Range<=0)||n.Kind=="passive"&&n.Effect is not ("atk" or "armor" or "crit_rate" or "engagement_capacity")||!float.IsFinite(n.Range)||!float.IsFinite(n.Radius)||!float.IsFinite(n.ProjectileSpeed)||n.ProjectileSpeed<0||n.Effect=="shot"&&n.ProjectileSpeed<=0||n.Kind=="active"&&n.Effect is not ("bash" or "whirlwind" or "leap" or "shout" or "weaken" or "shot" or "nova" or "data"))throw new InvalidDataException("天赋节点无效："+n.Id);
-            // 绑定节点只能引用同名主动定义，冷却/距离必须与 CSV 一致，避免界面与战斗读取两份不同数值。
-            if(n.SkillId!=""&&(n.Kind!="active"||n.SkillId!=n.Id||!config.Skills.Skills.TryGetValue(n.SkillId,out var bound)||bound.Kind!="ActiveSkill"||bound.Cooldown!=checked((int)Math.Ceiling(n.Cooldown*20))||Math.Abs(bound.Range-n.Range)>.0001f))throw new InvalidDataException("天赋绑定技能无效："+n.Id);
+            if(r.Integer("bonus_allowed") is not (0 or 1)||!config.Heroes.Any(h=>h.Id==n.Hero)||n.Tree is <0 or >3||n.Col is <0 or >2||n.Row is <0 or >100||n.MaxRank is <1 or >100||n.RequiredPoints< -1||n.RequiredRank<0||n.Value<0||n.PerRank<0||n.Cooldown<0||n.Range<0||n.Radius<0||n.Kind is not ("active" or "passive")||n.Kind=="active"&&(n.Cooldown<0.05||n.Cooldown>5000||n.Range<=0)||n.Kind=="passive"&&n.Effect is not ("atk" or "armor" or "crit_rate" or "engagement_capacity")||!float.IsFinite(n.Range)||!float.IsFinite(n.Radius)||!float.IsFinite(n.ProjectileSpeed)||n.ProjectileSpeed<0||n.Effect=="shot"&&n.ProjectileSpeed<=0||n.Kind=="active"&&n.Effect is not ("bash" or "whirlwind" or "leap" or "shout" or "weaken" or "shot" or "nova" or "data"))throw new InvalidDataException("天赋节点无效："+n.Id);
+            // 槽位技能节点只能引用同名主动定义；职业特性T可另绑光环技能（T不占S1-S4槽，由学习状态持续维持）。
+            if(n.SkillId!=""&&(n.Kind!="active"||!config.Skills.Skills.TryGetValue(n.SkillId,out var bound)||bound.Kind!="ActiveSkill"||(!n.ClassTrait&&(n.SkillId!=n.Id||bound.Cooldown!=checked((int)Math.Ceiling(n.Cooldown*20))||Math.Abs(bound.Range-n.Range)>.0001f))))throw new InvalidDataException("天赋绑定技能无效："+n.Id);
             if(n.Effect=="data"&&n.SkillId=="")throw new InvalidDataException("数据驱动主动缺少skill_id："+n.Id);
             c.Nodes.Add(n.Id,n);
         }
@@ -116,7 +116,10 @@ public sealed partial class GameSession
         var gates=Config.Stars?.Nodes.Values.Where(n=>n.Attribute=="class_trait_unlock").ToArray()??Array.Empty<StarNode>();
         if(gates.Length==0)return Config.LegacySkillRuntime;
         // 约定：职业特性解锁节点 id 为 s_trait_<classId>，购买后本轮该职业全部实例共享资格。
-        return gates.Any(node=>node.TargetId==classId&&Stars.Level(node.Id)>0);
+        if(gates.Any(node=>node.TargetId==classId&&Stars.Level(node.Id)>0))return true;
+        // C1-A 过渡规则：该职业尚未投放资格节点时保持可学，避免"有T节点却永远不可学"的死内容；
+        // 已投放资格节点的职业（当前仅野蛮人）仍严格按购买解锁，C1-B 补其余职业节点后自动收紧。
+        return !gates.Any(node=>node.TargetId==classId);
     }
     /// <summary>
     /// 免费局部洗点：只重置指定技能区域（tree）的投入，点数按该区域已投总量返还；

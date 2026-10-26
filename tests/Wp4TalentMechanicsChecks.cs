@@ -22,7 +22,9 @@ public static class Wp4TalentMechanicsChecks
         }
         foreach(var hero in c.Heroes)
         {
-            Check(c.Talents.Nodes.Values.Count(n=>n.Hero==hero.Id&&n.ClassTrait)==1,$"{hero.Id} 的职业特性节点数量不是 1");
+            // C1-A-1：圣骑士T拆为守护/进攻两条互斥光环，其余职业仍为单节点；至少一个且互斥组唯一。
+            var traitNodes=c.Talents.Nodes.Values.Where(n=>n.Hero==hero.Id&&n.ClassTrait).ToArray();
+            Check(traitNodes.Length>=1&&traitNodes.Select(n=>n.ExclusiveGroup).Distinct().Count()==1,$"{hero.Id} 的职业特性节点数量或互斥组异常");
         }
         Check(c.Talents.Nodes.Values.Any(n=>n.ClassTrait&&n.Hero=="warrior"),"缺少野蛮人职业特性节点");
         // 4+1 机制容量：每职业四槽齐全（允许显式留空），已投放槽必须引用本职业可学习主动。
@@ -34,7 +36,8 @@ public static class Wp4TalentMechanicsChecks
             deployed+=c.DeployedClassSkills(hero.Id);
             foreach(string id in slots.Where(id=>id!=""))Check(c.Talents.Nodes.TryGetValue(id,out var slotNode)&&slotNode.Hero==hero.Id&&slotNode.Kind=="active",$"{id} 不是本职业可学习主动技能");
         }
-        Check(deployed==16,$"已投放职业主动技能数应为16，实际 {deployed}");
+        // C1-A-1：四职业16槽全部投放，死灵兼容职业4槽保留，合计20。
+        Check(deployed==20,$"已投放职业主动技能数应为20，实际 {deployed}");
 
         var game=GameSession.CreateNewWorld(c,5150,new[]{"warrior","warrior"});
         var first=game.Heroes[0];var second=game.Heroes[1];

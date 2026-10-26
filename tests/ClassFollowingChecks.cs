@@ -17,7 +17,8 @@ public static class ClassFollowingChecks
         foreach(var spec in c.Heroes)
         {
             var nodes=c.Talents.Nodes.Values.Where(n=>n.Hero==spec.Id).ToArray();
-            Need(nodes.All(n=>n.Tree is >=0 and <=2)&&nodes.Any(n=>n.Kind=="active")&&nodes.Any(n=>n.Kind=="passive"),"职业三系主动/被动："+spec.Id);
+            // C1-A-1 新增固定技能节点在第4棵树（tree=3）；旧三系位置不变，仍要求同时存在主动与被动。
+            Need(nodes.All(n=>n.Tree is >=0 and <=3)&&nodes.Any(n=>n.Kind=="active")&&nodes.Any(n=>n.Kind=="passive"),"职业三系主动/被动："+spec.Id);
             var g=new GameSession(c,785,new[]{spec.Id});var h=g.Heroes.Single();string starter=c.Talents.StartingSkills[spec.Id];
             Need(h.Talents[starter]==1&&h.SkillIds.SequenceEqual(new[]{starter})&&g.TalentPoints(h)==0&&g.TreeInvestment(h,c.Talents.Nodes[starter].Tree)==1,"初始技能未消耗一级点数："+spec.Id);
             Need(!g.LearnTalent(spec.Id,starter,out _),"一级零剩余点可再升级");

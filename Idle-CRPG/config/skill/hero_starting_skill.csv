@@ -1,6 +1,6 @@
 id,skill_id
 warrior,barb_bash
-ranger,ran_multishot
+ranger,ran_shot
 mage,mage_fireball
 priest,paladin_smite
 necromancer,nec_raise_skeleton

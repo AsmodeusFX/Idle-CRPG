@@ -1,3 +1,4 @@
 id,name,max_count,hp_ratio,attack_ratio,defense_ratio,speed,range,cooldown_seconds,engagement_capacity,role,duration_seconds
 nec_skeleton,骷髅,3,0.5,0.5,0.5,2.5,0.9,3,1,melee,0
 ran_valkyrie,女武神,1,0.6,0.6,0.6,2.5,0.9,3,1,melee,5
+barb_ancestor,先祖援军,1,0.6,0.5,0.5,2.5,0.9,3,1,melee,8

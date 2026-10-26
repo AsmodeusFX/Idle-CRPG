@@ -171,7 +171,9 @@ public sealed partial class GameSession
         foreach(string id in actor.SkillIds)
         {
             if(actor.ActiveAuraSkills.Contains(id)){skipped.Add($"{id} 光环已维持");continue;}
-            var skill=SkillConfig.Skills[id];if(SkillCooldown(actor,id)>0){skipped.Add($"{skill.Name} 冷却中");continue;}
+            // 防御：SkillIds 只应包含已装配主动；职业特性T等非主动引用一律跳过，不进入冷却或施法。
+            if(!SkillConfig.Skills.TryGetValue(id,out var skill)||skill.Kind!="ActiveSkill"){skipped.Add($"{id} 非主动技能");continue;}
+            if(SkillCooldown(actor,id)>0){skipped.Add($"{skill.Name} 冷却中");continue;}
             // 召唤名额已满时不再发起施法：Commit 会消费冷却与恢复，效果层静默丢弃等于白耗一次动作。
             var summon=SoleSummonOf(id);
             if(summon!=null&&SummonCountOf(actor,summon.Id)>=summon.MaxCount){skipped.Add($"{skill.Name} 召唤已满");continue;}

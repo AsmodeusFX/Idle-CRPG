@@ -554,7 +554,7 @@ public sealed partial class GameSession
         if(target==null||!InCombatRoom(target)) return;
         double engagementRange=EffectiveValue(actor,"attack_range",actor.Range);
         // 已装配近战主动就绪时先接近其施放距离，避免远程普攻射程使至圣斩永远无法使用。
-        foreach(string id in actor.SkillIds)if(SkillCooldown(actor,id)<=0)engagementRange=Math.Min(engagementRange,SkillConfig.Skills[id].Range);
+        foreach(string id in actor.SkillIds)if(SkillConfig.Skills.TryGetValue(id,out var equipped)&&equipped.Kind=="ActiveSkill"&&SkillCooldown(actor,id)<=0)engagementRange=Math.Min(engagementRange,equipped.Range);
         if(Vector2.Distance(actor.Position,target.Position)>engagementRange)
         {
             Move(actor,target.Position,dt,(float)EffectiveValue(actor,"move_speed",actor.Speed)*MoveMultiplier(actor));

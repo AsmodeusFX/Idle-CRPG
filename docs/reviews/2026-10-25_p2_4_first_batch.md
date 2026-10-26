@@ -751,3 +751,148 @@ INT原始状态、执行覆盖、成长时间轴、三币/物品流水、异常�
 - E：**PASS（工程自检）**；Windows 本机真实控件与渲染验证通过，未覆盖跨平台与人工验收。
 - V-Design：未独立复核；未向外部设计AI发送资料，不声称已同步。
 - V-User：待用户实机验收（需重启客户端后重新打开迁移框确认）。
+
+---
+
+## 21. S15-C0 工程只读完整对账（READ_ONLY_RECON，2026-10-26）
+
+### 21.1 任务与授权边界
+
+来源：`docs/temp/P2-4 S15_C0完整输入与独立Review_V0.3/docs/02_S15_C0_工程只读完整对账执行任务_V0.3.md`（用户直接下达"执行该包"）。授权性质为 `READ_ONLY_RECON`：不改 Core/UI/生产配置/玩家存档，不改 P0 拓扑，不导入 H 数值，不重开 V1.6 返修。本轮只新增只读审计工具与 `artifacts/qa` 报告，并在本 review 追加结论。
+
+### 21.2 环境与输入完整性
+
+- Windows；dotnet SDK 10.0.401；PowerShell 5.1；未运行游戏（纯静态只读），Godot 4.7.2 .NET 版本仅用于确认工程事实。
+- 设计源 21 份 CSV：**记录数与 SHA256 全部匹配** `matrices/source_manifest_verified.csv`（1003 条）；审计前后哈希一致（`source_hashes_before_after.csv`，21/21 无差异）。
+- P0 压缩包未解压、未改写；P0 键改用工程正式章节 CSV 对账。
+- 复跑：`powershell -NoProfile -ExecutionPolicy Bypass -File tools/S15-Audit-P2C0.ps1`，产物在 `artifacts/qa/s15-c0-<时间戳>/`（忽略目录，按项目规范以 review 为报告入口、机器数据留 artifacts）。
+
+### 21.3 覆盖
+
+| 门禁 | 实际 |
+|---|---|
+| 675 / 154 全量 | `id_crosswalk_engine_complete.csv` 675 行；`effect_coverage_engine_complete.csv` 154 行 |
+| 字段对账 | `schema_diff_complete.csv` 258 行（每条给工程列或显式 UNKNOWN/后缀归类） |
+| 16 槽差异 | `skill_slot_engine_diff.csv` 16 行 |
+| 31 星图 | `star_consumer_engine.csv`（生产 19 节点）+ 设计 31 节点判定 |
+| 冲突/差异 | `floor_count_mismatch.csv`（本次为空） |
+
+### 21.4 关键事实（只读核查）
+
+1. **P0 键 393/393 命中**：136 普通地牢 + 31 城堡 + 226 普通层在工程章节配置中逐键存在，层数与 `poi_profile.floors` 完全一致；`match_strength=NONE` 的 P0 键为 0。
+2. **楼层节拍无运行时消费者（RED）**：`Config.FloorPlans` 只用于 `CurrentFloorDisplayName`、`FloorRunReport` 与 `Reveal()` 的 `plan.BossActors`；刷怪数量/精英/事件分别来自 `spawn_rule`、`elite.csv`、`EventChance`。226 层的 `CombatCellCount/EliteCellCount/PlannedKill*` 不改变战斗内容，且该表自带 `ConfigStatus=PROPOSED_NOT_BALANCED`。
+3. **技能**：生产 16 实投 + 4 空槽；四职业 16 设计槽判定为 REAL_REUSE 4 / MODIFY 12 / 空槽 4 / 行为冲突 9；槽位重绑不破坏存档（`SkillIds` 存 id 不存槽）。
+4. **天赋**：生产 66 节点（active 39/passive 27），23 个 active 因不在 `skill_slot.csv` 被判退休；设计 98 节点在生产无同名行，逐条判定 REAL_REUSE 15 / MODIFY 29 / NEW_EFFECT 29 / DESIGN_DECISION 25。
+5. **星图**：生产 19 节点中 10 个退休不可买，**可买 9 节点、活跃购买上限 35 阶**；设计路线要求 55–65 次，缺口 ≥20 次，退休节点不可用于充数（`StarConfiguration.CanBuy` 拒绝）。
+6. **效果缺口集中在四类**：`trigger.csv`/`proc_limit.csv`/`proc_icd.csv` 全 0 行（无条件触发、无同次/同目标限额与 ICD）；无目标评分（精英/威胁/覆盖）；无精英伤害乘区与精英 XP 收据；被动白名单只认 atk/armor/crit_rate/engagement_capacity。37 个 NEW_EFFECT 均由这四类造成。
+7. **装备**：工程 `common/uncommon/rare/legendary`（w=60/25/12/3，×1/1.25/1.6/2.1），设计"普通/稀有/罕见/传奇"无 1:1 对应；28 模板中 18 可落行，10 缺行（6 个 epic + 4 个指环 HP）。
+8. **消耗品**：卷轴 1 条（单目标真实伤害）、药剂 1 条（队伍 ATK%）；其余 7 条需扩表结构与消费点。
+9. **怪级**：`monsterlevel.csv` 1..10000 只有 hp/attack 倍率；H-B1 的 31 档 XP/KP/AR/DR 无对应表（XP 走 `spawn_rule.xp_base`，KP 走 `KpProgression`）。
+10. **存档兼容**：槽位重绑/新天赋/新星图节点/怪物池替换均不破坏旧档；**药剂槽 4→8 会拒旧档**（`RestoreConsumables`/`ValidateConsumables` 要求槽数严格等于 4），装备品质改 id 需映射表（`EquipmentSave.Quality` 为字符串）。
+
+### 21.5 需用户/设计Owner裁决（未实施）
+
+装备四档身份；226 层节拍是否进入运行时；星图购买次数目标（35 vs 55–65）；G03 额外天赋点是否投放；S02 卷轴容量数值。以上均只列 A/B 案与影响（`compat_options.md`、`implementation_packages_proposal_v2.md`），未改任何配置。
+
+### 21.6 局限
+
+未运行游戏、未做战斗/购买回放，结论为静态配置+代码消费者核查；未逐字节核对 P0 压缩包内部 CSV；258 字段行中 129 行为"多表/仅P0"建议、52 行为 H 数值无生产列、28 行同义不同名待语义确认；星图/装备/怪级数值未评估（属 C3）；未覆盖跨平台与人工验收。
+
+### 21.7 可回传设计Owner摘要
+
+S15-C0 只读对账已完成：675/154/258 全量覆盖，21 份设计源哈希与记录数全部匹配，P0 键 393/393 命中且层数一致、拓扑未改。工程侧真实结论是"键对得上，但运行时能力不足"：①226 层战斗节拍在生成时未被消费（仅显示/报告）；②四职业 16 槽为 4 复用/12 需改/4 空，空槽都能用现有 effect 种类落地；③98 天赋中 29 个需要触发器/限额/目标评分等新系统，另有 25 个 T 分支待设计定稿；④星图现网可买仅 9 节点/35 阶，31 设计中 8 个有真实消费者、11 个需扩星图属性白名单、8 个无消费者、2 个待裁决、1 个缺参数，**55–65 次购买无法用现有节点凑出，且禁止用退休节点充数**；⑤装备品质命名与设计四档不一一对应，需产品裁决；⑥药剂槽 4→8 是唯一会拒旧档的改动。分包建议见 `implementation_packages_proposal_v2.md`（C1-A/C1-B/C2-A/C2-B/C3，含依赖与测试预算）。本轮未修改任何配置、代码或玩家存档。
+
+- E：**PASS（只读对账）**；675/154 全覆盖、输入哈希前后一致、无生产写入。非实机行为验收。
+- V-Design：未复核本报告；未向外部设计AI发送资料，不声称已同步。
+- V-User：待裁决 21.5 的五项产品取舍后才可分别请求 C1/C2/C3 授权。
+
+---
+
+## 22. S15-C1-A-1 实施：四职业16固定技能＋4职业特性T（2026-10-26）
+
+### 22.1 授权与边界
+
+用户指令（原文）：“**全部同意，批准C1-A实施**”；授权标记 `IMPLEMENT_APPROVED_SCOPE`，来源 `docs/temp/P2-4 S15_C1A_正式实施授权与裁决回传_V1.0/`（含 00 批准范围、01 五项裁决、02 转发指令、03 分阶段验收、04 权责、C1A核心输入/01–03）。授权覆盖 C1-A-1→C1-A-2 的阶段转换，不覆盖 C1-B/C2/C3、Git 发布、真实玩家存档、P0 拓扑与 Lmin 开放；D-G3 只允许隔离观察、S02/P03 继续暂缓。
+
+### 22.2 设计ID → 生产ID 显式映射（16/16）
+
+| 设计 | 槽 | 生产技能ID | 行为承载 | 判定 |
+|---|---|---|---|---|
+| BAR-S1 重击 | warrior S1 | `barb_bash` | 单体近战 Damage | 复用 |
+| BAR-S2 旋风斩 | warrior S2 | `barb_whirlwind_window` | AreaPulse 周期（原S3移入） | 复用+重绑 |
+| BAR-S3 战吼 | warrior S3 | `barb_taunt` | 范围嘲讽 `forced`（原S2移入） | 复用+重绑 |
+| BAR-S4 先祖援军 | warrior S4 | `barb_ancestor`（新） | Summon 上限1/限时8s | 新增配置 |
+| RAN-S1 弓箭射击 | ranger S1 | `ran_shot`（新） | 单发 SpawnProjectile | 新增配置 |
+| RAN-S2 多重箭 | ranger S2 | `ran_multishot` | 3弹道扇面（原S1移入） | 复用+重绑 |
+| RAN-S3 导引箭 | ranger S3 | `ran_guided_arrow` | AbilityCast arc_homing（原S2移入） | 复用+重绑 |
+| RAN-S4 女武神 | ranger S4 | `ran_valkyrie` | Summon（原S3移入） | 复用+重绑 |
+| SOR-S1 火球 | mage S1 | `mage_fireball` | 投射物+火焰伤害 | 复用 |
+| SOR-S2 冰霜新星 | mage S2 | `sor_frost_nova`（新） | AreaPulse Cold + `chill` | 新增配置 |
+| SOR-S3 连锁闪电 | mage S3 | `sor_chain_lightning` | Chain 4目标（原S2移入） | 复用+重绑 |
+| SOR-S4 陨星术 | mage S4 | `sor_meteor`（新） | 2s前摇 + AreaPulse Fire | 新增配置（近似） |
+| PAL-S1 圣击 | priest S1 | `paladin_smite` | 单体近战 | 复用 |
+| PAL-S2 盾击 | priest S2 | `pal_shield_bash`（新） | Damage + `stun` | 新增配置 |
+| PAL-S3 祈祷 | priest S3 | `pal_prayer`（改） | 主动 Heal 脉冲（`ally_lowest_hp`） | 语义修正 |
+| PAL-S4 祝福之锤 | priest S4 | `pal_hammer`（新） | 绕体 AreaPulse Physical | 新增配置（近似） |
+
+职业特性T：`warrior_trait`（攻击被动，保留原ID）、`ranger_trait`/`mage_trait`（暴击率被动，原型值）、`priest_trait`（改为 **守护光环** `pal_guard_aura`：MaintainAura 周期治疗）、`pal_trait_zeal`（新，**进攻光环** `pal_zeal_aura`：攻速+20%），两者 `exclusive_group=pal_trait_branch` 互斥且同一时刻只维持一条；T 光环不进入 `SkillIds`、不占 S1–S4、不参与自动施法队列。
+
+### 22.3 实际改动
+
+**配置（`Idle-CRPG/config/skill/`）**
+- `skill_slot.csv` 重写为四职业固定顺位；`hero_starting_skill.csv` 游侠改 `ran_shot`。
+- `skill.csv`：新增 6 条主动 + 2 条T光环；`pal_prayer` 改为 `pal_prayer_heal`（`ally_lowest_hp`）。
+- `effect.csv`：新增 9 条（单发弹道/范围冰爆/减速Buff/陨星/盾击/眩晕/飞锤/守护与狂热光环）。
+- `buff.csv`：新增 `sor_frost_nova_buff`(chill 35%/60t)、`pal_shield_bash_stun_buff`(stun/30t)、`pal_guard_buff`(周期治疗)、`pal_zeal_buff`(攻速+20%)。
+- `summon.csv`：新增 `barb_ancestor`（上限1、HP/ATK 0.6/0.5、限时8s）。
+- `talent.csv`：新增 7 节点（6 个固定技能节点 + `pal_trait_zeal`），`priest_trait` 改为光环主动，圣骑士T拆分为守护/进攻。
+
+**引擎（`Scripts/Core/`）**
+- `Talents.cs`：`Tree` 允许 0–3（第4棵树承载 C1-A 新增节点）；职业特性T允许绑定**不同名**的光环技能（仅 `ClassTrait`，仍校验技能存在）；`ClassTraitUnlocked` 增加过渡规则——该职业已投放资格节点时必须购买，尚未投放时保持可学（避免“有T节点永远不可学”的死内容）。
+- `FixedSkills.cs`：新增 `TalentAuraSkills`/`IsTalentAura`；`SyncFixedSkills` 维持T光环；`MigrateFixedSkills` 升到 **FixedSkillsVersion=2**，对 v1 旧档按新槽位重排队列并把不再属于 S1–S4 的旧主动转入退休隔离（免费返还点数，不销毁记录），迁移不清除T光环。
+- `SessionSnapshot.cs`：写入 `FixedSkillsVersion=2`；激活光环校验允许T光环（不要求在 `SkillIds` 内）；T投资资格校验与过渡规则对齐。
+- `SkillSupportRuntime.cs`/`SkillRuntime.cs`/`GameSession.cs`：光环维持与索敌遍历对T光环、非主动引用做防御性跳过。
+- `SkillPreview.cs`：试场按节点绑定的真实技能ID装配（T节点 id≠光环技能 id）。
+- `SkillSnapshot.cs`：光环校验异常补充 buff/owner/aura/三个子条件，便于定位。
+
+**工具与测试**
+- 新增 `tools/Apply-S15C1A1.ps1`（可重复执行的配置落地脚本，已存在行不重复追加）。
+- 新增 `tests/C1ASkillChecks.cs` + `--c1a-checks`：16槽映射、逐技能400tick真实行为、未学不出手、同职实例隔离、局部洗点保底、T互斥/光环撤销、v2读档、v1槽位重排迁移。
+- 旧断言按规则变化更新（均保留其它保护）：`TalentSmoke`（S2→旋风、T资格过渡）、`SkillPreviewChecks`（节点73/主动47、T绑定技能）、`FixedSkillClosureChecks`（退休25、多来源光环改用守护T、召唤区域4）、`SkillMigrationChecks`（初始技能 ran_shot、T绑定豁免、祈祷改脉冲）、`ClassFollowingChecks`（tree≤3）、`Wp4TalentMechanicsChecks`（四职业20槽、T节点≥1）、`Wp4StarChecks`（资格过渡）;旧技能基线夹具补 `skill_slot.csv`，使 2026-10-22 旧组合自洽。
+
+### 22.4 自主技术方案与被覆盖旧内容
+
+1. **槽位重绑优先于新代码**：S2/S3/S4 轮换用 `skill_slot.csv` 完成，存档按 `skill_id` 而非槽号，故重绑不迁移存档；旧档仅需 `FixedSkillsVersion` 1→2 重排。
+2. **祈祷语义修正**：设计明确“主动治疗脉冲、非持续Aura本体”，故 `pal_prayer` 由光环改为 Heal（目标=最缺血友军）；持续恢复移交T守护光环，避免两套常驻光环。
+3. **近似项（已在验收中标注）**：陨星术用“2秒前摇+命中点范围爆发”近似“固定落点”（无地面预警系统）；祝福之锤用“自身周围径向脉冲”近似“绕体飞锤”；旋风斩沿用周期脉冲，不实现“施放中位移”。三者均不新增未授权系统。
+4. **T资格过渡规则**：未新增星图资格节点（C1-B范围），改为“未投放即可学、已投放须购买”。野蛮人仍被 `s_trait_warrior` 严格门禁。该取舍需设计Owner确认是否接受为 C1-A 期间临时口径。
+5. **未复活旧机制**：`CastTalent`、旧装配、技能槽付费、退休节点仍不可用；旧光环 `pal_fanaticism/pal_conviction` 退出固定槽并进入退休隔离。
+
+### 22.5 验证（工程自检）
+
+| 入口 | 命令 | 结果 |
+|---|---|---|
+| 两工程构建 | `dotnet build Idle-CRPG/Idle-CRPG.csproj` + tests 工程 | 0 警告 0 错误 |
+| C1-A专项 | `dotnet run --project tests/IdleCrpg.Checks.csproj -- --c1a-checks` | 退出0，`C1A_SKILL_PASS`（16/16槽位与真实行为、未学不出手、T互斥/实例独立/洗点撤销、v2读档与v1槽位重排迁移） |
+| 全量Core | `dotnet run --project tests/IdleCrpg.Checks.csproj` | 退出0，`FIXED_SKILLS_PASS`(25退休)/`LEGACY_SELECTION_PASS`/`WP4_HISTORICAL_TALENT_PASS`/`WP4_STAR_PASS`/`WP5/6/7`/`INT_01_08_PASS` |
+| Godot无头 | `--headless --path Idle-CRPG -- --smoke-test` | 退出0，12段UI冒烟 + `SMOKE_OK` |
+| 真实窗口UI | `--path Idle-CRPG -- --first-batch-smoke` | 退出0，`FIRST_BATCH_UI_PASS`（1440×900/Windows） |
+
+**真机证据**（`artifacts/qa/first-batch-ui-20261026-080743-0327463-53f517bbb43842bf9bb7c533e6a17d20/`）：`fixed-skills-s3-unlearned-t-locked.png`（S1猛击/S2持续旋风/S3战吼/S4先祖援军 四卡 + T“星图锁定”）、`fixed-skills-s3-learned.png`（真实点击学会S3战吼、自动施放、Rank 1/10）、`fixed-skills-local-reset.png`（免费重置S3、S1保底）、`four-same-class-buff-sources-and-cooldowns.png`（四同职守护光环四来源）。
+
+### 22.6 C1-A-2 状态：**OPEN（未实施）**
+
+98 节点本轮**未落地**，不宣称完成。已确认的两项工程前置缺口（来自 §21 只读对账并在本轮再次核实）：
+
+1. **技能级修饰器缺失**：设计 S2xx/S3xx/S4xx 的“提高某技能伤害/范围/时长/目标数”不能复用现有 `passive`（白名单仅 atk/armor/crit_rate/engagement_capacity，且 `passive` 禁止绑定 `skill_id`）。需要新增 `kind=modifier`（绑定目标技能、在 `Commit` 应用系数/范围/命中数）或等价方案。
+2. **触发器可由T光环承载，但缺少“按已学天赋注册触发器”的通用入口**：`React()`/`proc_limit`/`proc_icd` 运行时已完整存在（本轮核实，见 `SkillRuntime.cs:243-283`），`trigger.csv`/`proc_*` 仅缺配置；29 个 NEW_EFFECT 需要“天赋→常驻触发源”的注册路径与目标评分（精英/威胁）扩展。
+
+**逐节点状态与所需Effect**：沿用 `artifacts/qa/s15-c0-20261026-131223/effect_coverage_engine_complete.csv`（154行，含每行所需能力、消费者入口、缺口、代表测试、状态）；本轮未改写其判定，也未把总分类强行指派给具体节点（遵守03号门禁第2条）。
+
+**建议的下一步（需用户确认是否继续同一授权内推进）**：先做 `modifier` + 触发源注册两项运行时扩展（各配 1 组单测），再按 BAR→RAN→SOR→PAL 分批落 98 节点，每批跑"前置/互斥/点数守恒/读档/局部洗点"四类断言，最后跑 S07 八套24点构筑与四同职/四职业各一/跨Run隔离。
+
+### 22.7 三方状态
+
+- **E（工程自检）：C1-A-1 = PASS；C1-A-2 = OPEN**。16/16 技能与 4/4 T 均有固定Seed真实行为与真机UI证据；98 节点未实施，不计入通过。
+- **V-Design：未复核**。需重点裁决：①T资格过渡规则（未投放即学）是否接受；②陨星/祝福之锤/旋风三项近似是否满足身份要求；③C1-A-2 是否继续按上述两步扩展推进。
+- **V-User：未验收**。C1-A-1 可实机体验（四职业技能卡与T），不等于首轮10小时体验通过。

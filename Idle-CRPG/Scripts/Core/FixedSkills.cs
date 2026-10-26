@@ -31,8 +31,14 @@ public sealed partial class GameSession
     {
         if(Config.LegacySkillRuntime)return;
         hero.SkillIds=LearnedClassSkills(hero);
-        hero.ActiveAuraSkills.RemoveAll(id=>!hero.SkillIds.Contains(id));
+        // C1-A：职业特性T绑定的光环由学习状态持续维持，不占S1-S4槽、不进入自动施法队列。
+        var talentAuras=TalentAuraSkills(hero);
+        foreach(string aura in talentAuras)if(!hero.ActiveAuraSkills.Contains(aura))hero.ActiveAuraSkills.Add(aura);
+        hero.ActiveAuraSkills.RemoveAll(id=>!hero.SkillIds.Contains(id)&&!talentAuras.Contains(id));
     }
+    /// <summary>已学习的职业特性T所绑定的光环技能（如守护/进攻光环）；仅按实例自身投入判定。</summary>
+    private string[] TalentAuraSkills(Actor hero)=>hero.Talents.Where(p=>p.Value>0&&Config.Talents.Nodes.TryGetValue(p.Key,out var node)&&node.ClassTrait&&node.SkillId!=""&&IsAuraSkill(node.SkillId))
+        .Select(p=>Config.Talents.Nodes[p.Key].SkillId).Distinct().ToArray();
     /// <summary>区域可退投入不含S1基础一点；其他区域和实例的投入不参与。</summary>
     public int RegionInvestment(Actor hero,int region)=>hero.Talents.Where(p=>Config.TalentRegion(Config.Talents.Nodes[p.Key])==region)
         .Sum(p=>Math.Max(0,p.Value-(p.Key==Config.Talents.StartingSkills[hero.SpecId]?1:0)));
@@ -97,15 +103,17 @@ public sealed partial class GameSession
         skillState.Buffs.RemoveAll(p=>p.Owner==owner&&(removed.Contains(p.Ability)||removed.Contains(p.AuraSkill)));
         PruneSummons();PruneAuraActivations();MarkChanged();Note($"免费重置：{hero.Name} 区域{region} {points}点");reason="";return true;
     }
+    /// <summary>职业特性T绑定的光环来源：只按本实例已学T节点判定，读档迁移不得把它当作未装配技能清掉。</summary>
+    private static bool IsTalentAura(Config config,Actor hero,string auraSkill)=>hero.Talents.Any(p=>p.Value>0&&config.Talents.Nodes.TryGetValue(p.Key,out var node)&&node.ClassTrait&&node.SkillId==auraSkill);
     private static void MigrateFixedSkills(Config config,SessionSnapshot state)
     {
         if(config.LegacySkillRuntime)return;
-        if(state.FixedSkillsVersion is <0 or >1)throw new InvalidDataException("固定技能版本不支持");
+        if(state.FixedSkillsVersion is <0 or >2)throw new InvalidDataException("固定技能版本不支持");
         foreach(var hero in state.Heroes.Concat(state.ReserveHeroes))
         {
             if(hero.RetiredTalents==null||hero.LegacySkillIds==null)throw new InvalidDataException("缺少旧技能隔离字段");
             if(hero.SkillIds==null||hero.SkillIds.Any(id=>!config.Skills.Skills.ContainsKey(id)))throw new InvalidDataException("未知旧技能引用，保留原档等待人工迁移");
-            if(state.FixedSkillsVersion==1)
+            if(state.FixedSkillsVersion==2)
             {
                 var expected=config.ClassSkillSlots(hero.SpecId).Where(id=>id!=""&&hero.Talents.GetValueOrDefault(id)>0).ToArray();
                 if(!hero.SkillIds.SequenceEqual(expected))throw new InvalidDataException("固定技能队列与个人学习状态不一致");
@@ -123,11 +131,23 @@ public sealed partial class GameSession
                 foreach(string id in hero.SkillSwapLocks.Keys.Where(config.IsRetiredTalent).ToArray())hero.SkillSwapLocks.Remove(id);
                 hero.TalentBonuses.RemoveAll(b=>b.Scope=="node"&&config.IsRetiredTalent(b.Target));
             }
+            if(state.FixedSkillsVersion<2)
+            {
+                // C1-A 槽位重排迁移：旧档中不再属于S1～S4固定顺位的主动转入隔离记录并免费返还点数，
+                // 已学的新槽技能与被动保持不变；旧技能现场在下方统一作废，不复活退休技能。
+                var slots=config.ClassSkillSlots(hero.SpecId);
+                foreach(var pair in hero.Talents.Where(p=>config.Talents.Nodes.TryGetValue(p.Key,out var node)&&node.Kind=="active"&&!node.ClassTrait&&!slots.Contains(p.Key)).ToArray())
+                {
+                    if(!hero.RetiredTalents.Any(p=>p.NodeId==pair.Key))hero.RetiredTalents.Add(new(pair.Key,pair.Value));
+                    hero.Talents.Remove(pair.Key);
+                }
+                hero.ActiveAuraSkills.RemoveAll(id=>!slots.Contains(id)&&!IsTalentAura(config,hero,id));
+            }
             string starter=config.Talents.StartingSkills[hero.SpecId];
             if(state.FixedSkillsVersion==0&&hero.Talents.GetValueOrDefault(starter)==0)hero.StarterPointWaived=true;
             hero.Talents[starter]=Math.Max(1,hero.Talents.GetValueOrDefault(starter));hero.StartingSkillGranted=true;
             hero.SkillIds=config.ClassSkillSlots(hero.SpecId).Where(id=>id!=""&&hero.Talents.GetValueOrDefault(id)>0).ToArray();
-            hero.ActiveAuraSkills.RemoveAll(id=>!hero.SkillIds.Contains(id));
+            hero.ActiveAuraSkills.RemoveAll(id=>!hero.SkillIds.Contains(id)&&!IsTalentAura(config,hero,id));
         }
         if(state.FixedSkillsVersion==0)
         {
@@ -135,6 +155,6 @@ public sealed partial class GameSession
             state.SkillState=new();state.Summons.RemoveAll(s=>config.IsRetiredTalent(s.SummonSkill));
             state.RoomEntrySummons.RemoveAll(s=>config.IsRetiredTalent(s.SummonSkill));
         }
-        state.FixedSkillsVersion=1;
+        state.FixedSkillsVersion=2;
     }
 }

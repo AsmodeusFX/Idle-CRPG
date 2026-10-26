@@ -113,7 +113,7 @@ public sealed partial class GameSession
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=3,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,DoorWait=destination>=0&&phase==1&&doorOpener is {Alive:true}?doorWait:0,DoorFallback=destination>=0&&phase==1&&doorOpener is {Alive:true}&&doorFallback,DoorOpenerHero=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Heroes.Contains(doorOpener)?Heroes.IndexOf(doorOpener):-1,DoorOpenerSummon=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Summons.Contains(doorOpener)?Summons.IndexOf(doorOpener):-1,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
-        AssetAuditTick=assetAuditTick,AssetEventSequence=assetEventSequence,FixedSkillsVersion=Config.LegacySkillRuntime?0:1,Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
+        AssetAuditTick=assetAuditTick,AssetEventSequence=assetEventSequence,FixedSkillsVersion=Config.LegacySkillRuntime?0:2,Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
     };
     /// <summary>正式存档只保留房间检查点。未完成战斗从进房位置重开，已领取资源与奖励标志一并保留。</summary>
     public SessionSnapshot CaptureProgress()
@@ -309,7 +309,18 @@ public sealed partial class GameSession
         c.Spawn.Validate(s.Modifiers!);
         Need(s.Stars!=null&&double.IsFinite(s.StarAttack)&&double.IsFinite(s.StarHp)&&s.StarAttack>=0&&s.StarHp>=0,"星图贡献");
         var talentStars=new StarProgression(c.Stars,s.Stars);ValidateFormationSnapshot(c,s);
-        if(!c.LegacySkillRuntime)Need(s.Heroes.Concat(s.ReserveHeroes).All(hero=>!hero.Talents.Keys.Any(id=>c.Talents.Nodes.TryGetValue(id,out var node)&&node.ClassTrait)||c.Stars.Nodes.Values.Any(gate=>gate.Attribute=="class_trait_unlock"&&gate.TargetId==hero.SpecId&&talentStars.Level(gate.Id)>0)),"T投资缺少本职业星图资格");
+        if(!c.LegacySkillRuntime)
+        {
+            // C1-A 过渡：该职业已投放资格节点时必须购买；尚未投放资格节点的职业按学习期规则可持有T投入。
+            bool TraitQualified(Actor hero)
+            {
+                if(!hero.Talents.Keys.Any(id=>c.Talents.Nodes.TryGetValue(id,out var node)&&node.ClassTrait))return true;
+                var gates=c.Stars.Nodes.Values.Where(gate=>gate.Attribute=="class_trait_unlock"&&gate.TargetId==hero.SpecId).ToArray();
+                if(gates.Length==0)return true;
+                return gates.Any(gate=>talentStars.Level(gate.Id)>0);
+            }
+            Need(s.Heroes.Concat(s.ReserveHeroes).All(TraitQualified),"T投资缺少本职业星图资格");
+        }
         Need(s.Heroes.Concat(s.ReserveHeroes).All(h=>h.SkillIds!=null&&h.SkillIds.Count(id=>c.Talents.Nodes.ContainsKey(id))<=TalentSlotCapacity(c,talentStars)),"主动技能槽超过星图解锁容量");
         Need(s.Inventory!.All(i=>c.Items.Any(t=>t.Id==i.ItemId)&&i.Price>=0&&i.Count>0)&&s.Inventory.Select(i=>(i.ItemId,i.Price)).Distinct().Count()==s.Inventory.Count,"背包引用/数量");
         Need((s.RoomEntry.Count==0||s.RoomEntry.Count==s.Heroes.Count)&&s.RoomEntry.All(e=>Point(e.Position)&&Finite(e.Hp)&&e.Hp>=0),"进房节点");
@@ -331,7 +342,9 @@ public sealed partial class GameSession
             bool summon=a.SummonDefinitionId!="";
             if(summon)Need(c.Skills.Summons.ContainsKey(a.SummonDefinitionId)&&a.SummonOwner>=0&&a.SummonOwner<s.Heroes.Count&&s.Heroes[a.SummonOwner].SkillIds.Contains(a.SummonSkill),"召唤定义/主人引用无效");
             else Need(a.SummonOwner<0&&a.SummonSkill=="","非召唤物不得携带召唤来源");
-            Need(a.ActiveAuraSkills!=null&&a.ActiveAuraSkills.Count<=a.SkillIds.Length&&a.ActiveAuraSkills.Distinct().Count()==a.ActiveAuraSkills.Count&&a.ActiveAuraSkills.All(id=>a.SkillIds.Contains(id)&&c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Effects.Any(e=>c.Skills.Effects[e].Kind=="MaintainAura")),"激活光环缺失、重复或未装配");
+            // 职业特性T绑定的光环由已学T节点提供，不占S1～S4槽；其余激活光环仍必须已装配。
+            bool talentAura(string id)=>c.Talents.Nodes.Values.Any(n=>n.ClassTrait&&n.SkillId==id&&a.Talents!=null&&a.Talents.GetValueOrDefault(n.Id)>0);
+            Need(a.ActiveAuraSkills!=null&&a.ActiveAuraSkills.Count<=a.SkillIds.Length+c.Talents.Nodes.Values.Count(n=>n.ClassTrait)&&a.ActiveAuraSkills.Distinct().Count()==a.ActiveAuraSkills.Count&&a.ActiveAuraSkills.All(id=>(a.SkillIds.Contains(id)||talentAura(id))&&c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Effects.Any(e=>c.Skills.Effects[e].Kind=="MaintainAura")),"激活光环缺失、重复或未装配");
             Need(a.Level<=(s.Heroes.Contains(a)||s.ReserveHeroes.Contains(a)||summon?c.MaxHeroLevel:c.MaxMonsterLevel),"等级超过等级表表尾；请补齐配置，禁止静默降级");
             ValidateTalents(c,a);
             Need(a.SkillIds.Distinct().Count()==a.SkillIds.Length&&a.SkillIds.All(id=>c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Kind=="ActiveSkill")&&a.SkillLevels.All(p=>c.Skills.Abilities.TryGetValue(p.Key,out var ability)&&p.Value>=1&&p.Value<=ability.MaxLevel),"装备技能/等级引用");

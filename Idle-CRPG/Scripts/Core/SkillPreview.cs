@@ -22,7 +22,9 @@ public sealed partial class GameSession
         game.Floors=new(){new Floor {Rooms=new(){room}}};game.FloorIndex=0;game.CurrentRoom=0;game.destination=-1;game.Won=false;
         game.skillState=new();game.Summons.Clear();game.ClearVisualEvents();
         var hero=game.Heroes[0];hero.Talents.Clear();hero.TalentBonuses.Clear();hero.SkillSwapLocks.Clear();hero.ActiveAuraSkills.Clear();
-        hero.Talents[skillId]=rank;hero.SkillIds=new[]{skillId};hero.Position=new Vector2(-2,0);hero.Timer=0;
+        // 职业特性T的节点 id 与绑定光环技能 id 不同：试场必须施放 skill.csv 中的真实主动定义。
+        string castId=node.SkillId!=""?node.SkillId:skillId;
+        hero.Talents[skillId]=rank;hero.SkillIds=new[]{castId};hero.Position=new Vector2(-2,0);hero.Timer=0;
         // 治疗技能保留真实缺血条件；无敌仅用于延长观察，不替换技能命中规则。
         if(skillId=="pal_prayer")hero.Hp=hero.MaxHp*.35f;
         for(int i=0;i<count;i++)

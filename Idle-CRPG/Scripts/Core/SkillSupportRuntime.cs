@@ -44,7 +44,10 @@ public sealed partial class GameSession
         if(Floors.Count>0)actors=actors.Concat(Floor.Rooms[CurrentRoom].Monsters);
         foreach(var actor in actors)
         {
-            bool changed=actor.ActiveAuraSkills.RemoveAll(id=>!actor.Alive||!actor.SkillIds.Contains(id)||!IsAuraSkill(id))>0;
+            // 职业特性T光环不进入SkillIds（不占S1-S4、不自动施放），按已学T节点维持；
+            // 其它光环仍要求已装配且技能含MaintainAura。
+            var talentAuras=Heroes.Contains(actor)||reserveHeroes.Contains(actor)?TalentAuraSkills(actor):Array.Empty<string>();
+            bool changed=actor.ActiveAuraSkills.RemoveAll(id=>!actor.Alive||(!actor.SkillIds.Contains(id)&&!talentAuras.Contains(id))||!IsAuraSkill(id))>0;
             if(changed&&Heroes.Contains(actor))MarkChanged();
         }
         skillState.Buffs.RemoveAll(b=>b.AuraSkill!=""&&(CombatActor(b.Owner) is not {Alive:true} owner||!owner.ActiveAuraSkills.Contains(b.AuraSkill)));
