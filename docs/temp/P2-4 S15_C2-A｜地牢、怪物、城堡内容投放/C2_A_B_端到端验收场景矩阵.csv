@@ -1,0 +1,33 @@
+﻿Stage,Category,TestId,Scenario,Setup,ExpectedObservable,ProofRequired,Priority,DependsOn,Authorization
+C2-A,P0,C2-01,393个键逐条绑定,31 castles+136 Dungeon+226 Floor,P0复合键存在且没有新Key；章号不丢失,CSV crosswalk+loader result,P0,"C1-A,B ready for full content",C2 requires implementation approval
+C2-A,P0,C2-02,不改地图拓扑和Gate,P0 Gate快照before/after,现有通行/前置/城堡准入相同；玩家主动攻城,topology hash and challenge tests,P0,C2,C2 requires implementation approval
+C2-A,Spawn,C2-03,同层不同节拍真实消费,固定Seed/同地牢两层,怪物身份、组合职责或精英节拍发生可观察变化,before/after spawn provenance CSV + Godot frames,P0,C2,C2 requires implementation approval
+C2-A,Spawn,C2-04,同章两个区域敌人池,固定Seed/抽样2 regions,怪物从不同区域池选，不出现其他章身份,spawn trace per region,P0,C2,C2 requires implementation approval
+C2-A,Spawn,C2-05,怪级唯一权威,尝试修改旧floor level/Challenge,"新房等级只读Run全局[Lmin,Lmax]；旧字段不影响",fixed-seed negative consumer test,P0,C2,C2 requires implementation approval
+C2-A,Spawn,C2-06,房间快照不可重刷,房间已生成后Lmax+1,旧房怪等级/HP/奖励不变、新房合法新范围,snapshot and ledger,P0,C2,C2 requires implementation approval
+C2-A,Elite,C2-07,精英标识真实性,elite chance=positive control,精英标签/行为/奖励能被识别；来源不重计,combat logs+screenshots,P0,C2,C2 requires implementation approval
+C2-A,Event,C2-08,事件格不制造手动任务,EventCell>0 普通地牢,进度不被未授权手动点击卡住,replay clear trace,P0,C2,C2 requires implementation approval
+C2-A,LocalBoss,C2-09,四处局部BossArena,P0标记12个Arena cells,均是Dungeon局部遭遇，无额外Castle Key,source POI+runtime boss origin,P0,C2,C2 requires implementation approval
+C2-A,AI,C2-10,M05–M08门禁和安全回退,禁用进阶行为后加载同种身份,能合法退回已有行为，不报无限援军/无奖励,AI audit/gate matrix,P0,C2,C2 requires implementation approval
+C2-A,Boss,C2-11,四章主线关底,安达利尔/都瑞尔/议会→墨菲斯托/迪亚波罗,有可读威胁与真实转段，不新增强制手动机关,4 real windows phase trace,P0,C2,C2 requires implementation approval
+C2-A,Boss,C2-12,非最终城堡与支线,31 castles 分别抽样及全键载入,25必经6可选，支线无独占解锁物,castle audit receipts,P0,C2,C2 requires implementation approval
+C2-A,Rewards,C2-13,复刷收据,同Dungeon再次合法进入,新的击杀正常给XP/KP；同一个已死实例重放不重复,run receipt diff,P0,C2,C2 requires implementation approval
+C2-A,Rewards,C2-14,召唤单位无刷资源漏洞,M07多波召援/死亡重开,不得无限KP/金币/XP，source provenance可查,long-run cap and dedupe,P0,C2,C2 requires implementation approval
+C2-A,Balance,C2-15,P0计划杀怪不强制消费,改HistoricalKillTarget极端值,怪生成数不跟计划数直接锁死,source-consumer negative test,P0,C2,C2 requires implementation approval
+C2-B,Equip,C2-16,28模板生产合法性,"7种(slot,stat)×4 quality",均加载且实际进入候选，品质ID稳定,loader validation+drop trace,P0,C2,C2 requires implementation approval
+C2-B,Equip,C2-17,品质存档一致,保存/加载已得uncommon/rare,不变成另一个等级或质量，不重复数值加成,save twice diff,P0,C2,C2 requires implementation approval
+C2-B,Equip,C2-18,实际怪级掉落,同章Run怪级变化,物品等级追踪真实MonsterActualLevel而非章节/Lmax,drop record source level,P0,C2,C2 requires implementation approval
+C2-B,Equip,C2-19,同属性与跨属性保留,饰品ATK⇄HP+跨职业同职,仅同属性严格优胜自动标记；跨属性须人决策,inventory and UI screenshots,P0,C2,C2 requires implementation approval
+C2-B,Equip,C2-20,主线与支线奖励来源,主线城堡/可选城堡,任何内容都不强迫通支线获得主线必要资源,gates+drop source list,P0,C2,C2 requires implementation approval
+C2-B,Equip,C2-21,售卖安全+合批,0/1/4/5升级件及锁定,右栏门槛>4；英雄页单角色独立；锁定和跨属性不售,receipts+GUI click screenshots,P0,C2,C2 requires implementation approval
+C2-B,Scroll,C2-22,5固定槽完整接入,5类配置+库存0/nonzero,仅有配置的槽可点；点击实际合法目标，失败不扣,mouse GUI + ledger,P0,C2,C2 requires implementation approval
+C2-B,Scroll,C2-23,电弧去重,3目标/2目标/1目标,最多命中3不同敌人，不增加虚假弹射,DamagePipeline trace,P0,C2,C2 requires implementation approval
+C2-B,Scroll,C2-24,火焰/冰霜/战旗,敌密度/控制不接受/队伍保护,实际效果、数量/时效边界，不强制施放,source tracking on expire,P0,C2,C2 requires implementation approval
+C2-B,Scroll,C2-25,卷轴致死掉同类,杀怪100%掉卷轴夹具,本次消耗1、合法掉落+1，守恒,asset_ledger.csv,P0,C2,C2 requires implementation approval
+C2-B,Potion,C2-26,4槽/满槽保护,4槽占满+同种两瓶,拒绝覆盖；仅同类一瓶生效；待用可丢,actual GUI+save/resume,P0,C2,C2 requires implementation approval
+C2-B,Potion,C2-27,四类Buff消费证据,PO01..PO04分别使用,ATK/MaxHP/仅合法击杀金/非战斗移动各有真实可观察消费者,Core controlled comparison,P0,C2,C2 requires implementation approval
+C2-B,Potion,C2-28,金币加成来源限制,PO03生效后击杀和卖装备/离线,只放大合法击杀金币；卖装/离线不加,gold event ledger,P0,C2,C2 requires implementation approval
+C2-B,Potion,C2-29,计时与存档,暂停/退出/后台运行,有效Tick递减、暂停/关闭冻结、后台正常运行时继续,timer screenshot+tick diff,P0,C2,C2 requires implementation approval
+C2-B,Potion,C2-30,使用中MaxHP变化,PO02+受伤/满血/死亡/复活,HP语义由设计确认后实现，不凭代码新增比例治疗,scenario evidence,P0,"C1-A effects,HP policy",C2 requires implementation approval
+C2-B,Economy,C2-31,剔除可选地牢预算,不打20可选Dungeon,主线预估不计1291历史计划击杀，收入按实际收据,new corrected C3 baseline,P0,C2,C2 requires implementation approval
+C2-B,Balance,C2-32,低操作与0消耗品,玩家10/45分钟/全不使用,挂机与Boss提供合理成长可达性，不强制用药/卷,seeded simulation + real trace,P0,C3 formal validation,C2 requires implementation approval

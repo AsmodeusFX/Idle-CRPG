@@ -1,0 +1,52 @@
+{
+  "nodes": 31,
+  "ranks": 78,
+  "sum_max_rank": 78,
+  "routes": {
+    "乙_双游侠双圣骑_续航": {
+      "purchases": 55,
+      "gold_H": 20750,
+      "chapters": {
+        "1": {
+          "purchases": 13,
+          "gold_H": 2290
+        },
+        "2": {
+          "purchases": 13,
+          "gold_H": 3410
+        },
+        "3": {
+          "purchases": 12,
+          "gold_H": 5020
+        },
+        "4": {
+          "purchases": 17,
+          "gold_H": 10030
+        }
+      }
+    },
+    "甲_四职均衡": {
+      "purchases": 57,
+      "gold_H": 21650,
+      "chapters": {
+        "1": {
+          "purchases": 14,
+          "gold_H": 2280
+        },
+        "2": {
+          "purchases": 13,
+          "gold_H": 3630
+        },
+        "3": {
+          "purchases": 16,
+          "gold_H": 6330
+        },
+        "4": {
+          "purchases": 14,
+          "gold_H": 9410
+        }
+      }
+    }
+  },
+  "notes": "Design only; effects not observed; purchases not proven affordable."
+}

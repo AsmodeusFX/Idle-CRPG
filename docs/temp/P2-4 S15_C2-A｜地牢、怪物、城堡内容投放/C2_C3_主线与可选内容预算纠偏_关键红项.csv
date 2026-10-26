@@ -1,0 +1,5 @@
+﻿Chapter,MainDungeonCount,OptionalDungeonCount,MainDungeonStaticKills,OptionalDungeonStaticKills,AllDungeonStaticKills,S11MainCastleStaticKillAssumption,S11OldAllContentBudget,CorrectedMainlineStaticBudget,OvercountOptionalKills,MainlineKillTargetAt80Percent_H,MinutesFromEarlier_P,Approval
+1,30,3,1512,78,1590,777,2367,2289,78,1831.2,90,"P0 historical static, not executable encounter or player achieved; castle assumptions need source QA"
+2,34,6,2067,201,2268,657,2925,2724,201,2179.2,165,"P0 historical static, not executable encounter or player achieved; castle assumptions need source QA"
+3,36,8,2452,504,2956,762,3718,3214,504,2571.2,195,"P0 historical static, not executable encounter or player achieved; castle assumptions need source QA"
+4,16,3,2176,508,2684,786,3470,2962,508,2369.6,150,"P0 historical static, not executable encounter or player achieved; castle assumptions need source QA"

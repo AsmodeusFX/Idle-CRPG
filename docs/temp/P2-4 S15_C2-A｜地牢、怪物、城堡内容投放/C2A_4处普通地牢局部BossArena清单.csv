@@ -1,0 +1,5 @@
+﻿DungeonKey,Name,Chapter,BossArenaCellsHistorical,FloorIndexes,Scope,RuntimeAuthority,Status
+1:A02-D02,毕须博须营地,1,3,1,DUNGEON_LOCAL_BOSS_NOT_CASTLE,existing Dungeon BossActors/room encounter; no new castle or forced manual click,P0 historical cell; need real runtime evidence
+1:A04-D02,崔斯特姆,1,3,1,DUNGEON_LOCAL_BOSS_NOT_CASTLE,existing Dungeon BossActors/room encounter; no new castle or forced manual click,P0 historical cell; need real runtime evidence
+1:A05-D02,树头木拳巢穴,1,3,1,DUNGEON_LOCAL_BOSS_NOT_CASTLE,existing Dungeon BossActors/room encounter; no new castle or forced manual click,P0 historical cell; need real runtime evidence
+1:A08-D03,兵营,1,3,2,DUNGEON_LOCAL_BOSS_NOT_CASTLE,existing Dungeon BossActors/room encounter; no new castle or forced manual click,P0 historical cell; need real runtime evidence
