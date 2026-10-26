@@ -29,7 +29,13 @@ public sealed class Actor
     public List<string> ActiveAuraSkills=new();
     public Dictionary<string,int> SkillLevels=new();
     public Dictionary<string,int> Talents=new();
+    public List<RetiredTalent> RetiredTalents=new();
+    public string[] LegacySkillIds=Array.Empty<string>();
+    /// <summary>迁移前技能字段的只读JSON原件；包含旧投入、装配、加成、冷却和光环，不进入战斗消费者。</summary>
+    public string LegacySkillData="";
     public bool StartingSkillGranted;
+    /// <summary>仅旧档原本未学S1时免收补回基础攻击的一点，不挤占已投资权益；新英雄仍使用原初始点规则。</summary>
+    public bool StarterPointWaived;
     public List<TalentBonus> TalentBonuses=new();
     public Dictionary<string,double> SkillSwapLocks=new();
     public int RewardXp;
@@ -45,7 +51,7 @@ public sealed class Actor
     public float SummonRemaining;
     public bool Alive => Hp > 0;
     /// <summary>角色字段均为值类型或不可变字符串，复制后可独立用于检查点，不共享可变战斗状态。</summary>
-    public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.ActiveAuraSkills=new(ActiveAuraSkills);a.SkillLevels=new(SkillLevels);a.Talents=new(Talents);a.TalentBonuses=new(TalentBonuses);a.SkillSwapLocks=new(SkillSwapLocks);return a;}
+    public Actor Copy(){var a=(Actor)MemberwiseClone();a.Battle=Battle.Copy();a.SkillIds=SkillIds.ToArray();a.ActiveAuraSkills=new(ActiveAuraSkills);a.SkillLevels=new(SkillLevels);a.Talents=new(Talents);a.RetiredTalents=new(RetiredTalents);a.LegacySkillIds=LegacySkillIds.ToArray();a.TalentBonuses=new(TalentBonuses);a.SkillSwapLocks=new(SkillSwapLocks);return a;}
     public static Actor From(UnitSpec s) => new() { SpecId=s.Id, Name=s.Name, Hp=s.Hp, MaxHp=s.Hp, Attack=s.Attack, Defense=s.Defense, Speed=s.Speed, Range=s.Range, Cooldown=s.Cooldown };
 }
 
@@ -167,6 +173,7 @@ public sealed partial class GameSession
     public void Tick(float dt)
     {
         if (dt <= 0 || dt > 0.1f) throw new ArgumentOutOfRangeException(nameof(dt));
+        assetAuditTick++;
         // 瞬时位移标记按逻辑步重置：只剩异常恢复的脱队闪现使用，正常入场部署不再瞬移。
         summonBlinkTick.Clear();
         AdvanceSwapLocks(dt);AdvanceConsumables();World?.ObserveApprovalWait();
@@ -214,7 +221,7 @@ public sealed partial class GameSession
             MarkChanged();
             room.EventUsed=true;
             if (room.Event == "营火") { foreach(var h in Heroes.Where(h=>h.Alive)) h.Hp=Math.Min(h.MaxHp,h.Hp+h.MaxHp*0.3f); Note("营火：存活队员恢复 30% 生命"); }
-            if (room.Event == "宝箱") { GainMonsterExperience(8,Math.Max(1,room.SnapshotLevel)); Note("宝箱：公共XP +8"); }
+            if (room.Event == "宝箱") { GainExperience(8,"room_event"); Note("宝箱：公共XP +8"); }
         }
         if(pendingFormation.Length>0&&World!=null&&!(Floor.Clear&&FloorIndex==Floors.Count-1))
         {ResetSkillRoom();World.ReturnForFormation(this,true);return;}
@@ -606,7 +613,7 @@ public sealed partial class GameSession
         Status="前往拾取战利品";
         var user=Heroes.Where(h=>h.Alive).OrderBy(h=>Vector2.DistanceSquared(h.Position,loot.Position)).First();
         if(Vector2.Distance(user.Position,loot.Position)>SpatialTolerance.InteractionRange){Move(user,loot.Position,dt);return true;}
-        loot.Collected=true;Gold=checked(Gold+loot.Gold);
+        long goldBefore=Gold;loot.Collected=true;Gold=checked(Gold+loot.Gold);if(loot.Gold>0)AuditCurrency("loot_pickup","receive","gold",goldBefore,Gold);
         foreach(var item in loot.Items)
         {
             var key=(item.ItemId,item.Price);inventory[key]=checked(inventory.GetValueOrDefault(key)+item.Count);
@@ -624,7 +631,7 @@ public sealed partial class GameSession
         }
         // 回城交易同时结算次优装备：保留更优/跨属性候选，只卖出同属性不优于已穿者（金币由本函数统一入账）。
         total=checked(total+SellInferiorEquipment());
-        Gold=checked(Gold+total);return total;
+        long before=Gold;Gold=checked(Gold+total);if(total>0)AuditCurrency("village_trade","sell","gold",before,Gold);return total;
     }
     /// <summary>只检查实际自动售卖的背包物品，与售卖结算共用配置条件。</summary>
     internal bool HasAutoSellItems=>inventory.Any(e=>e.Value>0&&Config.ItemTypes.Single(t=>t.Id==Config.Items.Single(i=>i.Id==e.Key.ItemId).TypeId).AutoSell);

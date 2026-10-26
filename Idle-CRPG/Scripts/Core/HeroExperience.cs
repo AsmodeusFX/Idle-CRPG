@@ -18,9 +18,9 @@ public sealed partial class GameSession
     /// <summary>兼容API也只读公共池，不投影Heroes[0]。</summary>
     public long Experience=>PublicExperience;
     public int ExperienceRequired(Actor hero)=>hero.Level>=Config.MaxHeroLevel?0:Config.HeroLevels[hero.Level].Experience;
-    private void GainMonsterExperience(int amount,int monsterLevel)=>GainExperience(amount);
-    private void GainExperience(int amount)
-    {if(amount<=0)return;var scaled=amount*XpGainMultiplier;long gained=(long)Math.Floor(scaled);int fraction=PublicExperienceFraction+(int)Math.Round((scaled-gained)*100);if(fraction>=100){gained+=fraction/100;fraction%=100;}PublicExperience=checked(PublicExperience+gained);PublicExperienceFraction=fraction;MarkChanged();}
+    private void GainMonsterExperience(int amount,int monsterLevel)=>GainExperience(amount,"monster_kill");
+    private void GainExperience(int amount,string source="gm")
+    {if(amount<=0)return;long before=PublicExperience;var scaled=amount*XpGainMultiplier;long gained=(long)Math.Floor(scaled);int fraction=PublicExperienceFraction+(int)Math.Round((scaled-gained)*100);if(fraction>=100){gained+=fraction/100;fraction%=100;}PublicExperience=checked(PublicExperience+gained);PublicExperienceFraction=fraction;AuditCurrency(source,"receive","xp",before,PublicExperience);MarkChanged();}
     /// <summary>指定实例一次恰升一级；验证属性及余额后提交，失败零变更。</summary>
     public bool UpgradeHero(string heroInstanceId,out string reason)
     {
@@ -32,7 +32,7 @@ public sealed partial class GameSession
         var before=Config.HeroLevels[hero.Level];var after=Config.HeroLevels[hero.Level+1];
         float hp=hero.MaxHp+after.HpBonus-before.HpBonus,attack=hero.Attack+after.AttackBonus-before.AttackBonus;
         if(!float.IsFinite(hp)||!float.IsFinite(attack)||hp<=0||attack<0){reason="升级属性溢出";return false;}
-        PublicExperience-=cost;hero.Level++;hero.Attack=attack;
+        long xpBefore=PublicExperience;PublicExperience-=cost;AuditCurrency("player_command","upgrade","xp",xpBefore,PublicExperience,hero.HeroInstanceId);hero.Level++;hero.Attack=attack;
         if(hero.Alive)hero.Hp=Math.Min(hp,hero.Hp+hp-hero.MaxHp);
         hero.MaxHp=hp;Note($"手动升级 {hero.HeroInstanceId} {hero.Name} → Lv.{hero.Level}，公共XP -{cost}，余额{PublicExperience}");reason="升级成功";return true;
     }

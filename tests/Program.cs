@@ -6,6 +6,8 @@ using IdleCrpg.Core;
 
 static void Check(bool value,string message) {if(!value)throw new Exception(message);}
 var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"));
+if(args.Contains("--fixed-skill-checks")){FixedSkillClosureChecks.Run(root);return;}
+if(args.Contains("--p2-4-closure-checks")){FirstBatchChecks.Run(root);FixedSkillClosureChecks.Run(root);Wp5EquipmentChecks.Run(root);Wp6ConsumablesChecks.Run(root);Wp7RebirthOfflineChecks.Run(root);IntegrationClosureChecks.Run(root);return;}
 if(args.Contains("--execution-safety-checks")){ExecutionSafetyChecks.Run(root);return;}
 if(args.Contains("--first-batch-checks")){ExecutionSafetyChecks.Run(root);FirstBatchChecks.Run(root);return;}
 if(args.Contains("--legacy-run-migration")){LegacyRunMigrationChecks.Run(root);return;}
@@ -391,3 +393,4 @@ Wp4StarChecks.Run(root);
 Wp5EquipmentChecks.Run(root);
 Wp6ConsumablesChecks.Run(root);
 Wp7RebirthOfflineChecks.Run(root);
+IntegrationClosureChecks.Run(root);

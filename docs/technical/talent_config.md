@@ -1,5 +1,7 @@
 # 天赋树字段字典
 
+当前生产消费以文末V1.6追加合同为准；旧三系/装配规则仅用于历史读取与显式QA，不作为生产学习或施放权威。
+
 所有路径相对 `Idle-CRPG/config/`，UTF-8 CSV、importer=keep。规则说明见 [角色技能与天赋树](../design/talent_trees.md)。
 
 ## system/config.csv
@@ -96,3 +98,24 @@ WorldSnapshot新增 `OutdoorTrail`（从排头向队尾的有限世界坐标折�
 存档仍为版本4追加字段，不新增文档版本号。自动检查只写`artifacts/qa`。
 
 2026-10-22修正：正式`talent.csv`恢复为61节点（野蛮人14、游侠12、法师10、圣骑士12、死灵13），其中39个主动（16个绑定`skill_id`，23个沿用`CastTalent`旧分派）、22个被动。批准布局沿用的48个稳定旧节点ID全部继续生效，不属于退役对象；游侠元素箭术、法师冰霜、死灵白骨等分支必须保持可学习、可装配。仅M7的15个`skill_XX`导入技能保持退役，正式`skill.csv`不包含这些ID；旧回归通过`tests/LegacySkillConfig`叠加TEST_ONLY基线读取。`SkillTreeVersion`不强制全体账号重置；引用未知/已删`skill_XX`的旧档由既有校验和SaveStore恢复/重置流程处理。
+
+## V1.6生产权威与追加存档字段（2026-10-26）
+
+本节覆盖前文旧生产装配/三系迁移描述，历史数据列仍可读，不删旧节点定义。
+
+| 字段/接口 | 当前合同 |
+|---|---|
+| `skill_slot.csv(hero,slot,skill_id)` | 静态S1～S4顺位；非空ID须唯一、绑定真实skill/Effect且S1与StartingSkills一致；不是可购买装配格 |
+| `active_skill_max_slots/active_skill_initial_slots` | 仅历史配置校验/显式归档QA消费，生产固定4定义不受其控制 |
+| `LearnedClassSkills` / `SkillIds` | 前者从定义和实例学习生成唯一调度；后者为兼容存档与表现缓存，不授予学习资格；提交层再次复核 |
+| `SetTalentLoadout/EquipSkills` | 生产拒绝；显式历史QA开关只由tests/LegacySkillConfig设置；隔离GM试场不持久化 |
+| `SessionSnapshot.FixedSkillsVersion` | 缺省0进行一次隔离迁移；1为固定体系；其他值拒绝。生产不再先运行会删除投入的旧三系迁移 |
+| `Actor.RetiredTalents` | 原NodeId、Rank、Returned；未返还的rank仍占个人预算，玩家主动返还后不再占预算，原记录不删除 |
+| `Actor.LegacySkillIds/LegacySkillData` | 原装配与迁移前完整技能字段JSON只读原件（含投入、来源加成、冷却、光环）；绝不进入战斗消费 |
+| `Actor.StarterPointWaived` | 仅旧档原先缺S1时免收补回基础攻击的一点，避免挤占旧投入；新英雄仍按原初始点规则 |
+| `Legacy.Skills/Legacy.Stars` | 隔离记录跨Run保留；星图只有原购买ID/等级，历史实付不可由当前H价目倒推；不自动退款 |
+| `AssetEventSequence/AssetAuditTick` | 保存事件序号与逻辑Tick；完整流水不写入正式存档，诊断缓存有界8192条，采样器逐事件输出asset_ledger.csv |
+
+区域1～4为固定主动顺位；非T被动沿旧tree+1归区，T为5。旧主动或跨区前置不成为新区域隐藏门禁，主动根不继承旧三系投入门槛；被动保留同区有效前置/原投入门槛。该适配服务于已有原型内容，不是S07候选98节点导入。
+
+生产学习/互斥/预算/资格与存档数值均须合法。区域重置不清整房现场，避免误删其他英雄CD；S1基础攻击保留。字段版本为V5文档内追加，未知已删技能仍拒绝读档、原主备份保留。验证：`--p2-4-closure-checks`、默认Core、Godot冒烟和真实GUI鼠标事件；证据见主review第19节。

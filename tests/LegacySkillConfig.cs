@@ -28,6 +28,11 @@ public static class LegacySkillConfig
         }
         return directory;
     }
-    public static Config LoadLegacy(string source)=>Config.LoadLegacy(DirectoryFor(source));
-    public static Config Load(string source)=>Config.Load(ProductionDirectoryFor(source));
+    private static Config Historical(Config config)
+    {
+        foreach(var map in config.ChapterMaps){map.LegacySkillRuntime=true;map.Stars.AllowRetiredPurchases=true;}
+        return config;
+    }
+    public static Config LoadLegacy(string source)=>Historical(Config.LoadLegacy(DirectoryFor(source)));
+    public static Config Load(string source)=>Historical(Config.Load(ProductionDirectoryFor(source)));
 }

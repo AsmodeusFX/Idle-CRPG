@@ -29,5 +29,10 @@ public sealed partial class Config
             skillSlots.Add(new(hero,slot,skill));
         }
         foreach(var hero in config.Heroes)if(Enumerable.Range(1,4).Any(slot=>!skillSlots.Any(s=>s.Hero==hero.Id&&s.Slot==slot)))throw new InvalidDataException("每职业必须声明4个技能槽："+hero.Id);
+        foreach(var hero in config.Heroes)
+        {
+            var definitions=ClassSkillSlots(hero.Id);var deployed=definitions.Where(id=>id!="").ToArray();
+            if(definitions[0]!=config.Talents.StartingSkills[hero.Id]||deployed.Distinct().Count()!=deployed.Length||deployed.Any(id=>config.Talents.Nodes[id].SkillId==""))throw new InvalidDataException("固定S1须等于初始技能、定义不可重复且必须绑定真实Effect："+hero.Id);
+        }
     }
 }

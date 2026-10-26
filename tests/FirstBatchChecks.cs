@@ -89,7 +89,7 @@ public static class FirstBatchChecks
         while(retry.CombatEntryRemaining>0)retry.Tick(.05f);
         var liveRoom=retry.Floor.Rooms[retry.CurrentRoom];Check(liveRoom.Monsters.Count>1,"重复领取场景须为未清房");
         foreach(var m in liveRoom.Monsters){m.Timer=999;m.Hp=m.MaxHp=100000000;}
-        var victim=liveRoom.Monsters[0];victim.Hp=1;var shooter=retry.Heroes[0];shooter.SkillIds=Array.Empty<string>();shooter.Attack=100000;shooter.Range=100;shooter.Position=victim.Position;shooter.Timer=0;
+        var victim=liveRoom.Monsters[0];victim.Hp=1;var shooter=retry.Heroes[0];shooter.Attack=100000;shooter.Range=100;shooter.Position=victim.Position;shooter.Timer=0;
         var isolated=retry.Capture().SkillState;isolated.Actions.Clear();isolated.Flights.Clear();isolated.Pending.Clear();isolated.Buffs.Clear();
         int killCount=retry.Kills;retry.QaResolveHit(victim);
         Check(retry.Kills==killCount+1&&!liveRoom.Clear,"首次击杀现场");long earned=retry.KpEarned;

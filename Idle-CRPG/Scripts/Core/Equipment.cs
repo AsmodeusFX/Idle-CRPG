@@ -76,7 +76,8 @@ public sealed partial class GameSession
         var state=GearOf(hero);
         var best=state.Candidates.GetValueOrDefault(spec.Slot);
         // 候选只保留"更好"者；跨属性不比较优劣，保留最新一件供玩家人工取舍。
-        if(best==null||item.Value>best.Value)state.Candidates[spec.Slot]=item;
+        if(best==null||item.Value>best.Value){state.Candidates[spec.Slot]=item;AuditEquipment("monster_drop","candidate",hero,spec.Slot,best,item);}
+        else AuditEquipment("monster_drop","inferior_not_kept",hero,spec.Slot,best,best);
         MarkChanged();
     }
     private EquipmentQuality PickQuality()
@@ -94,6 +95,8 @@ public sealed partial class GameSession
         if(!state.Candidates.TryGetValue(slot,out var candidate))return false;
         state.Worn.TryGetValue(slot,out var previous);
         state.Worn[slot]=candidate;state.Candidates.Remove(slot);
+        AuditEquipment("player_command","consume_candidate",hero,slot,candidate,null);
+        AuditEquipment("player_command","equip",hero,slot,previous,candidate);
         ApplyGearTotals(hero,state);
         if(previous!=null)OfferBack(hero,previous,candidate);
         Note($"装备 {hero.Name} {slot}：Lv.{candidate.Level} {Config.EquipmentQualityOf(candidate.Quality).Name}");
@@ -106,14 +109,21 @@ public sealed partial class GameSession
         var spec=Config.EquipmentBaseOf(baseId);var quality=Config.EquipmentQualityOf(qualityId);
         var item=new EquipmentItem(spec.Id,spec.Slot,spec.Attr,level,quality.Id,Config.EquipmentValue(spec,level,quality));
         var state=GearOf(hero);var best=state.Candidates.GetValueOrDefault(spec.Slot);
-        if(best==null||item.Value>best.Value)state.Candidates[spec.Slot]=item;
+        if(best==null||item.Value>best.Value){state.Candidates[spec.Slot]=item;AuditEquipment("qa_fixture","candidate",hero,spec.Slot,best,item);}
+    }
+    /// <summary>隔离边界检查使用：卸到空候选位，复用唯一属性差量，不新增玩家自动卸装行为。</summary>
+    internal bool QaUnequipEquipment(string heroInstanceId,string slot)
+    {
+        var hero=FindHeroInstance(heroInstanceId)??throw new ArgumentException("英雄实例不存在");var state=GearOf(hero);
+        if(state.Candidates.ContainsKey(slot)||!state.Worn.Remove(slot,out var item))return false;
+        state.Candidates[slot]=item;ApplyGearTotals(hero,state);AuditEquipment("qa_fixture","unequip",hero,slot,item,null);MarkChanged();return true;
     }
     /// <summary>换下的旧件不销毁：若它仍优于当前候选则回到候选位。</summary>
     private void OfferBack(Actor hero,EquipmentItem previous,EquipmentItem equipped)
     {
         var state=GearOf(hero);
         var best=state.Candidates.GetValueOrDefault(previous.Slot);
-        if(best==null||previous.Value>best.Value)state.Candidates[previous.Slot]=previous;
+        if(best==null||previous.Value>best.Value){state.Candidates[previous.Slot]=previous;AuditEquipment("equip_return","candidate",hero,previous.Slot,best,previous);}
     }
     /// <summary>某部位是否存在"可替换"候选：空位或同属性且更高（跨属性视为人工取舍，不算自动可替换）。</summary>
     public bool HasReplaceable(Actor hero,string slot)
@@ -188,7 +198,7 @@ public sealed partial class GameSession
             {
                 if(!state.Worn.TryGetValue(pair.Key,out var worn))continue;
                 if(worn.Attr!=pair.Value.Attr||pair.Value.Value>worn.Value)continue;
-                gold+=checked((long)Math.Ceiling(pair.Value.Value*0.35));state.Candidates.Remove(pair.Key);
+                gold+=checked((long)Math.Ceiling(pair.Value.Value*0.35));state.Candidates.Remove(pair.Key);AuditEquipment("village_trade","sell_candidate",hero,pair.Key,pair.Value,null);
             }
         }
         if(gold>0){Note($"回城卖出次优装备，获得 {gold} 金币");MarkChanged();}

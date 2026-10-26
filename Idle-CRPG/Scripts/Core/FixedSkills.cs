@@ -1,0 +1,140 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace IdleCrpg.Core;
+
+/// <summary>旧投入原样隔离；Returned仅表示玩家已主动取回点数，原节点/等级永久保留用于追溯。</summary>
+public sealed record RetiredTalent(string NodeId,int Rank,bool Returned=false);
+public sealed partial class Config
+{
+    // 仅测试程序集显式启用归档行为，正式配置加载器和UI不设置此开关。
+    internal bool LegacySkillRuntime=false;
+    /// <summary>固定技能顺位为1～4，T为5；旧被动沿原三系归入对应区域，未绑定旧主动为0（退休）。</summary>
+    public int TalentRegion(TalentNode node)
+    {
+        if(node.ClassTrait)return 5;
+        if(node.Kind=="passive")return node.Tree+1;
+        int index=Array.IndexOf(ClassSkillSlots(node.Hero),node.Id);
+        return index<0?0:index+1;
+    }
+    /// <summary>未进入固定职业定义的旧主动只保留归档，不参与生产学习或自动施放。</summary>
+    public bool IsRetiredTalent(string id)=>Talents.Nodes.TryGetValue(id,out var node)&&TalentRegion(node)==0;
+}
+public sealed partial class GameSession
+{
+    /// <summary>唯一生产调度队列；SkillIds仅为兼容持久字段和展示缓存，不授予学习资格。</summary>
+    public string[] LearnedClassSkills(Actor hero)=>Config.ClassSkillSlots(hero.SpecId)
+        .Where(id=>id!=""&&(id==Config.Talents.StartingSkills[hero.SpecId]||hero.Talents.GetValueOrDefault(id)>0)).ToArray();
+    private void SyncFixedSkills(Actor hero)
+    {
+        if(Config.LegacySkillRuntime)return;
+        hero.SkillIds=LearnedClassSkills(hero);
+        hero.ActiveAuraSkills.RemoveAll(id=>!hero.SkillIds.Contains(id));
+    }
+    /// <summary>区域可退投入不含S1基础一点；其他区域和实例的投入不参与。</summary>
+    public int RegionInvestment(Actor hero,int region)=>hero.Talents.Where(p=>Config.TalentRegion(Config.Talents.Nodes[p.Key])==region)
+        .Sum(p=>Math.Max(0,p.Value-(p.Key==Config.Talents.StartingSkills[hero.SpecId]?1:0)));
+    /// <summary>尚未由玩家取回的历史点数仍占原实例预算。</summary>
+    public int RetiredTalentPoints(Actor hero)=>hero.RetiredTalents.Where(p=>!p.Returned).Sum(p=>p.Rank);
+    /// <summary>用户2026-10-26裁决：免费主动返还旧点数，保留原始记录；重复操作不会再次返还。</summary>
+    public bool ReturnRetiredTalentPoints(string heroId,out string reason)
+    {
+        var hero=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");
+        int points=RetiredTalentPoints(hero);
+        if(points==0){reason="没有尚未返还的旧技能点";return false;}
+        hero.RetiredTalents=hero.RetiredTalents.Select(p=>p with {Returned=true}).ToList();
+        MarkChanged();Note($"旧技能投入返还：{hero.Name} {points}点（原始记录保留）");reason="";return true;
+    }
+    /// <summary>生产区域继承同区域的有效前置；旧主动或跨区域旧前置不成为新技能的隐藏门禁。</summary>
+    private string FixedPrerequisite(TalentNode node)
+    {
+        if(node.Kind=="active")return "";
+        var seen=new HashSet<string>();string id=node.Prerequisite;
+        while(id!=""&&seen.Add(id))
+        {
+            var parent=Config.Talents.Nodes[id];
+            if(Config.TalentRegion(parent)==Config.TalentRegion(node))return id;
+            id=parent.Prerequisite;
+        }
+        return "";
+    }
+    private bool CanLearnFixedTalent(Actor hero,string id,out string reason)
+    {
+        if(!Config.Talents.Nodes.TryGetValue(id,out var node)||node.Hero!=hero.SpecId)reason="此角色没有该节点";
+        else if(Config.TalentRegion(node)==0)reason="旧主动已退休，原投入可免费返还";
+        else if(hero.Talents.GetValueOrDefault(id)>=node.MaxRank)reason="已达可学习最高等级";
+        else if(node.ClassTrait&&!ClassTraitUnlocked(hero.SpecId))reason="需要在星图购买该职业特性资格（尚未投放资格时仍保持锁定）";
+        else if(node.ExclusiveGroup!=""&&hero.Talents.Any(p=>p.Value>0&&p.Key!=id&&Config.Talents.Nodes[p.Key].ExclusiveGroup==node.ExclusiveGroup))reason="与已选分支互斥：请先免费重置该区域";
+        else if(FixedPrerequisite(node) is string prerequisite&&prerequisite!=""&&hero.Talents.GetValueOrDefault(prerequisite)<Math.Max(1,node.RequiredRank))reason="需学习 "+Config.Talents.Nodes[prerequisite].Name;
+        else if(node.Kind!="active"&&RegionInvestment(hero,Config.TalentRegion(node))<Config.Talents.Required(node))reason=$"需在当前区域投入{Config.Talents.Required(node)}点";
+        else if(TalentPoints(hero)<=0)reason="可用天赋点不足";
+        else {reason="";return true;}
+        return false;
+    }
+    private bool ResetFixedRegion(Actor hero,int region,out string reason)
+    {
+        if(region is <1 or >5){reason="技能区域须为S1～S4或T";return false;}
+        int points=RegionInvestment(hero,region);
+        if(points==0){reason="该区域没有可退投入（S1基础攻击保留）";return false;}
+        string starter=Config.Talents.StartingSkills[hero.SpecId];
+        var removed=hero.Talents.Keys.Where(id=>Config.TalentRegion(Config.Talents.Nodes[id])==region).ToHashSet();
+        foreach(string id in removed)if(id==starter)hero.Talents[id]=1;else hero.Talents.Remove(id);
+        // 装备等来源加成保留为休眠贡献；TalentLevel对未学节点返回0，不因洗点销毁来源权益。
+        foreach(string id in removed)hero.SkillSwapLocks.Remove(id);
+        SyncFixedSkills(hero);
+        // 仅撤销此实例此区域的动作/队列/Buff/召唤；其他实例与区域的CD保持原值。
+        int owner=Heroes.IndexOf(hero);
+        var action=skillState.Actions.FirstOrDefault(a=>a.Owner==owner);
+        if(action!=null)
+        {
+            foreach(string id in removed)action.Cooldowns.Remove(id);
+            if(removed.Contains(action.Active)){action.Active="";action.Windup=0;}
+        }
+        skillState.Pending.RemoveAll(p=>p.Owner==owner&&removed.Contains(p.Skill));
+        skillState.Flights.RemoveAll(p=>p.Owner==owner&&removed.Contains(p.Skill));
+        skillState.Buffs.RemoveAll(p=>p.Owner==owner&&(removed.Contains(p.Ability)||removed.Contains(p.AuraSkill)));
+        PruneSummons();PruneAuraActivations();MarkChanged();Note($"免费重置：{hero.Name} 区域{region} {points}点");reason="";return true;
+    }
+    private static void MigrateFixedSkills(Config config,SessionSnapshot state)
+    {
+        if(config.LegacySkillRuntime)return;
+        if(state.FixedSkillsVersion is <0 or >1)throw new InvalidDataException("固定技能版本不支持");
+        foreach(var hero in state.Heroes.Concat(state.ReserveHeroes))
+        {
+            if(hero.RetiredTalents==null||hero.LegacySkillIds==null)throw new InvalidDataException("缺少旧技能隔离字段");
+            if(hero.SkillIds==null||hero.SkillIds.Any(id=>!config.Skills.Skills.ContainsKey(id)))throw new InvalidDataException("未知旧技能引用，保留原档等待人工迁移");
+            if(state.FixedSkillsVersion==1)
+            {
+                var expected=config.ClassSkillSlots(hero.SpecId).Where(id=>id!=""&&hero.Talents.GetValueOrDefault(id)>0).ToArray();
+                if(!hero.SkillIds.SequenceEqual(expected))throw new InvalidDataException("固定技能队列与个人学习状态不一致");
+            }
+            if(state.FixedSkillsVersion==0)
+            {
+                hero.LegacySkillData=System.Text.Json.JsonSerializer.Serialize(new{hero.HeroInstanceId,hero.SpecId,hero.Talents,hero.SkillIds,hero.TalentBonuses,hero.SkillSwapLocks,hero.ActiveAuraSkills});
+                hero.LegacySkillIds=hero.SkillIds.ToArray();
+                foreach(var pair in hero.Talents.Where(p=>config.IsRetiredTalent(p.Key)||config.Talents.Nodes.TryGetValue(p.Key,out var node)&&node.ClassTrait&&!config.Stars.Nodes.Values.Any(gate=>gate.Attribute=="class_trait_unlock"&&gate.TargetId==hero.SpecId&&state.Stars.Ranks.Any(rank=>rank.Id==gate.Id&&rank.Level>0))).ToArray())
+                {
+                    if(!hero.RetiredTalents.Any(p=>p.NodeId==pair.Key))hero.RetiredTalents.Add(new(pair.Key,pair.Value));
+                    hero.Talents.Remove(pair.Key);
+                }
+                hero.ActiveAuraSkills.RemoveAll(config.IsRetiredTalent);
+                foreach(string id in hero.SkillSwapLocks.Keys.Where(config.IsRetiredTalent).ToArray())hero.SkillSwapLocks.Remove(id);
+                hero.TalentBonuses.RemoveAll(b=>b.Scope=="node"&&config.IsRetiredTalent(b.Target));
+            }
+            string starter=config.Talents.StartingSkills[hero.SpecId];
+            if(state.FixedSkillsVersion==0&&hero.Talents.GetValueOrDefault(starter)==0)hero.StarterPointWaived=true;
+            hero.Talents[starter]=Math.Max(1,hero.Talents.GetValueOrDefault(starter));hero.StartingSkillGranted=true;
+            hero.SkillIds=config.ClassSkillSlots(hero.SpecId).Where(id=>id!=""&&hero.Talents.GetValueOrDefault(id)>0).ToArray();
+            hero.ActiveAuraSkills.RemoveAll(id=>!hero.SkillIds.Contains(id));
+        }
+        if(state.FixedSkillsVersion==0)
+        {
+            // 旧运行现场不得复活旧技能；正式档本来即采用房间重开语义。
+            state.SkillState=new();state.Summons.RemoveAll(s=>config.IsRetiredTalent(s.SummonSkill));
+            state.RoomEntrySummons.RemoveAll(s=>config.IsRetiredTalent(s.SummonSkill));
+        }
+        state.FixedSkillsVersion=1;
+    }
+}

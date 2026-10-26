@@ -9,6 +9,7 @@ public static class SkillMigrationChecks
 {
     public static void Run(string root)
     {
+        FixedSkillClosureChecks.Run(root);
         void Need(bool ok,string why){if(!ok)throw new Exception("SKILL_MIGRATION: "+why);}
         var c=LegacySkillConfig.Load(Path.Combine(root,"Idle-CRPG/config"));
         var nodes=c.Talents.Nodes;
@@ -99,6 +100,6 @@ public static class SkillMigrationChecks
         for(int i=0;i<40;i++){volley.Tick(.05f);arrows=Math.Max(arrows,volley.ActiveFlightCount);}
         Need(arrows==3,"多重箭未生成三支箭矢");
         Need(volley.Floor.Rooms[volley.CurrentRoom].Monsters.Any(m=>m.Hp<100000),"绑定伤害技能未命中");
-        Console.WriteLine("PASS: 66-node three-tree layout, skill_id binding, legacy starter retention, merged-tree save migration, incompatible-node refund/log cleanup, unknown-node rejection, idempotence, bound support and volley execution");
+        Console.WriteLine("HISTORICAL_SKILL_MIGRATION_PASS: archived three-tree layout/binding, old starter migration, unknown-node rejection and legacy execution; production retirement/refund evidence is FIXED_SKILLS_PASS");
     }
 }

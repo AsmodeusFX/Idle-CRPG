@@ -75,7 +75,7 @@ public static class TalentChecks
         var copied=Reopen(g,false);copied.SetGmBattle(g.Gm);for(int i=0;i<10;i++){g.Tick(.05f);copied.Tick(.05f);}
         Need(SaveStore.Encode(new(){Session=g.Capture()})==SaveStore.Encode(new(){Session=copied.Capture()}),"天赋战斗完整快照不确定");
         var bad=g.CaptureProgress();bad.Heroes[0].Talents["barb_bash"]=999;bool rejected=false;try{GameSession.Restore(c,bad);}catch(InvalidDataException){rejected=true;}Need(rejected,"非法学习等级存档未拒绝");
-        var formal=Config.Load(Path.Combine(root,"Idle-CRPG/config"));var town=GameSession.CreateNewWorld(formal,3,"warrior");town.GrantGmResources(10000,5000);TestPlayerActions.UpgradeWithClicks(town);
+        var formal=LegacySkillConfig.Load(Path.Combine(root,"Idle-CRPG/config"));var town=GameSession.CreateNewWorld(formal,3,"warrior");town.GrantGmResources(10000,5000);TestPlayerActions.UpgradeWithClicks(town);
         var th=town.Heroes[0];town.LearnTalent("warrior","barb_mastery",out _);town.LearnTalent("warrior","barb_bash",out _);town.SetTalentLoadout("warrior",new[]{"barb_bash"},out _);
         Need(!town.ResetTalents("warrior",out _),"未解锁洗点可重置");town.BuyStar("s_root",out _);town.BuyStar("s_respec",out _);town.BuyStar("s_respec_discount",out _);
         long cost=town.TalentResetCost(th);Need(cost==36,"洗点原型费用与折扣向上取整");

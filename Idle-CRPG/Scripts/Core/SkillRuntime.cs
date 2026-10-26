@@ -23,6 +23,7 @@ public sealed partial class GameSession
     /// <summary>显式装备技能的会话命令；默认职业没有主动技能，迁移不会自动投放这 15 项内容。</summary>
     public void EquipSkills(string heroId,IEnumerable<string> skillIds)
     {
+        if(!Config.LegacySkillRuntime)throw new InvalidOperationException("固定技能由学习状态决定，旧装配命令已退休");
         var hero=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");var ids=skillIds.ToArray();
         if(hero.SkillIds.Any(Config.Talents.Nodes.ContainsKey)||ids.Any(Config.Talents.Nodes.ContainsKey)){if(!SetTalentLoadout(heroId,ids,out var reason))throw new ArgumentException(reason);return;}
         if(ids.Distinct().Count()!=ids.Length||ids.Any(id=>!SkillConfig.Skills.TryGetValue(id,out var s)||s.Kind!="ActiveSkill"))throw new ArgumentException("技能引用重复或不是主动技能");
@@ -161,6 +162,7 @@ public sealed partial class GameSession
     }
     private bool RunActiveSkill(Actor actor)
     {
+        if(!Config.LegacySkillRuntime&&!skillPreviewMode&&Heroes.Contains(actor))SyncFixedSkills(actor);
         if(actor.SkillIds.Length==0)return false;
         var action=ActionOf(actor);if(action.Active!=""||action.Recovery>0)return true;
         // 按玩家已装备的槽序扫描，选中至多一个主动技能；本层只做“能否提出请求”，
@@ -205,6 +207,7 @@ public sealed partial class GameSession
     {
         action.Windup=0;
         var actor=CombatActor(action.Owner);var target=CombatActor(action.Target);string id=action.Active;var skill=SkillConfig.Skills[id];
+        if(actor!=null&&Heroes.Contains(actor)&&!Config.LegacySkillRuntime&&!skillPreviewMode&&!LearnedClassSkills(actor).Contains(id)){action.Active="";return;}
         // 目标在前摇期间死亡则取消，不扣冷却；尸体目标例外，但尸体已被竞争消费时同样取消。
         bool corpseTarget=skill.TargetPolicy=="corpse";
         bool validCorpse=corpseTarget&&target is {Alive:false}&&CorpseInRoom(target)&&CorpseExists(action.Target);
@@ -223,7 +226,7 @@ public sealed partial class GameSession
         if(Config.Talents.Nodes.TryGetValue(id,out var talent))
         {
             // 绑定节点按 skill.csv/effect.csv 执行，倍率取当前生效等级；未绑定节点保持旧 CastTalent 分派。
-            if(talent.SkillId==""){CastTalent(actor,target,talent,originCast);return;}
+            if(talent.SkillId==""){if(Config.LegacySkillRuntime||skillPreviewMode)CastTalent(actor,target,talent,originCast);return;}
             double value=TalentValue(actor,talent);
             foreach(string effect in skill.Effects)Enqueue(new(){Effect=effect,Skill=id,Owner=action.Owner,Target=action.Target,Coefficient=value,OriginCast=originCast});
             return;

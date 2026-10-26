@@ -55,3 +55,5 @@ SessionSnapshot 的 Capture 保留内部确定性测试现场，CaptureProgress 
 ## 跨平台代理工作规范
 
 后续开发遵守[Agent工作规范](agent_workflow.md)及仓库AGENTS.md。通用流程维护在.agents/skills/game-development/，平台验证按实际证据报告。
+
+2026-10-26 V1.6：生产固定S1～S4由SkillSlots定义与实例Talents生成，T由按ClassId购买的星图资格门控；旧装配API在生产拒绝，CastTalent仅留历史QA/不持久化试场。FixedSkills负责幂等旧技能隔离、免费主动返还、保留S1的区域重置；旧装配缓存不再是施放资格。SaveStore.PreserveLegacy覆盖自动存盘/放弃/重生，历史冻结英雄和旧技能/星图记录跨Run保留。AssetAudit复用现有事务输出货币/装备/卷轴/药剂逐笔状态，SimulationRecorder输出asset_ledger.csv；正式存档只追加审计序号/Tick，不写无限日志。见[主review](../reviews/2026-10-25_p2_4_first_batch.md)第19节。

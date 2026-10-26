@@ -141,7 +141,7 @@ public partial class Main
         if(forceProgressSave||(session.Revision!=savedRevision&&sinceSave>=config.AutosaveMinSeconds))
         {
             // 主线程只复制已分离引用的检查点，编码、Flush 和原子替换都在后台串行完成。
-            var document=new SaveDocument {Session=session.CaptureProgress(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=SavedSelectedRegion};
+            var document=saveStore.PreserveLegacy(new SaveDocument {Session=session.CaptureProgress(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=SavedSelectedRegion});
             writingRevision=session.Revision;sinceSave=0;forceProgressSave=false;
             progressWrite=Task.Run(()=>saveStore.WriteEncoded(SaveStore.Encode(document)));
         }
@@ -220,7 +220,8 @@ public partial class Main
             AddChild(dialog);
             dialog.Confirmed+=()=>{
                 if(!session!.Rebirth(out IdleCrpg.Core.AccountState account,out string reason)){help.Text="重生失败："+reason;return;}
-                saveStore.WriteEncoded(SaveStore.Encode(new SaveDocument {Account=account}));
+                FinishProgressWrite();saveStore.PreserveLegacy(new SaveDocument {Session=session.CaptureProgress()});
+                saveStore.WriteEncoded(SaveStore.Encode(saveStore.PreserveLegacy(new SaveDocument {Account=account})));
                 session=null;pendingAccount=account;UpdatePartyControls();settingsRoot.Hide();
                 help.Text="已正式重生：账号权益保留，请重新选队开启新的一轮。";
             };
@@ -262,7 +263,7 @@ public partial class Main
     {
         if(session==null)return;FinishProgressWrite();
         var account=session.AbandonRun();
-        try{saveStore.WriteEncoded(SaveStore.Encode(new SaveDocument {Account=account,Run=null}));}
+        try{saveStore.PreserveLegacy(new SaveDocument {Session=session.CaptureProgress()});saveStore.WriteEncoded(SaveStore.Encode(saveStore.PreserveLegacy(new SaveDocument {Account=account,Run=null})));}
         catch(Exception e) when(e is IOException or UnauthorizedAccessException){help.Text="放弃失败，原轮次保留："+e.Message;return;}
         pendingAccount=account;session=null;forceProgressSave=false;savedRevision=-1;viewMode=0;paused=false;accumulator=0;
         config=config.ChapterMaps[0];OpenCurrentChapter();formationRoot.Hide();talentEditor.Hide();settingsRoot.Hide();

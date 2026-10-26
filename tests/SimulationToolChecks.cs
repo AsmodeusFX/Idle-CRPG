@@ -14,7 +14,7 @@ public static class SimulationToolChecks
     {
         void Need(bool value, string why) { if (!value) throw new Exception("SIM_TOOL: " + why); }
         string configRoot = Path.Combine(root, "Idle-CRPG/config");
-        var config = LegacySkillConfig.Load(configRoot);
+        var config = Config.Load(configRoot);
         string scenarioDir = Path.Combine(root, "tests/Simulation");
         string qa = Path.Combine(root, "artifacts/qa/sim-tool-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(qa);
@@ -29,8 +29,8 @@ public static class SimulationToolChecks
 
         // 二、版本 2 精确策略：E_min_party 的节点顺序/等级上限/编队名单必须等于文件内容。
         var e = SimulationPolicy.From(SimulationConfig.Load(Path.Combine(scenarioDir, "E_min_party.json")), config);
-        Need(e.StarMode == "explicit" && e.StarNodes.Select(n => n.Id + "*" + n.MaxLevel).SequenceEqual(new[] { "s_root*1", "s_party_1*1", "s_party_2*1" }), "E 星图计划与配置不一致");
-        Need(e.PartyMode == "explicit" && e.PartyRoster.SequenceEqual(new[] { "warrior", "ranger", "mage" }) && e.PartyTargetSize == 3, "E 编队计划与配置不一致");
+        Need(e.StarMode == "explicit" && e.StarNodes.Select(n => n.Id + "*" + n.MaxLevel).SequenceEqual(new[] { "s_root*1" }), "E 不得继续购买扩席");
+        Need(e.PartyMode == "none" && SimulationConfig.Load(Path.Combine(scenarioDir,"E_min_party.json")).StartingHeroes!.SequenceEqual(new[]{"warrior","ranger","mage"}), "E 必须开局选队且不轮内扩席");
         Need(e.TalentMode == "none" && e.TalentLearn.Count == 0 && e.SkillEquip.Count == 0, "E 不应包含天赋/装配计划");
         Need(e.CastleEnabled && e.StarIntervalSeconds == 60 && e.StallWindowSeconds == 600, "E 城堡或诊断参数解析错误");
 
@@ -71,14 +71,14 @@ public static class SimulationToolChecks
         string probe = Path.Combine(scenarioDir, "T_tool_probe.json");
         SimulationRunner.Run(root, probe);
         string outDir = Path.Combine(root, "artifacts/simulation", "T_tool_probe_" + 20261023);
-        foreach (string file in new[] { "metadata.json", "snapshots.csv", "events.csv", "ledger.csv", "diagnostics.csv", "fields.md", "diagnostics.md" })
+        foreach (string file in new[] { "metadata.json", "snapshots.csv", "events.csv", "ledger.csv", "asset_ledger.csv", "diagnostics.csv", "fields.md", "diagnostics.md" })
             Need(File.Exists(Path.Combine(outDir, file)), "缺少输出文件：" + file);
         var first = new[] { "snapshots.csv", "events.csv", "ledger.csv", "diagnostics.csv" }.ToDictionary(f => f, f => File.ReadAllText(Path.Combine(outDir, f)));
         var metadata = File.ReadAllText(Path.Combine(outDir, "metadata.json"));
         Need(metadata.Contains("config_fingerprint_sha256") && metadata.Contains("business_hash") && metadata.Contains("unavailable"), "metadata 缺少指纹/哈希/未采集声明");
         var events = first["events.csv"];
         Need(events.Contains("\"star_purchase\",\"s_root\",\"accepted\"") && events.Contains("cost=3"), "显式星图未按计划购买 s_root");
-        Need(events.Contains("\"star_purchase\",\"s_party_1\",\"accepted\"") && events.Contains("cost=25"), "显式星图未按计划购买 s_party_1");
+        Need(events.Contains("\"star_purchase\",\"s_hp\",\"accepted\"") && events.Contains("cost=4")&&!events.Contains("\"star_purchase\",\"s_party_"), "显式星图应买HP节点而非退休扩席");
         Need(!events.Contains("\"star_purchase\",\"s_skill_1\""), "执行了配置之外的星图购买");
         Need(events.Contains("\"party_reject\",\"warrior|ranger\"")&&!events.Contains("\"formation_request\""), "锁队必须拒绝旧策略换人且保留拒绝证据");
         Need(!events.Contains("\"talent_learn\""), "talents.mode=none 仍执行了天赋学习");

@@ -15,6 +15,8 @@ public readonly record struct StarTotals(double Attack,double Hp);
 /// <summary>迁移 Idle-Diablo 三表合同；唯一根、任一前置、无环。首版仅全队固定攻击和生命上限。</summary>
 public sealed class StarConfiguration
 {
+    internal bool AllowRetiredPurchases=false;
+    public bool IsRetired(string id)=>Nodes.TryGetValue(id,out var node)&&node.Attribute is "skill_slots" or "party_slots" or "talent_reset" or "talent_reset_discount";
     public const string ContentHeader="id,name,max_level,cost_currency,cost,attr_id,operation,value_per_level,icon,target_id";
     public const string LayoutHeader="id,col,row,prereq,label",PlanHeader="id,intent";
     public const string ContentPath="star/star.csv",LayoutPath="star/star_layout.csv",PlanPath="star/star_plan.csv";
@@ -75,10 +77,11 @@ public sealed class StarProgression
     }
     public int Level(string id)=>ranks.GetValueOrDefault(id);
     public bool PrerequisitesMet(string id)=>Configuration.Layout[id].Prerequisites.Count==0||Configuration.Layout[id].Prerequisites.Any(p=>Level(p)>0);
-    public bool Visible(string id)=>Level(id)>0||PrerequisitesMet(id);
+    public bool Visible(string id)=>(Configuration.AllowRetiredPurchases||!Configuration.IsRetired(id))&&(Level(id)>0||PrerequisitesMet(id));
     public bool CanBuy(string id,long gold,out string reason)
     {
         if(!Configuration.Nodes.TryGetValue(id,out var n))reason="节点不存在";
+        else if(!Configuration.AllowRetiredPurchases&&Configuration.IsRetired(id))reason="旧技能槽/扩席购买已退休；历史购买保留，不自动退款";
         else if(n.Attribute=="")reason="占位节点尚未配置效果";
         else if(!PrerequisitesMet(id))reason="任一点亮一条前置即可解锁";
         else if(Level(id)>=n.MaxLevel)reason="已达最高等级";

@@ -51,7 +51,7 @@ public sealed partial class GameSession
         if(Config.Scrolls.Count>0)
         {
             var scroll=Config.Scrolls[lootRandom.Next(0,Config.Scrolls.Count)];
-            if(lootRandom.NextDouble()<scroll.DropChance){scrollStock[scroll.Id]=scrollStock.GetValueOrDefault(scroll.Id)+1;MarkChanged();}
+            if(lootRandom.NextDouble()<scroll.DropChance){int before=scrollStock.GetValueOrDefault(scroll.Id);scrollStock[scroll.Id]=before+1;AuditAsset("monster_drop","receive","scroll",scroll.Id,1,before.ToString(),(before+1).ToString(),origin:monster.SpecId);MarkChanged();}
         }
         if(Config.Potions.Count==0)return;
         var potion=Config.Potions[lootRandom.Next(0,Config.Potions.Count)];
@@ -59,16 +59,29 @@ public sealed partial class GameSession
         int empty=potionSlots.FindIndex(s=>s.ItemId=="");
         // 满槽不覆盖：直接放弃本次掉落（不静默替换玩家已有的药剂）。
         if(empty<0)return;
-        potionSlots[empty]=(potion.Id,false,0);MarkChanged();
+        potionSlots[empty]=(potion.Id,false,0);AuditAsset("monster_drop","receive","potion_slot",potion.Id,1,$"slot:{empty}:empty",$"slot:{empty}:{potion.Id}:pending",origin:monster.SpecId);MarkChanged();
     }
 
     /// <summary>仅测试/自动化：直接发放消耗品，用于构造 UI 与边界场景；不开放为玩家入口。</summary>
     internal void QaGrantConsumable(string id)
     {
-        if(Config.Scrolls.Any(s=>s.Id==id)){scrollStock[id]=scrollStock.GetValueOrDefault(id)+1;MarkChanged();return;}
+        if(Config.Scrolls.Any(s=>s.Id==id)){int before=scrollStock.GetValueOrDefault(id);scrollStock[id]=before+1;AuditAsset("qa_fixture","grant","scroll",id,1,before.ToString(),(before+1).ToString());MarkChanged();return;}
         var potion=Config.PotionOf(id);int empty=potionSlots.FindIndex(s=>s.ItemId=="");
-        if(empty<0)return;potionSlots[empty]=(potion.Id,false,0);MarkChanged();
+        if(empty<0)return;potionSlots[empty]=(potion.Id,false,0);AuditAsset("qa_fixture","grant","potion_slot",id,1,$"slot:{empty}:empty",$"slot:{empty}:{id}:pending");MarkChanged();
     }
+    /// <summary>沿用卷轴的首名存活英雄作为作用方；距离相同时按房间怪物索引稳定选择。</summary>
+    public int NearestScrollTarget()
+    {
+        if(Floors.Count==0||CurrentRoom<0||CurrentRoom>=Floor.Rooms.Count)return -1;
+        var caster=Heroes.FirstOrDefault(h=>h.Alive);
+        if(caster==null||!InCombatRoom(caster))return -1;
+        return Floor.Rooms[CurrentRoom].Monsters.Select((actor,index)=>(actor,index))
+            .Where(p=>p.actor.Alive&&InCombatRoom(p.actor))
+            .OrderBy(p=>System.Numerics.Vector2.DistanceSquared(caster.Position,p.actor.Position))
+            .ThenBy(p=>p.index).Select(p=>p.index).DefaultIfEmpty(-1).First();
+    }
+    /// <summary>快捷栏原子查询当前合法最近目标，再复用唯一卷轴消费与伤害命令。</summary>
+    public bool UseScrollOnNearest(string itemId,out string reason)=>UseScroll(itemId,NearestScrollTarget(),out reason);
     /// <summary>对当前房间的一个怪物使用卷轴：目标非法/无库存拒绝且不扣；成功造成真实伤害后恰好扣 1。</summary>
     public bool UseScroll(string itemId,int monsterIndex,out string reason)
     {
@@ -80,7 +93,9 @@ public sealed partial class GameSession
         var spec=Config.ScrollOf(itemId);
         var damage=SettleDamage(attacker,room.Monsters[monsterIndex],itemId,spec.DamagePct,DamageType.Physical,true);
         if(damage==null){reason="卷轴未能造成伤害";return false;}
-        scrollStock[itemId]=count-1;if(count-1==0)scrollStock.Remove(itemId);
+        // 击杀卷轴目标可能在同一伤害结算中再掉卷轴；从最新库存扣一张，不能覆盖掉落收入。
+        int current=scrollStock.GetValueOrDefault(itemId);scrollStock[itemId]=current-1;if(current-1==0)scrollStock.Remove(itemId);
+        AuditAsset("player_command","use","scroll",itemId,-1,current.ToString(),(current-1).ToString(),attacker.HeroInstanceId,$"target:{monsterIndex}");
         Note($"使用{spec.Name}，对 {room.Monsters[monsterIndex].Name} 造成 {damage.FinalDamage:0} 伤害");
         MarkChanged();reason="";return true;
     }
@@ -93,6 +108,7 @@ public sealed partial class GameSession
         if(active){reason="该药剂正在生效中";return false;}
         if(potionSlots.Any(s=>s.Active&&s.ItemId==itemId)){reason="同种药剂已有生效瓶，请等待其结束后再使用";return false;}
         potionSlots[slot]=(itemId,true,Config.PotionOf(itemId).DurationTicks);
+        AuditAsset("player_command","activate","potion_slot",itemId,0,$"slot:{slot}:{itemId}:pending",$"slot:{slot}:{itemId}:active:{Config.PotionOf(itemId).DurationTicks}");
         Note($"饮用药剂：{Config.PotionOf(itemId).Name}");MarkChanged();reason="";return true;
     }
     /// <summary>丢弃待用药剂以腾槽；生效中默认不可丢弃（避免"腾槽保 Buff"），待决策前保持禁用并说明原因。</summary>
@@ -100,7 +116,7 @@ public sealed partial class GameSession
     {
         if(slot<0||slot>=potionSlots.Count||potionSlots[slot].ItemId==""){reason="该槽没有药剂";return false;}
         if(potionSlots[slot].Active){reason="生效中不可丢弃：产品尚未裁决是否允许提前结束效果";return false;}
-        potionSlots[slot]=("",false,0);MarkChanged();reason="";return true;
+        string discarded=potionSlots[slot].ItemId;potionSlots[slot]=("",false,0);AuditAsset("player_command","discard","potion_slot",discarded,-1,$"slot:{slot}:{discarded}:pending",$"slot:{slot}:empty");MarkChanged();reason="";return true;
     }
     /// <summary>按逻辑步推进药剂计时；暂停/关闭期间不 Tick，因此自动冻结；到期清空原槽。</summary>
     internal void AdvanceConsumables()
@@ -110,7 +126,7 @@ public sealed partial class GameSession
             var (itemId,active,remaining)=potionSlots[i];
             if(!active)continue;
             remaining--;
-            if(remaining<=0){potionSlots[i]=("",false,0);Note($"药剂效果结束：{Config.PotionOf(itemId).Name}");MarkChanged();}
+            if(remaining<=0){potionSlots[i]=("",false,0);AuditAsset("runtime","expire","potion_slot",itemId,-1,$"slot:{i}:{itemId}:active:1",$"slot:{i}:empty");Note($"药剂效果结束：{Config.PotionOf(itemId).Name}");MarkChanged();}
             else potionSlots[i]=(itemId,true,remaining);
         }
     }

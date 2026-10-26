@@ -13,7 +13,8 @@ public static class Wp4TalentMechanicsChecks
     private static void Check(bool ok,string why){if(!ok)throw new Exception("WP4_TALENT: "+why);}
     public static void Run(string root)
     {
-        var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        // 保留旧三系互斥/洗点合同的历史机制回归；新版固定四技能另由FixedSkillClosureChecks验证。
+        var c=LegacySkillConfig.Load(Path.Combine(root,"Idle-CRPG/config"));
         // 数据合同：互斥组至少两名同职业成员，职业特性节点每职业各一。
         foreach(var group in c.Talents.Nodes.Values.Where(n=>n.ExclusiveGroup!="").GroupBy(n=>n.ExclusiveGroup))
         {
@@ -70,6 +71,6 @@ public static class Wp4TalentMechanicsChecks
         var twice=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=reloaded.CaptureProgress()})).Session!);
         Check(twice.TalentPoints(twice.Heroes[0])==afterSwitch,"二次读档重复返还点数");
 
-        Console.WriteLine("WP4_TALENT_PASS: 互斥分支、免费局部洗点、职业特性标记与实例隔离在存档前后一致");
+        Console.WriteLine("WP4_HISTORICAL_TALENT_PASS: 旧三系互斥/洗点归档机制通过，不代表新版固定4+T验收");
     }
 }

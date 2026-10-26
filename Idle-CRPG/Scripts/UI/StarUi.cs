@@ -29,6 +29,8 @@ public partial class Main
 
     private string StarEffect(StarNode n, int level)
     {
+        if(n.Attribute=="class_trait_unlock")return $"购买后本轮同职 {session?.Heroes.Count(h=>h.SpecId==n.TargetId)??0} 人可分别学习T（不自动投点）";
+        if(n.Attribute=="xp_gain_pct")return "公共XP获取 +"+(n.ValuePerLevel*level*100).ToString("0.##")+"%";
         if(n.Attribute=="skill_slots")return "全队主动技能槽 +"+(n.ValuePerLevel*level);
         if(n.Attribute=="talent_reset")return "解锁城镇洗点";
         if(n.Attribute=="talent_reset_discount")return "洗点费用降低 "+(n.ValuePerLevel*level*100).ToString("0")+"%";

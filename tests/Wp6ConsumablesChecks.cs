@@ -32,6 +32,26 @@ public static class Wp6ConsumablesChecks
             return game;
         }
 
+        // V1.6 A-05：列表第一名更远时必须命中近者；平距稳定、死亡重查、快速连点及空目标不扣。
+        var nearest=Battle(8803);
+        var nearestRoom=nearest.Floor.Rooms[nearest.CurrentRoom];
+        Check(nearestRoom.Monsters.Count>=2,"最近目标夹具至少需要两怪");
+        foreach(var m in nearestRoom.Monsters)m.Hp=0;
+        var caster=nearest.Heroes[0];caster.Position=nearestRoom.Center;
+        var far=nearestRoom.Monsters[0];var near=nearestRoom.Monsters[1];
+        far.Hp=near.Hp=1000;
+        far.Position=caster.Position+new System.Numerics.Vector2(1.5f,0);
+        near.Position=caster.Position+new System.Numerics.Vector2(.25f,0);
+        nearest.QaGrantConsumable(scrollId);nearest.QaGrantConsumable(scrollId);
+        Check(nearest.NearestScrollTarget()==1,"列表首怪覆盖了距离排序");
+        Check(nearest.UseScrollOnNearest(scrollId,out _)&&near.Hp<1000&&far.Hp==1000,"最近卷轴未命中真实近目标");
+        near.Position=far.Position;Check(nearest.NearestScrollTarget()==0,"相等距离未按索引稳定选择");
+        near.Hp=0;
+        Check(nearest.UseScrollOnNearest(scrollId,out _)&&far.Hp<1000,"目标死亡后未重查");
+        Check(!nearest.UseScrollOnNearest(scrollId,out _)&&nearest.ScrollStock.GetValueOrDefault(scrollId)==0,"连续点击超扣库存");
+        nearest.QaGrantConsumable(scrollId);far.Hp=0;
+        Check(nearest.NearestScrollTarget()==-1&&!nearest.UseScrollOnNearest(scrollId,out _)&&nearest.ScrollStock[scrollId]==1,"无合法目标仍扣库存");
+
         // 卷轴：击杀掉落入库 → 目标非法不扣 → 真实伤害恰好扣 1。
         var game=Battle(8801);
         var room=game.Floor.Rooms[game.CurrentRoom];

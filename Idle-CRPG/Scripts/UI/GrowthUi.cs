@@ -25,13 +25,14 @@ public partial class Main
             foreach(var b in upgradeCards.Values){interactionList.RemoveChild(b);b.QueueFree();}upgradeCards.Clear();
             foreach(var b in equipCards.Values){interactionList.RemoveChild(b);b.QueueFree();}equipCards.Clear();
             growthSession=session;
+            if(growthFeedback!=null)growthFeedback.Text="";
         }
         if(growthBalance==null)
         {
             growthBalance=UiLabel("",14);growthBalance.Name="PublicExperienceBalance";growthBalance.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(growthBalance);
             growthEmpty=UiLabel("",12);growthEmpty.Name="GrowthEmptyHint";growthEmpty.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(growthEmpty);
             growthFeedback=UiLabel("",12);growthFeedback.AutowrapMode=TextServer.AutowrapMode.WordSmart;interactionList.AddChild(growthFeedback);
-            kpUnlock=new Button {Name="BuyMonsterLevelMaximum",CustomMinimumSize=new Vector2(0,112)};interactionList.AddChild(kpUnlock);
+            kpUnlock=new Button {Name="BuyMonsterLevelMaximum",CustomMinimumSize=new Vector2(0,112),ClipText=true};interactionList.AddChild(kpUnlock);
             kpUnlock.Pressed+=()=>{if(session==null)return;session.BuyKpUpgrade(KpPurchase.MonsterLevelMaximum,out string reason);growthFeedback.Text=reason;Refresh();SaveNow();};
             kpRetire=new Button {Name="RetireMonsterLevelMinimum",CustomMinimumSize=new Vector2(0,86),Disabled=true};interactionList.AddChild(kpRetire);
             equipBatch=new Button {Name="BatchEquip",CustomMinimumSize=new Vector2(0,150)};
@@ -48,7 +49,7 @@ public partial class Main
             string id=hero.HeroInstanceId;
             if(!upgradeCards.TryGetValue(id,out var b))
             {
-                b=new Button {Name="UpgradeHero_"+session.Heroes.IndexOf(hero),CustomMinimumSize=new Vector2(0,86)};
+                b=new Button {Name="UpgradeHero_"+session.Heroes.IndexOf(hero),CustomMinimumSize=new Vector2(0,86),ClipText=true};
                 b.AddChild(new HudIcon {Kind="hero",Position=new Vector2(6,8),Size=new Vector2(30,30),MouseFilter=Control.MouseFilterEnum.Ignore,Accent=heroColors[session.Heroes.IndexOf(hero)%heroColors.Length]});
                 upgradeCards[id]=b;interactionList.AddChild(b);
                 b.Pressed+=()=>{if(session==null)return;session.UpgradeHero(id,out string reason);growthFeedback!.Text=reason;Refresh();SaveNow();};
@@ -57,8 +58,9 @@ public partial class Main
             b.Visible=can;
             if(!can)continue;
             int cost=session.ExperienceRequired(hero);
-            b.Text=$"        {hero.Name} #{session.Heroes.IndexOf(hero)+1}          {cost} XP\n等级 {hero.Level} · AR {session.AttackRating(hero):0} · DR {session.DefenseRating(hero):0}\n点击升级（消耗公共XP）";
-            b.TooltipText=id;interactionList.MoveChild(b,index++);affordable++;
+            string displayName=hero.Name.Length>8?hero.Name[..8]+"…":hero.Name;
+            b.Text=$"        {displayName} #{session.Heroes.IndexOf(hero)+1}   {cost} XP\n等级 {hero.Level} · AR {session.AttackRating(hero):0} · DR {session.DefenseRating(hero):0}\n点击升级（消耗公共XP）";
+            b.TooltipText=hero.Name+"\n"+id+"\n"+$"升级费用 {cost} XP";interactionList.MoveChild(b,index++);affordable++;
         }
 
         // 2) 装备：收集"可替换"条目（空位或同属性更高）。
@@ -102,9 +104,10 @@ public partial class Main
             // >4 件：合并为一个大按钮，并列出最好的 5 件（图标、名字、品质）。
             if(equipBatch!=null)
             {
-                var top=replaceable.OrderByDescending(r=>r.Candidate.Value).Take(5).ToArray();
+                // 不把ATK与HP的绝对数值当作跨属性战力；按队伍及配置部位顺序稳定展示。
+                var top=replaceable.Take(5).ToArray();
                 string lines=string.Join('\n',top.Select(r=>$"   ◆ {r.Spec.Name}·{config.EquipmentQualityOf(r.Candidate.Quality).Name}   Lv.{r.Candidate.Level}"));
-                equipBatch.Text=$"装备所有道具升级（{replaceable.Count} 件，只替换明确更优）\n{lines}";
+                equipBatch.Text=$"穿戴全部 {replaceable.Count} 项明确升级\n优先展示5项（队伍/部位顺序）\n{lines}";
                 equipBatch.Visible=true;interactionList.MoveChild(equipBatch,index++);
             }
         }
@@ -113,12 +116,11 @@ public partial class Main
         if(session!=null)
         {
             int next=Math.Min(session.MonsterLevelMax+1,config.MaxMonsterLevel);
-            int required=(int)Math.Ceiling(next*config.Progression.MonsterRatingPerLevel);
+            double required=next*config.Progression.MonsterRatingPerLevel;
             session.CanBuyLmax(out string reason);
-            kpUnlock!.Text=$"解锁怪物等级 {next}\n费用 KP {config.Progression.LmaxCost} · 最低角色等级需求 {required}\n评定：{Band(next)}\n{MonsterStats(next)}\n"+(reason==""?"点击购买":reason);
-            kpUnlock.TooltipText=reason;
-            int retire=session.MonsterLevelMin-1;
-            kpRetire!.Text=retire>=1?$"退休怪物等级 {retire}\n未通过安全验收，需独立裁决后方可开放":$"退休怪物等级 —\n当前已是最低等级 {session.MonsterLevelMin}；该功能对玩家关闭";
+            kpUnlock!.Text=$"解锁怪物等级 {next}\n费用 KP {config.Progression.LmaxCost}\n所需攻击评级 AR≥{required:0.##}\n所需防御评级 DR≥{required:0.##}\n每名上阵英雄分别满足\n原型提示 [H]：{Band(next)}\n{MonsterStats(next)}\n"+(reason==""?"点击购买":reason);
+            kpUnlock.TooltipText=kpUnlock.Text;
+            kpRetire!.Text=$"退休当前最低怪物等级 {session.MonsterLevelMin}\n退休后最低等级 {session.MonsterLevelMin+1} · 当前禁用";
             kpRetire.TooltipText="Lmin 永久提升/退休需另行批准，本阶段不开放";
         }
         kpUnlock!.Visible=session!=null;kpRetire!.Visible=session!=null;
@@ -136,7 +138,7 @@ public partial class Main
     {
         var definition=config.MonsterLevels.GetValueOrDefault(level);var baseMonster=config.Monsters[0];
         if(definition==null)return"怪物数值：配置缺失";
-        return $"伤害 {baseMonster.Attack*definition.AttackMultiplier:0}  攻击 {baseMonster.Attack*definition.AttackMultiplier:0}\n护甲 {baseMonster.Defense*definition.AttackMultiplier:0}  生命 {baseMonster.Hp*definition.HpMultiplier:0}";
+        return $"首种怪物属性示例 [H]：ATK {baseMonster.Attack*definition.AttackMultiplier:0}  HP {baseMonster.Hp*definition.HpMultiplier:0}\n怪物 AR/DR {level*config.Progression.MonsterRatingPerLevel:0.##}";
     }
     private static string QualityColor(string quality)=>quality switch{"legendary"=>"ff8a3d","rare"=>"6bb6ff","uncommon"=>"6ee07a",_=>"d8d8d8"};
 }

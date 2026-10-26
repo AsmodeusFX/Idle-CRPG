@@ -11,6 +11,8 @@ public static class MonsterSupportEncounterChecks
     {
         void Need(bool ok,string why){if(!ok)throw new Exception("E3 SUPPORT: "+why);}
         var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        // 隔离敌方支援机制，不把关闭英雄S1的夹具当生产队伍。
+        c.LegacySkillRuntime=true;
         c.Skills.Buffs.Add("QA_E3_SUPPORT",new("QA_E3_SUPPORT",40,"RefreshDuration",new[]{new BuffAttributeSpec("atk","flat",5)},"",0,Array.Empty<string>(),"",0,0,"ally"));
         c.Skills.Effects.Add("QA_E3_SUPPORT_APPLY",new("QA_E3_SUPPORT_APPLY","ApplyBuff",DamageType.Physical,0,"QA_E3_SUPPORT","","",0,4,Array.Empty<string>(),0));
         c.Skills.Skills.Add("QA_E3_SUPPORT_CAST",new("QA_E3_SUPPORT_CAST","ActiveSkill",10,3,3,1,4,new[]{"QA_E3_SUPPORT_APPLY"},"隔离支援","self"));

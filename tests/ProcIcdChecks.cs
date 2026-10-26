@@ -14,7 +14,7 @@ public static class ProcIcdChecks
         void Need(bool ok,string why){if(!ok)throw new Exception("PROC_ICD: "+why);}
         string qa=LegacySkillConfig.DirectoryFor(Path.Combine(root,"Idle-CRPG/config"));
         foreach(var file in Directory.GetFiles(Path.Combine(root,"tests/fixtures/proc_icd_v1"),"*.csv"))File.Copy(file,Path.Combine(qa,"skill",Path.GetFileName(file)),true);
-        var c=Config.LoadLegacy(qa);
+        var c=LegacySkillConfig.LoadLegacy(qa);
         Need(c.Skills.ProcIcdSeconds["tr_crit_shorten"]==.75&&c.Skills.ProcIcdSeconds["tr_skill_mirror"]==.75&&c.Skills.ProcLimits["tr_crit_shorten"].MaxPerCast==1,"首批测试参数未加载");
         const string A="QA_ICD_A",B="QA_ICD_B",Buff="QA_ICD_BUFF";
         c.Skills.Buffs.Add(Buff,c.Skills.Buffs["buff_crit"] with {Id=Buff,Attributes=Array.Empty<BuffAttributeSpec>(),Triggers=new[]{A},Mechanic="",Value=0});

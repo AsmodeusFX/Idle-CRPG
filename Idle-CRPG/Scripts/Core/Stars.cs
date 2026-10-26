@@ -17,7 +17,7 @@ public sealed partial class GameSession
         var next=new StarProgression(Stars.Configuration,new(ranks));var totals=next.Totals();
         ValidateStarTotals(totals);ValidateFormationCapacity(next);ValidateTalentCapacity(next);
         long cost=Stars.Configuration.Nodes[id].Costs[Stars.Level(id)];
-        Gold-=cost;Stars=next;ApplyStarTotals(totals);Note("星图升级："+Stars.Configuration.Nodes[id].Name);return true;
+        long before=Gold;Gold-=cost;AuditCurrency("player_command","buy_star","gold",before,Gold,origin:id);Stars=next;ApplyStarTotals(totals);Note("星图升级："+Stars.Configuration.Nodes[id].Name);return true;
     }
     public void ValidateStarConfiguration(StarConfiguration definition)
     {var next=new StarProgression(definition,Stars.Capture());ValidateStarTotals(next.Totals());ValidateFormationCapacity(next);ValidateTalentCapacity(next);}

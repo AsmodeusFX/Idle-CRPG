@@ -43,7 +43,7 @@ public sealed partial class GameSession
     {
         if(gold<0||experience<0||experience>1000000||kills<0||kills>1000000)throw new ArgumentOutOfRangeException(nameof(experience));
         long total=checked(Gold+gold);int totalKills=checked(Kills+kills);
-        Gold=total;Kills=totalKills;
+        long before=Gold;Gold=total;Kills=totalKills;if(gold>0)AuditCurrency("gm","grant","gold",before,Gold);
         if(experience>0)GainExperience(experience);
         if(gold>0||experience>0||kills>0){MarkChanged();Note($"GM：获得 {gold:N0} 金币 / {experience:N0} 公共XP / {kills:N0} 击杀");}
     }

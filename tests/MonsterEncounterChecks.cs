@@ -12,6 +12,8 @@ public static class MonsterEncounterChecks
     public static void Run(string root)
     {
         var config=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        // 此夹具刻意关闭英雄全部技能以隔离怪物移动；固定S1不能在生产关闭，故显式使用历史QA调度。
+        config.LegacySkillRuntime=true;
         var path=Path.Combine(root,"tests/fixtures/monster_encounters");
         string[][] Rows(string file)=>File.ReadAllLines(Path.Combine(path,file)).Skip(1).Where(x=>!string.IsNullOrWhiteSpace(x)).Select(x=>x.Split(',')).ToArray();
         var types=Rows("archetypes.csv").Concat(Rows("archetypes_e2.csv")).ToDictionary(x=>x[0]);

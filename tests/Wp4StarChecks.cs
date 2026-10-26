@@ -21,7 +21,7 @@ public static class Wp4StarChecks
         // 未购买特性解锁前，两个同职业实例都学不了职业特性；其他职业同样锁定。
         var warriorOne=game.Heroes[0];var warriorTwo=game.Heroes[1];
         Check(!game.CanLearnTalent(warriorOne,"warrior_trait",out string locked)&&locked.Contains("星图"),"未解锁时职业特性未被拒绝："+locked);
-        Check(!game.CanLearnTalent(game.Heroes[2],"ranger_archery",out _),"游侠特性在未解锁时可学");
+        Check(!game.CanLearnTalent(game.Heroes[2],"ranger_trait",out _),"游侠特性在未解锁时可学");
 
         // 成长类节点：购买后公共XP获取按比例提高，且只扣一次金币。
         long goldBefore=game.Gold;
@@ -42,7 +42,7 @@ public static class Wp4StarChecks
         Check(game.LearnTalent(warriorOne.HeroInstanceId,"warrior_trait",out string learnOne),$"本职业特性学习失败：{learnOne}");
         Check(game.LearnTalent(warriorTwo.HeroInstanceId,"warrior_trait",out string learnTwo),$"同职业另一实例学习失败：{learnTwo}");
         Check(game.TalentPoints(warriorTwo)==pointsTwo-1,"同职业另一实例的天赋点未被独立扣除");
-        Check(!game.CanLearnTalent(game.Heroes[2],"ranger_archery",out _),"其他职业被误开放特性");
+        Check(!game.CanLearnTalent(game.Heroes[2],"ranger_trait",out _),"其他职业被误开放特性");
 
         // 读档：星图等级、经验增益与职业资格保持，重复读档不重复扣金。
         long goldAfterTrait=game.Gold;

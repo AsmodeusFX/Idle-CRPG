@@ -83,7 +83,7 @@ public sealed partial class Config
 }
 public sealed partial class GameSession
 {
-    public int ActiveSkillSlots=>Math.Min(Config.Talents.Rule("active_skill_max_slots"),Config.Talents.Rule("active_skill_initial_slots")+(int)StarValue("skill_slots"));
+    public int ActiveSkillSlots=>Config.LegacySkillRuntime?Math.Min(Config.Talents.Rule("active_skill_max_slots"),Config.Talents.Rule("active_skill_initial_slots")+(int)StarValue("skill_slots")):4;
     private double StarValue(string attr)=>Stars.Configuration.Nodes.Values.Where(n=>n.Attribute==attr).Sum(n=>n.ValuePerLevel*Stars.Level(n.Id));
     public int TalentPoints(Actor hero)=>Config.Talents.Rule("talent_initial_points")+(hero.Level-1)*Config.Talents.Rule("talent_points_per_level")-TalentInvestment(hero);
     public int TreeInvestment(Actor hero,int tree)=>hero.Talents.Where(p=>Config.Talents.Nodes[p.Key].Tree==tree).Sum(p=>p.Value);
@@ -96,6 +96,7 @@ public sealed partial class GameSession
     /// <summary>前置仅统计手动学习点；首排默认0，后续每排默认增加5点。</summary>
     public bool CanLearnTalent(Actor hero,string id,out string reason)
     {
+        if(!Config.LegacySkillRuntime)return CanLearnFixedTalent(hero,id,out reason);
         if(!Config.Talents.Nodes.TryGetValue(id,out var n)||n.Hero!=hero.SpecId)reason="此角色没有该节点";
         else if(hero.Talents.GetValueOrDefault(id)>=n.MaxRank)reason="已达可学习最高等级";
         else if(TreeInvestment(hero,n.Tree)<Config.Talents.Required(n))reason=$"需在{n.TreeName}投入{Config.Talents.Required(n)}点";
@@ -113,9 +114,9 @@ public sealed partial class GameSession
     public bool ClassTraitUnlocked(string classId)
     {
         var gates=Config.Stars?.Nodes.Values.Where(n=>n.Attribute=="class_trait_unlock").ToArray()??Array.Empty<StarNode>();
-        if(gates.Length==0)return true;
+        if(gates.Length==0)return Config.LegacySkillRuntime;
         // 约定：职业特性解锁节点 id 为 s_trait_<classId>，购买后本轮该职业全部实例共享资格。
-        return gates.Any(node=>node.Id==$"s_trait_{classId}"&&Stars.Level(node.Id)>0);
+        return gates.Any(node=>node.TargetId==classId&&Stars.Level(node.Id)>0);
     }
     /// <summary>
     /// 免费局部洗点：只重置指定技能区域（tree）的投入，点数按该区域已投总量返还；
@@ -124,6 +125,7 @@ public sealed partial class GameSession
     public bool ResetTalentRegion(string heroId,int tree,out string reason)
     {
         var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");
+        if(!Config.LegacySkillRuntime)return ResetFixedRegion(h,tree,out reason);
         if(tree<0||!Config.Talents.Nodes.Values.Any(n=>n.Hero==h.SpecId&&n.Tree==tree)){reason="没有该技能区域";return false;}
         var inRegion=h.Talents.Where(p=>Config.Talents.Nodes[p.Key].Tree==tree).Select(p=>p.Key).ToArray();
         if(inRegion.Length==0){reason="该区域没有已投入点数";return false;}
@@ -143,15 +145,17 @@ public sealed partial class GameSession
     {
         var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");if(!CanLearnTalent(h,id,out reason))return false;
         bool first=!h.Talents.ContainsKey(id);h.Talents[id]=h.Talents.GetValueOrDefault(id)+1;
+        if(!Config.LegacySkillRuntime){SyncFixedSkills(h);MarkChanged();Note("学习天赋："+Config.Talents.Nodes[id].Name);return true;}
         // 仅首次学会主动技能时填空位；升级、被动及满槽均不改装配，战斗冷却共用装配命令。
         if(first&&Config.Talents.Nodes[id].Kind=="active"&&Heroes.Contains(h)&&h.SkillIds.Length<ActiveSkillSlots&&!h.SkillIds.Contains(id))
             SetTalentLoadout(heroId,h.SkillIds.Append(id),out _);
         Note("学习天赋："+Config.Talents.Nodes[id].Name);return true;
     }
-    public long TalentResetCost(Actor h)=>(long)Math.Ceiling((Config.Talents.Rule("talent_reset_base_cost")+(long)TalentInvestment(h)*Config.Talents.Rule("talent_reset_cost_per_point"))*(1-Math.Clamp(StarValue("talent_reset_discount"),0,1)));
+    public long TalentResetCost(Actor h)=>Config.LegacySkillRuntime?(long)Math.Ceiling((Config.Talents.Rule("talent_reset_base_cost")+(long)TalentInvestment(h)*Config.Talents.Rule("talent_reset_cost_per_point"))*(1-Math.Clamp(StarValue("talent_reset_discount"),0,1))):0;
     /// <summary>洗点需星图解锁，城镇无传送时扣费并返还全部投入，不修改其他英雄。</summary>
     public bool ResetTalents(string heroId,out string reason)
     {
+        if(!Config.LegacySkillRuntime){reason="请在英雄页免费重置当前技能区域；S1基础攻击不会移除";return false;}
         var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");
         if(StarValue("talent_reset")<1)reason="请先在星图解锁洗点";
         else if(World?.Stage!=CampaignStage.Village||World.PortalPhase!=PortalPhase.None)reason="请在城镇且传送结束后洗点";
@@ -169,6 +173,7 @@ public sealed partial class GameSession
     /// <summary>玩家装配只接受已学习主动技能，按槽位顺序自动施放；不重置全房间技能现场。</summary>
     public bool SetTalentLoadout(string heroId,IEnumerable<string> ids,out string reason)
     {
+        if(!Config.LegacySkillRuntime){reason="固定职业技能学习后自动施放，不支持装配或卸下";return false;}
         var h=FindHeroInstance(heroId)??throw new ArgumentException("英雄实例ID不存在或职业不唯一");var next=ids.ToArray();
         if(next.Length>ActiveSkillSlots||next.Distinct().Count()!=next.Length||next.Any(id=>!Config.Talents.Nodes.TryGetValue(id,out var n)||n.Kind!="active"||n.Hero!=h.SpecId||h.Talents.GetValueOrDefault(id)==0)){reason="技能未学习、重复或超过已解锁槽位";return false;}
         bool fighting=(World==null||World.Stage==CampaignStage.Dungeon)&&Floors.Count>0&&!Floor.Rooms[CurrentRoom].Clear;
@@ -185,7 +190,7 @@ public sealed partial class GameSession
     }
     /// <summary>展示和战斗共用被动属性贡献，不写回基础属性，避免升级/读档重复叠加。</summary>
     public double HeroTalentAttribute(Actor h,string attr,double basis)=>basis+PassiveTalentValue(h,attr);
-    public bool CanResetTalents=>StarValue("talent_reset")>=1;
+    public bool CanResetTalents=>Config.LegacySkillRuntime&&StarValue("talent_reset")>=1;
     /// <summary>跳斩前摇期间连续接近目标，渲染抛物线高度不改变逻辑坐标。</summary>
     public float TalentLeapHeight(Actor h)
     {
@@ -197,7 +202,7 @@ public sealed partial class GameSession
         int cap=TalentSlotCapacity(Config,next);
         if(Heroes.Concat(reserveHeroes).Any(h=>h.SkillIds.Count(id=>Config.Talents.Nodes.ContainsKey(id))>cap))throw new InvalidOperationException("星图变更不能锁住已装配的主动技能槽");
     }
-    private static int TalentSlotCapacity(Config c,StarProgression stars)=>Math.Min(c.Talents.Rule("active_skill_max_slots"),c.Talents.Rule("active_skill_initial_slots")+(int)stars.Configuration.Nodes.Values.Where(n=>n.Attribute=="skill_slots").Sum(n=>n.ValuePerLevel*stars.Level(n.Id)));
+    private static int TalentSlotCapacity(Config c,StarProgression stars)=>c.LegacySkillRuntime?Math.Min(c.Talents.Rule("active_skill_max_slots"),c.Talents.Rule("active_skill_initial_slots")+(int)stars.Configuration.Nodes.Values.Where(n=>n.Attribute=="skill_slots").Sum(n=>n.ValuePerLevel*stars.Level(n.Id))):4;
     private void CastTalent(Actor owner,Actor target,TalentNode n,long originCast)
     {
         double value=TalentValue(owner,n);
@@ -215,6 +220,16 @@ public sealed partial class GameSession
     /// <summary>恢复时拒绝非法投入、外职业节点、越界加成和未学习装配；旧档空集合自然补齐可用点数。</summary>
     private static void ValidateTalents(Config c,Actor h)
     {
+        if(!c.LegacySkillRuntime&&c.Heroes.Any(spec=>spec.Id==h.SpecId))
+        {
+            if(h.RetiredTalents==null||h.LegacySkillIds==null||h.RetiredTalents.Select(p=>p.NodeId).Distinct().Count()!=h.RetiredTalents.Count||h.RetiredTalents.Any(p=>!c.Talents.Nodes.TryGetValue(p.NodeId,out var node)||(!c.IsRetiredTalent(p.NodeId)&&!node.ClassTrait)||node.Hero!=h.SpecId||p.Rank<1||p.Rank>node.MaxRank))throw new InvalidDataException("旧技能投入隔离记录无效");
+            if(h.Talents.Any(p=>!c.Talents.Nodes.TryGetValue(p.Key,out var node)||node.Hero!=h.SpecId||c.TalentRegion(node)==0||p.Value<1||p.Value>node.MaxRank))throw new InvalidDataException("固定技能投入无效");
+            int investment=h.Talents.Values.Sum()-(h.StarterPointWaived?1:0)+h.RetiredTalents.Where(p=>!p.Returned).Sum(p=>p.Rank);
+            if(investment>c.Talents.Rule("talent_initial_points")+(h.Level-1)*c.Talents.Rule("talent_points_per_level"))throw new InvalidDataException("固定技能点超出预算");
+            if(h.Talents.Keys.Select(id=>c.Talents.Nodes[id]).Where(n=>n.ExclusiveGroup!="").GroupBy(n=>n.ExclusiveGroup).Any(group=>group.Count()>1))throw new InvalidDataException("固定技能互斥冲突");
+            if(h.SkillSwapLocks.Any(p=>!c.Skills.Skills.ContainsKey(p.Key)||!double.IsFinite(p.Value)||p.Value<0)||h.TalentBonuses.Any(b=>b==null||string.IsNullOrWhiteSpace(b.Source)||b.Levels is <0 or >1000||b.Scope is not ("all" or "tree" or "node")||b.Scope=="node"&&(!c.Talents.Nodes.TryGetValue(b.Target,out var node)||node.Hero!=h.SpecId)||b.Scope=="tree"&&b.Target is not ("0" or "1" or "2")))throw new InvalidDataException("固定技能加成/冷却字段无效");
+            return;
+        }
         if(h.Talents==null||h.TalentBonuses==null||h.SkillSwapLocks==null||h.Talents.Any(p=>!c.Talents.Nodes.TryGetValue(p.Key,out var n)||n.Hero!=h.SpecId||p.Value<1||p.Value>n.MaxRank)||h.Talents.Values.Sum()>c.Talents.Rule("talent_initial_points")+(h.Level-1)*c.Talents.Rule("talent_points_per_level"))throw new InvalidDataException("天赋投入存档无效");
         var pending=h.Talents.Keys.ToHashSet();var accepted=new HashSet<string>();var invested=new int[3];
         while(pending.Count>0)

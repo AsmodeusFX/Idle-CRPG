@@ -74,7 +74,7 @@ public sealed class SaveStore(string path)
         if(chapter<0||chapter>=c.ChapterMaps.Count)throw new InvalidDataException("存档章节参数错误");
         var map=c.ChapterMaps[chapter];
         if(document.Speed is not (1 or 2 or 4)||document.ViewMode<0||document.ViewMode>4||(document.SelectedRegion!=-1&&!map.Regions.Exists(r=>r.Id==document.SelectedRegion)))throw new InvalidDataException("存档界面参数错误");
-        if(document.Session!=null)GameSession.Restore(c,document.Session);
+        if(document.Session!=null){GameSession.Restore(c,document.Session);document.Legacy.Absorb(document.Session);}
         return document;
     }
     public SaveDocument? Load(Config c)
@@ -118,7 +118,13 @@ public sealed class SaveStore(string path)
     public void Save(GameSession game,int speed=1,bool paused=false,int viewMode=0,int selectedRegion=-1)
     {
         var snapshot=game.CaptureProgress();snapshot.SavedAtUnix=DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        WriteEncoded(Encode(new SaveDocument {Session=snapshot,Legacy=legacy.Copy(),Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion}));
+        WriteEncoded(Encode(PreserveLegacy(new SaveDocument {Session=snapshot,Speed=speed,Paused=paused,ViewMode=viewMode,SelectedRegion=selectedRegion})));
+    }
+    /// <summary>逻辑线程在派发后台编码前合并隔离数据；放弃/重生及自动保存均不清除历史冻结区。</summary>
+    public SaveDocument PreserveLegacy(SaveDocument document)
+    {
+        if(document.Run!=null)legacy.Absorb(document.Run);
+        document.Legacy=legacy.Copy();return document;
     }
     /// <summary>当前文件的迁移隔离区副本（只读用途：UI 说明与回归断言）。</summary>
     public LegacyQuarantine Legacy=>legacy.Copy();

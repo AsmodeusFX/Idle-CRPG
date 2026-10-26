@@ -530,3 +530,159 @@ WP8 UI/UE 整合与多状态回归（七分区、旧入口迁移审计、多尺�
 | WP7 重生/离线 | 完成门槛/事务/离线/UI；剩：正式 AP 经济（O-07C）、离线实物（O-07B）、时间回拨防作弊 |
 | WP8 UI 整合 | 七分区与多状态已回归；剩：多尺寸/长文案/连续点击矩阵、旧入口审计表 |
 | WP9 账本/模拟 | 手动升级动作已交付、账本守恒与固定种子通过；剩：端到端脚本、旧场景清理、行级流水 |
+## 18. V1.6 遗留返修首轮：A-04/A-05与独立边界补证（2026-10-26）
+
+### 18.1 来源、授权与当前范围
+
+用户直接要求执行 `docs/temp/P2-4 已授权遗留闭环返修｜V1.6/Steam_D2_P2-4_原范围补齐执行包_V1.6`。工程执行AI按其中00～04及A-01～10矩阵调查；temp原件保持只读。未实施S06～S14新增内容、Lmin、AP或正式调参。S15仍仅有只读权限，本轮尚未完成S15交付。
+
+**整包未完成。** 工程自检仅对以下已改部分PASS；A-01～03旧权威切换及A-07最终联合验收保持OPEN，不用既有全量回归通过替代新版验收。
+
+### 18.2 本轮实际变更与自主适配
+
+- `GrowthUi.cs`：Lmax门槛直接使用与Core相同的 `(Lmax+1)*MonsterRatingPerLevel`，显示各上阵实例须分别满足AR/DR；无等级换算或向上取整。评级标签明确[H]。删除重复“伤害/攻击”和无新版效果的Armor展示，展示首种怪物ATK/HP示例与怪物AR/DR；这不是Boss胜率预测。Lmin文字为退休当前最低等级及退休后下限，按钮和Core仍禁用。
+- `Consumables.cs`：新增只读 `NearestScrollTarget` 与命令 `UseScrollOnNearest`，沿用原 `UseScroll` 已确定的作用方（首名存活英雄），按实际战场距离平方选择存活且在当前房间的怪物，等距按原怪物索引稳定决胜。原先取列表第一个活怪已被覆盖；唯一伤害与扣减路径不变。
+- `HudLayout.cs`：五槽走上述最近目标命令；无合法目标时禁用。未加入手动瞄准或卷轴自动施放。
+- 装备大按钮预览按队伍/配置部位顺序展示五项明确升级，执行仍处理全部可替换项，不再把ATK和HP绝对值混排成统一战力。更换会话清除旧成长操作反馈，避免跨Run残留“已穿戴”提示。
+- `Wp5EquipmentChecks.cs`补满血/受伤/0血、升降HP装备、超上限截断、同职隔离、两次正式编码重读；**保持既有绝对HP不变、仅下降时截断，不增加等比治疗规则**。尚无卸装命令及实际救援复活前后完整组合证据，A-09不标完全关闭。
+- `Wp6ConsumablesChecks.cs`补列表首怪较远、第二怪较近、等距、目标死亡后重查、库存用尽重复调用、无目标不扣。`FirstBatchSmoke.cs`补对应真实Godot槽控件触发及截图、三种实际窗口尺寸。槽位通过 `Pressed` 信号程序触发，不等同物理鼠标命中/按下松开链路。
+
+替代方案：不采用距离至队伍中心，因为现有卷轴已有明确施法英雄；不采用跨属性数值战力排序；不修改HP治疗价值规则。影响限于已授权语义修正。
+
+### 18.3 验证与证据
+
+Windows；dotnet SDK 10.0.401，项目net8.0；Godot 4.7.2.stable.mono.official.ed1daf0bf；NVIDIA RTX3050/OpenGL Compatibility。Godot从现有本地安装压缩包解压到忽略的 `artifacts/tools/godot/`，未修改依赖或玩家存档。`ClientSettings`对 `--first-batch-smoke` / `--smoke-test`设置automation，存档位于 `artifacts/qa/`。
+
+| 命令 | 退出码/结果 | 证据 |
+|---|---|---|
+| `dotnet run --project tests/IdleCrpg.Checks.csproj` | 0，默认全量回归通过（旧WP4通过不代表固定4+T完成） | `artifacts/qa/p2-4-v16/core.log` |
+| `dotnet run --project tests/IdleCrpg.Checks.csproj -- --wp5-equipment-checks` | 0，WP5/6/7 PASS，含新增边界 | `artifacts/qa/p2-4-v16/targeted.log` |
+| `dotnet build Idle-CRPG/Idle-CRPG.csproj` | 0，0警告0错误 | `artifacts/qa/p2-4-v16/build.log` |
+| `<Godot .NET> --headless --path Idle-CRPG -- --smoke-test` | 0，SMOKE_OK | `artifacts/qa/p2-4-v16/headless.log` |
+| `<Godot .NET> --path Idle-CRPG -- --first-batch-smoke` | 0，FIRST_BATCH_UI_PASS，Windows实际渲染 | `artifacts/qa/p2-4-v16/ui.log` |
+
+最终截图：`artifacts/qa/first-batch-ui-20261026-032007-2840736-49cb9834f43c473683e843ff31097838/`。包括 `lmax-purchased.png`、`equipment-batch.png`、`hero-equipment-bag.png`、`hero-equipment-worn.png`、`layout-1280x720.png`、`layout-1920x1080.png`、`scroll-nearest-before.png`、`scroll-nearest-after.png`。已查看1280×720、装备合批和卷轴前后关键渲染；不声明所有截图逐像素验收。夹具Seed：装备7701～7711；卷轴8803；真实截图中的战斗为明确QA夹具，非正式随机现场。截图、日志、工具不提交。
+
+### 18.4 逐项状态与迁移待裁决
+
+| ID | 工程自检状态 | 尚未完成 |
+|---|---|---|
+| A-01 | OPEN | 固定S1～S4+T英雄页、旧编辑入口退役 |
+| A-02 | OPEN/待权益裁决 | 23旧主动投入及已购槽位隔离/返还方案、生产权威退休、旧档完整差异清单 |
+| A-03 | OPEN | 四同职同目标多来源Buff/召唤与独立CD新版证据 |
+| A-04 | PASS（本轮语义修正） | 设计Owner/用户复核未发生 |
+| A-05 | PASS（Core+Godot槽控件信号触发） | 物理鼠标输入链路尚无证据 |
+| A-06 | OPEN（部分补证） | 4+T十二状态、长数值压力、全部截图检查及物理输入 |
+| A-07 | OPEN | 依R-A1切换后的INT-01～08联合脚本 |
+| A-08 | OPEN | 物品逐笔流水与旧模拟场景退役 |
+| A-09 | 部分PASS | 实际复活、卸装完整组合尚未覆盖 |
+| A-10 | 部分PASS | 0/1/4/5件及跨属性完整UI矩阵；本轮已有6件与单英雄入口证据 |
+
+已按00文件“旧存档映射如有不可逆损失、金币退款因货币模型不清…请产品裁决”的边界向用户提出：①原数据隔离停用，允许旧技能点免费退回、旧星图金币不自动补偿；②全部旧投入隔离冻结，稍后统一裁决。**等待答复，尚未执行这两种方案中的任何一种；未删除或重映射旧投入，未写玩家进度。** 用户答复决定该迁移价值政策，已有工程实施授权继续有效，不需重批整包。
+
+### 18.5 可回传摘要与三方状态
+
+本轮完成Lmax评级量纲修复、Lmin禁用语义修复、卷轴真实最近合法敌人、合批预览排序修复，并补HP边界及三尺寸Windows渲染/槽控件触发。默认Core/build/headless/真实渲染均通过，但旧技能权威仍在，V1.6不结项；旧价值迁移政策待用户裁决。后续仍需完成R-A1、A-08及最终INT联合证据，S15仅只读。
+
+- E：已改范围PASS；V1.6整包OPEN。
+- V-Design：未复核，未向外部设计AI发送材料。
+- V-User：未验收；旧档价值政策待答复。
+
+## 19. V1.6权益裁决后闭环（2026-10-26，覆盖第18节待决状态）
+
+### 19.1 来源与规则覆盖
+
+用户明确裁决：**“保留隔离，技能点可免费退回；金币暂不补偿”**。沿用最初执行V1.6的授权，完成R-A1～R-A4；无需再次申请普通工程适配。temp输入保持只读，无commit/push/merge。
+
+覆盖旧生产规则：旧装配/槽数资格、23个未绑定CastTalent主动、技能槽/扩席购买以及已无作用的付费全树洗点/折扣退出生产；固定S1～S4+独立T、免费区域洗点为当前权威。正式Lmin仍关闭，P0地图不改，S14/AP/第五席/新内容/10小时调参未实施。
+
+### 19.2 实际变更与旧→新清单
+
+| 旧能力/字段 | 现在的权威与价值处理 | 证据 |
+|---|---|---|
+| 23个无skill_id旧主动、CastTalent | 节点定义保留用于读取/历史QA；不能生产学习、装配、AI选择或提交；旧等级转RetiredTalents，尚未返还仍占原实例预算，玩家免费返还一次，原记录不删 | `FixedSkills.cs`；`migration/legacy-disposition.csv`逐项23行；FIXED_SKILLS_PASS |
+| SkillIds、EquipSkills、SetTalentLoadout | SkillIds只是从固定定义/实例学习生成的兼容缓存；两个旧命令在生产拒绝；提交层再次检查已学资格 | Slot/Runtime/FixedSkills；旧API负向与S2真实Effect测试 |
+| active_skill_max_slots/initial_slots | CSV仍作为历史兼容列校验，生产固定4定义不读它决定资格或容量 | `ActiveSkillSlots`、`TalentSlotCapacity`分支 |
+| S1～S4学习与T | S1开局保留原初始一点投入，局部重置不移除基础rank1；S2～S4学习即自动施放；缺定义明确未投放；T按TargetId=ClassId买资格，同职共享资格、实例独立点数 | 新英雄技能页、固定4+T/星图/真实GUI证据 |
+| 旧装配/技能原字段 | LegacySkillIds及LegacySkillData保存原投入、装配、来源加成、冷却、光环JSON，永不进入生产战斗 | SHA256旧档输入、新版重读与Legacy归档 |
+| skill_slots/party_slots | 原CSV及Run.Stars购买等级保留，商店可见性/购买均拒绝；不退金币；普通席位仍4 | disposition.csv另8行；星图截图、CanBuy负向 |
+| talent_reset/discount | 因免费区域重置已替代收费全树重置，继续销售会形成无效权益，故一并下架，保留已购记录且不退款；生产全树重置命令拒绝、费用查询0 | disposition.csv另2行；历史付费测试显式归档 |
+| 旧超四席英雄 | 原Legacy.Heroes冻结事务保持，不因本次退休而删人 | LEGACY_SELECTION_PASS、旧五人/候补保护 |
+| 保存与跨Run | FixedSkillsVersion=0一次迁移，1只校验；Legacy.Skills/Stars跨Run保留；自动后台写盘、放弃、重生均调用PreserveLegacy，修复旧空文档写盘可能漏带隔离区的问题 | SaveStore/ClientSettings、往返/跨Run/全清回归 |
+
+未知节点/已删技能ID不静默删除或清档，主备份保留并提示人工处理。旧T若无本职业资格，隔离其投入而不偷偷解锁。旧档缺S1时用StarterPointWaived补回基础攻击、不挤占原投入；新英雄点数规则不变。
+
+### 19.3 自主适配与影响
+
+1. 当前内容仍是原型：五职业合计16个非空固定定义，**前四职业只有12个**，不是S06新16行为。为使既有定义可用，主动按S顺位归区，非T被动沿旧tree+1归区，T单独为5；主动根不再以已退休旧主动为前置，被动只继承同区有效前置/原投入门槛。保留旧链或把旧主动硬映射为新技能会恢复双权威/改变语义，因此未采用。未导入98节点或31星图。
+2. 区域重置只清当前实例该区动作、Pending、弹道、Buff、召唤与CD；不ResetSkillRoom整房清场，避免误删其他实例/区域状态。来源额外等级保留休眠，未学节点不生效。
+3. 最近卷轴沿既有首名存活英雄为作用方，按合法目标实际距离及稳定索引选择。卷轴致死会触发同种卷轴掉落，旧实现用结算前库存写回会吞收入；改为伤害结算后从当前库存扣一张，新增100%掉落致死回归。
+4. 流水使用Core现有事务，不新增伤害或收益实现。AssetAudit保存Run事件序号/逻辑Tick，内存缓存有界8192；模拟器逐事件订阅输出`asset_ledger.csv`。宝箱XP单列room_event，不混入击杀来源。装备记录英雄×部位与候选/已穿状态、药剂记录槽位状态，不把事件数当物品数。离线流水由联合脚本按正式结算前后观察输出。
+5. 旧付费洗点/装配UI测试原文、E_min_party旧配置、InstanceIsolation旧装配断言保留在`tests/fixtures/retired_loadout_ui_2026_10_26/`；新版用学习/只读固定技能/禁装配取代。旧战斗专属夹具显式启用历史QA调度，不冒充生产验收。新模拟器改用真正Config.Load；E_min_party开局3人，不再买扩席。未删失败用例换绿。
+6. HP装备维持原绝对HP不变、上限降低截断语义；补0血/满血/受伤、增减、QA卸装、实际救援、双重读档、同职与跨属性保护，不增加等比治疗。
+
+### 19.4 A-01～A-10与联合闭环
+
+| ID | 工程结果 | 主要证据/边界 |
+|---|---|---|
+| A-01 | PASS（机制/现有原型） | 固定4卡+T区、S2学习自动生效、无编辑入口；未投放清楚显示，不声称完整职业内容 |
+| A-02 | PASS_WITH_OPEN_ITEMS | 23旧主动及10旧星图节点分类/隔离/禁止消费，免费返还幂等、原字段与输入SHA保留；历史925份冻结语料缺失，不能声称已复跑 |
+| A-03 | PASS | 四同职业同目标4个Strongest来源贡献、单源撤销/完整快照/正式检查点重开；重复职业召唤归属与CD独立；CSV含SourceHeroInstanceId映射，另有真实窗口图 |
+| A-04 | PASS | AR/DR量纲与Core同源；Lmin禁用；Armor不作DR或新版伤害展示；原型分段/首种怪属性示例标H |
+| A-05 | PASS | 两怪异距/平距/死亡重查、无目标/零库存不扣、GUI槽位鼠标事件命中、致死再掉同种库存守恒 |
+| A-06 | PASS（本机覆盖） | 37张真实渲染图；3尺寸、4+T状态、长数值/中文、控件命中/读档；未覆盖其他OS/DPI，未冒充人工体验 |
+| A-07 | PASS（明确QA前置） | 一条`--p2-4-closure-checks`命令，INT-01～08真实命令链与原子账本；第四章终点为QA前置，不是四章实战或10小时验证 |
+| A-08 | PASS | Core逐笔资产事件/模拟器asset_ledger.csv；三币逐行及按Run守恒；E_min_party退役扩席购买，宝箱来源区分 |
+| A-09 | PASS（技术边界） | HP上下界、QA卸装/实际救援、两次正式重读、同职隔离与跨ATK/HP保护 |
+| A-10 | PASS（本机覆盖） | 英雄单人入口与全队合批分开；0/1/4/5项UI矩阵、6件实际全部执行、跨属性不自动替换/卖出；五条预览按队伍/部位稳定顺序 |
+
+INT原始状态、执行覆盖、成长时间轴、三币/物品流水、异常与复跑说明统一交付[本轮单份统计报告](../data/2026-10-26_12-14_data_p2_4_v16_closure.md)，不拆A/B/C或复制原始CSV到docs/data。
+
+### 19.5 UI证据与真实输入说明
+
+最终37图目录：`artifacts/qa/first-batch-ui-20261026-042440-9996104-4d024ded00d5415e8a5a7aa14f0cd32d/`。
+
+- `fixed-skills-s2-unlearned-t-locked`、`fixed-skills-s2-learned`、`fixed-skills-local-reset`、`trait-shared-hero-1/2`、`trait-invested-only-first-instance`：四技能/T的学习与共享资格，实例投资不串。
+- `fixed-s2-effect-and-hud-cooldown`、`fixed-s2-effect-removed-s1-retained`、`four-same-class-buff-sources-and-cooldowns`：实际Effect与CD，不只UI“已学”。四圣骑士为明确QA解锁/密集坐标夹具，不代表首轮投放或正式空间布阵验收。
+- `star-retired-slots-absent`、`star-class-trait-purchased`：旧槽位/旧收费洗点不售，资格效果可观察。
+- `hero-equipment-bag/worn`、`equipment-count-0/1/4/5`、`equipment-batch/equipped`：双入口、逐卡/合批、N件执行。
+- `scroll-nearest-before/after`、`potion-four-pending`、`potion-four-slots-one-active`：五格与药剂占槽状态。
+- `layout-1280x720`、`layout-1920x1080`、`long-values-1440x900`、`long-values-1280x720`：三币等宽/长数字；数值紧凑显示完整值在tooltip，长英雄名缩略而XP费用保留可见。
+
+学习/重置/两换装入口/卷轴使用注入鼠标按下松开事件，经Viewport GUI命中测试，不再只EmitSignal。状态前置仍可使用明确QA/Core命令。不是人工鼠标体验验收。已查看关键页面与前后状态，不宣称每图逐像素人工验收。
+
+### 19.6 验证索引与局限
+
+本机Windows、dotnet SDK10.0.401/net8.0、Godot4.7.2.NET、OpenGL Compatibility/NVIDIA RTX3050。Godot本地可执行文件在忽略的`artifacts/tools/godot/`，未写入本机路径到正式配置。
+
+| 入口 | 日志/结果 |
+|---|---|
+| 默认Core | `artifacts/qa/p2-4-v16/fixed-core.log`，退出0 |
+| `--p2-4-closure-checks` | `closure.log`，退出0，FIXED_SKILLS_PASS/INT_01_08_PASS |
+| `--regression-matrix` | `regression.log`，50 PASS/0 FAIL，退出0 |
+| Godot工程build | `fixed-build.log`，退出0，0警告0错误 |
+| Godot headless `--smoke-test` | `fixed-headless.log`，退出0，SMOKE_OK |
+| Godot有窗口`--first-batch-smoke` | `fixed-ui.log`，退出0，FIRST_BATCH_UI_PASS |
+| S15只读脚本 | `s15/read_only_audit_evidence.md`、`source_hashes.csv`；执行前后输入哈希一致 |
+
+原历史925份冻结语料清单`artifacts/qa/p2-4-first-batch/legacy-saves-manifest.json`当前不存在，专用入口报告缺样本；未擅自冻结新生成数据冒充旧语料。当前新合成旧档、未知ID保留、备份、旧五人冻结、跨Run归档与不重复补偿均通过。没有读取/覆盖玩家存档。无Linux/macOS、其它DPI和最小化后台长稳结论。
+
+### 19.7 S15只读调查与范围外项
+
+`tools/Audit-P2V16ReadOnly.ps1`只允许输出artifacts/qa，生成schema_diff.md、id_crosswalk.csv、effect_coverage.csv、source_precedence.md、implementation_packages_proposal.md、read_only_audit_evidence.md及输入哈希清单。**PARTIAL_INPUT**：temp/suggest只有S15引用与汇总，没有S04～S13逐项候选原表，无法逐16技能/98天赋/31星图/28装备/地图逐ID做设计映射；缺失效果标RED/INPUT_MISSING，不按显示名隐式等价。
+
+现有消费者/字段、品质命名冲突、原型H参数与Lmin边界已报告；候选新Effect、完整内容、31档数值/经济、AP/第五席、10小时平衡均未实施。获得原始候选表后才可完成逐项只读对账，新增开发仍须后续明确授权。
+
+### 19.8 可回传设计Owner摘要与三方状态
+
+已完成固定4+T唯一生产权威、旧主动/槽位及失效付费洗点退役；按用户裁决保留隔离、免费主动返还旧点、不退旧金币。修复Lmax量纲/旧Armor文案、真实最近卷轴及致死掉落守恒、合批预览排序、长文本/货币格，并补HP边界与逐笔流水。已有一条INT联合命令和37张本机渲染证据。当前16历史技能跨五职业，首四职业只部署12个，不能报S06完整16行为已实现。
+
+- E：**PASS_WITH_OPEN_ITEMS**；已授权返修工程自检通过，遗留是历史925份语料缺失、S15原表缺失与跨平台/人工验收边界，不据此擅自扩展玩法。
+- V-Design：未独立复核；未向外部设计AI发送资料，不声称已同步。
+- V-User：未验收；本次旧权益政策已明确裁决，不等于用户已验收全部界面与体验。
+
+补充证据说明：R-A1权威切换前的旧技能HUD/编辑入口截图保留于`artifacts/qa/first-batch-ui-20261026-031823-2795130-3b9d747565eb495fafced34da0e16d54/`（当时A-04/A-05已先修，不能当作整个V1.6改动前快照）。Strongest择强且不重复叠加、强来源离开后回退弱来源的真实数值断言同时由`SkillBdSupportChecks`保留；新FixedSkillClosure补四实例同目标及撤销/存档路径，两者共用同一Buff聚合实现。
+
+分辨率证据补充：最终截图目录含`screenshots.csv`逐图记录窗口、逻辑视口与PNG尺寸。窗口1440×900/1280×720/1920×1080均实际运行；逻辑视口始终1440×900；保持16:10内容比例后PNG分别1440×900/1152×720/1728×1080，不能把PNG尺寸与原生窗口尺寸混用。最终GUI日志及CSV均来自当前编译结果。
+
+工作区并行编辑说明：收尾时检测到另一份从本机安装目录运行的Godot4.7.2编辑器（进程启动于12:20），同时工作区存在`Idle-CRPG.csproj`的SDK4.7.0→4.7.2差异及`Idle-CRPG.csproj.old.2`备份。未改写、回滚或移动这两项，不把它们计入本轮主动实施；最终Godot构建/运行以工作区实际SDK4.7.2和引擎4.7.2通过的日志为准。正式config与temp没有本轮差异。新C#文件的.uid为编辑器生成的源资源元数据，保留。

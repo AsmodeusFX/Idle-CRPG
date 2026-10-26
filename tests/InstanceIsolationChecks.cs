@@ -36,7 +36,7 @@ public static class InstanceIsolationChecks
                 float dx=Math.Min(2.2f,room.HalfWidth-.6f),dy=Math.Min(2.2f,room.HalfHeight-.6f);h.Position=room.Center+new Vector2(i%2==0?-dx:dx,i<2?-dy:dy);
             }
             foreach(var m in room.Monsters){m.Hp=m.MaxHp=100000000;m.Timer=999;m.Attack=0;m.Defense=0;m.Position=room.Center;}
-            if(skills.Length>0)foreach(var h in game.Heroes.Where(h=>h.SpecId==classId))game.EquipSkills(h.HeroInstanceId,skills);
+            if(skills.Length>0)foreach(var h in game.Heroes.Where(h=>h.SpecId==classId))Check(skills.All(id=>h.SkillIds.Contains(id)),"S1必须开局已学，无装配步骤");
             return game;
         }
 
@@ -53,17 +53,18 @@ public static class InstanceIsolationChecks
         Check(summonGame.Heroes.All(h=>{int n=live.Count(s=>s.SummonOwnerInstanceId==h.HeroInstanceId);return n>=1&&n<=cap;}),"同主人召唤数量越界或缺失");
         Check(summonGame.Heroes.Select(h=>h.HeroInstanceId).All(id=>live.Any(s=>s.SummonOwnerInstanceId==id)),"存在没有被记到任何实例的召唤");
 
-        // 2) 同职业四实例的技能装配互不影响，且读档后仍按实例保持。
+        // 2) 新版按实例学习/自动施放，旧装配原文保留于retired_loadout_ui夹具。
         var loadoutGame=Battle(warrior,4,4721); // 用无召唤职业，避免"卸下召唤技能"影响存档校验
         var equipTargets=loadoutGame.Heroes.Take(2).ToArray();
         var untouched=loadoutGame.Heroes.Skip(2).ToDictionary(h=>h.HeroInstanceId,h=>h.SkillIds.ToArray());
-        foreach(var hero in equipTargets)loadoutGame.EquipSkills(hero.HeroInstanceId,Array.Empty<string>());
+        loadoutGame.GrantGmResources(experience:10000);
+        foreach(var hero in equipTargets){Check(loadoutGame.UpgradeHero(hero.HeroInstanceId,out _),"升级学习前置");Check(loadoutGame.LearnTalent(hero.HeroInstanceId,"barb_taunt",out _),"按实例学习S2");}
         Check(loadoutGame.Heroes.Where(h=>untouched.ContainsKey(h.HeroInstanceId)).All(h=>h.SkillIds.SequenceEqual(untouched[h.HeroInstanceId])),"同职业装配影响到未操作的实例");
         // 该断言只关心"装配按实例保存"，用完整内部快照（含召唤现场）避免精简检查点的召唤引用校验干扰。
         var loadoutReload=GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=loadoutGame.Capture()})).Session!);
-        Check(equipTargets.All(h=>loadoutReload.Heroes.Single(r=>r.HeroInstanceId==h.HeroInstanceId).SkillIds.Length==0),"装配未按实例随存档保存");
+        Check(equipTargets.All(h=>loadoutReload.Heroes.Single(r=>r.HeroInstanceId==h.HeroInstanceId).SkillIds.Contains("barb_taunt")),"已学S2未按实例随存档保存");
         Check(loadoutReload.Heroes.Where(h=>untouched.ContainsKey(h.HeroInstanceId)).All(h=>h.SkillIds.SequenceEqual(untouched[h.HeroInstanceId])),"读档后未操作的实例被套用装配");
 
-        Console.WriteLine("INSTANCE_ISOLATION_PASS: 4 same-class instances keep distinct summon ownership and per-instance skill loadouts across save/reload");
+        Console.WriteLine("INSTANCE_ISOLATION_PASS: 4 same-class instances keep distinct summon ownership and per-instance learned fixed skills across save/reload");
     }
 }

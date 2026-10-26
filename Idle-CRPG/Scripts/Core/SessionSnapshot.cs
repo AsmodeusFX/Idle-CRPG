@@ -32,6 +32,9 @@ public sealed class SessionSnapshot
     public int HeroExperienceVersion;
     /// <summary>0为旧三系布局；1为当前正式布局。迁移只做一次并按节点合法性退款，二次读档不再改键。</summary>
     public int SkillTreeVersion;
+    public int FixedSkillsVersion;
+    public long AssetEventSequence;
+    public long AssetAuditTick;
     public SkillBattleState SkillState=new();
     public bool Won;
     public float Regroup, ReviveElapsed;
@@ -110,7 +113,7 @@ public sealed partial class GameSession
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=3,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,DoorWait=destination>=0&&phase==1&&doorOpener is {Alive:true}?doorWait:0,DoorFallback=destination>=0&&phase==1&&doorOpener is {Alive:true}&&doorFallback,DoorOpenerHero=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Heroes.Contains(doorOpener)?Heroes.IndexOf(doorOpener):-1,DoorOpenerSummon=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Summons.Contains(doorOpener)?Summons.IndexOf(doorOpener):-1,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
-        Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
+        AssetAuditTick=assetAuditTick,AssetEventSequence=assetEventSequence,FixedSkillsVersion=Config.LegacySkillRuntime?0:1,Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
     };
     /// <summary>正式存档只保留房间检查点。未完成战斗从进房位置重开，已领取资源与奖励标志一并保留。</summary>
     public SessionSnapshot CaptureProgress()
@@ -180,7 +183,7 @@ public sealed partial class GameSession
         }
         if(s.RoomCheckpoint)foreach(var floor in s.Floors)foreach(var room in floor.Rooms)if(room.Generated&&!room.ContentCleared)PrepareEnemySummons(config,room);
         MigrateCombatFormula(config,s);
-        MigrateSkillTree(config,s);
+        if(config.LegacySkillRuntime)MigrateSkillTree(config,s);else MigrateFixedSkills(config,s);
         ValidateSnapshot(config,s);
         var game=new GameSession(config,s.Seed,s.Heroes.Select(h=>h.SpecId));
         game.Kp=s.Kp;game.KpEarned=s.KpEarned;game.KpSpent=s.KpSpent;game.dungeonEntrySerial=s.DungeonEntrySerial;game.MonsterLevelMax=s.MonsterLevelMax;game.kpKillReceipts.UnionWith(s.KpKillReceipts);
@@ -189,6 +192,7 @@ public sealed partial class GameSession
         game.Heroes.Clear();game.Heroes.AddRange(s.Heroes);game.RestoreGear(s.Equipment??new());game.RestoreConsumables(s.Scrolls??new(),s.Potions??new());game.Summons.AddRange(s.Summons);game.roomEntrySummons.AddRange(s.RoomEntrySummons);game.reserveHeroes.AddRange(s.ReserveHeroes);game.pendingFormation=s.PendingFormation.ToArray();game.formationCapacityFloor=s.FormationCapacityFloor==0?s.Heroes.Count:s.FormationCapacityFloor;
         game.Floors=s.Floors;game.dungeonSeed=s.DungeonSeed;game.FloorIndex=s.FloorIndex;game.CurrentRoom=s.CurrentRoom;
         game.Kills=s.Kills;game.Retries=s.Retries;game.Gold=s.Gold;game.Revision=s.Revision;game.HitCount=s.HitCount;
+        if(s.AssetEventSequence<0||s.AssetAuditTick<0)throw new InvalidDataException("资源事件序号/逻辑时刻无效");game.assetEventSequence=s.AssetEventSequence;game.assetAuditTick=s.AssetAuditTick;
         game.lootRandom.State=s.LootRandomState;game.Won=s.Won;game.destination=s.Destination;game.phase=s.Phase;game.regroup=s.Regroup;
         if(s.CombatRandomState!=0)game.combatRandom.State=s.CombatRandomState;
         game.roomEntryCombatState=s.RoomEntryCombatState==0?game.combatRandom.State:s.RoomEntryCombatState;game.skillState=s.SkillState;
@@ -305,6 +309,7 @@ public sealed partial class GameSession
         c.Spawn.Validate(s.Modifiers!);
         Need(s.Stars!=null&&double.IsFinite(s.StarAttack)&&double.IsFinite(s.StarHp)&&s.StarAttack>=0&&s.StarHp>=0,"星图贡献");
         var talentStars=new StarProgression(c.Stars,s.Stars);ValidateFormationSnapshot(c,s);
+        if(!c.LegacySkillRuntime)Need(s.Heroes.Concat(s.ReserveHeroes).All(hero=>!hero.Talents.Keys.Any(id=>c.Talents.Nodes.TryGetValue(id,out var node)&&node.ClassTrait)||c.Stars.Nodes.Values.Any(gate=>gate.Attribute=="class_trait_unlock"&&gate.TargetId==hero.SpecId&&talentStars.Level(gate.Id)>0)),"T投资缺少本职业星图资格");
         Need(s.Heroes.Concat(s.ReserveHeroes).All(h=>h.SkillIds!=null&&h.SkillIds.Count(id=>c.Talents.Nodes.ContainsKey(id))<=TalentSlotCapacity(c,talentStars)),"主动技能槽超过星图解锁容量");
         Need(s.Inventory!.All(i=>c.Items.Any(t=>t.Id==i.ItemId)&&i.Price>=0&&i.Count>0)&&s.Inventory.Select(i=>(i.ItemId,i.Price)).Distinct().Count()==s.Inventory.Count,"背包引用/数量");
         Need((s.RoomEntry.Count==0||s.RoomEntry.Count==s.Heroes.Count)&&s.RoomEntry.All(e=>Point(e.Position)&&Finite(e.Hp)&&e.Hp>=0),"进房节点");

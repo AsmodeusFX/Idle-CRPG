@@ -25,7 +25,7 @@ public static class SimulationRunner
         }
         if (!string.IsNullOrWhiteSpace(runTag) && runTag.Any(ch => !char.IsLetterOrDigit(ch) && ch != '_' && ch != '-'))
             throw new ArgumentException("--tag 只能包含字母、数字、下划线与连字符");
-        var config = LegacySkillConfig.Load(Path.Combine(root, "Idle-CRPG/config"));
+        var config = Config.Load(Path.Combine(root, "Idle-CRPG/config"));
         var policy = SimulationPolicy.From(cfg, config);
         string directory = Path.Combine(root, "artifacts/simulation",
             cfg.ScenarioId + "_" + cfg.Seed + (string.IsNullOrWhiteSpace(runTag) ? "" : "_" + runTag));
@@ -97,6 +97,7 @@ internal sealed class SimulationRun
         this.cfg = cfg; this.policy = policy; this.config = config; this.root = root; this.directory = directory; this.runTag = runTag;
         string[] start = cfg.StartingHeroes is { Count: > 0 } heroes ? heroes.ToArray() : new[] { "warrior" };
         game = GameSession.CreateWorld(config, cfg.Seed, start);
+        game.AssetRecorded+=rec.Asset;
         diag = new AnomalyDiagnoser(policy.StallWindowSeconds, policy.RecheckSeconds, policy.MaxAlerts);
         BuildLevelPrefix();
     }
@@ -378,7 +379,7 @@ internal sealed class SimulationRun
             $"challenge={game.Config.Challenge(candidate.Id, game.DifficultyIndex).Challenge} requests={castleRequests}");
     }
 
-    private static readonly string[] LegacyStarOrder = { "s_party_1", "s_party_2", "s_party_3", "s_party_4", "s_skill_1", "s_skill_2", "s_skill_3", "s_skill_4", "s_root", "s_hp", "s_atk", "s_hp_01", "s_atk_01", "s_hp_02", "s_atk_02" };
+    private static readonly string[] LegacyStarOrder = { "s_root", "s_hp", "s_atk", "s_hp_01", "s_atk_01", "s_hp_02", "s_atk_02" };
 
     private void ExecStarmap(long tick)
     {
@@ -506,7 +507,7 @@ internal sealed class SimulationRun
                 int slots = game.ActiveSkillSlots;
                 var actives = hero.Talents.Keys.Where(id => game.Config.Talents.Nodes.TryGetValue(id, out var n) && n.Kind == "active")
                     .OrderBy(id => game.Config.Talents.Nodes[id].Row).ThenBy(id => game.Config.Talents.Nodes[id].Col).Take(Math.Max(1, slots)).ToArray();
-                if (actives.Length > 0 && !actives.SequenceEqual(hero.SkillIds))
+                if (game.Config.LegacySkillRuntime && actives.Length > 0 && !actives.SequenceEqual(hero.SkillIds))
                 {
                     if (game.SetTalentLoadout(hero.SpecId, actives, out string reason))
                     {

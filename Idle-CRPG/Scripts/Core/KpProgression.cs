@@ -23,7 +23,7 @@ public sealed partial class GameSession
         string key=$"{RunId}:{dungeonEntrySerial}:{DifficultyIndex}:{ChapterIndex}:{dungeonSeed}:{FloorIndex}:{CurrentRoom}:{Floor.Rooms[CurrentRoom].Monsters.IndexOf(monster)}";
         if(kpKillReceipts.Contains(key))return;
         long next=checked(Kp+Config.Progression.KillKp),earned=checked(KpEarned+Config.Progression.KillKp);
-        kpKillReceipts.Add(key);Kp=next;KpEarned=earned;MarkChanged();
+        long before=Kp;kpKillReceipts.Add(key);Kp=next;KpEarned=earned;AuditCurrency("monster_kill","receive","kp",before,Kp,origin:key);MarkChanged();
     }
     public bool CanBuyLmax(out string reason)
     {
@@ -43,7 +43,7 @@ public sealed partial class GameSession
         if(purchase!=KpPurchase.MonsterLevelMaximum){reason="Lmin购买未通过安全验收，禁止开放";return false;}
         if(!CanBuyLmax(out reason))return false;
         long spent=checked(KpSpent+Config.Progression.LmaxCost);
-        Kp-=Config.Progression.LmaxCost;KpSpent=spent;MonsterLevelMax++;
+        long before=Kp;Kp-=Config.Progression.LmaxCost;KpSpent=spent;MonsterLevelMax++;AuditCurrency("player_command","buy_lmax","kp",before,Kp);
         World?.SyncMonsterLevelRange(this);
         Note($"KP购买 Lmax → {MonsterLevelMax}，支出{Config.Progression.LmaxCost}，余额{Kp}；已生成房间保持快照");reason="购买成功";return true;
     }

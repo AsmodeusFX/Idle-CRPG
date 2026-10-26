@@ -67,6 +67,7 @@ public partial class Main
             string hint=i==0?"金币":"KP · 本轮击杀点；背包杂物仍在回城自动售卖";
             gameHud.AddChild(new HudIcon {Kind=i==0?"coin":i==1?"junk":"xp",Position=new Vector2(x,y),Size=new Vector2(24,24),TooltipText=hint});
             currencies[i]=HudText(gameHud,"0",new Vector2(x+28,y+1),16);
+            currencies[i].ClipText=true;currencies[i].Size=new Vector2(72,24);
             currencies[i].TooltipText=hint;currencies[i].MouseFilter=Control.MouseFilterEnum.Stop;
         }
         var separator=new HSeparator {Position=new Vector2(1092,143),Size=new Vector2(312,2)};gameHud.AddChild(separator);
@@ -95,6 +96,7 @@ public partial class Main
             float y=696+i*34;
             heroIcons[i]=new HudIcon {Kind="hero",Position=new Vector2(38,y),Size=new Vector2(28,28),Accent=heroColors[i%heroColors.Length]};gameHud.AddChild(heroIcons[i]);
             heroNames[i]=HudText(gameHud,"席位未解锁",new Vector2(78,y+4),14);
+            heroNames[i].ClipText=true;heroNames[i].Size=new Vector2(174,24);
             int slot=i;heroAdd[i]=new Button {Name="HudFormationAdd"+i,Text="+",Position=new Vector2(209,y+1),Size=new Vector2(30,28),Visible=false};heroAdd[i].Pressed+=()=>OpenFormation(slot);gameHud.AddChild(heroAdd[i]);
             heroHealth[i]=new ProgressBar {Position=new Vector2(260,y+5),Size=new Vector2(210,20),ShowPercentage=false,MouseFilter=Control.MouseFilterEnum.Ignore};
             heroHealth[i].AddThemeStyleboxOverride("fill",new StyleBoxFlat {BgColor=new Color("397b70")});gameHud.AddChild(heroHealth[i]);
@@ -128,8 +130,13 @@ public partial class Main
         help=HudText(gameHud,"",new Vector2(32,879),12);help.Modulate=new Color("91a6b7");
     }
 
-    private static string CompactXp(long value)=>value>=1000?$"{value/1000d:0.#}K":value.ToString("N0");
-    private static string CompactAmount(long value)=>value>=1000000?$"{value/1000000d:0.#}M":value>=10000?$"{value/1000d:0.#}K":value.ToString("N0");
+    private static string CompactXp(long value)=>CompactAmount(value);
+    private static string CompactAmount(long value)
+    {
+        string[] suffix={"","K","M","B","T","Q","E"};double amount=value;int scale=0;
+        while(amount>=1000&&scale<suffix.Length-1){amount/=1000;scale++;}
+        return scale==0?value.ToString("N0"):$"{amount:0.#}{suffix[scale]}";
+    }
     /// <summary>药剂槽显示待用/生效中（生效中仍占槽且不可丢弃）；卷轴改由固定 5 槽刷新，只显示名称与库存数量。</summary>
     private void RefreshConsumablesHud()
     {
@@ -154,7 +161,7 @@ public partial class Main
             var spec=i<config.Scrolls.Count?config.Scrolls[i]:null;
             int stock=spec==null?0:(session?.ScrollStock.GetValueOrDefault(spec.Id)??0);
             button.Text=spec==null?"空槽（未投放）":$"{spec.Name} ×{stock}";
-            button.Disabled=session==null||stock<=0;
+            button.Disabled=session==null||stock<=0||session.NearestScrollTarget()<0;
             button.TooltipText=spec==null?"该槽位尚无卷轴定义":stock<=0?$"{spec.Name}：库存0（击杀掉落）":"点击对最近敌人释放";
         }
     }
@@ -165,9 +172,7 @@ public partial class Main
         var spec=config.Scrolls[slot];
         if(session.Floors.Count==0){help.Text="当前没有战斗房间";return;}
         int room=session.CurrentRoom;if(room<0||room>=session.Floor.Rooms.Count){help.Text="当前没有战斗房间";return;}
-        int index=session.Floor.Rooms[room].Monsters.FindIndex(m=>m.Alive);
-        if(index<0){help.Text="当前没有可攻击目标";return;}
-        help.Text=session.UseScroll(spec.Id,index,out string reason)?$"已使用{spec.Name}":reason;
+        help.Text=session.UseScrollOnNearest(spec.Id,out string reason)?$"已使用{spec.Name}":reason;
         Refresh();SaveNow();
     }
     private void UsePotionFromHud(int slot)
@@ -187,7 +192,7 @@ public partial class Main
         int waiting=session?.World==null?0:config.Dungeons.Count(d=>d.Castle&&!session.World.Progress.Cleared.Contains(d.Id)&&session.World.Progress.CastleUnlocked(config,d.Id)&&!session.World.PendingCastles.Contains(d.Id)&&session.World.Target.Dungeon.Id!=d.Id);
         teamChallengeLabel.Text=session==null?"":$"小队挑战等级 {session.TeamChallengeLevel} · 待批 {waiting} · 排队 {session.World?.PendingCastles.Count??0}";
         // 小队标题行宽度有限：只显示余额，升级规则放悬停提示，避免与右侧"普通席位/已锁队"文字重叠。
-        teamExperienceLabel.Text=session==null?"":$"公共XP {session.PublicExperience:N0}";
+        teamExperienceLabel.Text=session==null?"":$"公共XP {CompactAmount(session.PublicExperience)}";
         teamExperienceLabel.TooltipText=session==null?"":"公共XP由击杀全额入池，无等级差衰减；只有点击右侧指定英雄升级才消耗，且每次恰好升1级。";
         teamChallengeLabel.TooltipText=session?.World==null?"":string.Join("\n",session.World.PendingCastles.Select(id=>config.Dungeons.Single(d=>d.Id==id).Name+(session.World.Progress.CastleUnlocked(config,id)?" · 已批准待执行":" · 已批准，等待新前置满足")));
         partySetup.Visible=session==null;
@@ -208,7 +213,9 @@ public partial class Main
         RefreshGrowthInteractions();
         RefreshHudSkills();
         RefreshConsumablesHud();
-        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[1].Text="KP "+CompactAmount(session?.Kp??0);currencies[1].TooltipText=$"KP本轮余额 · 背包杂物 {session?.Inventory.Values.Sum()??0}，回城自动售卖";currencies[2].Text="XP "+CompactXp(session?.PublicExperience??0);currencies[2].TooltipText="公共XP：击杀全额入池，无等级差衰减；在右栏/英雄页逐人消费";
+        currencies[0].Text=CompactAmount(session?.Gold??0);currencies[0].TooltipText=$"本轮金币 {session?.Gold??0:N0}";
+        currencies[1].Text="KP "+CompactAmount(session?.Kp??0);currencies[1].TooltipText=$"KP本轮余额 {session?.Kp??0:N0} · 背包杂物 {session?.Inventory.Values.Sum()??0}，回城自动售卖";
+        currencies[2].Text="XP "+CompactXp(session?.PublicExperience??0);currencies[2].TooltipText=$"公共XP {session?.PublicExperience??0:N0}：击杀全额入池，无等级差衰减；在右栏/英雄页逐人消费";
     }
 
     /// <summary>按功能类型、首次刷新次序保留独立交互卡；目前仅投放城堡挑战，免费卡不显示消耗。</summary>

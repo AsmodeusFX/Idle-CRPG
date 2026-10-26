@@ -37,8 +37,8 @@ public static class ClassFollowingChecks
         GameSession Reopen(GameSession g)=>GameSession.Restore(c,SaveStore.Decode(c,SaveStore.Encode(new(){Session=g.CaptureProgress()})).Session!);
         var player=GameSession.CreateNewWorld(c,17,"warrior");player.GrantGmResources(10000,0);player.BuyStar("s_root",out _);player.BuyStar("s_respec",out _);
         player.SetGmBattle(new(InstantDungeonClear:true));for(int i=0;i<30000&&!(player.World!.Stage==CampaignStage.Village&&player.World.PortalPhase==PortalPhase.None);i++)player.Tick(.05f);
-        Need(player.ResetTalents("warrior",out _)&&player.Heroes[0].Talents.Count==0&&player.Heroes[0].SkillIds.Length==0&&player.TalentPoints(player.Heroes[0])==1,"洗点保留初始技能或没有返还一级点数");
-        player=Reopen(player);Need(player.Heroes[0].Talents.Count==0&&player.TalentPoints(player.Heroes[0])==1,"洗点读档自动补回初始技能");
+        Need(!player.ResetTalents("warrior",out _)&&!player.ResetTalentRegion("warrior",1,out _)&&player.Heroes[0].Talents["barb_bash"]==1&&player.Heroes[0].SkillIds.Single()=="barb_bash","新版洗点必须保留S1基础技能");
+        player=Reopen(player);Need(player.Heroes[0].Talents["barb_bash"]==1&&player.TalentPoints(player.Heroes[0])==0,"洗点重读重复返还S1基础点");
         var old=player.CaptureProgress();old.Heroes[0].StartingSkillGranted=false;var migrated=GameSession.Restore(c,old);Need(migrated.Heroes[0].Talents["barb_bash"]==1&&migrated.TalentPoints(migrated.Heroes[0])==0,"旧角色有空余点未初始化");
         var party=GameSession.CreateWorld(c,20261017,c.Heroes.Take(4).Select(h=>h.Id));party.SetGmBattle(new(Invincible:true));
         bool spread=false,turn=false,gather=false;Vector2 direction=Vector2.Zero;int samples=0;

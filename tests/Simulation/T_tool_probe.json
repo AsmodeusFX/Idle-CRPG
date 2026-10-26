@@ -15,7 +15,7 @@
       "interval_seconds": 60,
       "nodes": [
         { "id": "s_root", "max_level": 1 },
-        { "id": "s_party_1", "max_level": 1 }
+        { "id": "s_hp", "max_level": 1 }
       ]
     },
     "party": {

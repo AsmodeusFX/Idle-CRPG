@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using IdleCrpg.Core;
 
 /// <summary>模拟输出：统一 CSV/JSON 写出、配置指纹与业务一致性哈希；只写 artifacts。</summary>
 public sealed class SimulationRecorder
@@ -13,6 +14,8 @@ public sealed class SimulationRecorder
     public List<string> Ledger { get; } = new() { "sim_time,tick,source,item_id,amount,balance,note" };
     public List<string> Snapshots { get; } = new() { "sim_time,scenario,seed,chapter,difficulty,region,map,stage,heroes,gold,kills,retries,party,star_nodes,star_gold,pending_castles,waiting_approval,floor,room,status" };
     public List<string> Diagnostics { get; } = new() { "sim_time,tick,classification,reason,tags,evidence" };
+    public List<string> AssetLedger {get;}=new(){"event_id,run_id,tick_or_time,source,action,hero_instance_id,asset_type,definition_id,delta,before,after,origin_or_receipt"};
+    public void Asset(AssetEvent e)=>AssetLedger.Add(string.Join(',',Q(e.EventId),Q(e.RunId),e.LogicTick,Q(e.Source),Q(e.Action),Q(e.HeroInstanceId),Q(e.AssetType),Q(e.DefinitionId),e.Delta,Q(e.Before),Q(e.After),Q(e.Origin)));
 
     private static string Q(string? value) => "\"" + (value ?? "unavailable").Replace("\"", "\"\"") + "\"";
     private static string Num(double value) => value.ToString("0.####", CultureInfo.InvariantCulture);
@@ -112,5 +115,6 @@ public sealed class SimulationRecorder
         File.WriteAllLines(Path.Combine(directory, "ledger.csv"), Ledger, new UTF8Encoding(false));
         File.WriteAllLines(Path.Combine(directory, "snapshots.csv"), Snapshots, new UTF8Encoding(false));
         File.WriteAllLines(Path.Combine(directory, "diagnostics.csv"), Diagnostics, new UTF8Encoding(false));
+        File.WriteAllLines(Path.Combine(directory,"asset_ledger.csv"),AssetLedger,new UTF8Encoding(false));
     }
 }
