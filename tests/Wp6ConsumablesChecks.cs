@@ -16,7 +16,8 @@ public static class Wp6ConsumablesChecks
     {
         var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
         Check(c.Scrolls.Count>=1&&c.Potions.Count>=1,"缺少卷轴或药剂配置");
-        // [H] 测试：把掉落概率临时拉满，使"掉落→库存/槽"链路可确定性观察。
+        // [H] 测试：收敛为一卷一药并把掉落概率临时拉满，使"掉落→库存/槽"链路可确定性观察。
+        TestPlayerActions.SingleConsumableFixture(c);
         c.Scrolls[0]=c.Scrolls[0] with {DropChance=1};
         c.Potions[0]=c.Potions[0] with {DropChance=1};
         string scrollId=c.Scrolls[0].Id,potionId=c.Potions[0].Id;

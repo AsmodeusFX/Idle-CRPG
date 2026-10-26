@@ -31,9 +31,9 @@ public sealed partial class Config
             if(i==0&&legacyFixture){maps.Add(this);continue;}
             string mapRoot=Path.GetFullPath(Path.Combine(directory,def.Directory));
             if(!mapRoot.StartsWith(Path.GetFullPath(directory)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("章节目录不得离开config");
-            var map=(Config)MemberwiseClone();map.ChapterIndex=i;map.LoadWorld(mapRoot,directory);map.LoadEncounterPlans(mapRoot);map.LoadSceneConfig(mapRoot,directory);
+            var map=(Config)MemberwiseClone();map.ChapterIndex=i;map.LoadWorld(mapRoot,directory);map.LoadEncounterPlans(mapRoot);map.LoadCastleThreats(mapRoot);map.LoadSceneConfig(mapRoot,directory);
             // 区域投放池按章加载；缺失表示该章仍用全局怪物表（legacy 夹具与旧图不受影响）。
-            map.LoadMonsterPools(mapRoot);map.ValidateMonsterPools();
+            map.LoadMonsterPools(mapRoot);map.ValidateMonsterPools();map.ValidateCastleThreats();
             if(!legacyFixture){map.LoadTown(directory,i);map.LoadWaypoints(mapRoot);}
             map.Spawn=map.Spawn with {Levels=MonsterLevels};
             if(map.Dungeons.Any(d=>d.LevelMax+(long)Spawn.Level-1>MaxMonsterLevel))throw new InvalidDataException("章节怪物等级超过等级表");
@@ -46,5 +46,7 @@ public sealed partial class Config
             map.ChapterMaps=maps;
         }
         ChapterMaps=maps;
+        // Boss 阶段表是全局表，POI/楼层只有章节装载完才能逐键核对。
+        if(!legacyFixture)ValidateBossPhases();
     }
 }

@@ -46,7 +46,7 @@ public partial class Main
     private void InitializeClient()
     {
         var args=OS.GetCmdlineUserArgs();bool reopen=args.Contains("--persistence-write")||args.Contains("--persistence-read");
-        automation=args.Contains("--first-batch-smoke")||args.Contains("--smoke-test")||args.Contains("--capture")||args.Contains("--performance-test")||args.Contains("--legacy-migration-smoke")||reopen;
+        automation=args.Contains("--first-batch-smoke")||args.Contains("--smoke-test")||args.Contains("--capture")||args.Contains("--performance-test")||args.Contains("--legacy-migration-smoke")||args.Contains("--c2a-boss-smoke")||reopen;
         string directory=automation?ProjectSettings.GlobalizePath("res://../artifacts/qa/"+(reopen?"reopen":Guid.NewGuid().ToString("N"))):ProjectSettings.GlobalizePath("user://");
         saveStore=new SaveStore(Path.Combine(directory,"progress_v1.json"));settingsStore=new SettingsStore(Path.Combine(directory,"settings.json"));
         preferences=settingsStore.Load();

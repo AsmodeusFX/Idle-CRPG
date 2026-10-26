@@ -76,6 +76,9 @@ public sealed partial class Config
                 BossSkills.Add(r.Id,skill);
             }
         }
+
+        // Boss 阶段表与 Boss 基础技能包分开：基础包在生成时附加，阶段包由 BossPhaseRuntime 在战斗/地图状态切换时附加。
+        LoadBossPhases(directory);
     }
 
     private static MonsterTargetPolicy ParseMonsterPolicy(string value,string file)=>

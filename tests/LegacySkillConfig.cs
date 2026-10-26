@@ -21,10 +21,21 @@ public static class LegacySkillConfig
         {
             // 旧技能基线不含2026-10-23新增的怪物技能，章节内容层表在旧组合里没有来源，
             // 这里显式移除而不是放宽生产校验：正式 Load 仍会拒绝未知技能引用。
-            foreach(var relative in new[]{"monster/act_behaviors.csv","monster/elite.csv","monster/boss_skill.csv"})
+            // A2 的 Boss 阶段表同样引用新增阶段技能，因此一并移除。
+            foreach(var relative in new[]{"monster/act_behaviors.csv","monster/elite.csv","monster/boss_skill.csv","monster/boss_phase.csv"})
             {var path=Path.Combine(directory,relative);if(File.Exists(path))File.Delete(path);}
             foreach(var act in new[]{"act1","act2","act3","act4","act5"})
             {var path=Path.Combine(directory,"chapters",act,"monster/region_pool.csv");if(File.Exists(path))File.Delete(path);}
+            // 旧技能基线没有 C2-B 新增的卷轴/药剂 Buff：把消耗品表收敛回旧组合里存在的一卷一药，
+            // 不放宽生产校验（正式 Load 仍要求 Buff 引用有效）。
+            File.WriteAllText(Path.Combine(directory,"item/scroll.csv"),
+                "id,name,effect,damage_pct,element,radius,chain_targets,buff_id,target,drop_chance\n"+
+                "scroll_bolt,闪电卷轴,damage,1.8,Physical,0,0,,enemy,0.12\n");
+            File.WriteAllText(Path.Combine(directory,"item/potion.csv"),
+                "id,name,effect,duration_ticks,value,drop_chance\n"+
+                "potion_might,力量药剂,attack,600,0.25,0.12\n");
+            // 旧技能基线也没有 C2-B 的 31 级掉落表：移除后用原型整体概率，保持旧组合自洽。
+            var dropTable=Path.Combine(directory,"item/drop_table.csv");if(File.Exists(dropTable))File.Delete(dropTable);
         }
         return directory;
     }

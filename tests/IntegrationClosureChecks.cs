@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -11,6 +11,8 @@ public static class IntegrationClosureChecks
     public static void Run(string root)
     {
         var c=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        // 单卷单药机制切片：生产已扩到 5 卷轴/4 药剂，随机掉落会破坏本用例的同种收支守恒断言。
+        TestPlayerActions.SingleConsumableFixture(c);
         c.Scrolls[0]=c.Scrolls[0] with {DropChance=1};c.Potions[0]=c.Potions[0] with {DropChance=1};
         var output=Path.Combine(root,"artifacts/qa/p2-4-v16/integration");Directory.CreateDirectory(output);
         var recorder=new SimulationRecorder();var all=new List<AssetEvent>();

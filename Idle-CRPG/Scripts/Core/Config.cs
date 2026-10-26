@@ -37,6 +37,7 @@ public sealed partial class Config
             throw new InvalidDataException("地牢配置范围非法");
         // 章节内容身份先于世界校验加载，掉落与统治区投放池都允许引用它们。
         c.LoadActMonsters(directory);
+        c.LoadMonsterArchetypes(directory);
         c.LoadWorld(directory);
         c.LoadClientConfig(directory);
         c.LoadSceneConfig(directory);
@@ -44,6 +45,8 @@ public sealed partial class Config
         c.LoadGm(directory);
         c.LoadLevels(directory);
         c.LoadCombat(directory);c.LoadMonsterContent(directory);c.Talents=TalentConfiguration.Load(directory,c);c.LoadSkillSlots(directory,c);c.LoadEquipment(directory);c.LoadConsumables(directory);
+        // 掉落等级表依赖装备品质与消耗品品类，必须最后加载；旧组合缺表时保持原型整体概率。
+        c.LoadDropTable(directory);
         c.LoadRecovery(directory);
         c.LoadChapters(directory,legacyFixture);
         return c.ChapterMaps[0];

@@ -1,2 +1,5 @@
-id,name,duration_ticks,attack_pct,drop_chance
-potion_might,力量药剂,600,0.25,0.12
+id,name,effect,duration_ticks,value,drop_chance
+potion_might,力量药剂,attack,600,0.25,0.12
+potion_tough,坚韧药剂,reduce_damage,600,0.15,0.10
+potion_greed,搜金药剂,kill_gold,600,0.20,0.10
+potion_swift,疾行药剂,swift,600,0.15,0.10

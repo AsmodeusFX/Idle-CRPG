@@ -25,7 +25,12 @@ public sealed class Room
     public bool ContentCleared;
     public List<MonsterOrigin> Origins=new();
     public List<RoomLoot> Loot=new();
-    public bool Clear => Generated && (ContentCleared||Monsters.All(m => !m.Alive));
+    /// <summary>
+    /// 遭遇序列里仍有未登场的接替 Boss 时必须保持"未清空"：否则议会成员全部倒下的一瞬间房间就会结算，
+    /// 墨菲斯托永远没有登场机会。该标记由 BossPhaseRuntime 维护，不进入存档。
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore] public bool PhasePending;
+    public bool Clear => Generated && (ContentCleared || (!PhasePending && Monsters.All(m => !m.Alive)));
 }
 
 /// <summary>进房生成快照，只保存重建所需信息，不保存怪物交战中的生命、冷却和移动。</summary>

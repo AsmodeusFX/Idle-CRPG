@@ -146,7 +146,12 @@ public partial class Main
             var button=potionButtons[i];var discard=potionDiscards[i];if(button==null||discard==null)continue;
             var slot=slots==null?null:slots[i];
             bool has=slot!=null&&slot.ItemId!="";
-            button.Text=!has?"空槽（击杀掉落药剂）":$"{slot!.Name}\n"+(slot.Active?$"生效中 {slot.RemainingSeconds:0}s · 占槽":$"待用 · 点击使用");
+            // 效果标签让四种药剂在界面上可区分（数值仍以配置为准，不在界面写死百分比）。
+            string effect=slot?.Effect switch
+            {
+                "attack"=>"攻击","reduce_damage"=>"减伤","kill_gold"=>"击杀金币","swift"=>"非战斗移速",_=>""
+            };
+            button.Text=!has?"空槽（击杀掉落药剂）":$"{slot!.Name}（{effect}）\n"+(slot.Active?$"生效中 {slot.RemainingSeconds:0}s · 占槽":$"待用 · 点击使用");
             button.Disabled=session==null||!has||slot!.Active;
             discard.Visible=has;discard.Disabled=session==null||slot!.Active;
             discard.TooltipText=has&&slot!.Active?"生效中不可丢弃：产品尚未裁决是否允许提前结束效果":"丢弃待用药剂以腾槽";
@@ -161,8 +166,11 @@ public partial class Main
             var spec=i<config.Scrolls.Count?config.Scrolls[i]:null;
             int stock=spec==null?0:(session?.ScrollStock.GetValueOrDefault(spec.Id)??0);
             button.Text=spec==null?"空槽（未投放）":$"{spec.Name} ×{stock}";
-            button.Disabled=session==null||stock<=0||session.NearestScrollTarget()<0;
-            button.TooltipText=spec==null?"该槽位尚无卷轴定义":stock<=0?$"{spec.Name}：库存0（击杀掉落）":"点击对最近敌人释放";
+            bool usable=spec!=null&&session!=null&&stock>0&&(spec.TargetsParty?session.CanUsePartyScroll(spec.Id):session.NearestScrollTarget()>=0);
+            button.Disabled=!usable;
+            button.TooltipText=spec==null?"该槽位尚无卷轴定义"
+                :stock<=0?$"{spec.Name}：库存0（击杀掉落）"
+                :spec.TargetsParty?"战斗中点击为全队施加短期防护（不点选敌人）":"点击对最近敌人释放";
         }
     }
     private void UseScrollFromHud(int slot)
@@ -255,7 +263,7 @@ public partial class Main
             button.Disabled=active||queue>=0||!session!.CanChallengeCastle(castle.Id,out _);
             string state=active?(world.Stage==CampaignStage.Dungeon?"挑战中":"正在前往"):queue>=0?$"计划攻击 · 队列第 {queue+1} 位":"攻略城堡，占领整个统治区";
             var level=config.Challenge(castle.Id,session!.DifficultyIndex);
-            button.GetNode<Label>("Content/Words/Description").Text=$"挑战等级 {level.Challenge} · 推荐小队等级 {level.Recommended}\n{state}"+(config.PoiProfiles.ContainsKey(castle.Id)?" · 原型内容":"");
+            button.GetNode<Label>("Content/Words/Description").Text=$"挑战等级 {level.Challenge} · 推荐小队等级 {level.Recommended}\n{state}"+(config.PoiProfiles.ContainsKey(castle.Id)?config.BossPhasesOf(config.ChapterIndex+1,castle.Id).Count>0?" · 阶段首领 [H]":" · 原型内容":"");
             session!.CanChallengeCastle(castle.Id,out string gateReason);button.TooltipText=castle.Name+"\n"+state+"\n"+gateReason;
             if(gateReason!="")button.GetNode<Label>("Content/Words/Description").Text+="\n"+gateReason;
             button.GetNode<Label>("Content/Words/Retry").Visible=world.IsCastleRetry(castle.Id);
@@ -314,7 +322,8 @@ public partial class Main
                 var slotButton=scrollSlotButtons[i];var spec=i<config.Scrolls.Count?config.Scrolls[i]:null;
                 if(spec==null){if(!slotButton.Disabled||!slotButton.Text.Contains("未投放"))throw new Exception("未定义的卷轴槽未禁用");continue;}
                 int stock=session?.ScrollStock.GetValueOrDefault(spec.Id)??0;
-                if(slotButton.Disabled!=(stock<=0)||!slotButton.Text.Contains("×"))throw new Exception("卷轴槽库存与禁用状态不一致");
+                // 有库存但当前没有合法施放现场（无敌人/未在战斗）时允许禁用；无库存必须禁用。
+                if(stock<=0&&!slotButton.Disabled||!slotButton.Text.Contains("×"))throw new Exception("卷轴槽库存与禁用状态不一致");
             }
             GD.Print("HUD_SMOKE_OK: independent castle cards, queue, full-page castle list/map, linked selection, game-only speed, equal header buttons, equal currency cells and five fixed scroll slots");
         }

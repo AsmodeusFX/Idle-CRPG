@@ -85,6 +85,13 @@ public sealed partial class WorldCampaign
     public bool WaitingApproval {get;private set;}
     public long WaitApprovalTicks {get;private set;}
     internal void ObserveApprovalWait(){if(WaitingApproval)WaitApprovalTicks++;}
+    /// <summary>仅 QA/自动化：把远征直接置入指定副本场景，不绕过门禁判定（调用方负责前置）。</summary>
+    internal void QaForceDungeon(GameSession game,DungeonSpec dungeon)
+    {
+        Target=new ExpeditionTarget(dungeon,DungeonVisits>0);
+        Stage=CampaignStage.Dungeon;DungeonVisits++;
+        game.BeginDungeon(dungeon,DungeonVisits);
+    }
     private readonly List<string> pendingCastles=new();
     /// <summary>按玩家点击顺序保存待派遣城堡，重复请求不入队。</summary>
     public IReadOnlyList<string> PendingCastles => pendingCastles.AsReadOnly();

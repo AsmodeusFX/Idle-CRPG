@@ -79,7 +79,6 @@ public static class C2AContentChecks
         // 4) 逐层偏置在真实生成中被消费：固定种子，数量仍夹在 spawn_rule 区间、等级仍在 Run 区间。
         {
             var game=GameSession.CreateWorld(config,777001,new[]{"warrior","warrior","mage","priest"});
-            int min=0,max=0;
             for(int i=0;i<4000&&game.CurrentRoom==0;i++)game.Tick(.05f);
             for(int i=0;i<600&&game.ActiveDungeon==null;i++)game.Tick(.05f);
             Need(game.ActiveDungeon!=null,"未进入地牢，无法验证逐层生成");

@@ -6,7 +6,7 @@
 
 | 文件 | 作用 | 说明 |
 |---|---|---|
-| `config/monster/act_monsters.csv` | 章节怪物身份表（49 行） | `id,name,hp,attack,defense,speed,range,cooldown`；与正式 `monsters.csv` 分离，不改变旧随机集合 |
+| `config/monster/act_monsters.csv` | 章节怪物身份表（49 行 + 1 行阶段接替 Boss `boss_mephisto`） | `id,name,hp,attack,defense,speed,range,cooldown`；与正式 `monsters.csv` 分离，不改变旧随机集合 |
 | `config/chapters/act{1..5}/monster/region_pool.csv` | 统治区投放池 | `areapart_id,monster_id,weight`；同区可多行，权重为整数百分比且合计必须 100 |
 | `config/combat/unit_attributes.csv` | 战斗属性与接敌容量 | 每个身份都必须有 `side=monster` 行，否则加载报错 |
 | `config/monster/monster_drop.csv` | 掉落 | 身份掉落沿用其模板（rat/guard），不新造经济数值 |
@@ -71,6 +71,27 @@ pwsh tools/import_act_monsters.ps1          # 写入配置
 
 `config/monster/boss_skill.csv`：`poi_id,skill_id`，按 `boss_mechanics_PROPOSAL` 的远程/近战语义映射到 `mob_area_pulse` 或 `mob_heavy`（单体重击，系数 1.8）。只加给 `Boss=true` 本体；`poi_profile.boss_name` 仍由源数据提供，实际命名与逐 Boss 机制另需内容裁定。
 
+## 职能档位与城堡威胁组合（S15-C2-A / A2）
+
+| 文件 | 作用 | 说明 |
+|---|---|---|
+| `config/monster/archetypes.csv` | `monster_id,archetype` | 显式声明 `melee/ranged/heavy/support`；与身份 ID 分开登记（设计建议的 identity 与 behavior_archetype 分离） |
+| `config/chapters/act{1..4}/dungeon/castle_threat.csv` | 31 座城堡的 S09 威胁组合 | `composition` 是身份档位循环，总数仍由 `spawn_rule` 决定 |
+
+- 档位优先读显式表；缺表时回退到"池内相对射程/生命分档"（A1 旧口径），旧图与旧档行为不变。
+- 池偏好（`pool_bias`）与城堡组合（`composition`）都不改变池成员、权重合计、怪物数量或等级。
+- 组合只在城堡生效；226 层普通地牢节拍表仍单独登记，普通层计数不变。
+- 详细字段、触发与运行时合同见 [Boss 阶段与城堡威胁组合](boss_phase.md)。
+
+## Boss 阶段（S15-C2-A / A2）
+
+`config/monster/boss_phase.csv`：`id,chapter,poi_id,phase,trigger,threshold,scope,name,skill_id,buff_id,escort_template,escort_count,role,telegraph`。
+
+四章末首领：第1章安达利尔（开场+50%血量）、第2章都瑞尔（同型）、第3章议会→墨菲斯托（遭遇序列，接替者为独立身份 `boss_mephisto`）、
+第4章混沌避难所六层（楼层阶段）+ 迪亚波罗（自身开场/血量阶段）。字段与幂等/存档合同见 [Boss 阶段与城堡威胁组合](boss_phase.md)。
+
 ## 未投放（需单独批准）
 
-M07 敌方召唤的生产投放（需进房预留槽位与存档现场合同）、其余 6 个精英词缀（元素附伤/死亡爆裂/统御光环，需要新机制）、四段特殊剧本阶段（议会/封印/三远古/巴尔五波）、逐 Boss 专属机制包、三难度数值调平与长时挂机验收。这些都需要新的运行时能力或内容裁定，本轮未动；候选数据仍在外部队列里，不在本工程配置中。
+M07 敌方召唤的**通用**生产投放（除阶段预留槽位外的常规施法召唤）、其余 6 个精英词缀（元素附伤/死亡爆裂/统御光环，需要新机制）、
+三远古/巴尔五波等未开工的特殊剧本、逐 Boss 专属美术与台词语音、三难度数值调平与长时挂机验收。
+这些都需要新的运行时能力或内容裁定，本轮未动；候选数据仍在外部队列里，不在本工程配置中。

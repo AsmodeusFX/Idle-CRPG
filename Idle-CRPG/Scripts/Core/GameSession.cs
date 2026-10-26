@@ -51,6 +51,10 @@ public sealed class Actor
     public int EnemySummonSource=-1;
     public string EnemySummonRule="";
     public bool EnemySummonActivated;
+    /// <summary>Boss 阶段预留/激活实例的阶段标识（"poi:phase"）；空表示非阶段单位。</summary>
+    public string BossPhaseId="";
+    /// <summary>Boss 阶段预留槽位：未激活时为 true 且 0 血，激活一次后永不复用、死亡照常走奖励收据。</summary>
+    public bool BossPhaseDormant;
     /// <summary>限时召唤剩余秒数，按固定20Hz逻辑步递减；0且定义为永续时表示不限期。属于召唤生命周期现场，随检查点保存。</summary>
     public float SummonRemaining;
     public bool Alive => Hp > 0;
@@ -130,12 +134,17 @@ public sealed partial class GameSession
         EnterFloor();
     }
 
-    /// <summary>世界远征入口。保留单地牢构造供独立模拟和检查使用。</summary>
-    public static GameSession CreateWorld(Config config,int seed,IEnumerable<string> ids)
+    /// <summary>
+    /// 世界远征入口。保留单地牢构造供独立模拟和检查使用。
+    /// <c>chapter</c> 只供自动化/QA 指定起始章：会补齐"已走过章节"的空进度，使章节门禁与地图页自洽，
+    /// 不代表玩家已通关；正式流程仍由 AdvanceChapter 逐章推进。
+    /// </summary>
+    public static GameSession CreateWorld(Config config,int seed,IEnumerable<string> ids,int chapter=0)
     {
-        config=config.ChapterMaps[0];
+        config=config.ChapterMaps[chapter];
         var game=new GameSession(config,seed,ids);game.Log.Clear();
-        game.Floors.Clear();game.World=new WorldCampaign(config);
+        game.Floors.Clear();game.QaPrepareChapterBoot(chapter);
+        game.World=new WorldCampaign(game.Config,game.DifficultyIndex);
         game.World.StartTownDeparture(game);
         game.Note("从初始村庄出发，自动远征已开始");return game;
     }
@@ -149,6 +158,7 @@ public sealed partial class GameSession
     internal void BeginDungeon(DungeonSpec dungeon,int visit)
     {
         dungeonEntrySerial=checked(dungeonEntrySerial+1);
+        ResetBossPhases();
         // 每次开始新副本重置普攻及所有主动技能/换入冷却；跨房和换层不清换入等待。
         foreach(var hero in Heroes.Concat(reserveHeroes)){hero.Timer=0;hero.SkillSwapLocks.Clear();}
         ActiveDungeon=dungeon;Won=false;FloorIndex=0;regroup=0;ResetRescue();
@@ -507,20 +517,32 @@ public sealed partial class GameSession
             var fallback=Vector2.Clamp(entry+inward*passDepth,room.Center-room.HalfSize+new Vector2(.8f),room.Center+room.HalfSize-new Vector2(.8f));
             return fallback;
         }
+        // 城堡威胁组合：按"身份档位循环"逐格取身份，总数与等级仍由 spawn_rule 与 Run 区间决定。
+        string areaId=ActiveDungeon==null?"":Config.AreaPart(ActiveDungeon.RegionId).Id;
+        string[] composition=encounter==null||encounter.Composition==""?Array.Empty<string>():encounter.Composition.Split(';',StringSplitOptions.RemoveEmptyEntries);
         for(int i=0;i<count;i++)
         {
             bool boss=room.Boss&&i==count-1&&(plan==null||plan.BossActors==1);
             // 世界远征按本次地牢所在统治区的投放池抽取身份；无池（单地牢模拟、legacy）仍用原全局怪物表。
-            var spec=ActiveDungeon==null?Config.Monsters[rng.Next(Config.Monsters.Count)]:Config.PickSpawnMonster(rng,Config.AreaPart(ActiveDungeon.RegionId).Id,encounter?.PoolBias??"mixed");
+            UnitSpec spec;
+            if(ActiveDungeon==null)spec=Config.Monsters[rng.Next(Config.Monsters.Count)];
+            else if(!boss&&composition.Length>0)
+                spec=Config.PickSpawnMonsterOfArchetype(rng,areaId,composition[i%composition.Length] switch {"M"=>"melee","R"=>"ranged","H"=>"heavy",_=>"support"});
+            else spec=Config.PickSpawnMonster(rng,areaId,encounter?.PoolBias??"mixed");
             var m=rule.Create(spec,rng.Next(levelMin,levelMax+1),boss,modifiers);
             m.Position=SpawnPoint();
             Config.ApplyCombatProfile(m);
             // 内容层：行为偏移（范围/猎手/支援）与 Boss 技能包；不改等级、奖励与房间预算。
             Config.ApplyMonsterContent(m,boss,ActiveDungeon?.Id??"");
-            if(m.Boss&&ActiveDungeon!=null&&Config.PoiProfiles.TryGetValue(ActiveDungeon.Id,out var poi)&&poi.Boss!="")m.Name=poi.Boss+"（原型）";
+            if(m.Boss&&ActiveDungeon!=null&&Config.PoiProfiles.TryGetValue(ActiveDungeon.Id,out var poi)&&poi.Boss!="")
+                // 有真实阶段内容的章末 Boss 不再挂"（原型）"；其余占位名保持显式标注。
+                m.Name=Config.BossPhasesOf(Config.ChapterIndex+1,ActiveDungeon.Id).Count>0?poi.Boss:poi.Boss+"（原型）";
             room.Monsters.Add(m);
             room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,modifiers));
         }
+        // 阶段预留槽位只在此刻（首次生成）与读档重建时创建，之后不再追加，因此复刷与读档都不会多刷 Boss。
+        if(ActiveDungeon!=null)
+            PrepareBossPhaseActors(Config,room,ActiveDungeon.Id,FloorIndex,room.Id,room.Monsters.Count==0?levelMin:room.Monsters.Max(m=>m.Level));
         // 精英词缀：只在世界远征投掷，Boss 房不参与，每房最多一个。
         if(ActiveDungeon!=null&&!room.Boss)TryApplyElite(room.Monsters,rng,DifficultyIndex,encounter?.EliteBias??0);
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
@@ -539,6 +561,8 @@ public sealed partial class GameSession
         }
         effectBudgetRemaining=SkillConfig.EffectBudget;
         PruneSummons();PruneEnemySummons();
+        // Boss 阶段：每帧最多推进一段，先于技能推进，使新阶段技能当帧即可进入候选。
+        AdvanceBossPhases(room);
         AdvanceSkills(dt);
         DrainEffects();
         threatIntents.Clear();
@@ -621,8 +645,9 @@ public sealed partial class GameSession
         Status="前往拾取战利品";
         var user=Heroes.Where(h=>h.Alive).OrderBy(h=>Vector2.DistanceSquared(h.Position,loot.Position)).First();
         if(Vector2.Distance(user.Position,loot.Position)>SpatialTolerance.InteractionRange){Move(user,loot.Position,dt);return true;}
-        // C1-B F01：击杀金币乘率只在入账点应用一次，账本以入账前后差额记账。
-        long gained=loot.Gold<=0?0:checked(loot.Gold+(long)Math.Ceiling(loot.Gold*StarKillGoldPct));
+        // C1-B F01 / C2-B PO03：击杀金币乘率只在入账点应用一次（星图 + 药剂），账本以入账前后差额记账。
+        double goldRate=StarKillGoldPct+PotionKillGoldPct;
+        long gained=loot.Gold<=0?0:checked(loot.Gold+(long)Math.Ceiling(loot.Gold*goldRate));
         long goldBefore=Gold;loot.Collected=true;Gold=checked(Gold+gained);if(gained>0)AuditCurrency("loot_pickup","receive","gold",goldBefore,Gold);
         foreach(var item in loot.Items)
         {

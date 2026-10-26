@@ -27,7 +27,13 @@
 
 - [P0 基础规则与运行数据](reviews/2026-10-23_p0_rules_and_runtime_audit.md)：召唤物接敌容量 0→1（含女武神超时释放）、五章大地图 `travel_speed` 0.65→0.31 调平、本房战斗统计与五场景站位输入。数据见[移动速度审计](data/2026-10-23_movement_speed_audit.md)、[D03/D04 现状](data/2026-10-23_runtime_state_audit_d03_d04.md)；统计字段见[战斗观测统计](technical/combat_stats.md)。
 
-- [章节怪物投放](technical/act_monsters.md)：49个章节身份、统治区加权池、行为偏移（范围/猎手/支援）、精英词缀与Boss技能包；[P1-5执行归档](reviews/2026-10-23_p1_5_act_monsters.md)（C1–C3；M07召唤、其余6词缀与四段特殊剧本未实施）。
+- [章节怪物投放](technical/act_monsters.md)：49个章节身份+1个阶段接替Boss身份、统治区加权池、行为偏移（范围/猎手/支援）、精英词缀与Boss技能包；[P1-5执行归档](reviews/2026-10-23_p1_5_act_monsters.md)（C1–C3；通用M07召唤、其余6词缀与未开工剧本未实施）。
+
+- [Boss 阶段与城堡威胁组合](technical/boss_phase.md)：`boss_phase.csv` 四类触发（战斗开始/血量阈值/遭遇序列/地图阶段）、阶段召援上限与CD复用、存档进度重放与幂等、31 座城堡的身份档位循环；执行与证据见[P2-4 首批 Review 第28节](reviews/2026-10-25_p2_4_first_batch.md)。
+
+- [消耗品字段与消费点](technical/consumables.md)：5 种卷轴（单体/连锁/范围/减速/护旗）与 4 种药剂（攻击/减伤/搜金/疾行）的字段、唯一消费点、存档与槽位边界。
+
+- [装备模板与按实际怪级掉落](technical/loot_equipment.md)：六部位×四品质、31 个实际怪级的掉落分布与品类准入、28 设计模板到 24 个可掉组合的逐行映射（CHARM 按裁决使用 ATK 参数）；执行与证据见 Review 第30节。
 
 - [角色自动技能 AI](design/auto_skill_ai.md)：槽序选技、条件与目标、射程外兜底、召唤名额资格、光环与多诅咒维持、GM有界诊断；[P1-4执行与审计](reviews/2026-10-23_p1_4_auto_skill_ai.md)：含C01–C12逐项结论与实施范围，外部方案原件留在 `docs/temp/` 不随工程归档。
 

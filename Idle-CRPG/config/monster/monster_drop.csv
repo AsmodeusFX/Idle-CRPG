@@ -152,3 +152,6 @@ a5_slayer,relic,0.08,1,1
 a5_succubus,gold,1,1,3
 a5_succubus,fang,0.5,1,2
 a5_succubus,relic,0.08,1,1
+boss_mephisto,gold,1,2,6
+boss_mephisto,fang,0.5,1,2
+boss_mephisto,relic,0.15,1,1

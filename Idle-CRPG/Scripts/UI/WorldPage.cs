@@ -127,7 +127,7 @@ public partial class Main
         if(gateConditions!=null)gateConditions.Text=gate.Replace(" / ","\n");
         if(gateConditions!=null&&MapConfig.Waypoints.FirstOrDefault(w=>w.Region==region.Id) is {} waypoint)
             gateConditions.Text+="\n区域传送点："+(world.Progress.WaypointUnlocked(MapConfig,waypoint)?"已解锁":"本格全部地牢通关后解锁");
-        foreach(var dungeon in dungeons)selectedDungeonLabels[dungeon.Id].Text=$"{(world.Progress.Cleared.Contains(dungeon.Id)?"✓":"·")} {dungeon.Name}  挑战{MapConfig.Challenge(dungeon.Id,mapDifficulty).Challenge}  {(world.Progress.Cleared.Contains(dungeon.Id)?"已通关":"未通关")}"+(MapConfig.PoiProfiles.ContainsKey(dungeon.Id)?" · 原型":"");
+        foreach(var dungeon in dungeons)selectedDungeonLabels[dungeon.Id].Text=$"{(world.Progress.Cleared.Contains(dungeon.Id)?"✓":"·")} {dungeon.Name}  挑战{MapConfig.Challenge(dungeon.Id,mapDifficulty).Challenge}  {(world.Progress.Cleared.Contains(dungeon.Id)?"已通关":"未通关")}"+(MapConfig.PoiProfiles.ContainsKey(dungeon.Id)?MapConfig.BossPhasesOf(MapConfig.ChapterIndex+1,dungeon.Id).Count>0?" · 阶段首领":" · 原型":"");
     }
 
     private string DescribeRegionGate(int region)

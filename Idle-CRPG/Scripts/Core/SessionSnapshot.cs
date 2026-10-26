@@ -61,6 +61,11 @@ public sealed class SessionSnapshot
     public StarProgressSave Stars=new(Array.Empty<StarRankSave>());
     /// <summary>精英击杀收据令牌（C1-B B2 G02）；空数组=旧档，等同未领取任何精英奖励。</summary>
     public string[] EliteKillReceipts=Array.Empty<string>();
+    /// <summary>
+    /// Boss 阶段进度（C2-A A2）：<c>poi:floor:room:phase</c> 字符串。
+    /// 空列表=旧档/未触发阶段，等同第0段；只用于"同一房间同一段不重复生效"，不保存怪物现场。
+    /// </summary>
+    public List<string> BossPhaseProgress=new();
     public double StarAttack,StarHp;
     public WorldSnapshot? World;
 }
@@ -115,7 +120,7 @@ public sealed partial class GameSession
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=3,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,DoorWait=destination>=0&&phase==1&&doorOpener is {Alive:true}?doorWait:0,DoorFallback=destination>=0&&phase==1&&doorOpener is {Alive:true}&&doorFallback,DoorOpenerHero=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Heroes.Contains(doorOpener)?Heroes.IndexOf(doorOpener):-1,DoorOpenerSummon=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Summons.Contains(doorOpener)?Summons.IndexOf(doorOpener):-1,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
-        AssetAuditTick=assetAuditTick,AssetEventSequence=assetEventSequence,FixedSkillsVersion=Config.LegacySkillRuntime?0:2,Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList()
+        AssetAuditTick=assetAuditTick,AssetEventSequence=assetEventSequence,FixedSkillsVersion=Config.LegacySkillRuntime?0:2,Inventory=inventory.Select(e=>new InventoryEntry(e.Key.ItemId,e.Key.Price,e.Value)).ToList(),Log=Log.ToList(),Modifiers=SpawnModifiers,World=World?.Capture(),RoomEntry=roomEntry.ToList(),BossPhaseProgress=CaptureBossPhases()
     };
     /// <summary>正式存档只保留房间检查点。未完成战斗从进房位置重开，已领取资源与奖励标志一并保留。</summary>
     public SessionSnapshot CaptureProgress()
@@ -170,17 +175,26 @@ public sealed partial class GameSession
         bool townMigrated=MigrateTownLayout(config,s);
         if(s.RoomCheckpoint)
         {
-            foreach(var floor in s.Floors)foreach(var r in floor.Rooms)
+            for(int floorIndex=0;floorIndex<s.Floors.Count;floorIndex++)
             {
-                r.Monsters.Clear();
-                if(r.Generated&&!r.ContentCleared)
-                    foreach(var o in r.Origins)
+                var floor=s.Floors[floorIndex];
+                foreach(var r in floor.Rooms)
+                {
+                    r.Monsters.Clear();
+                    if(r.Generated&&!r.ContentCleared)
                     {
-                        var spec=config.FindMonsterSpec(o.SpecId)??throw new InvalidDataException("出生模板怪物引用无效");
-                        config.Spawn.Validate(o.Modifiers);
-                        if(o.Level<1||o.Level>config.MaxMonsterLevel)throw new InvalidDataException("出生模板等级超过怪物等级表范围");
-                        var monster=config.Spawn.Create(spec,o.Level,o.Boss,o.Modifiers);config.ApplyCombatProfile(monster);monster.Position=o.Position;r.Monsters.Add(monster);
+                        foreach(var o in r.Origins)
+                        {
+                            var spec=config.FindMonsterSpec(o.SpecId)??throw new InvalidDataException("出生模板怪物引用无效");
+                            config.Spawn.Validate(o.Modifiers);
+                            if(o.Level<1||o.Level>config.MaxMonsterLevel)throw new InvalidDataException("出生模板等级超过怪物等级表范围");
+                            var monster=config.Spawn.Create(spec,o.Level,o.Boss,o.Modifiers);config.ApplyCombatProfile(monster);monster.Position=o.Position;r.Monsters.Add(monster);
+                        }
+                        // 阶段预留槽位必须与进房生成同序（基础怪→阶段单位→敌方召唤），否则击杀收据索引会漂移。
+                        int fallbackLevel=r.Monsters.Count==0?r.SnapshotLevel:r.Monsters.Max(m=>m.Level);
+                        PrepareBossPhaseActors(config,r,s.ActiveDungeonId,floorIndex,r.Id,fallbackLevel);
                     }
+                }
             }
         }
         if(s.RoomCheckpoint)foreach(var floor in s.Floors)foreach(var room in floor.Rooms)if(room.Generated&&!room.ContentCleared)PrepareEnemySummons(config,room);
@@ -239,6 +253,8 @@ public sealed partial class GameSession
             var anchor=room.Neighbors.Select(i=>room.DoorTowards(game.Floor.Rooms[i])).OrderBy(p=>Vector2.DistanceSquared(p,game.Heroes[0].Position)).FirstOrDefault(room.Center-Vector2.UnitX*room.HalfWidth);
             game.StartCombatEntry(room,anchor);
         }
+        // 阶段进度必须在技能现场重建之后重放：它会重新附上阶段技能与短期 Buff。
+        game.RestoreBossPhases(s.BossPhaseProgress);
         return game;
     }
     /// <summary>旧档切换到正式三系布局：同 ID 保留等级；仅退款重排后前置/系内投入已不合法的节点，SkillTreeVersion 保证幂等。</summary>
@@ -313,6 +329,21 @@ public sealed partial class GameSession
         Need(s.Stars!=null&&double.IsFinite(s.StarAttack)&&double.IsFinite(s.StarHp)&&s.StarAttack>=0&&s.StarHp>=0,"星图贡献");
         // 精英击杀收据：数量有界、无重复、无非空字符串；旧档缺字段按空数组视为合法。
         Need(s.EliteKillReceipts!=null&&s.EliteKillReceipts.Length<=4096&&s.EliteKillReceipts.All(r=>!string.IsNullOrWhiteSpace(r)&&r.Length<=128)&&s.EliteKillReceipts.Distinct().Count()==s.EliteKillReceipts.Length,"精英击杀收据无效");
+        // Boss 阶段进度：旧档缺字段按空列表合法；每条必须是 poi:floor:room:phase 且引用的阶段与楼层真实存在。
+        Need(s.BossPhaseProgress!=null&&s.BossPhaseProgress.Count<=4096,"Boss阶段进度字段");
+        foreach(string entry in s.BossPhaseProgress)
+        {
+            var parts=entry.Split(':');
+            Need(parts.Length==4&&parts.All(p=>p!="")&&entry.Length<=128,"Boss阶段进度格式");
+            bool parsedFloor=int.TryParse(parts[1],out int floor);
+            bool parsedRoom=int.TryParse(parts[2],out int roomIndex);
+            bool parsedPhase=int.TryParse(parts[3],out int phase);
+            Need(parsedFloor&&parsedRoom&&parsedPhase,"Boss阶段进度数值");
+            int applied=c.BossPhasesOf(c.ChapterIndex+1,parts[0]).Count;
+            Need(applied==0||(phase>=1&&phase<=applied),"Boss阶段进度引用无效阶段");
+            if(s.ActiveDungeonId==parts[0]&&s.Floors!=null&&s.Floors.Count>0)
+                Need(floor>=0&&floor<s.Floors.Count&&roomIndex>=0&&roomIndex<s.Floors[floor].Rooms.Count,"Boss阶段进度引用无效房间");
+        }
         var talentStars=new StarProgression(c.Stars,s.Stars);ValidateFormationSnapshot(c,s);
         if(!c.LegacySkillRuntime)
         {
@@ -355,7 +386,7 @@ public sealed partial class GameSession
             Need(a.SkillIds.Distinct().Count()==a.SkillIds.Length&&a.SkillIds.All(id=>c.Skills.Skills.TryGetValue(id,out var skill)&&skill.Kind=="ActiveSkill")&&a.SkillLevels.All(p=>c.Skills.Abilities.TryGetValue(p.Key,out var ability)&&p.Value>=1&&p.Value<=ability.MaxLevel),"装备技能/等级引用");
         }
         ValidateSkillSnapshot(c,s);
-        Need(s.Floors.Count<=20,"楼层数量");
+        Need(s.Floors!.Count<=20,"楼层数量");
         foreach(var f in s.Floors)
         {
             Need(f.Rooms.Count>=3&&f.Rooms.Count<=20&&f.Rooms.Select((r,i)=>r.Id==i).All(v=>v)&&f.Rooms.Count(r=>r.Boss)==1,"房间编号/BOSS");

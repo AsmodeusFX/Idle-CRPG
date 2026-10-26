@@ -1,0 +1,12 @@
+id,chapter,poi_id,phase,trigger,threshold,scope,name,skill_id,buff_id,escort_template,escort_count,role,telegraph
+A08-C01-P1,1,A08-C01,1,fight_start,0,boss,毒雾领域,boss_poison_burst,,a1_fallen,2,add,安达利尔抬手，毒雾自脚下扩散，亡者爬出地面
+A08-C01-P2,1,A08-C01,2,hp_pct,50,boss,毒压狂怒,boss_venom_press,boss_enrage,,0,,安达利尔嘶鸣，攻速暴涨并喷吐毒液
+A07-C01-P1,2,A07-C01,1,fight_start,0,boss,寒冰冲锋,boss_charge,,a2_scarab,2,add,都瑞尔站定蓄力，甲虫自沙中爬出
+A07-C01-P2,2,A07-C01,2,hp_pct,50,boss,冰霜重压,sor_frost_nova,boss_enrage,,0,,都瑞尔重击抬手，寒霜沿地面扩散
+B07-C01-P1,3,B07-C01,1,fight_start,0,boss,议会结阵,boss_council_bless,,a3_council,2,add,议会成员逐个入场并结成法阵
+B07-C01-P2,3,B07-C01,2,sequence,0,boss,墨菲斯托,boss_chain_bolt,boss_enrage,boss_mephisto,1,successor,议会成员尽数倒下，墨菲斯托自祭坛升起
+D04-C01-P1,4,D04-C01,1,floor_stage,3,room,封印西翼,,,a4_doom_knight,2,add,西侧封印亮起，末日骑士守卫封印
+D04-C01-P2,4,D04-C01,2,floor_stage,4,room,封印东翼,,,a4_oblivion_knight,2,add,东侧封印亮起，遗忘骑士展开诅咒
+D04-C01-P3,4,D04-C01,3,floor_stage,5,room,封印中央,,,a4_pit_lord,1,add,中央封印亮起，地狱领主踏出封印
+D04-C01-P4,4,D04-C01,4,floor_stage,6,boss,恐惧之王,boss_fire_ring,boss_enrage,,0,,迪亚波罗张开双臂，火焰环在脚下扩散
+D04-C01-P5,4,D04-C01,5,hp_pct,50,boss,终末雷暴,boss_chain_bolt,,a4_hell_imp,2,add,迪亚波罗举掌蓄势，雷电沿锁链跳跃

@@ -1,6 +1,7 @@
 using Godot;
 using IdleCrpg.Core;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using V = System.Numerics.Vector2;
 
@@ -158,6 +159,7 @@ public partial class Main : Node2D
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--first-batch-smoke"))RunFirstBatchSmoke();
         if(OS.GetCmdlineUserArgs().Contains("--legacy-migration-smoke"))RunLegacyMigrationSmoke();
+        if(OS.GetCmdlineUserArgs().Contains("--c2a-boss-smoke"))RunC2ABossSmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
     }
@@ -239,7 +241,7 @@ public partial class Main : Node2D
         var s=session;
         var w=s.World!;
         string status=w.Stage==CampaignStage.Dungeon?$"{s.CurrentFloorDisplayName} · {s.Status}\n第 {s.FloorIndex+1}/{s.Floors.Count} 层 · 清理 {s.Floor.Rooms.Count(r=>r.Clear)}/{s.Floor.Rooms.Count}":w.Status;
-        summary.Text=$"{status}  |  击杀 {s.Kills:N0}";
+        summary.Text=$"{status}  |  击杀 {s.Kills:N0}"+(s.BossPhaseLabel==""?"":"  |  BOSS阶段 "+s.BossPhaseLabel);
         roster.Text=string.Join("\n\n",s.Heroes.Select(h=>$"{h.Name}  Lv.{h.Level}  {(h.Alive?"":"阵亡")}\nHP {Math.Ceiling(h.Hp)} / {h.MaxHp:0}   攻击 {h.Attack:0}"));
         journal.Text="远征记录\n\n"+string.Join("\n",s.Log.TakeLast(3));
     }
@@ -316,6 +318,7 @@ public partial class Main : Node2D
             }
         }
         // 召唤物是独立Actor，按友方颜色绘制；不并入Heroes或怪物列表，也不改变锁定与伤害权威。
+        var phaseTags=new List<(Vector2 At,string Text)>();
         foreach(var a in visible.SelectMany(r=>r.Monsters).Concat(session.Heroes).Concat(session.Summons).Where(a=>a.Alive).OrderBy(a=>a.Position.X+a.Position.Y))
         {
             bool summon=session.Summons.Contains(a);
@@ -324,11 +327,25 @@ public partial class Main : Node2D
             {var prototype=config.MonsterPreviews.FirstOrDefault(d=>a.Name.StartsWith(d.Id+" "));if(prototype!=null)color=new Color(prototype.Color);else if(a.EnemySummonSource>=0)color=new Color("91d99c");}
             var visualOffset=motion.CombatVisualOffset(a);
             DrawFighter(Project(VisualPosition(a))+new Vector2(visualOffset.X,visualOffset.Y)-new Vector2(0,index>=0?session.TalentLeapHeight(a):0),color,index,a.Boss,a.Hp/a.MaxHp,a.Name);
+            // Boss 阶段标签：只读 GameSession 的已生效阶段；先收集，最后统一绘制，避免被其它单位名遮住。
+            if(a.Boss&&!a.BossPhaseDormant&&session.BossPhaseLabel!="")
+            {
+                var text=session.BossPhaseLabel;var size=font.GetStringSize(text,HorizontalAlignment.Left,-1,12);
+                float bossScale=Math.Clamp(zoom/50,.8f,1.25f)*1.3f;
+                phaseTags.Add((Project(VisualPosition(a))+new Vector2(-size.X*.5f,-53f*bossScale-30f),text));
+            }
             if(index>=0&&session.CombatEntryRemaining<=0&&a.Timer<=a.Cooldown+.001f&&a.Timer>a.Cooldown-.14f)
             {
                 var target=f.Rooms[session.CurrentRoom].Monsters.Where(m=>m.Alive).OrderBy(m=>V.DistanceSquared(a.Position,m.Position)).FirstOrDefault();
                 if(target!=null)DrawLine(Project(VisualPosition(a))-new Vector2(0,18),Project(VisualPosition(target))-new Vector2(0,15),new Color(color.R,color.G,color.B,.6f),2,true);
             }
+        }
+        // 阶段标签最后绘制（含深色底），保证在拥挤的Boss房里仍然可读。
+        foreach(var (at,text) in phaseTags)
+        {
+            var size=font.GetStringSize(text,HorizontalAlignment.Left,-1,12);
+            DrawRect(new Rect2(at-new Vector2(5,3),size+new Vector2(10,6)),new Color(0,0,0,.62f));
+            DrawString(font,at,text,HorizontalAlignment.Left,-1,12,new Color("ffd48a"));
         }
         if(PreviewOpen&&config.MonsterPreviews.Count>0)DrawMonsterMini();
         foreach(var flight in session.TalentProjectiles)

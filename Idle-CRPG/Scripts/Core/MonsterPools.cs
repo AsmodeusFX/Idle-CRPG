@@ -15,6 +15,26 @@ public sealed partial class Config
     public List<UnitSpec> ActMonsters { get; private set; }=new();
     /// <summary>统治区 ID → 加权池；没有该表的章节与旧地图回落到全局怪物表。</summary>
     public Dictionary<string,List<MonsterPoolEntry>> MonsterPools { get; private set; }=new();
+    /// <summary>
+    /// 身份→职能档位（melee/ranged/heavy/support）。与身份ID分开登记，只用于"从池里抽哪一档"，
+    /// 不参与等级、数量、奖励或伤害；缺表时按射程/生命相对分档回落（A1 旧口径）。
+    /// </summary>
+    public Dictionary<string,string> MonsterArchetypes { get; private set; }=new(StringComparer.Ordinal);
+
+    /// <summary>章节身份先加载，职能档位才能校验引用；文件缺失表示沿用相对分档。</summary>
+    private void LoadMonsterArchetypes(string directory)
+    {
+        MonsterArchetypes=new(StringComparer.Ordinal);
+        string path=Path.Combine(directory,"monster/archetypes.csv");
+        if(!File.Exists(path))return;
+        foreach(var r in CsvTable.Load(path,File.ReadAllText(path),"monster_id","archetype").Rows)
+        {
+            string archetype=r.Required("archetype");
+            if(FindMonsterSpec(r.Id)==null)throw r.Error("monster_id","职能档位引用未知怪物身份");
+            if(archetype is not ("melee" or "ranged" or "heavy" or "support"))throw r.Error("archetype","职能档位仅支持 melee/ranged/heavy/support");
+            if(!MonsterArchetypes.TryAdd(r.Id,archetype))throw r.Error("monster_id","职能档位重复");
+        }
+    }
 
     /// <summary>读取章节内容身份表；缺失视为未投放，不报错。数值只做范围与重复校验，不重算平衡。</summary>
     private void LoadActMonsters(string directory)
@@ -80,8 +100,8 @@ public sealed partial class Config
     {
         if(MonsterPools.TryGetValue(areaPartId,out var pool)&&pool.Count>0)
         {
-            // 内容形态偏好：远程=池内最长射程档、重型=池内最高生命档；相对池内分档，避免"全池同档时无效果"。
-            bool biased=poolBias is "melee" or "ranged" or "heavy";
+            // 内容形态偏好：优先用显式职能档位，缺表回落到池内相对射程/生命分档（A1 旧口径）。
+            bool biased=poolBias is "melee" or "ranged" or "heavy" or "support";
             double maxRange=pool.Max(e=>FindMonsterSpec(e.MonsterId)?.Range??0);
             double maxHp=pool.Max(e=>FindMonsterSpec(e.MonsterId)?.Hp??0);
             var weighted=biased
@@ -98,10 +118,38 @@ public sealed partial class Config
         return Monsters[rng.Next(Monsters.Count)];
     }
 
-    /// <summary>身份分类只看既有模板字段（射程/生命），且相对本池最高档判定，不引入第二套行为标签。</summary>
+    /// <summary>
+    /// 按职能档位抽取身份：城堡威胁组合的每一格只决定"这一格要哪一档"，
+    /// 同档内仍按池权重随机，因此总数与池成员不被改写。池内没有该档时报错而不是静默改名。
+    /// </summary>
+    public UnitSpec PickSpawnMonsterOfArchetype(Random rng,string areaPartId,string archetype)
+    {
+        if(archetype is not ("melee" or "ranged" or "heavy" or "support"))throw new ArgumentOutOfRangeException(nameof(archetype));
+        if(!MonsterPools.TryGetValue(areaPartId,out var pool)||pool.Count==0)return Monsters[rng.Next(Monsters.Count)];
+        var candidates=pool.Where(e=>ArchetypeOf(e.MonsterId)==archetype).ToArray();
+        if(candidates.Length==0)throw new InvalidDataException($"统治区 {areaPartId} 的投放池没有 {archetype} 档身份");
+        int total=candidates.Sum(e=>e.Weight),roll=rng.Next(total),accumulated=0;
+        foreach(var entry in candidates)
+        {
+            accumulated+=entry.Weight;
+            if(roll<accumulated)return FindSpawnSpec(entry.MonsterId);
+        }
+        return FindSpawnSpec(candidates[^1].MonsterId);
+    }
+
+    /// <summary>显式职能档位优先；没有登记时按池内相对分档，保证旧图与旧档行为不变。</summary>
+    public string ArchetypeOf(string monsterId)
+    {
+        if(MonsterArchetypes.TryGetValue(monsterId,out var declared))return declared;
+        var spec=FindMonsterSpec(monsterId);
+        return spec==null?"melee":spec.Hp>=55?"heavy":spec.Range>=.85?"ranged":"melee";
+    }
+
+    /// <summary>身份分类优先读显式档位；缺表时相对本池最高射程/生命档判定，不引入第二套行为标签。</summary>
     private bool MatchesBias(string monsterId,string poolBias,double maxRange,double maxHp)
     {
         var spec=FindMonsterSpec(monsterId);if(spec==null)return false;
+        if(MonsterArchetypes.TryGetValue(monsterId,out var declared))return declared==poolBias;
         return poolBias switch
         {
             "ranged"=>maxRange>0&&spec.Range>=maxRange-.0001,

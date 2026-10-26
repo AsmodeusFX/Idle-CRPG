@@ -6,6 +6,7 @@
 - 权限：IMPLEMENT_APPROVED_SCOPE（用户指令范围内；未做 Git 提交/推送）
 - 状态：工程实现与自检 **PASS_WITH_OPEN_ITEMS**；设计AI复核 **已回填 V1.0（PASS_WITH_OPEN_ITEMS，报告级）**，见 §9；设计裁决回传 **V1.1 两项 [C] 已落实**，见 §10；用户验收 **未验收**
 - 本文件为该模块唯一 Review，后续 WP 升级、复跑与补救一律在本文件内追加小节
+- 最新小节：**§30 S15-C2-B 收口（装备 28 模板／31 级掉落／药剂减伤，2026-10-26）**；上一节 §29 C2-B 消耗品切片、§28 C2-A A2/A3、§27 C2-A A0/A1
 
 ---
 
@@ -852,6 +853,8 @@ S15-C0 只读对账已完成：675/154/258 全量覆盖，21 份设计源哈希�
 - **四章末 Boss 阶段**（毒压／突进承压／议会→墨菲斯托／混沌避难所六层→迪亚波罗）在现有工程**没有阶段机制**：`boss_skill.csv` 每 POI 仅一条技能、无 HP 阈值/阶段切换消费者。按包内 §3"若必须新建玩家可感知的强制操作或专属资源，请另回报裁决"，本轮**不新建**阶段系统，也不把占位 Boss 改名冒充。
 - 建议下一片：新增 `boss_phase.csv`（POI、血量阈值、阶段技能包、台词/预警）+ 在 Boss 施法决策处唯一切换，配套 4 个章末 Boss 的固定种子阶段回归。
 
+> 后续：设计Owner 已批准按建议补齐，A2 与 A3 的实际实现在 **§28** 记录；本节保留为当时的阻断事实，不代表当前状态。
+
 ### 27.6 差异与局限
 
 1. 生产怪物模板全为近战射程档（0.7–0.85），所以"ranged"偏好按**池内最长射程档**生效，而非绝对远程；真正的远程/施法身份仍需 C2-A 的行为扩展（属 NEW_EFFECT 缺口）。
@@ -1253,3 +1256,301 @@ B0 阶段的 56/54/53 是"排除 7 阶缺失消费者"的条件值；B2 落地�
 - **E（工程自检）：C1-A-1 = PASS；C1-A-2 = OPEN**。16/16 技能与 4/4 T 均有固定Seed真实行为与真机UI证据；98 节点未实施，不计入通过。
 - **V-Design：未复核**。需重点裁决：①T资格过渡规则（未投放即学）是否接受；②陨星/祝福之锤/旋风三项近似是否满足身份要求；③C1-A-2 是否继续按上述两步扩展推进。
 - **V-User：未验收**。C1-A-1 可实机体验（四职业技能卡与T），不等于首轮10小时体验通过。
+
+---
+
+## 28. S15-C2-A A2–A3：Boss 通用阶段能力、城堡威胁组合与运行时收口（2026-10-26）
+
+### 28.1 需求与授权来源
+
+设计Owner裁决（原文要点）：在原 C2-A 授权范围内补齐 Boss 通用阶段能力，继续 A2→A3，不需要重新申请整包授权。
+
+| 硬性要求 | 本轮处理 |
+|---|---|
+| 可新增 `boss_phase.csv` 及单一运行时消费者，不得建立第二套怪物等级/刷怪/伤害/奖励权威 | 新增表 + `BossPhaseRuntime.cs` 唯一消费者；等级取 Boss 快照，伤害走 `DamagePipeline`，奖励走既有击杀收据 |
+| 阶段触发不能只支持 HP 阈值 | 四种触发全部落地：`fight_start`/`hp_pct`/`sequence`/`floor_stage`（安达利尔、都瑞尔用战斗状态切换；议会→墨菲斯托用遭遇序列；混沌避难所按 P0 六层推进；迪亚波罗再叠加自身阶段） |
+| 优先复用已有技能/Buff/范围/召援/预警；阶段技能必须有 CD、触发次数、召援上限 | 复用 `AreaPulse`/`ApplyBuff`/`Chain`/`Damage` 与 `sor_frost_nova`/`mob_heavy_fx`；CD 取 `skill.csv`；每段每房只生效一次；召援预留槽位每段≤6、每 POI≤10 |
+| 存档恢复、固定 Seed、切换幂等、合法死亡与收益收据；不得因加载/房间恢复重复刷 Boss 或重复领奖 | `BossPhaseProgress` 存档条目 + 读档重放；接替者只在生成时预留一次；`--c2a-boss-checks` 覆盖二次读档与同种子对比 |
+| 31 座城堡要体现 S09 威胁组合，不得只用未区分怪群 | `castle_threat.csv` 逐城堡身份档位循环，运行时 31/31 逐格核对 |
+| 四章末 Boss 需真实 Godot 窗口与可观察阶段前后证据；没有真实消费者的内容标 PENDING | `--c2a-boss-smoke` 真实窗口 10 张截图 + 阶段标签/HUD 行；未实现项列 §28.6 |
+| 不引入强制手动机关/专属资源/职业限制；不改 P0 拓扑、城堡原准入、Run 怪级权威；数值为 [H] | 全部只读既有状态；未改 `CanChallengeCastle`、`floor_plan`、`spawn_rule`；数值统一 `[H]` |
+
+### 28.2 A2 实际变更
+
+**配置**
+
+| 文件 | 变更 |
+|---|---|
+| `config/monster/boss_phase.csv`（新） | 11 行 / 4 章末首领。`A08-C01` fight_start+hp_pct；`A07-C01`（第2章）同型；`B07-C01` fight_start + sequence 接替；`D04-C01` floor_stage 3/4/5/6 + hp_pct |
+| `config/monster/archetypes.csv`（新） | 51 行身份→`melee/ranged/heavy/support`，供池偏好与城堡组合共用 |
+| `config/chapters/act{1..4}/dungeon/castle_threat.csv`（新） | 31 座城堡默认行 + D04 第3/4/5/6 层覆盖；`composition` 为档位循环 |
+| `config/skill/skill.csv`（+6） | `boss_poison_burst`/`boss_venom_press`/`boss_charge`/`boss_fire_ring`/`boss_council_bless`/`boss_chain_bolt` |
+| `config/skill/effect.csv`（+5） | `boss_poison_burst_fx`(AreaPulse Poison)、`boss_poison_cloud_apply`、`boss_venom_strike_fx`(Damage Poison)、`boss_fire_ring_fx`(AreaPulse Fire)、`boss_council_bless_apply` |
+| `config/skill/buff.csv`（+3） | `boss_poison_cloud`（毒抗 −20%）、`boss_council_bless`（攻速 +15%）、`boss_enrage`（攻速 +25%） |
+| `config/monster/act_monsters.csv`（+1） | `boss_mephisto` 独立身份（含 `unit_attributes` 与 3 条掉落）；不是给普通怪改名 |
+| `config/chapters/act3/dungeon/poi_profile.csv` | `B07-C01 boss_name` 由"议会成员 → 墨菲斯托"改为"议会成员"；墨菲斯托由阶段接替者带入 |
+
+**代码**
+
+- `Scripts/Core/BossPhases.cs`（新）：阶段记录/加载/校验（连续段号、阈值单调、接替唯一且在最后一段、召援上限、POI 与楼层存在）。
+- `Scripts/Core/BossPhaseRuntime.cs`（新）：预留槽位、四类触发判定、单帧单段推进、技能/Buff 附加、日志与表现事件、进度捕获/恢复。
+- `Dungeon.cs`：`Room.PhasePending` + `Clear` 条件（遭遇序列接替前不得结算）。
+- `GameSession.cs`：`Reveal` 用 `composition` 逐格取身份、章末 Boss 去掉"（原型）"后缀、生成时预留阶段槽位、`BeginDungeon` 清空阶段进度、`Fight` 每帧推进阶段。
+- `EncounterPlans.cs`：`EncounterPlan` 增加 `Threat/Composition`；新增 `CastleThreats` 与 `EncounterFor` 的"精确层→城堡默认行"回退；城堡组合与普通层节拍表分开登记。
+- `MonsterPools.cs`：`MonsterArchetypes` + `PickSpawnMonsterOfArchetype` + `ArchetypeOf`；`MatchesBias` 优先显式档位、缺表回退相对分档。
+- `SessionSnapshot.cs`：`BossPhaseProgress` 字段、校验、读档重建时预留槽位并重放当前房间阶段。
+- `GmCommands.cs`：`QaEnterBossRoom`/`QaKillRoomEnemies`/`QaPrepareChapterBoot`（`internal` QA 入口，玩家无入口）。
+- UI：Boss 头顶阶段标签（深色底、最后绘制）+ `summary` 行追加"BOSS阶段 …"；城堡卡与地图页对四章末城堡显示"阶段首领 [H]"，其余仍标"原型内容"。
+
+**配置导入修正**：`floor_rhythm.csv`（4 章）与 `hero_unlocks.csv` 曾被 Godot 自动按 `csv_translation` 导入并生成 29 个 `*.translation`；
+本轮改回 `importer="keep"`，残留文件移到忽略目录 `artifacts/legacy-csv-translations/`，新表同步写 keep 元数据。
+
+**工具**：`tools/Apply-S15C2A-A2.ps1`（幂等，`-Check` 只比对；Windows PowerShell 5.1 需 BOM，脚本已按 BOM 保存）。
+
+### 28.3 自主判断与偏差台账（累计 C3）
+
+| 原要求／推断 | 工程事实 | 采用方案与理由 | 影响 |
+|---|---|---|---|
+| `boss_phase` 主键按 POI 即可 | POI ID 只在章内唯一（`A08-C01` 同时存在于第1/2章） | 主键改为 `chapter+poi_id+phase`，校验章号与 POI 存在 | 与既有 `boss_skill.csv`（仅 POI）不同；旧表未改，属既有原子性缺口 |
+| 城堡"近战守卫保护远程投射手" | 生产池原按"池内最长射程/最高生命"相对分档，全池近战射程相近，档位区分度低 | 新增显式 `archetypes.csv`（设计建议的 identity/behavior 分离），组合按档位循环 | 226 层 `pool_bias` 结果随之更准确；旧图缺表时仍回退旧口径 |
+| 阶段召唤可复用敌方召援 | `EnemySummonRule` 以"施法者模板"配置，Boss 身份来自区域池，无法稳定绑定 | 阶段改用"进房预留槽位 + 阶段激活一次"，与敌方召唤同为 0 血待命模型 | 不新增 AI 分支；阶段槽位不参与 `EnemySummonSource` 校验 |
+| 议会→墨菲斯托可用同一 Boss 改名 | 改名会让普通怪冒充章节首领 | 新增 `boss_mephisto` 独立身份（属性/掉落/战斗属性行齐备），由 `successor` 接替 | `act_monsters` 由 49 变 50，`ActMonsterPoolChecks` 同步 |
+| 迪亚波罗六层需要 Boss 本体 | P0 `floor_plan` 第3–5层 `BossActorCount=0` | 第3–5层用 `scope=room` 的楼层阶段守卫（数量对齐 P0 `SealActivationCount` 2/2/1），第6层再叠加本体阶段 | 阶段守卫是额外内容，不是对 BossActor 预算的重写 |
+| 阶段 Buff 应随房间恢复 | Buff 是短期战斗现场，读档重开会重建房间 | 只重放"当前房间"的阶段；其它房间的阶段条目在读档时丢弃并按需重新判定 | 非当前房间不保留阶段 Buff（本来也会过期） |
+| 阶段进度可跨复刷复用 | 复刷是新的合法遭遇（P0 允许重新获取收益） | `BeginDungeon` 清空本轮阶段进度，重新走阶段 | 与既有"复刷正常收益"一致 |
+
+### 28.4 A3 验证（全部退出码 0）
+
+本机 Windows；dotnet SDK 10.0.301（项目 net8.0）；Godot 4.7.2.stable.mono.official.ed1daf0bf；
+OpenGL Compatibility / NVIDIA GeForce RTX 4060 Laptop GPU。Godot 从官方 4.7.2 mono win64 包解压到忽略目录 `artifacts/tools/godot/`，
+未改依赖清单、未写正式存档（automation 存档走 `artifacts/qa/`）。
+
+| 入口 | 结果 | 证据 |
+|---|---|---|
+| 两工程 `dotnet build` | 0 警告 0 错误 | `Idle-CRPG.csproj`、`tests/IdleCrpg.Checks.csproj` |
+| 默认全量 Core | 退出 0（旧 WP/INT/C1/C2 全绿） | 含 `INT_01_08_PASS`、`SIM_LEDGER diff=0` |
+| `--regression-matrix` | **56/56** | 含新增 `C2ABossPhaseChecks` |
+| `--c2a-checks`（A1 回归） | `C2A_PASS`（136 地牢/226 层/31 城堡/226 计划） | 档位改用显式表后普通层计数不变 |
+| `--c2a-boss-checks`（A2/A3 专项） | `C2A_A2_BOSS_PASS` | 见下 |
+| Godot headless `--smoke-test` | `SMOKE_OK: 交战中`（12 段 UI 冒烟） | 新配置在引擎内可加载 |
+| Godot 真实窗口 `--first-batch-smoke` | `FIRST_BATCH_UI_PASS`（1440×900） | 既有 UI 未回归 |
+| Godot 真实窗口 `--c2a-boss-smoke` | `C2A_BOSS_UI_PASS` | 10 张阶段前后截图 + `phases.csv` |
+
+**`--c2a-boss-checks` 断言覆盖**（`artifacts/qa/s15-c2a-boss-*/`）：
+
+- 阶段表合同：4 个章末首领、4 种触发全有真实内容、B07 接替唯一且为独立身份、每 POI 召援合计 ≤10、阶段技能均有 CD。
+- 31 座城堡：都有组合、威胁名区分度 ≥25、每个档位在所属统治区池中可抽出、普通地牢不被覆盖。
+- 运行时逐城堡（31/31）：实际生成的每一格身份档位与 `composition` 循环一致，怪级仍在 `Run.[Lmin,Lmax]`；
+  `c2a_a2_castle_composition.csv` 逐座记录 `threat/composition/spawned/actual`。
+- 安达利尔：进入前无阶段 → 第1段追加 `boss_poison_burst` 且 2 个随从激活 → 45% 血量第2段追加 `boss_venom_press` + `boss_enrage` →
+  再跑 200 帧不重复推进；读档后技能/随从/进度一致，怪物数与 KP/XP 不变，二次读档幂等。
+- 都瑞尔（第2章独立地图）：开场 `boss_charge`、49% 血量 `sor_frost_nova`。
+- 议会→墨菲斯托：全灭后 `room.Clear` 不成立、接替前无存活 Boss；接替后 `boss_mephisto` 登场、获得 `boss_chain_bolt`、`PhasePending` 解除、KP 合法入账。
+- 混沌避难所：第3层只有"封印西翼"（2 守卫）且不提前激活第4层；第6层累计 5 处封印守卫 + 迪亚波罗 `boss_fire_ring`，45% 血量进入"终末雷暴"并召援 2。
+- 固定种子：同种子现场（身份/等级/Boss 标记/坐标/阶段标签）完全一致，不同种子不同。
+- 未投放阶段的地牢：仍保留"（原型）"名、无阶段标签、不生成阶段单位。
+
+**真实窗口证据**（`artifacts/qa/c2a-boss-ui-20261026-134016-2522404-a378d426d36146b9b282eea11fdd26af/`）：
+
+`a1-andariel-before.png`、`a1-andariel-phase1-poison.png`、`a1-andariel-phase2-enrage.png`、
+`a2-duriel-phase1-charge.png`、`a2-duriel-phase2-frost.png`、
+`a3-council-phase1.png`、`a3-mephisto-phase2.png`、
+`a4-seal-floor3.png`、`a4-diablo-phase1-fire.png`、`a4-diablo-phase2-storm.png`，附 `phases.csv`。
+已人工查看安达利尔、议会、迪亚波罗关键图：Boss 头顶阶段标签与 `summary` 行"BOSS阶段 …"同时可见，
+阶段后技能列表与随从数量随 `phases.csv` 变化。三张 Diablo/Andariel 图的敌群在原型绘制下仍较拥挤（见 §28.6）。
+
+### 28.5 出处账本（节选）
+
+`c2a_a2_castle_composition.csv`（运行时逐格）：
+
+```text
+1,A01-C01,1,守门混编,M;M;H,4,melee|melee|heavy|melee,true
+2,A02-C01,1,重卫护阵,H;H;R,5,heavy|heavy|ranged|heavy|heavy,true
+3,B07-C01,1,章节首领,M;R;M;R;S,...,true
+4,D04-C01,1,终章首领,M;R;M;R,...,true
+```
+
+`phases.csv`（真实窗口）：
+
+```text
+andariel,phase1,毒雾领域（第1段）,安达利尔,mob_heavy|boss_poison_burst,2
+andariel,phase2,毒压狂怒（第2段）,安达利尔,mob_heavy|boss_poison_burst|boss_venom_press,2
+council,phase1,议会结阵（第1段）,议会成员,mob_support|mob_area_pulse|boss_council_bless,2
+council,phase2,墨菲斯托（第2段）,墨菲斯托,boss_chain_bolt,1
+diablo,phase1,恐惧之王（第4段）,迪亚波罗,mob_area_pulse|mob_heavy|boss_fire_ring,5
+diablo,phase2,终末雷暴（第5段）,迪亚波罗,mob_area_pulse|mob_heavy|boss_fire_ring|boss_chain_bolt,7
+```
+
+### 28.6 PENDING / 未完成（不得视为已完成）
+
+1. **Boss 专属身份与美术**：安达利尔/都瑞尔/迪亚波罗的本体仍是统治区池怪物 + `poi_profile.boss_name` 名称覆盖（阶段行为是真实的，外观与专属身份不是）；仅墨菲斯托新增了独立身份。专属模型/立绘/语音 PENDING。
+2. **其余 27 座城堡的首领**：只有威胁组合与 `boss_skill.csv` 基础技能，没有逐 Boss 阶段包（设计只要求四章末）。
+3. **阶段 Buff 不跨房间恢复**（§28.3）；`sequence` 阈值恒为 0，暂不支持"N 个守卫倒下后推进"。
+4. **数值全部 `[H]`**：阶段技能系数、CD、血量阈值、召援数量均为原型，不得当作正式平衡。
+5. **画面可读性**：原型几何绘制下多单位重叠，阶段标签已用深色底并最后绘制，但 `a4-diablo-phase2-storm.png` 一类满房场景仍拥挤。
+6. **QA 入口边界**：`QaEnterBossRoom`/`QaKillRoomEnemies`/`QaPrepareChapterBoot`/`CreateWorld(chapter:)` 为 `internal`，无玩家入口；它们会补齐"已走过章节"的空进度并强制入场，不是正式解锁。
+7. **旧技能基线**：`LegacySkillConfig` 在旧组合中删除 `boss_phase.csv`（旧基线无阶段技能），生产加载仍严格校验技能引用。
+8. 未做跨平台（仅 Windows）、未做人工试玩验收。
+
+### 28.7 可回传设计Owner摘要
+
+- 已按裁决完成 A2：`boss_phase.csv` + 单一消费者，四类触发（战斗开始/血量阈值/遭遇序列/地图阶段）全部有真实内容；
+  安达利尔、都瑞尔用 Boss 战斗状态切换；议会→墨菲斯托为遭遇序列，接替者为独立身份 `boss_mephisto`；
+  混沌避难所按 P0 六层推进（第3–5层守卫数对齐 `SealActivationCount` 2/2/1），迪亚波罗再叠加自身阶段。
+- 阶段技能复用既有 Effect（范围/单体/连锁/Buff），CD 来自 `skill.csv`，每段每房只生效一次，召援预留槽位每段 ≤6、每 POI ≤10；伤害与奖励仍走唯一管线与击杀收据。
+- 阶段进度写入 `SessionSnapshot.BossPhaseProgress`，读档只重放当前房间，不重复生成 Boss、不重复发奖；固定种子现场一致。
+- 31 座城堡已按 S09 形态落地 `castle_threat.csv`（身份档位循环），运行时 31/31 逐格核对；普通地牢 226 层合同不变。
+- 关键差异：POI 主键需带章号；新增 `archetypes.csv` 使档位显式化；`act_monsters` 由 49 增至 50（1 个阶段接替 Boss）。
+- 验证：Core 全量、回归 56/56、headless 冒烟、`--first-batch-smoke`、`--c2a-boss-smoke` 全绿；真实窗口 10 图 + `phases.csv`。
+- 未完成：Boss 专属身份/美术、其余城堡阶段包、阶段 Buff 跨房恢复、正式数值（均列 §28.6）。
+
+### 28.8 三方状态
+
+- **E：A2 PASS、A3 PASS（工程自检）**。四章末阶段、31 城堡组合、存档/幂等/固定种子/收益收据均有代码级消费者与证据；未做人工体验与跨平台。
+- **V-Design：未复核**。需确认：①`boss_mephisto` 作为独立身份（`act_monsters` 49→50）是否接受；②第3–5层用"阶段守卫"表达封印是否满足"沿P0地图阶段推进"；③阶段 Buff 不跨房间恢复的口径。
+- **V-User：未验收**。可在游戏内挑战四座章末城堡体验阶段切换（需先满足原有准入），或查看 §28.4 截图。
+
+---
+
+## 29. S15-C2-B 切片 1：5 卷轴 + 4 药剂真实效果（2026-10-26）
+
+### 29.1 授权与范围
+
+来源：设计Owner 裁决"完成A3后继续按既定队列执行C2-B"＋`docs/temp/P2-4 S15_C2-B｜装备、卷轴与药剂完整投放/`（承包内调查、实现、测试与唯一 Review 更新）。
+本切片只做**消耗品半包**；装备 28 模板因槽位映射需要产品裁决（§29.5）暂不落库，不冒充完成。
+
+### 29.2 实际变更
+
+| 项 | 变更 |
+|---|---|
+| `config/item/scroll.csv` | 10 列新 schema；5 条：`scroll_bolt`(damage)、`scroll_arc`(chain 3)、`scroll_flame`(aoe 2.6U)、`scroll_frost`(slow)、`scroll_banner`(protect/party) |
+| `config/item/potion.csv` | 6 列新 schema；4 条：`potion_might`(attack)、`potion_tough`(guard)、`potion_greed`(kill_gold)、`potion_swift`(swift) |
+| `config/skill/buff.csv` | +`buff_scroll_frost`(chill 0.3/60t)、+`buff_scroll_banner`(dodge +0.15/160t) |
+| `Scripts/Core/Consumables.cs` | `ScrollSpec`/`PotionSpec` 扩字段；`UseScroll` 按 effect 分派（单体/连锁/范围/减速）、新增 `UseScrollOnParty`/`CanUsePartyScroll`；药剂效果拆成四个只读派生值 |
+| `SkillRuntime.cs` | `PotionGuardPct` 进 `EffectiveValue("dodge_rate")`；`PotionSwiftPct` 进非战斗 `MoveMultiplier`；新增只读 `ReadEffectiveAttribute` |
+| `GameSession.cs` | 拾取金币乘率改 `StarKillGoldPct+PotionKillGoldPct`（仍只在入账点应用一次） |
+| `HudLayout.cs` | 五卷轴槽按 `target` 决定可用性（护旗不点选敌人）与提示；槽位数仍固定 5 |
+| 测试 | 新增 `tests/C2BConsumableChecks.cs`（`--c2b-checks`，已并入回归矩阵）；`Wp6ConsumablesChecks`/`IntegrationClosureChecks` 收敛为"单卷单药"夹具（生产已扩到 5 卷 4 药，随机抽取会破坏旧断言的确定性）；`LegacySkillConfig` 在旧组合中把消耗品表收敛回一卷一药（旧基线没有新 Buff） |
+
+### 29.3 验证（全部退出码 0）
+
+| 入口 | 结果 |
+|---|---|
+| 两工程 `dotnet build` | 0 警告 0 错误 |
+| 默认全量 Core | 退出 0（`WP6_CONSUMABLE_PASS`、`INT_01_08_PASS` 保持） |
+| `--c2b-checks` | `C2B_CONSUMABLE_PASS`：5 卷轴 5 行为、4 药剂 4 效果、存档往返 |
+| `--regression-matrix` | **57/57** |
+| `--c2a-checks` / `--c2a-boss-checks` | `C2A_PASS` / `C2A_A2_BOSS_PASS`（无回归） |
+| Godot headless `--smoke-test` | `SMOKE_OK`（含五卷轴槽 HUD 断言） |
+| Godot 真实窗口 `--first-batch-smoke` | `FIRST_BATCH_UI_PASS`，新增 `consumables-five-scrolls.png`（五类卷轴各 ×1）与 `potion-four-pending.png`（四种药剂各占一槽） |
+| Godot 真实窗口 `--c2a-boss-smoke` | `C2A_BOSS_UI_PASS`（阶段证据未回归） |
+
+`--c2b-checks` 断言要点：单体只命中主目标；连锁恰好 3 个不同目标且逐跳衰减；范围命中半径内、放过半径外；
+减速有真实冰伤且 Buff 按期解除；护旗提高实际闪避并覆盖全队、无战斗现场不扣库存；攻击/承压都有有效值消费者；
+搜金在同种子对照下使拾取金币更高；五种卷轴库存与两个生效药剂槽跨读档一致、二次读档幂等。
+截图目录：`artifacts/qa/first-batch-ui-20261026-140255-.../`。
+
+### 29.4 取舍与新差异（累计 C3）
+
+1. `potion_tough` 用**闪避加成**表达"提升承压"，不改 `MaxHp`/当前 HP 语义。设计合同里"当前 HP 调整规则待明确"因此没有被擅自决定；若设计选择 MaxHP 方案，需另定施加上限、到期回落和读档截断规则。
+2. `scroll_arc` 只按"距主目标由近到远取 N 个不同目标"，没有跳跃距离上限（原合同只要求"最多 3 名不同敌人"）。
+3. 药剂时长沿用 30 秒原型，未采用设计表 12–18 分钟；两者都是 `[H]`，正式时长留 C3。
+4. 五种卷轴共用 `scroll_arc`/`scroll_flame` 等**新 ID**，`scroll_bolt`/`potion_might` 保持旧 ID 与旧行为，旧档零迁移。
+5. 掉落仍是"每次击杀先随机抽一种卷轴/药剂再掷掉率"，扩表后单一品类的期望获取率下降；总量与概率口径归 C3。
+
+### 29.5 装备 28 模板：待裁决（未实施）
+
+`C2B_28装备模板到生产品质ID逐项转换.csv` 的 28 行是 7 个"部位×属性"变体 × 4 品质，其中 **CHARM（护符）在工程里没有对应部位**；现有工程是六部位（武器/头盔/胸甲/手套/长靴/指环），且 `PENDING_EXACT_ID_MAP` 明确要求"不得静默替换、不得对已保存物品改品质ID"。
+
+- 方案 A（推荐，改动最小）：CHARM 映射到既有 `ring` 槽，拆成"指环·ATK"与"指环·HP"两个基础件 → 28 = 6 部位 × 4 品质 + 指环额外 4 个 HP 变体；不动槽位模型、旧档零迁移。
+- 方案 B：新增第 7 部位（护符），需要改装备槽模型、存档校验、英雄页与批量换装 UI，属**存档价值/核心结构变化**。
+- 品质映射按用户已裁决"保持生产品质 ID"执行：设计 普通/稀有/罕见/传奇 → 生产 `common/uncommon/rare/legendary`。
+
+该选择会改变装备槽结构与存档价值，因此按授权边界单独上报，本切片未落库、未改 `equipment.csv`，不标为已完成。
+
+### 29.6 三方状态
+
+- **E：C2-B 消耗品切片 = PASS（工程自检）；装备 28 模板 = PENDING（待槽位裁决）**。
+- **V-Design：未复核**。需确认：①坚韧药剂以闪避表达承压是否可以；②连锁无跳跃距离上限是否接受；③装备 CHARM 走方案 A 还是 B。
+- **V-User：未验收**。可在游戏内看五卷轴槽/四药剂槽与使用效果（掉落概率为原型）。
+
+---
+
+## 30. S15-C2-B 切片 2：装备 28 模板与按实际怪级掉落 + 坚韧药剂改减伤（2026-10-26）
+
+### 30.1 用户裁决（本切片输入）
+
+1. 装备 CHARM 映射：**使用 ATK 参数**（映射到既有指环槽，不新增第 7 部位、不投放 HP 护符）。
+2. 坚韧药剂：**改为受到伤害减免 15%**（不再用闪避表达承压）。
+3. 然后**完成 C2-B**。
+
+### 30.2 实际变更
+
+| 项 | 变更 |
+|---|---|
+| `config/item/drop_table.csv`（新） | 31 行实际怪级：装备概率 0.018–0.0216、四品质概率、卷轴/药剂概率（设计百分数 ÷100）、品类准入清单 |
+| `config/item/drop_table.csv.import`（新） | Godot `importer="keep"`，按配置读取，不当翻译表导入 |
+| `Scripts/Core/DropRules.cs`（新） | `LevelDropRule` + 加载校验（等级连续、概率范围、品质和=1、品质列与装备品质 ID 对齐、品类 ID 必须存在、每级至少一卷一药） |
+| `Scripts/Core/Config.cs` | 在消耗品之后加载掉落表（依赖品质与品类） |
+| `Scripts/Core/Equipment.cs` | `TryDropEquipment` 改为按实际怪级取概率与品质分布；新增 `PickQuality(LevelDropRule)`；缺表回退旧原型概率/整数权重 |
+| `Scripts/Core/Consumables.cs` | `TryDropConsumable` 改为按实际怪级取概率与**准入品类**；缺表回退各品类 `drop_chance`；药剂效果白名单加 `reduce_damage`，新增 `PotionDamageReductionPct`（截断 ≤0.9） |
+| `Scripts/Core/SkillRuntime.cs` | 删除"闪避表达承压"；改为 `SettleDamage` 中对英雄实际承伤乘 `(1-0.15)`（命中/闪避与 MaxHp 语义不变） |
+| `config/item/potion.csv` | `potion_tough` effect `guard`→`reduce_damage` |
+| `Scripts/UI/HudLayout.cs` | 药剂槽显示效果标签（攻击/减伤/击杀金币/非战斗移速），四药剂在界面上可区分 |
+| 测试 | `tests/C2BContentChecks.cs`（`--c2b-checks`）覆盖模板账本/31 级掉落/全链账本/药剂减伤；`TestPlayerActions.SingleConsumableFixture` 同时清空掉落表（WP6/INT 是单卷单药确定性切片）；新增 `QaResolveMonsterHit` 仅测试入口（复用同一条伤害管线）；`LegacySkillConfig` 移除旧组合的掉落表 |
+
+### 30.3 28 模板 → 24 个可掉组合
+
+按裁决，CHARM 落为既有 `ring/atk`：
+
+| 设计组合 | 工程 | 状态 |
+|---|---|---|
+| WEAPON_ATK / HELM_HP / CHEST_HP / GLOVES_ATK / BOOTS_HP | 六部位中的五件 | 已实现 ×4 品质 |
+| CHARM_ATK | `eq_ring`（ring/atk） | 已实现 ×4 |
+| CHARM_HP | — | **被裁决覆盖**，不单独投放 |
+
+因此 28 设计行 = 24 个真实可掉组合 + 4 个明确标注 `superseded_by_ruling`；
+未改品质 ID、未重映射已保存物品（旧档零迁移）、未新增第 7 部位。
+逐行账本见 `artifacts/qa/s15-c2b-*/c2b_equipment_templates.csv`。
+
+### 30.4 验证（全部退出码 0）
+
+| 入口 | 结果 |
+|---|---|
+| 两工程 `dotnet build` | 0 警告 0 错误 |
+| 默认全量 Core | 退出 0（`WP5_EQUIP_PASS`/`WP6_CONSUMABLE_PASS`/`INT_01_08_PASS` 保持） |
+| `--c2b-checks` | `C2B_PASS`：5 卷轴 5 行为 + 4 药剂 4 效果 + 28 模板账本 + 31 级掉落 + 存档 |
+| `--c2a-checks` / `--c2a-boss-checks` | `C2A_PASS` / `C2A_A2_BOSS_PASS`（掉落口径变化后无回归） |
+| `--regression-matrix` | **57/57** |
+| Godot headless `--smoke-test` | `SMOKE_OK` |
+| Godot 真实窗口 `--first-batch-smoke` | `FIRST_BATCH_UI_PASS`；`potion-four-pending.png` 显示"力量（攻击）/坚韧（减伤）/搜金（击杀金币）/疾行（非战斗移速）"与五卷轴槽各 ×1 |
+
+`--c2b-checks` 本切片断言：
+
+- 掉落表 31 行、等级连续、每级品质和=1、所有品类 ID 存在；准入阈值逐项核对：SC02@8、SC03@12、SC04@18、SC05@24、PO02@7、PO03@14、PO04@20。
+- 28 行模板账本：24 realized / 4 superseded；每个设计行的主属性与工程基础件一致。
+- 31 个实际怪级各跑一轮真实击杀：逐件核对"品质=该级强制品质、物品等级=怪物实际等级"，并覆盖全部 24 个组合。
+- 全链账本 `c2b_equipment_chain.csv`：Lv.31 传奇装备 `monster_drop/candidate` → `player_command/equip`，事件取自既有资产审计。
+- 坚韧药剂同种子对照：承伤 100 → 85（比值 0.85±0.03），走同一条伤害管线。
+
+### 30.5 差异与新风险（累计 C3）
+
+1. CHARM 在两处设计表里同时以 ATK/HP 两种形态出现；按裁决只投放 ATK，`CHARM_HP` 的 4 行不会出现在游戏内。若后续设计要保留 HP 护符，需要新增部位或改指环双形态，属存档价值变化。
+2. 掉落表取自设计 `C2B_31实际怪级...` 的 `[H]` 数值，全部标为原型；`S11/S12` 倍率仍未选定，装备数值倍率继续沿用工程现行 1/1.25/1.6/2.1。
+3. 品类准入使低等级打不出高阶卷轴/药剂：期望获取速度比"全表随机"更低，总量结论归 C3。
+4. 旧组合（无掉落表）保留原型整体概率与整数权重回退，避免旧档/旧图回归改行为。
+5. `AssetEvent` 里装备候选的 `After` 是内嵌 JSON 字符串（含逗号），CSV 已加引号转义；下游若直接按逗号切分需要感知。
+
+### 30.6 PENDING
+
+1. 城堡首通额外 1 件装备、初始 1 卷轴+1 药剂的教学保底：设计侧仍标 `[P]`，未发放、未做幂等收据接口。
+2. 跨类型药剂是否可同时生效：仍无裁决；当前实现允许不同效果同时生效（同种仍只一瓶）。
+3. 装备逐笔售卖链路：沿用既有 `Wp5EquipmentChecks` 覆盖（次优卖出/回购），本切片未新增逐级售卖统计。
+4. 真实 10 小时胜率/金币余额、四章源跟踪：留 C3。
+5. Boss 专属身份/美术、其余城堡阶段包：见 §28.6，未变。
+
+### 30.7 三方状态
+
+- **E：C2-B = PASS（工程自检）**。消耗品 5+4、装备 24 可掉组合、31 级掉落与全链账本均有代码级消费者与证据；未做人工体验与跨平台。
+- **V-Design：未复核**。需确认：①`CHARM_HP` 被覆盖是否可以接受；②坚韧药剂改为减伤 15% 后的数值口径；③掉落表 `[H]` 概率与准入阈值是否进入 C3 重算。
+- **V-User：未验收**。可在游戏内观察四药剂效果标签、五卷轴槽与按怪级的装备掉落（概率为原型）。

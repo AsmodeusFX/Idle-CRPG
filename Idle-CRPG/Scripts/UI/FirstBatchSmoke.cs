@@ -199,7 +199,14 @@ public partial class Main
                 await Picture("equipment-count-"+count);
                 if(count==5){interactionScroll.ScrollVertical=(int)equipBatch!.Position.Y;await Click(equipBatch);Need(session.EquipmentTotals(session.Heroes[0]).Attack+session.EquipmentTotals(session.Heroes[0]).Hp>0,"五项合批真实点击未生效");}
             }
-            for(int slot=0;slot<4;slot++)session!.QaGrantConsumable(config.Potions[0].Id);
+            // C2-B：五种卷轴品类与四种药剂都要在真实控件上可见（各自库存/待用状态，不自动使用）。
+            foreach(var scroll in config.Scrolls)session!.QaGrantConsumable(scroll.Id);
+            Refresh();await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+            Need(scrollSlotButtons.Length==5&&config.Scrolls.Count==5&&scrollSlotButtons.All(b=>b.Text.Contains("×1")),"五种卷轴槽未显示各自库存");
+            await Picture("consumables-five-scrolls");
+            foreach(var potion in config.Potions.Take(4))session.QaGrantConsumable(potion.Id);
+            Refresh();await ToSignal(GetTree(),SceneTree.SignalName.ProcessFrame);
+            Need(session.PotionSlots.Select(p=>p.ItemId).Distinct().Count()==4,"四种药剂未各占一槽");
             await Picture("potion-four-pending");
             await Click((Button)gameHud.FindChild("PotionSlot_0",true,false)!);Need(session!.PotionSlots[0].Active&&session.PotionSlots.Count==4,"药剂真实点击/占槽错误");
             await Picture("potion-four-slots-one-active");

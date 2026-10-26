@@ -64,14 +64,20 @@ public sealed partial class GameSession
     public EquipmentItem? CandidateEquipment(Actor hero,string slot)=>GearOf(hero).Candidates.GetValueOrDefault(slot);
     public (double Attack,double Hp) EquipmentTotals(Actor hero)=>GearOf(hero).Totals();
 
-    /// <summary>击杀掉落：[H] 概率由原型参数控制；只掉本轮实际出阵英雄可穿的实例绑定装备。</summary>
+    /// <summary>
+    /// 击杀掉落：概率与品质分布按"被击杀怪物的实际等级"取等级表（C2-B）；旧组合缺表时回退原型整体概率。
+    /// 只掉本轮实际出阵英雄可穿的实例绑定装备，物品等级＝该怪物快照等级，不新增第二套等级权威。
+    /// </summary>
     internal void TryDropEquipment(Actor monster)
     {
-        if(Heroes.Count==0||lootRandom.NextDouble()>=Config.Progression.EquipmentDropPct)return;
+        if(Heroes.Count==0)return;
+        var rule=Config.DropRuleOfLevel(monster.Level);
+        double chance=rule?.EquipmentChance??Config.Progression.EquipmentDropPct;
+        if(lootRandom.NextDouble()>=chance)return;
         var hero=Heroes[lootRandom.Next(0,Heroes.Count)];
         var spec=Config.EquipmentBases[lootRandom.Next(0,Config.EquipmentBases.Count)];
         int level=Math.Clamp(monster.Level,1,Config.MaxMonsterLevel);
-        var quality=PickQuality();
+        var quality=rule==null?PickQuality():PickQuality(rule);
         var item=new EquipmentItem(spec.Id,spec.Slot,spec.Attr,level,quality.Id,Config.EquipmentValue(spec,level,quality));
         var state=GearOf(hero);
         var best=state.Candidates.GetValueOrDefault(spec.Slot);
@@ -85,6 +91,18 @@ public sealed partial class GameSession
         int roll=lootRandom.Next(0,100),sum=0;
         foreach(var quality in Config.EquipmentQualities){sum+=quality.Weight;if(roll<sum)return quality;}
         return Config.EquipmentQualities[^1];
+    }
+    /// <summary>按等级表的四品质概率抽样；列序已由加载校验对齐，最后以最高品质兜底。</summary>
+    private EquipmentQuality PickQuality(LevelDropRule rule)
+    {
+        var order=Config.QualityFractionsOrder;
+        double roll=lootRandom.NextDouble(),sum=0;
+        for(int i=0;i<order.Length-1;i++)
+        {
+            sum+=rule.QualityFractions[i];
+            if(roll<sum)return Config.EquipmentQualityOf(order[i]);
+        }
+        return Config.EquipmentQualityOf(order[^1]);
     }
 
     /// <summary>把候选穿上：按"新总减旧总"调整角色数值，保持 Attack/MaxHp 与穿戴总和一致。</summary>

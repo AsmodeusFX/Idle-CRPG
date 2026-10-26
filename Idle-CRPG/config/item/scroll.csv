@@ -1,2 +1,6 @@
-id,name,damage_pct,drop_chance
-scroll_bolt,闪电卷轴,1.8,0.12
+id,name,effect,damage_pct,element,radius,chain_targets,buff_id,target,drop_chance
+scroll_bolt,闪电卷轴,damage,1.8,Physical,0,0,,enemy,0.12
+scroll_arc,电弧卷轴,chain,1.0,Lightning,0,3,,enemy,0.10
+scroll_flame,烈焰卷轴,aoe,1.2,Fire,2.6,0,,enemy,0.10
+scroll_frost,寒霜卷轴,slow,0.8,Cold,0,0,buff_scroll_frost,enemy,0.10
+scroll_banner,战旗卷轴,protect,0,Physical,0,0,buff_scroll_banner,party,0.08

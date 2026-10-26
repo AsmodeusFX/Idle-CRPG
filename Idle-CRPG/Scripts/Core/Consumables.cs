@@ -5,14 +5,29 @@ using System.Linq;
 
 namespace IdleCrpg.Core;
 
-/// <summary>单体攻击卷轴：真实伤害由统一伤害管线结算，库存恰好 -1；失败不扣。</summary>
-public sealed record ScrollSpec(string Id,string Name,double DamagePct,double DropChance);
-/// <summary>主动药剂：生效期间仍占槽，到期解除并清空原槽；暂停/关闭不流逝。</summary>
-public sealed record PotionSpec(string Id,string Name,int DurationTicks,double AttackPct,double DropChance);
+/// <summary>
+/// 卷轴原型：五种快捷品类共用一套"施放→统一伤害管线→恰好扣 1"的消费路径。
+/// <para>
+/// <c>Effect</c>：<c>damage</c> 单体、<c>chain</c> 多目标连锁（不超过 chain_targets 个不同敌人）、
+/// <c>aoe</c> 目标点固定半径单次脉冲、<c>slow</c> 单体伤害+有限时减速、<c>protect</c> 全队短期防护。
+/// <c>Target</c>：<c>enemy</c> 需要合法敌人；<c>party</c> 需要战斗中的队伍（不要求点选敌人）。
+/// 伤害/半径/连锁数均为 [H] 原型，留待 C3 调整。
+/// </para>
+/// </summary>
+public sealed record ScrollSpec(string Id,string Name,string Effect,double DamagePct,DamageType Element,float Radius,int ChainTargets,string BuffId,string Target,double DropChance)
+{
+    public bool TargetsParty=>Target=="party";
+}
+/// <summary>
+/// 主动药剂原型：生效期间仍占槽，到期解除并清空原槽；暂停/关闭不流逝。
+/// <c>Effect</c>：<c>attack</c> 队伍攻击、<c>reduce_damage</c> 队伍受到伤害减免、
+/// <c>kill_gold</c> 仅活跃 Tick 的合法击杀金币、<c>swift</c> 仅非战斗行进速度。
+/// </summary>
+public sealed record PotionSpec(string Id,string Name,string Effect,int DurationTicks,double Value,double DropChance);
 
 public sealed record PotionSlotSave(string ItemId,bool Active,int Remaining);
 /// <summary>UI 只读视图：不暴露可变状态。</summary>
-public sealed record PotionSlotView(string ItemId,string Name,bool Active,double RemainingSeconds);
+public sealed record PotionSlotView(string ItemId,string Name,bool Active,double RemainingSeconds,string Effect="");
 
 public sealed partial class Config
 {
@@ -23,12 +38,36 @@ public sealed partial class Config
     public void LoadConsumables(string root)
     {
         Scrolls.Clear();Potions.Clear();
-        var scrolls=CsvTable.Load("item/scroll.csv",File.ReadAllText(Path.Combine(root,"item/scroll.csv")),"id","name","damage_pct","drop_chance");
-        foreach(var r in scrolls.Rows)Scrolls.Add(new(r.Id,r.Required("name"),r.Number("damage_pct"),r.Number("drop_chance")));
-        var potions=CsvTable.Load("item/potion.csv",File.ReadAllText(Path.Combine(root,"item/potion.csv")),"id","name","duration_ticks","attack_pct","drop_chance");
-        foreach(var r in potions.Rows)Potions.Add(new(r.Id,r.Required("name"),r.Integer("duration_ticks"),r.Number("attack_pct"),r.Number("drop_chance")));
-        if(Scrolls.Count==0||Scrolls.Any(s=>!(s.DamagePct>0)||s.DropChance is <0 or >1))throw new InvalidDataException("卷轴定义无效");
-        if(Potions.Count==0||Potions.Any(p=>p.DurationTicks<1||p.AttackPct<=0||p.DropChance is <0 or >1))throw new InvalidDataException("药剂定义无效");
+        var scrolls=CsvTable.Load("item/scroll.csv",File.ReadAllText(Path.Combine(root,"item/scroll.csv")),"id","name","effect","damage_pct","element","radius","chain_targets","buff_id","target","drop_chance");
+        foreach(var r in scrolls.Rows)
+        {
+            var spec=new ScrollSpec(r.Id,r.Required("name"),r.Required("effect"),r.Number("damage_pct"),r.Enum<DamageType>("element"),
+                (float)r.Number("radius"),r.Integer("chain_targets"),r["buff_id"],r.Required("target"),r.Number("drop_chance"));
+            if(spec.Effect is not ("damage" or "chain" or "aoe" or "slow" or "protect"))throw r.Error("effect","卷轴效果仅支持 damage/chain/aoe/slow/protect");
+            if(spec.Target is not ("enemy" or "party"))throw r.Error("target","卷轴目标仅支持 enemy/party");
+            if(spec.TargetsParty!= (spec.Effect=="protect"))throw r.Error("target","只有 protect 卷轴指向队伍，其余必须指向敌人");
+            if(spec.DropChance is <0 or >1||!double.IsFinite(spec.DropChance))throw r.Error("drop_chance","掉率必须在0～1之间");
+            if(spec.Effect=="protect"){if(spec.DamagePct!=0)throw r.Error("damage_pct","防护卷轴不造成伤害");}
+            else if(!(spec.DamagePct>0))throw r.Error("damage_pct","伤害类卷轴系数必须为正");
+            if(spec.Effect=="chain"&&spec.ChainTargets is <2 or >12)throw r.Error("chain_targets","连锁卷轴目标数必须在2～12之间");
+            if(spec.Effect!="chain"&&spec.ChainTargets!=0)throw r.Error("chain_targets","非连锁卷轴不得配置连锁目标数");
+            if(spec.Effect=="aoe"&&!(spec.Radius>0))throw r.Error("radius","范围卷轴必须有正半径");
+            if(spec.Effect!="aoe"&&spec.Radius!=0)throw r.Error("radius","非范围卷轴不得配置半径");
+            if(spec.Effect is "slow" or "protect"&&spec.BuffId=="")throw r.Error("buff_id","减速/防护卷轴必须配置 Buff");
+            if(spec.BuffId!=""&&!Skills.Buffs.ContainsKey(spec.BuffId))throw r.Error("buff_id","卷轴 Buff 引用无效");
+            Scrolls.Add(spec);
+        }
+        var potions=CsvTable.Load("item/potion.csv",File.ReadAllText(Path.Combine(root,"item/potion.csv")),"id","name","effect","duration_ticks","value","drop_chance");
+        foreach(var r in potions.Rows)
+        {
+            var spec=new PotionSpec(r.Id,r.Required("name"),r.Required("effect"),r.Integer("duration_ticks"),r.Number("value"),r.Number("drop_chance"));
+            if(spec.Effect is not ("attack" or "reduce_damage" or "kill_gold" or "swift"))throw r.Error("effect","药剂效果仅支持 attack/reduce_damage/kill_gold/swift");
+            if(spec.DurationTicks<1||!(spec.Value>0)||spec.DropChance is <0 or >1||!double.IsFinite(spec.Value))throw r.Error("value","药剂时长/强度/掉率无效");
+            Potions.Add(spec);
+        }
+        if(Scrolls.Count==0)throw new InvalidDataException("卷轴定义无效");
+        if(Potions.Count==0)throw new InvalidDataException("药剂定义无效");
+        if(Scrolls.Count>5)throw new InvalidDataException("卷轴快捷栏固定5槽，卷轴定义不得超过5种");
     }
 }
 
@@ -41,13 +80,49 @@ public sealed partial class GameSession
     private readonly List<(string ItemId,bool Active,int Remaining)> potionSlots=Enumerable.Range(0,PotionSlotCount).Select(_=>("",false,0)).ToList();
 
     public IReadOnlyDictionary<string,int> ScrollStock=>scrollStock;
-    public IReadOnlyList<PotionSlotView> PotionSlots=>potionSlots.Select(s=>new PotionSlotView(s.ItemId,s.ItemId==""?"":Config.PotionOf(s.ItemId).Name,s.Active,s.Remaining/20d)).ToArray();
+    public IReadOnlyList<PotionSlotView> PotionSlots=>potionSlots.Select(s=>new PotionSlotView(s.ItemId,s.ItemId==""?"":Config.PotionOf(s.ItemId).Name,s.Active,s.Remaining/20d,s.ItemId==""?"":Config.PotionOf(s.ItemId).Effect)).ToArray();
     /// <summary>生效中药剂的队伍攻击百分比加成；同类药剂同时只有一瓶生效。</summary>
-    public double PotionAttackPct=>(potionSlots.Where(s=>s.Active).Sum(s=>Config.PotionOf(s.ItemId).AttackPct))*(1+StarPotionEffectPct);
+    public double PotionAttackPct=>PotionEffectSum("attack");
+    /// <summary>生效中药剂的队伍受伤减免（0–0.9 截断）；只作用于承伤，不改 MaxHp/当前HP 语义。</summary>
+    public double PotionDamageReductionPct=>Math.Clamp(PotionEffectSum("reduce_damage"),0,0.9);
+    /// <summary>生效中药剂的合法击杀金币加成（只在拾取入账点应用一次）。</summary>
+    public double PotionKillGoldPct=>PotionEffectSum("kill_gold");
+    /// <summary>生效中药剂的非战斗行进速度加成（不影响战斗 Tick）。</summary>
+    public double PotionSwiftPct=>PotionEffectSum("swift");
+    /// <summary>按效果种类求和并叠加星图"药剂效力"；同一效果只统计生效槽。</summary>
+    private double PotionEffectSum(string effect)
+        =>potionSlots.Where(s=>s.Active).Sum(s=>Config.PotionOf(s.ItemId).Effect==effect?Config.PotionOf(s.ItemId).Value:0)*(1+StarPotionEffectPct);
 
-    /// <summary>击杀掉落消耗品：[H] 概率来自配置；卷轴进库存，药剂进第一个空槽，满槽不自动覆盖。</summary>
+    /// <summary>
+    /// 击杀掉落消耗品：优先按"实际怪级"的等级表（概率 + 品类准入，C2-B）抽取；
+    /// 旧组合缺表时回退到各品类自身的原型掉率。卷轴进库存，药剂进第一个空槽，满槽不自动覆盖。
+    /// </summary>
     internal void TryDropConsumable(Actor monster)
     {
+        var rule=Config.DropRuleOfLevel(monster.Level);
+        if(rule!=null)
+        {
+            if(lootRandom.NextDouble()<rule.ScrollChance)
+            {
+                string id=rule.ScrollIds[lootRandom.Next(0,rule.ScrollIds.Length)];
+                int before=scrollStock.GetValueOrDefault(id);scrollStock[id]=before+1;
+                AuditAsset("monster_drop","receive","scroll",id,1,before.ToString(),(before+1).ToString(),origin:monster.SpecId);
+                MarkChanged();
+            }
+            if(lootRandom.NextDouble()<rule.PotionChance)
+            {
+                string id=rule.PotionIds[lootRandom.Next(0,rule.PotionIds.Length)];
+                int slotIndex=potionSlots.FindIndex(s=>s.ItemId=="");
+                // 满槽不覆盖：直接放弃本次掉落（不静默替换玩家已有的药剂）。
+                if(slotIndex>=0)
+                {
+                    potionSlots[slotIndex]=(id,false,0);
+                    AuditAsset("monster_drop","receive","potion_slot",id,1,$"slot:{slotIndex}:empty",$"slot:{slotIndex}:{id}:pending",origin:monster.SpecId);
+                    MarkChanged();
+                }
+            }
+            return;
+        }
         if(Config.Scrolls.Count>0)
         {
             var scroll=Config.Scrolls[lootRandom.Next(0,Config.Scrolls.Count)];
@@ -81,23 +156,108 @@ public sealed partial class GameSession
             .ThenBy(p=>p.index).Select(p=>p.index).DefaultIfEmpty(-1).First();
     }
     /// <summary>快捷栏原子查询当前合法最近目标，再复用唯一卷轴消费与伤害命令。</summary>
-    public bool UseScrollOnNearest(string itemId,out string reason)=>UseScroll(itemId,NearestScrollTarget(),out reason);
-    /// <summary>对当前房间的一个怪物使用卷轴：目标非法/无库存拒绝且不扣；成功造成真实伤害后恰好扣 1。</summary>
+    public bool UseScrollOnNearest(string itemId,out string reason)
+    {
+        var spec=Config.ScrollOf(itemId);
+        if(spec.TargetsParty)return UseScrollOnParty(itemId,out reason);
+        return UseScroll(itemId,NearestScrollTarget(),out reason);
+    }
+
+    /// <summary>防护卷轴：要求队伍与敌人在同一战斗房（战斗中手动施加，不点选敌人）。</summary>
+    public bool CanUsePartyScroll(string itemId)
+    {
+        if(!scrollStock.TryGetValue(itemId,out int count)||count<=0)return false;
+        if(Floors.Count==0||CurrentRoom<0||CurrentRoom>=Floor.Rooms.Count)return false;
+        var room=Floor.Rooms[CurrentRoom];
+        return Heroes.Any(h=>h.Alive&&InCombatRoom(h))&&room.Monsters.Any(m=>m.Alive&&InCombatRoom(m));
+    }
+
+    /// <summary>对全队施加短期防护 Buff；库存恰好 -1，非法现场/无库存拒绝且不扣。</summary>
+    public bool UseScrollOnParty(string itemId,out string reason)
+    {
+        var spec=Config.ScrollOf(itemId);
+        if(!spec.TargetsParty){reason="该卷轴需要选择敌人";return false;}
+        if(!scrollStock.TryGetValue(itemId,out int count)||count<=0){reason="卷轴库存不足";return false;}
+        if(!CanUsePartyScroll(itemId)){reason="防护卷轴只能在战斗中对队伍使用";return false;}
+        var targets=Heroes.Where(h=>h.Alive&&InCombatRoom(h)).ToArray();
+        int owner=CombatId(targets[0]);
+        foreach(var hero in targets)ApplyBuff(spec.BuffId,owner,CombatId(hero),itemId,1,null);
+        int current=scrollStock.GetValueOrDefault(itemId);scrollStock[itemId]=current-1;if(current-1==0)scrollStock.Remove(itemId);
+        AuditAsset("player_command","use","scroll",itemId,-1,current.ToString(),(current-1).ToString(),targets[0].HeroInstanceId,"target:party");
+        Note($"使用{spec.Name}，全队获得短期防护");
+        MarkChanged();reason="";return true;
+    }
+
+    /// <summary>
+    /// 对当前房间的一个怪物使用卷轴：目标非法/无库存拒绝且不扣；成功造成真实伤害或施加真实状态后恰好扣 1。
+    /// 所有伤害仍由统一伤害管线结算，不新增第二条伤害或奖励路径。
+    /// </summary>
     public bool UseScroll(string itemId,int monsterIndex,out string reason)
     {
+        var spec=Config.ScrollOf(itemId);
+        if(spec.TargetsParty)return UseScrollOnParty(itemId,out reason);
         if(!scrollStock.TryGetValue(itemId,out int count)||count<=0){reason="卷轴库存不足";return false;}
         if(Floors.Count==0||CurrentRoom<0||CurrentRoom>=Floor.Rooms.Count){reason="当前没有战斗房间";return false;}
         var room=Floor.Rooms[CurrentRoom];
         if(monsterIndex<0||monsterIndex>=room.Monsters.Count||!room.Monsters[monsterIndex].Alive){reason="目标已失效，请选择当前存活的敌人";return false;}
         var attacker=Heroes.FirstOrDefault(h=>h.Alive);if(attacker==null){reason="没有可施放卷轴的英雄";return false;}
-        var spec=Config.ScrollOf(itemId);
+        var primary=room.Monsters[monsterIndex];
         // C1-B S01：卷轴威力只放大已持有的合法卷轴伤害，不生成第二个伤害源。
-        var damage=SettleDamage(attacker,room.Monsters[monsterIndex],itemId,spec.DamagePct*(1+StarScrollDamagePct),DamageType.Physical,true);
-        if(damage==null){reason="卷轴未能造成伤害";return false;}
+        double coefficient=spec.DamagePct*(1+StarScrollDamagePct);
+        int hits=0;double damage=0;
+        switch(spec.Effect)
+        {
+            case "damage":
+            {
+                var result=SettleDamage(attacker,primary,itemId,coefficient,spec.Element,true);
+                if(result!=null){hits++;damage+=result.FinalDamage;}
+                break;
+            }
+            case "chain":
+            {
+                // 只对不同的存活目标生效；目标不足时不虚构弹跳次数。
+                var chain=room.Monsters.Select((actor,index)=>(actor,index))
+                    .Where(p=>p.actor.Alive&&InCombatRoom(p.actor))
+                    .OrderBy(p=>System.Numerics.Vector2.DistanceSquared(primary.Position,p.actor.Position))
+                    .ThenBy(p=>p.index).Take(spec.ChainTargets).ToArray();
+                for(int i=0;i<chain.Length;i++)
+                {
+                    var result=SettleDamage(attacker,chain[i].actor,itemId,coefficient*(i==0?1:Math.Pow(.8,i)),spec.Element,true);
+                    if(result!=null){hits++;damage+=result.FinalDamage;}
+                }
+                break;
+            }
+            case "aoe":
+            {
+                var targets=room.Monsters.Where(m=>m.Alive&&InCombatRoom(m)&&System.Numerics.Vector2.Distance(m.Position,primary.Position)<=spec.Radius).ToArray();
+                foreach(var target in targets)
+                {
+                    var result=SettleDamage(attacker,target,itemId,coefficient,spec.Element,true);
+                    if(result!=null){hits++;damage+=result.FinalDamage;}
+                }
+                break;
+            }
+            case "slow":
+            {
+                var result=SettleDamage(attacker,primary,itemId,coefficient,spec.Element,true);
+                if(result!=null)hits++;
+                if(primary.Alive)ApplyBuff(spec.BuffId,CombatId(attacker),CombatId(primary),itemId,1,null);
+                hits++;
+                break;
+            }
+            default:reason="未实现的卷轴效果";return false;
+        }
+        if(hits==0){reason="卷轴未能造成伤害或状态";return false;}
         // 击杀卷轴目标可能在同一伤害结算中再掉卷轴；从最新库存扣一张，不能覆盖掉落收入。
         int current=scrollStock.GetValueOrDefault(itemId);scrollStock[itemId]=current-1;if(current-1==0)scrollStock.Remove(itemId);
         AuditAsset("player_command","use","scroll",itemId,-1,current.ToString(),(current-1).ToString(),attacker.HeroInstanceId,$"target:{monsterIndex}");
-        Note($"使用{spec.Name}，对 {room.Monsters[monsterIndex].Name} 造成 {damage.FinalDamage:0} 伤害");
+        Note(spec.Effect switch
+        {
+            "chain"=>$"使用{spec.Name}，连锁命中 {hits} 名敌人，合计 {damage:0} 伤害",
+            "aoe"=>$"使用{spec.Name}，范围内 {hits} 名敌人，合计 {damage:0} 伤害",
+            "slow"=>$"使用{spec.Name}，对 {primary.Name} 造成伤害并减速",
+            _=>$"使用{spec.Name}，对 {primary.Name} 造成 {damage:0} 伤害"
+        });
         MarkChanged();reason="";return true;
     }
 
@@ -111,7 +271,7 @@ public sealed partial class GameSession
         // C1-B P01：药剂时效在"使用瞬间"按星图延长，读档按剩余Tick保留，不重复加成。
         int duration=(int)Math.Ceiling(Config.PotionOf(itemId).DurationTicks*(1+StarPotionDurationPct));
         potionSlots[slot]=(itemId,true,duration);
-        AuditAsset("player_command","activate","potion_slot",itemId,0,$"slot:{slot}:{itemId}:pending",$"slot:{slot}:{itemId}:active:{Config.PotionOf(itemId).DurationTicks}");
+        AuditAsset("player_command","activate","potion_slot",itemId,0,$"slot:{slot}:{itemId}:pending",$"slot:{slot}:{itemId}:active:{duration}");
         Note($"饮用药剂：{Config.PotionOf(itemId).Name}");MarkChanged();reason="";return true;
     }
     /// <summary>丢弃待用药剂以腾槽；生效中默认不可丢弃（避免"腾槽保 Buff"），待决策前保持禁用并说明原因。</summary>

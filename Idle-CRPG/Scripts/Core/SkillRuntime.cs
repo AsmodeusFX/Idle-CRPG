@@ -56,8 +56,16 @@ public sealed partial class GameSession
     private float MoveMultiplier(Actor actor)
     {
         float chill=(float)ActorBuffs(CombatId(actor)).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="chill").Select(b=>1-b.Value).DefaultIfEmpty(1).Min();
-        return InCombatRoom(actor)?chill:chill*(float)Math.Max(.2,1+StarTravelPct);
+        // C2-B PO04：疾行药剂只放大非战斗行进速度，不改房间逻辑计时/战斗 Tick。
+        float potion=IsFriendlyActor(actor)?(float)(1+PotionSwiftPct):1;
+        return InCombatRoom(actor)?chill:chill*(float)Math.Max(.2,1+StarTravelPct)*Math.Max(.2f,potion);
     }
+    /// <summary>
+    /// 只读诊断/UI 入口：返回统一有效值出口的结果（含 Buff、星图、药剂等全部来源），
+    /// 不写回 Actor，也不构成第二套计算。测试与界面只能读，不能据此改状态。
+    /// </summary>
+    public double ReadEffectiveAttribute(Actor actor,string attribute,double basis)=>EffectiveValue(actor,attribute,basis);
+
     private double EffectiveValue(Actor actor,string attribute,double basis)
     {
         var declarations=ActorBuffs(CombatId(actor)).SelectMany(b=>SkillConfig.Buffs[b.Id].Attributes).Where(a=>a.Attribute==attribute);
@@ -153,6 +161,8 @@ public sealed partial class GameSession
         var input=new DamageInput(skill,snapshot.Attack*(friendly?1:Gm.MonsterAttack)*baseScale,EffectiveValue(target,"armor",target.Defense),coefficient,type,ranged,target.Boss,attributes,EffectiveAttributes(target),debuffs,snapshot.Level,portions,snapshot.AttackRating,DefenseRating(target),target.Elite);
         var result=DamagePipeline.Resolve(input,Config.CombatRules,combatRandom,critical) with {OriginCast=originCast};LastDamage=result;HitCount++;
         double amount=result.FinalDamage/(friendly?Gm.MonsterHp:1);
+        // C2-B PO02：坚韧药剂只减免英雄实际承伤，不改变命中/闪避判定与 MaxHp 语义。
+        if(!friendly&&Heroes.Contains(target)&&PotionDamageReductionPct>0)amount*=1-PotionDamageReductionPct;
         if(!friendly&&Gm.Invincible)amount=0;
         if(amount>0)foreach(var shield in ActorBuffs(CombatId(target)).Where(b=>SkillConfig.Buffs[b.Id].Mechanic=="shield").ToArray())
         {double absorbed=Math.Min(amount,shield.Value);shield.Value-=absorbed;amount-=absorbed;if(absorbed>0)effectiveEffectVersion++;if(shield.Value<=0)skillState.Buffs.Remove(shield);}

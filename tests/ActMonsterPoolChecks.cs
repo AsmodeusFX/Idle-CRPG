@@ -13,9 +13,9 @@ public static class ActMonsterPoolChecks
         string configRoot=Path.Combine(root,"Idle-CRPG/config");
         var c=LegacySkillConfig.LoadLegacy(configRoot);
 
-        // 身份表：49个候选内容身份，独立ID，不得与正式怪物冲突。
-        Need(c.ActMonsters.Count==49,"章节怪物身份数量不是49");
-        Need(c.ActMonsters.Select(m=>m.Id).Distinct().Count()==49,"章节怪物身份ID重复");
+        // 身份表：49个候选内容身份 + 1个C2-A阶段接替Boss身份；独立ID，不得与正式怪物冲突。
+        Need(c.ActMonsters.Count==50&&c.ActMonsters.Any(m=>m.Id=="boss_mephisto"),"章节怪物身份数量不是49+1（阶段接替Boss）");
+        Need(c.ActMonsters.Select(m=>m.Id).Distinct().Count()==50,"章节怪物身份ID重复");
         Need(!c.ActMonsters.Any(m=>c.Monsters.Any(b=>b.Id==m.Id)),"章节身份与正式怪物ID冲突");
         foreach(var monster in c.ActMonsters)
         {
@@ -27,7 +27,7 @@ public static class ActMonsterPoolChecks
 
         // 池覆盖：正式配置下每章每个统治区都要有池，权重合计100，引用有效。
         var prod=LegacySkillConfig.Load(configRoot);
-        Need(prod.ActMonsters.Count==49,"正式配置缺少章节怪物身份");
+        Need(prod.ActMonsters.Count==50,"正式配置缺少章节怪物身份");
         foreach(var map in prod.ChapterMaps)
         {
             Need(map.MonsterPools.Count==map.AreaParts.Count,"统治区池覆盖数量不一致：第"+(map.ChapterIndex+1)+"章");
@@ -93,6 +93,6 @@ public static class ActMonsterPoolChecks
         Reject(string.Join("\n",poolText.Split('\n').Where(l=>!l.StartsWith("ap1,"))),"统治区缺池未拒绝");
         File.WriteAllText(poolPath,poolText);
 
-        Console.WriteLine("PASS: 49 chapter monster identities with profile/drops, per-areapart weighted pools covering all five chapters, deterministic weighted selection, world spawn bound to region pool, legacy fallback to base monsters, and rejection of duplicate/misweighted/unknown/missing pools");
+        Console.WriteLine("PASS: 49 chapter monster identities + 1 phase successor boss identity with profile/drops, per-areapart weighted pools covering all five chapters, deterministic weighted selection, world spawn bound to region pool, legacy fallback to base monsters, and rejection of duplicate/misweighted/unknown/missing pools");
     }
 }
