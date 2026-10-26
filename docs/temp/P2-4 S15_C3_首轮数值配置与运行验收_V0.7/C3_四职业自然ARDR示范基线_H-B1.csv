@@ -1,0 +1,5 @@
+﻿ClassChinese,ClassId_Provisional,ARLv1_H,DRLv1_H,ARPerHeroLevel_H,DRPerHeroLevel_H,Formula,Status
+野蛮人,warrior,26,24,12,12,At Lv L = Base + (L-1)*Growth,"H-B1 QA, not production; class id mapping requires C1A review"
+游侠,ranger,28,22,12,12,At Lv L = Base + (L-1)*Growth,"H-B1 QA, not production; class id mapping requires C1A review"
+法师,mage,30,22,12,12,At Lv L = Base + (L-1)*Growth,"H-B1 QA, not production; class id mapping requires C1A review"
+圣骑士,paladin,22,30,12,12,At Lv L = Base + (L-1)*Growth,"H-B1 QA, not production; class id mapping requires C1A review"

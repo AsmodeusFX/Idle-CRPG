@@ -1,0 +1,87 @@
+{
+  "model_kind": "DESIGN_SIDE_DETERMINISTIC_STATIC_SURROGATE_NOT_ENGINE",
+  "validations": {
+    "corrected_mainline_kills": 11189,
+    "optional_kills_excluded": 1291,
+    "level_rows": 31,
+    "star_purchase_rows": 112,
+    "chapter_cases": 64,
+    "summaries": 16,
+    "threshold_rows": 8
+  },
+  "baseline_flags": {
+    "offline_included": false,
+    "star_effects_applied": false,
+    "scroll_potion_combat_effects_applied": false,
+    "castle_first_clear_bonus_items": false,
+    "optional_dungeons": false,
+    "actual_monster_level_histogram": false,
+    "time_pass": false,
+    "gold_sales_earnings_guaranteed": false
+  },
+  "sample_cases": [
+    {
+      "Party": "甲_四职均衡",
+      "Factor_H": 1.0,
+      "SaleModel_H": "KILL_GOLD_ONLY_LOWER_BOUND",
+      "TotalPurchases_Conditional": 57,
+      "TotalStarGold_H": 21650.0,
+      "FinalXPProxyMargin_H": 18209.747,
+      "MinChapterXPProxyMargin_H": 2771.784,
+      "FinalKPProxyMargin_H": 4679.0,
+      "FinalGoldProxyMargin_H": -1145.334,
+      "MinChapterGoldProxyMargin_H": -1145.334,
+      "GlobalChapterEndBudgetPASS_Proxy": false,
+      "Actual10HourValidated": "NO"
+    },
+    {
+      "Party": "甲_四职均衡",
+      "Factor_H": 1.0,
+      "SaleModel_H": "KILL_PLUS_S11_LINEAR_SALE_PROXY",
+      "TotalPurchases_Conditional": 57,
+      "TotalStarGold_H": 21650.0,
+      "FinalXPProxyMargin_H": 18209.747,
+      "MinChapterXPProxyMargin_H": 2771.784,
+      "FinalKPProxyMargin_H": 4679.0,
+      "FinalGoldProxyMargin_H": 3514.294,
+      "MinChapterGoldProxyMargin_H": 170.884,
+      "GlobalChapterEndBudgetPASS_Proxy": true,
+      "Actual10HourValidated": "NO"
+    },
+    {
+      "Party": "甲_四职均衡",
+      "Factor_H": 0.8,
+      "SaleModel_H": "KILL_GOLD_ONLY_LOWER_BOUND",
+      "TotalPurchases_Conditional": 57,
+      "TotalStarGold_H": 21650.0,
+      "FinalXPProxyMargin_H": 3743.798,
+      "MinChapterXPProxyMargin_H": -2838.738,
+      "FinalKPProxyMargin_H": 2441.2,
+      "FinalGoldProxyMargin_H": -5246.267,
+      "MinChapterGoldProxyMargin_H": -5246.267,
+      "GlobalChapterEndBudgetPASS_Proxy": false,
+      "Actual10HourValidated": "NO"
+    },
+    {
+      "Party": "甲_四职均衡",
+      "Factor_H": 0.8,
+      "SaleModel_H": "KILL_PLUS_S11_LINEAR_SALE_PROXY",
+      "TotalPurchases_Conditional": 57,
+      "TotalStarGold_H": 21650.0,
+      "FinalXPProxyMargin_H": 3743.798,
+      "MinChapterXPProxyMargin_H": -2838.738,
+      "FinalKPProxyMargin_H": 2441.2,
+      "FinalGoldProxyMargin_H": -1518.565,
+      "MinChapterGoldProxyMargin_H": -1518.565,
+      "GlobalChapterEndBudgetPASS_Proxy": false,
+      "Actual10HourValidated": "NO"
+    }
+  ],
+  "source_hashes": {
+    "C1B_两阵容替代购买合法路线_条件性.csv": "97750d7b850f7afbe2a8505432363272026e6a72989caae477aa7930d791b01e",
+    "C2_C3_主线与可选内容预算纠偏_关键红项.csv": "dc422f4a2374000c6ff188006cf0b58335d542f1a990afebec8ede08523a31e3",
+    "S04-S05_31档联立候选数值_H-B1.csv": "21ba6fe0841afc8802e2816a417c23a18b58b6088a65d94a5abd70ac43f4de5a",
+    "S11_全额与80pct压力账本_H-EQ1.csv": "74198543fc46fe54930c43b2c564f1b9f7571a2e9baa3094bc52e748e60fc94b",
+    "S13_四章统一输入表_H-V1.4.csv": "34fea08453052ba4347f16ef23ab012a6c0239adfeb3ad7eaa262380d4670337"
+  }
+}

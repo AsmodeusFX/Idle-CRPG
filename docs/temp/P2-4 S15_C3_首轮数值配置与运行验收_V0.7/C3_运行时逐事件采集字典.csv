@@ -1,0 +1,49 @@
+﻿Field,RequiredEvent,TypeOrUnit,PurposeAndConstraint,Criticality
+RunId,all,string,本轮唯一身份，不能跨轮重复,REQUIRED
+Seed,run_started,int,同种子确定性,REQUIRED
+BuildConfigHash,run_started,sha256,代码与配置哈希绑定,REQUIRED
+ScenarioId,run_started,string,可复跑脚本/策略版本,REQUIRED
+PartySignature,run_started,string,英雄职业与四位顺序,REQUIRED
+EventId,all,unique string,"稳定唯一值, 存读档不可复制",REQUIRED
+EventType,all,enum,杀怪/购买/装备/掉落/死亡/离线等,REQUIRED
+EventSeq,all,int,单Run连续事件序号,REQUIRED
+Tick,all,int,逻辑计时而非墙钟,REQUIRED
+ActiveSeconds,chapter_checkpoint,seconds,主动运行Tick折算,REQUIRED
+WallSeconds,chapter_checkpoint,seconds,真实墙钟不等于模拟运行时间,REQUIRED
+OfflineSettlementSeconds,offline_settle,seconds,单独来源不算在线击杀,REQUIRED
+Chapter,all,int,1..4首轮,REQUIRED
+PoiCompositeKey,room_generated|castle,string,章节+POI复合身份,REQUIRED
+PoiRole,room_generated,enum,MainDungeon OptionalDungeon MainCastle OptionalCastle,REQUIRED
+FloorIndex,room_generated,int,Normal难度实际楼层,REQUIRED
+DungeonEntrySerial,monster_killed,int,重复合法进入与同房重领区别,REQUIRED
+RoomInstanceId,room_generated|monster_killed,string,已生成快照不被Lmax修改,REQUIRED
+RoomSnapshotLevel,room_generated,int,首次Reveal等级快照,REQUIRED
+MonsterOrigin,monster_spawn|monster_killed,string,出生模板/等级/批次,REQUIRED
+MonsterActualLevel,monster_spawn|monster_killed,int,真正XP/掉率/评级权威,REQUIRED
+MonsterArchetype,monster_spawn|monster_killed,string,38怪身份/8职责映射,RECOMMENDED
+EliteFlag,monster_spawn|monster_killed,bool,精英真实单权威,REQUIRED
+KillReceiptId,monster_killed,string,KP/金币/XP同击杀唯一收据,REQUIRED
+HeroInstanceId,hero_upgrade|equip,string,不能用职业ID代替实例ID,REQUIRED
+HeroLevelBeforeAfter,hero_upgrade,int pair,确定性费用校验,REQUIRED
+ARDRBeforeAfter,hero_upgrade|lmax_buy,numeric tuple,所有英雄准入完整证据,REQUIRED
+LminLmaxBeforeAfter,lmax_buy,int tuple,正式Lmin=1，老房保持快照,REQUIRED
+XPDelta,xp_change,signed value,公共XP来源与支出,REQUIRED
+KPDelta,kp_change,signed value,合法击杀与购买,REQUIRED
+GoldDelta,gold_change,signed value,击杀/出售/星图/离线,REQUIRED
+CurrencyBeforeAfter,xp_change|kp_change|gold_change,value pair,逐行守恒,REQUIRED
+SourceKind,xp_change|kp_change|gold_change,enum,Kill/Chest/Sale/Offline/Purchase/Other,REQUIRED
+StarNodeRank,star_purchase,node and rank,不把退休/无效当真实消费,REQUIRED
+StarEffectConsumerEvidence,star_purchase|effect_applied,tag/ref,购买后实际消费者事件ID,REQUIRED
+ItemIdQualityLevel,loot|equip|sell,id quality level,产出与售卖真实相符,REQUIRED
+EquipmentOwnerSlot,equip|sell,hero-instance and slot,候选不重复计出售,REQUIRED
+PotionScrollId,consumable,string,5卷轴4药剂准确身份,REQUIRED
+PotionSlotState,potion_pickup|potion_end,index and state,4槽不覆盖与计时冻结,REQUIRED
+BuffActiveSeconds,potion_activate|potion_end,seconds,暂停关机不扣时,REQUIRED
+ScrollTargetId,scroll_use,target,真实最近敌人/队友保护独立语义,REQUIRED
+BossPhase,boss_phase,phase index,观察BOSS真阶段,REQUIRED
+BossTTK,boss_win,seconds,首胜/重试区别,REQUIRED
+CastleRequestResult,castle_request,bool and reason,手动挑战成功/拒绝,REQUIRED
+FailureRetryCount,party_wipe|retry,int,玩家合法失败与回刷,REQUIRED
+ManualActionKind,ui_action,enum,人类可观察操作密度,RECOMMENDED
+ActionStrategyDecision,simulation_action,reason string,代理玩家操作不是自动线上逻辑,REQUIRED
+ValidPurchaseRankDelta,star_purchase,0 or 1,只有被证实消费者才能计1,REQUIRED

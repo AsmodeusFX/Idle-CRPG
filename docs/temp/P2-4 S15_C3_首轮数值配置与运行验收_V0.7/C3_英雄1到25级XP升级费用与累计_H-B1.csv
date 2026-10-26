@@ -1,0 +1,25 @@
+﻿CurrentHeroLevel,TargetHeroLevel,SingleHeroUpgradeCost_H,SingleHeroCumulativeXPToTarget_H,FourHeroesCumulativeXPToTarget_H,Status,ConsumerToVerify
+1,2,100,100,400,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+2,3,160,260,1040,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+3,4,220,480,1920,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+4,5,260,740,2960,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+5,6,310,1050,4200,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+6,7,350,1400,5600,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+7,8,390,1790,7160,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+8,9,430,2220,8880,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+9,10,470,2690,10760,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+10,11,500,3190,12760,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+11,12,540,3730,14920,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+12,13,570,4300,17200,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+13,14,600,4900,19600,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+14,15,630,5530,22120,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+15,16,670,6200,24800,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+16,17,700,6900,27600,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+17,18,730,7630,30520,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+18,19,760,8390,33560,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+19,20,790,9180,36720,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+20,21,810,9990,39960,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+21,22,840,10830,43320,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+22,23,870,11700,46800,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+23,24,900,12600,50400,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit
+24,25,930,13530,54120,H-B1 not production,GameSession.UpgradeHero PublicExperience; HeroInstanceId explicit

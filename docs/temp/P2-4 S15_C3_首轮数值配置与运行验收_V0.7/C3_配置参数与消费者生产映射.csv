@@ -1,0 +1,22 @@
+﻿ParamFamily,CandidateField,Unit,ConsumerToConfirm,DesignAndEngineeringSource,HardInvariant,AuthorityState,ObservableProof
+XP_POOL,PublicExperience,XP,GameSession.PublicExperience / HeroExperience.GainExperience,S04 H-B1 + existing WP2,击杀收据/公共池/有效天赋倍率,H_QA_ONLY,XP入账守恒;只增公共池;不自动升级
+XP_PER_MONSTER_LEVEL,RewardXp,XP/kill,MonsterActualLevel -> SpawnRewardXp,S04 H-B1; engine spawn_rule.xp_base,每g(1..31)配置;随实际生成g而非章,H_QA_ONLY,固定g同Seed XP可观测;宝箱/离线独立
+HERO_LEVEL_COST,UpgradeXpCost,XP/level,HeroExperience.UpgradeHero / herolevel.csv,S04/05,1–4英雄逐实例费用与手续费,H_QA_ONLY,每次升级恰升1级且不透支
+HERO_BASE_GROWTH,Attack/MaxHp natural,"ATK,HP/level",herolevel.csv & Actor,S04/05,只生效增量;装备独立差量,H_QA_ONLY,属性变化与HP状态相容
+AR_DR_RATING,AttackRating/DefenseRating,rating point,Actor rated progression + DamagePipeline,S04 H-B1; current prototype_progression,全员独立AR/DR;环境无Armor双活,H_QA_ONLY,Lmax资格等式与伤害真实倍率
+MONSTER_RATING,MonsterRatingPerLevel,rating point,KpProgression / MonsterLevel,S04 H-B1,当前g唯一MonsterActualLevel,H_QA_ONLY,Monster g/评级与快照一致
+LMAX_KP_COST,LmaxCost[g],KP/rank,BuyKpUpgrade(MonsterLevelMaximum),S04 H-B1; prototype lmax_cost=10,两套H价格不得混合,H_QA_ONLY,购买逐笔+1;收据守恒/拒绝不扣
+LMIN_PLAYER,MonsterLevelMin,monster level,KpProgression / SaveStore validation,C gate G-H,玩家禁止购买且存档必须1,C_DISABLED,负例拒绝QA非1存档
+MONSTER_HP_ATK,monsterlevel.csv HP/ATK factors,multiplier,MonsterLevels,engine 1..10000 current,不因31档XP输入截断旧表,H_QA_ONLY,实际怪g与HP/ATK消费者同源
+P0_ENCOUNTER_PACING,FloorPlan / spawn_rule,room/cell config,Reveal + spawn_rule + elite + events,C2-A P0 map,计划击杀不强制刷怪;唯一合法生成,P_WAIT_C2A,固定Seed不同节拍产生真实敌群差异
+GOLD_KILL,GoldPerKill,gold/kill,Kill rewards / AssetAudit,S11 H-EQ1,死亡重复不得领双份,H_QA_ONLY,逐笔金来源+星图购买时点
+GOLD_STAR_BONUS,Star F01/F02 modifiers,percent,Star Purchase -> kill gold origin,C1-B real consumer,"只能放大合法源,不放大出售金",P_WAIT_C1B,先买后赚同Seed收入差异
+STAR_PRICE,"StarRankCost[Node,Rank]",gold/rank,StarConfiguration.CanBuy/Buy,C1-B 112 candidate purchases,G03/S02/P03/no consumers都不算售卖,H_QA_ONLY,逐Rank商店钱与效果且保存一致
+STAR_XP_BONUS,Star G01,percent,Star Purchase -> HeroExperience.GainExperience,C1-B,只放大购买后XP;不倒算,P_WAIT_C1B,连续击杀事件前后对照
+EQUIPMENT_DROP,DropChance[g],probability,Equipment LootRoll,S11 H-EQ1 C2B,按MonsterActualLevel与Owner,H_WAIT_C2B,收益真实等级来源;样本多Seed
+EQUIPMENT_QUALITY,common/uncommon/rare/legendary,quality ID/multiplier,Config.LoadEquipment + SaveStore,C confirmed ID; S11 H multipliers,名称/身份显式映射不破坏已有档,C_ID_H_VALUES,品质存档迁移样本与ATK/HP实际增量
+EQUIPMENT_SALE,SellInferiorEquipment,gold/item,SellJunk / AssetAudit,S11 H sell prices,"保护跨属性,对已穿或更优不卖",H_QA_ONLY,出售次数/价按逐件实际非线性
+SCROLL_DROPS,SC01..05 weights[g],probability,UseScroll/loot,S12 H-C1 C2B,5槽固定;禁自动使用,H_WAIT_C2B,掉落/真实目标/扣减/效果收据
+POTION_DROPS,PO01..04 weights[g],probability,PotionInventory/AdvanceConsumables,S12 H-C1 C2B,"固定4槽,active tick冻结",H_WAIT_C2B,满槽拒收/失效回滚/生存价值
+OFFLINE_YIELD,SettleOffline,"xp,kp,gold/hour",SaveStore/Offline settlement,WP7 H rates,"与在线收益独立,不用于必须通关预算",H_QA_OPTIONAL,时间戳幂等不消耗Buff
+L1_TO_L31_TIMELINE,4 chapter Lmax/Hero levels,level/milestone,Boss/Castle gating & Upgrade actions,S04/S13 H,章末Lmax=8/17/26/31 HeroLv=6/14/21/25仅代理,H_QA_ONLY,真实等级与对局进度事件时点

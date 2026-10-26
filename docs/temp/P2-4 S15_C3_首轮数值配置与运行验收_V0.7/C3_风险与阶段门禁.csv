@@ -1,0 +1,16 @@
+﻿IssueId,Priority,Problem,Evidence,ClosureCriterion,CurrentStatus
+C3-R01,P0,必经Dungeon数误计,S13 12480含1291可选Dungeon,静态纠偏为11189；C2-A后重做真实击杀计量,DESIGN_CORRECTED_ENGINE_PENDING
+C3-R02,P0,城堡击杀旧估算,2982是S11计划并非已证明真实生成,C2-A逐25主线Castle实杀与Boss护卫直方图,OPEN
+C3-R03,P0,第二章XP余额不足,80%修正口径第二章-1703 H,先真实等级直方图与购买时序，再定位XP数值,OPEN_H_ONLY
+C3-R04,P0,第三章XP条件缺口,80%修正口径第三章-2839 H,第三章正/负条件依赖合法前置,OPEN_H_ONLY
+C3-R05,P0,星图价格/消费者关系,C1B 57/55条件路线需21650/20750 H金币,未实现消费者的Rank剔除，星图增益按时间点生效,OPEN_C1B_REVIEW
+C3-R06,P0,金币过度依赖装备出售,100%甲不售装备不足1145 H，含线性出售盈余3514,C2B多Seed装备真掉落和真实出售，不用固定平均替代,OPEN_H_ONLY
+C3-R07,P0,怪级奖励混权威,S04每级XP与当前spawn_rule.xp_base路径不同,明确实际MonsterActualLevel奖励消费者/31档,OPEN_C3_CONFIG
+C3-R08,P0,Lmax价格两套H,S04逐档价 vs 工程常量10 KP,隔离表参数切换前后同种子证明预算价格一致,OPEN_C3_CONFIG
+C3-R09,P0,未实现226层节拍,C0证据FloorPlans仅显示/报告,C2-A接真实生成，禁强刷PlannedKill,OPEN_C2A
+C3-R10,P0,四章时长无法证明,600分钟目标且没有真实Boss胜率,收集Seed、P50/P90、重试/移动/UI等多维,OPEN_RUNTIME
+C3-R11,P1,G03被误计售卖,G03仅QA，S02/P03延后,逐星图Rank真实开售门禁,C_CONFIRMED_BUT_NEEDS_TEST
+C3-R12,P1,Lmin安全锁,现玩家Lmin关闭,只做QA最低英雄等级失装和恢复场景，禁正式写档,OPEN_QA_ONLY
+C3-R13,P1,装备品质/存档,生产品质ID保留，S11值未批,ID映射、HP受伤退换、跨角色归属、存档重载,OPEN_C2B
+C3-R14,P1,消耗品收益/操作密度,5卷轴4药剂候选;4槽,记录实际是否使用；不假设耗材必然补Boss时间,OPEN_C2B
+C3-R15,P1,已授权阶段未到齐,C1A/B在执行，C2A/B未授权,C3准备/静态模拟可做，正式C3实施待授权,DESIGN_SCOPE_ONLY
