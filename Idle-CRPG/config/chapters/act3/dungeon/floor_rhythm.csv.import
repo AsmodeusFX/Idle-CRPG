@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://bs3lcgxaaqiua"
+
+[deps]
+
+files=["res://config/chapters/act3/dungeon/floor_rhythm.poi.translation", "res://config/chapters/act3/dungeon/floor_rhythm.floor.translation", "res://config/chapters/act3/dungeon/floor_rhythm.rhythm.translation", "res://config/chapters/act3/dungeon/floor_rhythm.pattern.translation", "res://config/chapters/act3/dungeon/floor_rhythm.elite.translation", "res://config/chapters/act3/dungeon/floor_rhythm.count.translation", "res://config/chapters/act3/dungeon/floor_rhythm.elite.translation", "res://config/chapters/act3/dungeon/floor_rhythm.pool.translation"]
+
+source_file="res://config/chapters/act3/dungeon/floor_rhythm.csv"
+dest_files=["res://config/chapters/act3/dungeon/floor_rhythm.poi.translation", "res://config/chapters/act3/dungeon/floor_rhythm.floor.translation", "res://config/chapters/act3/dungeon/floor_rhythm.rhythm.translation", "res://config/chapters/act3/dungeon/floor_rhythm.pattern.translation", "res://config/chapters/act3/dungeon/floor_rhythm.elite.translation", "res://config/chapters/act3/dungeon/floor_rhythm.count.translation", "res://config/chapters/act3/dungeon/floor_rhythm.elite.translation", "res://config/chapters/act3/dungeon/floor_rhythm.pool.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
