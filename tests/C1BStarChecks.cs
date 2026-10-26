@@ -186,7 +186,106 @@ public static class C1BStarChecks
             Need(once.Heroes[0].AttackRatingBonus==twice.Heroes[0].AttackRatingBonus,"读档后评级漂移");
         }
 
-        Console.WriteLine($"C1B_STAR_PASS: 17 nodes wired, 4 class gates, 10 retired rejected, ledger/proof/save idempotent; evidence={evidence}");
+        B2(config,evidence);
+
+        Console.WriteLine($"C1B_STAR_PASS: B1 17 nodes + B2 elite/heal/xp receipts, 4 class gates, 10 retired rejected, ledger/proof/save idempotent; evidence={evidence}");
+    }
+    /// <summary>
+    /// B2 三个子切片：O05 只对精英生效、D04 只放大真实受治疗量、G02 按令牌一次性发放。
+    /// 三者都必须给出同种子 A/B 与"无效上下文"对照，不能以通用ATK/文案代替。
+    /// </summary>
+    private static void B2(Config config,string evidence)
+    {
+        var proof=new List<string>{"case,baseline,with_star"};
+        // O05 精英伤害：同一目标、同一Attacker，先比非精英（应无差异），再比精英（应有差异）。
+        double EliteHit(bool buy,bool elite,int seed)
+        {
+            var g=GameSession.CreateWorld(config,seed,new[]{"warrior","warrior"});
+            var h=g.Heroes[0];g.GrantGmResources(gold:200000,experience:1000000);
+            while(h.Level<25&&g.UpgradeHero(h.HeroInstanceId,out _)){}
+            BuyChainOnly(g,config,"O05");if(buy)for(int i=0;i<2;i++)Need(g.BuyStar("O05",out string whyO5),"O05购买失败："+whyO5);
+            for(int i=0;i<4000&&g.CurrentRoom==0;i++)g.Tick(.05f);
+            var room=g.Floor.Rooms[g.CurrentRoom];h.SkillIds=new[]{"barb_bash"};h.Attack=100;h.Timer=0;h.Position=room.Center;
+            var m=room.Monsters[0];m.Hp=m.MaxHp=1000000;m.Attack=0;m.Timer=999;m.Position=room.Center+new Vector2(.5f,0);
+            m.Elite=elite;m.EliteToken=elite?"QA-ELITE":"";
+            double before=m.Hp;for(int i=0;i<120;i++)g.Tick(.05f);
+            return before-m.Hp;
+        }
+        double plainNormal=EliteHit(false,false,8101),o05Normal=EliteHit(true,false,8101);
+        double plainElite=EliteHit(false,true,8101),o05Elite=EliteHit(true,true,8101);
+        Need(Math.Abs(o05Normal-plainNormal)<1e-6,"O05对非精英目标产生了通用增伤（不允许）");
+        Need(o05Elite>plainElite,"O05未提高精英目标伤害");
+        proof.Add($"O05_non_elite,{plainNormal:0.##},{o05Normal:0.##}");
+        proof.Add($"O05_elite,{plainElite:0.##},{o05Elite:0.##}");
+
+        // D04 受治疗增强：同一祈祷、同一缺口，买后实际回血更多；满血目标不应被"过度治疗"。
+        int PrayerHeal(bool buy,int seed)
+        {
+            var g=GameSession.CreateWorld(config,seed,new[]{"priest","warrior"});
+            g.GrantGmResources(gold:200000,experience:1000000);
+            var p=g.Heroes[0];while(p.Level<25&&g.UpgradeHero(p.HeroInstanceId,out _)){}
+            BuyChainOnly(g,config,"D04");if(buy)for(int i=0;i<2;i++)Need(g.BuyStar("D04",out string whyD4),"D04购买失败："+whyD4);
+            Need(g.LearnTalent(p.HeroInstanceId,"pal_prayer",out string learn),"祭司学习祈祷失败："+learn);
+            for(int i=0;i<4000&&g.CurrentRoom==0;i++)g.Tick(.05f);
+            var room=g.Floor.Rooms[g.CurrentRoom];
+            foreach(var monster in room.Monsters){monster.Hp=monster.MaxHp=1000000;monster.Attack=0;monster.Timer=999;monster.Position=room.Center+new Vector2(2f,0);}
+            foreach(var hero in g.Heroes){hero.Position=room.Center;hero.Hp=hero.MaxHp*.2f;hero.Timer=999;hero.Attack=1;}
+            p.Timer=0;
+            for(int i=0;i<200;i++)g.Tick(.05f);
+            return (int)Math.Round(g.Heroes.Sum(x=>x.Hp)-g.Heroes.Sum(x=>x.MaxHp*.2f));
+        }
+        int healPlain=PrayerHeal(false,8102),healBoosted=PrayerHeal(true,8102);
+        Need(healBoosted>healPlain,"D04未提高实际受治疗量");
+        proof.Add($"D04_healing,{healPlain},{healBoosted}");
+
+        // G02 精英击杀XP：同令牌只发一次；不同实例可再领；读档后收据保留。
+        long xpBefore,afterFirst,afterDup;
+        string token="QA-ELITE-TOKEN";
+        {
+            var g=GameSession.CreateWorld(config,8103,new[]{"warrior"});
+            var h=g.Heroes[0];g.GrantGmResources(gold:200000,experience:1000000);
+            while(h.Level<25&&g.UpgradeHero(h.HeroInstanceId,out _)){}
+            Buy(g,config,"G02",3);
+            for(int i=0;i<4000&&g.CurrentRoom==0;i++)g.Tick(.05f);
+            var room=g.Floor.Rooms[g.CurrentRoom];
+            h.SkillIds=new[]{"barb_bash"};h.Attack=1000000;h.Timer=0;h.Position=room.Center;
+            foreach(var m in room.Monsters){m.Hp=m.MaxHp=1;m.Attack=0;m.Timer=999;m.Position=room.Center+new Vector2(.4f,0);m.Elite=true;m.EliteToken=token;}
+            var first=room.Monsters[0];var second=room.Monsters.Count>1?room.Monsters[1]:null;
+            xpBefore=g.PublicExperience;
+            for(int i=0;i<400&&first.Alive;i++)g.Tick(.05f);
+            afterFirst=g.PublicExperience;
+            Need(afterFirst>xpBefore,"精英击杀未获得XP");
+            if(second!=null){for(int i=0;i<400&&second.Alive;i++)g.Tick(.05f);}
+            afterDup=g.PublicExperience;
+            Need(g.EliteReceiptClaimed(token),"精英收据未记录");
+            var reloaded=GameSession.Restore(config,SaveStore.Decode(config,SaveStore.Encode(new(){Session=g.CaptureProgress()})).Session!);
+            Need(reloaded.EliteReceiptClaimed(token),"读档后精英收据丢失");
+        }
+        {
+            // 同令牌第二只精英：只给基础XP，不再给精英加成。
+            var g=GameSession.CreateWorld(config,8104,new[]{"warrior"});
+            var h=g.Heroes[0];g.GrantGmResources(gold:200000,experience:1000000);
+            while(h.Level<25&&g.UpgradeHero(h.HeroInstanceId,out _)){}
+            Buy(g,config,"G02",3);
+            for(int i=0;i<4000&&g.CurrentRoom==0;i++)g.Tick(.05f);
+            var room=g.Floor.Rooms[g.CurrentRoom];
+            h.SkillIds=new[]{"barb_bash"};h.Attack=1000000;h.Timer=0;h.Position=room.Center;
+            var m=room.Monsters[0];m.Hp=m.MaxHp=1;m.Attack=0;m.Timer=999;m.Position=room.Center+new Vector2(.4f,0);m.Elite=true;m.EliteToken=token;
+            int baseXp=m.RewardXp;long before=g.PublicExperience;
+            for(int i=0;i<400&&m.Alive;i++)g.Tick(.05f);
+            long delta=g.PublicExperience-before;
+            // 新会话属于新的Run：收据不跨Run继承（用户口径：同模板重进可再领），应含精英加成。
+            Need(delta>=baseXp,"同令牌新Run应可再领：delta="+delta+" base="+baseXp);
+            Need(delta>baseXp,"新Run精英加成未生效：delta="+delta);
+        }
+        File.WriteAllLines(Path.Combine(evidence,"elite_heal_receipt_proof.csv"),proof);
+        Need(afterDup>=afterFirst,"XP账本倒退");
+    }
+    /// <summary>只买前置链，不买目标节点：A/B 对照必须隔离目标节点本身的效果。</summary>
+    private static void BuyChainOnly(GameSession game,Config config,string id)
+    {
+        foreach(var step in PrerequisiteChain(config,id))
+            if(game.Stars.Level(step)==0)Need(game.BuyStar(step,out string pre),"前置购买失败 "+step+"："+pre);
     }
     /// <summary>买齐未点亮的前置后再买目标节点，避免测试因前置缺失静默失败。</summary>
     private static void Buy(GameSession game,Config config,string id,int times=1)

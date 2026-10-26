@@ -77,6 +77,8 @@ public sealed partial class GameSession
             case "attack_speed_pct":case "crit_damage":case "cooldown_reduction_pct":
                 return basis*(1+StarValue(attribute));
             case "crit_rate":case "block_rate":case "fire_resistance":case "cold_resistance":case "lightning_resistance":case "poison_resistance":
+            // D04 受治疗增强：作为目标的有效属性加算，由 HealTarget 读取。
+            case "healing_received_pct":
                 return basis+StarValue(attribute);
             default:return basis;
         }
@@ -107,6 +109,9 @@ public sealed partial class GameSession
             if(element>0)foreach(var type in new[]{DamageType.Fire,DamageType.Cold,DamageType.Lightning,DamageType.Poison})result.Modifiers.Add(new(DamageBucket.General,element,Type:type));
             double resist=StarValue("element_resistance");
             if(resist!=0){result.FireResistance+=resist;result.ColdResistance+=resist;result.LightningResistance+=resist;result.PoisonResistance+=resist;}
+            // C1-B B2 O05：精英伤害只对 Actor.Elite 目标生效，不冒充通用增伤。
+            double elite=StarValue("elite_damage_pct");
+            if(elite>0)result.Modifiers.Add(new(DamageBucket.General,elite,EliteOnly:true));
         }
         result.Validate();
         return result;
@@ -145,7 +150,7 @@ public sealed partial class GameSession
         }
         if(powerBonus!=0)attributes.Modifiers.Add(new(DamageBucket.Power,powerBonus));
         if(!double.IsFinite(baseScale)||baseScale<0)throw new InvalidDataException("伤害本体比例无效");
-        var input=new DamageInput(skill,snapshot.Attack*(friendly?1:Gm.MonsterAttack)*baseScale,EffectiveValue(target,"armor",target.Defense),coefficient,type,ranged,target.Boss,attributes,EffectiveAttributes(target),debuffs,snapshot.Level,portions,snapshot.AttackRating,DefenseRating(target));
+        var input=new DamageInput(skill,snapshot.Attack*(friendly?1:Gm.MonsterAttack)*baseScale,EffectiveValue(target,"armor",target.Defense),coefficient,type,ranged,target.Boss,attributes,EffectiveAttributes(target),debuffs,snapshot.Level,portions,snapshot.AttackRating,DefenseRating(target),target.Elite);
         var result=DamagePipeline.Resolve(input,Config.CombatRules,combatRandom,critical) with {OriginCast=originCast};LastDamage=result;HitCount++;
         double amount=result.FinalDamage/(friendly?Gm.MonsterHp:1);
         if(!friendly&&Gm.Invincible)amount=0;
@@ -164,7 +169,10 @@ public sealed partial class GameSession
         }
         if(killed&&Floor.Rooms[CurrentRoom].Monsters.Contains(target))
         {
-            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);GainKillKp(target);TryDropEquipment(target);TryDropConsumable(target);var loot=RollDrops(target);
+            var room=Floor.Rooms[CurrentRoom];Kills++;Floor.ActualKillFacts++;GainMonsterExperience(target.RewardXp,target.Level);
+            // C1-B B2 G02：合法精英击杀额外XP，按精英实例令牌一次性发放（读档/重复结算不二次领奖；新实例可再领）。
+            if(target.Elite&&GainEliteKillXp(target))MarkChanged();
+            GainKillKp(target);TryDropEquipment(target);TryDropConsumable(target);var loot=RollDrops(target);
             if(loot.Gold>0||loot.Items.Count>0)room.Loot.Add(loot);
             RecordCorpse(target);
             if(room.Clear){room.ContentCleared=true;Note("房间战斗结束，准备救援和拾取");}

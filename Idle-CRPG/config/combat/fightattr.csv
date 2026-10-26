@@ -35,3 +35,4 @@ fire_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage
 cold_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true
 lightning_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true
 poison_vulnerable_damage_pct,分类型易伤,vulnerable,ratio,add,add,0,percentage,true
+healing_received_pct,受到治疗增强,healing,ratio,add,add,0,percentage,true

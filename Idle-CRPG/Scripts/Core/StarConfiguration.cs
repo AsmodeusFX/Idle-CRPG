@@ -25,7 +25,9 @@ public sealed class StarConfiguration
         "attack_speed_pct","crit_rate","element_damage_pct","block_rate","element_resistance",
         // C1-B B1：评级与消耗品/经济/离线
         "attack_rating","defense_rating","scroll_damage_pct","potion_duration_pct","potion_effect_pct",
-        "travel_pct","kill_gold_pct","sell_gold_pct","offline_pct"};
+        "travel_pct","kill_gold_pct","sell_gold_pct","offline_pct",
+        // C1-B B2：精英伤害/精英击杀XP/受治疗增强（各自有唯一读取点）
+        "elite_damage_pct","elite_xp_pct","healing_received_pct"};
     public static bool IsKnownAttribute(string attribute)=>Array.IndexOf(KnownAttributes,attribute)>=0;
     public const string ContentHeader="id,name,max_level,cost_currency,cost,attr_id,operation,value_per_level,icon,target_id";
     public const string LayoutHeader="id,col,row,prereq,label",PlanHeader="id,intent";

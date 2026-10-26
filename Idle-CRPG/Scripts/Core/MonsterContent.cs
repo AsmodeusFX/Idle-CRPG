@@ -114,6 +114,9 @@ public sealed partial class GameSession
         if(candidates.Length==0)return false;
         var target=candidates[rng.Next(candidates.Length)];
         if(picked.Policy!=MonsterTargetPolicy.Ordinary)target.TargetPolicy=picked.Policy;
+        // 精英身份：合法掷骰一旦命中即成为该实例的权威标记（不是UI文案），并分配一次性收据令牌。
+        target.Elite=true;
+        target.EliteToken=$"E{FloorIndex}-{CurrentRoom}-{CombatId(target)}-{picked.AffixId}";
         if(picked.BuffId!="")ApplyBuff(picked.BuffId,CombatId(target),CombatId(target),"elite_affix",1,null);
         return true;
     }

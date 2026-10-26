@@ -36,7 +36,10 @@ public sealed partial class GameSession
     private void HealTarget(Actor? target,double fraction,string skill="")
     {
         if(target is not {Alive:true}||!InCombatRoom(target))return;
-        float maximum=CombatMaximumHp(target);RecordHeal(target,maximum);float before=target.Hp;target.Hp=(float)Math.Min(maximum,target.Hp+maximum*fraction);
+        float maximum=CombatMaximumHp(target);RecordHeal(target,maximum);float before=target.Hp;
+        // C1-B B2 D04：受治疗增强只放大"实际进入目标身上的治疗量"，不改变治疗上限与事件记账。
+        double received=1+EffectiveValue(target,"healing_received_pct",0);
+        target.Hp=(float)Math.Min(maximum,target.Hp+maximum*fraction*(float)Math.Max(0,received));
         if(target.Hp>before){effectiveEffectVersion++;PushVisual(CombatVisualKind.Heal,skill,"",CombatId(target),CombatId(target),target.Position,target.Position,target.Hp-before,0);}
     }
     private bool IsAuraSkill(string id)=>SkillConfig.Skills.TryGetValue(id,out var skill)&&skill.Effects.Any(e=>SkillConfig.Effects[e].Kind=="MaintainAura");

@@ -8,7 +8,7 @@ namespace IdleCrpg.Core;
 // 数字顺序兼容历史快照；原第3项独立倍率迁移为威能额外比例。
 public enum DamageBucket { Skill,General,Critical,Power,Vulnerable }
 /// <summary>各池Value均为加算贡献；威能+50%填0.5，易伤须绑定有效DebuffId。</summary>
-public record DamageModifier(DamageBucket Bucket,double Value,string SkillId="",DamageType? Type=null,bool RangedOnly=false,bool BossOnly=false,string DebuffId="");
+public record DamageModifier(DamageBucket Bucket,double Value,string SkillId="",DamageType? Type=null,bool RangedOnly=false,bool BossOnly=false,string DebuffId="",bool EliteOnly=false);
 /// <summary>角色额外战斗属性。原有 Attack/Defense 仍是聚合后的攻击/护甲；临时 Buff 不写回这些持久字段。</summary>
 public sealed class BattleAttributes
 {
@@ -27,7 +27,7 @@ public sealed class BattleAttributes
 }
 /// <summary>混合伤害权重非负且合计1；同实例共享命中事实，最终只应用一次HP。</summary>
 public record DamagePortion(DamageType Type,double Weight);
-public record DamageInput(string SkillId,double Attack,double Armor,double Coefficient,DamageType Type,bool Ranged,bool Boss,BattleAttributes Attacker,BattleAttributes Defender,IReadOnlySet<string> Debuffs,int AttackerLevel=1,IReadOnlyList<DamagePortion>? Portions=null,double AttackRating=1,double DefenseRating=1);
+public record DamageInput(string SkillId,double Attack,double Armor,double Coefficient,DamageType Type,bool Ranged,bool Boss,BattleAttributes Attacker,BattleAttributes Defender,IReadOnlySet<string> Debuffs,int AttackerLevel=1,IReadOnlyList<DamagePortion>? Portions=null,double AttackRating=1,double DefenseRating=1,bool Elite=false);
 public record CombatOutcome(bool Dodged,bool Blocked,bool Critical);
 /// <summary>可审阅的三阶段明细；FinalDamage 是扣护盾/无敌/GM 之前的伤害，实际扣血与奖励只由 GameSession 应用一次。</summary>
 public record DamageComponent(DamageType Type,double Weight,double Skill,double General,double Power,double Vulnerable,double Critical,double Defense,double Damage);
@@ -81,7 +81,8 @@ public static class DamagePipeline
         var components=new List<DamageComponent>();
         foreach(var portion in portions)
         {
-            var mods=input.Attacker.Modifiers.Where(m=>(m.SkillId==""||m.SkillId==input.SkillId)&&(!m.Type.HasValue||m.Type==portion.Type)&&(!m.RangedOnly||input.Ranged)&&(!m.BossOnly||input.Boss)).ToArray();
+            // BossOnly/EliteOnly 只对相应身份目标生效；精英身份来自 Actor.Elite（合法精英掷骰），不是UI标签。
+        var mods=input.Attacker.Modifiers.Where(m=>(m.SkillId==""||m.SkillId==input.SkillId)&&(!m.Type.HasValue||m.Type==portion.Type)&&(!m.RangedOnly||input.Ranged)&&(!m.BossOnly||input.Boss)&&(!m.EliteOnly||input.Elite)).ToArray();
             double Sum(DamageBucket bucket)=>mods.Where(m=>m.Bucket==bucket).Sum(m=>m.Value);
             double skill=input.Coefficient+Sum(DamageBucket.Skill),general=1+Sum(DamageBucket.General),power=1+Sum(DamageBucket.Power);
             if(power<0)throw new InvalidDataException("威能加算后倍率不能为负");

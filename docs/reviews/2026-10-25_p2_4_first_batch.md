@@ -808,6 +808,76 @@ S15-C0 只读对账已完成：675/154/258 全量覆盖，21 份设计源哈希�
 
 ---
 
+## 25. S15-C1-B / B2 实施：精英伤害、受治疗增强、精英击杀收据（2026-10-26）
+
+### 25.1 授权
+
+用户指令："继续推进 B2"（承接 C1-B 整包授权第 3 条：O05/D04/G02 作为独立子切片实施，未验收前禁售，不允许用通用 ATK 等效果替代）。未触碰 C2/C3、Lmin、第五席。
+
+### 25.2 三个子切片与真实消费者
+
+| 设计节点 | 生产节点 | 真实机制 | 消费者 |
+|---|---|---|---|
+| O05 精英猎手 | `O05`（2阶，`elite_damage_pct` 3%/阶） | 新增 `DamageModifier.EliteOnly` + `Actor.Elite` 权威标记；`DamageInput.Elite` 只在目标为精英时放行 | `DamagePipeline.cs:84` 过滤；`SkillRuntime.EffectiveAttributes` 注入 |
+| D04 恢复强化 | `D04`（2阶，`healing_received_pct` 5%/阶） | 新增战斗属性 `healing_received_pct`（`fightattr.csv` + `fightattr_rules.csv`），在 `HealTarget` 乘算"实际进入目标身上的治疗量" | `SkillSupportRuntime.cs:40`；`EffectiveValue` 的 star 分支 |
+| G02 悟性增进 | `G02`（3阶，`elite_xp_pct` 10%/阶） | 击杀时按精英实例令牌一次性结算额外 XP；令牌随 Run 保存，重复结算/读档不二次领奖，新 Run 可再领 | `HeroExperience.GainEliteKillXp` + `SessionSnapshot.EliteKillReceipts` |
+
+精英身份权威：`TryApplyElite`（`MonsterContent.cs:105`）在合法难度掷骰命中后写 `Actor.Elite=true` 与确定性令牌 `E{floor}-{room}-{combatId}-{affix}`，不是 UI 标签；`Actor` 字段随房间怪物一道序列化，旧档缺字段等价 `false`/空令牌。
+
+### 25.3 代码/配置变更
+
+- `GameSession.cs`：`Actor.Elite`、`Actor.EliteToken`。
+- `MonsterContent.cs`：精英掷骰成功后写身份与令牌。
+- `DamagePipeline.cs`：`DamageModifier.EliteOnly`、`DamageInput.Elite`、过滤条件（与 `BossOnly` 并列）。
+- `SkillRuntime.cs`：`EffectiveAttributes` 注入精英伤害乘区；`ApplyStarAttribute` 增加 `healing_received_pct`；`SettleDamage` 传 `target.Elite`；击杀点调用 `GainEliteKillXp`。
+- `SkillSupportRuntime.cs`：`HealTarget` 按目标受治疗增强放大，仍受 `CombatMaximumHp` 上限约束。
+- `HeroExperience.cs`：`eliteKillReceipts` 集合、`GainEliteKillXp`（最低 +1，避免小额被 floor 抹平）、`EliteReceiptClaimed` 只读查询。
+- `SessionSnapshot.cs`：`EliteKillReceipts` 字段、Capture/Restore 同步、校验（≤4096、无重复、非空、≤128字符）。
+- 配置：`fightattr.csv`/`fightattr_rules.csv` 增加 `healing_received_pct`；`star.csv`/`star_layout.csv`/`star_plan.csv` 增加 O05/D04/G02（价格沿用 [H]，`PriceApproved=false` 口径）；`StarConfiguration.KnownAttributes` 增加三项。
+- 工具：`tools/Apply-S15C1B-B2.ps1`（幂等）。
+
+### 25.4 验证
+
+| 入口 | 结果 |
+|---|---|
+| 两工程构建 | 0 警告 0 错误 |
+| `--c1b-checks` | `C1B_STAR_PASS`：B1 17 节点 + **B2 三项** |
+| 全量 Core / `--c1a` / `--c1a2` | 均通过（无回归） |
+| Godot 无头 | 退出 0，`SMOKE_OK` |
+| 真实窗口 UI | `FIRST_BATCH_UI_PASS`；新增断言：O02/O03/O04/O05、D02/D03/D04、G02 通过真实星图界面购买成功，且 `elite_damage_pct/healing_received_pct/elite_xp_pct` 派生值 >0 |
+
+B2 专项断言（`elite_heal_receipt_proof.csv`）：
+1. **O05 不对非精英生效**：同种子下非精英目标购买前后伤害差 <1e-6（证明不是通用 ATK），精英目标伤害显著提高；
+2. **D04 只放大真实治疗**：同一祈祷、同一缺口，购买后实际回血更高，且不超过上限；
+3. **G02 一次性收据**：首杀发放额外 XP、同令牌第二次击杀只给基础 XP、读档后 `EliteReceiptClaimed=true`、新 Run 同令牌可再领。
+
+### 25.5 容量重算（B2 后）
+
+| 口径 | 四职业 | 双职业 | 单职业 |
+|---|---:|---:|---:|
+| 设计可用（扣延期 8 + QA 2） | 68 | 68 | 68 |
+| **本轮可售（扣 A02/A03 5 阶）** | **63** | **61** | **60** |
+| 其中纯在线（再扣 F03 三阶） | 60 | 58 | 57 |
+
+B0 阶段的 56/54/53 是"排除 7 阶缺失消费者"的条件值；B2 落地后 O05/D04/G02 共 7 阶转为真实可售，**四职业 63 已进入 55–65 区间**。B3 仍需按真实购买事务跑通设计层 57/55 两条路线，若不能达到须报实际值与原因，不得凑数。
+
+### 25.6 差异与未完成
+
+1. 精英身份在"正式检查点"（`CaptureProgress`）里以 `MonsterOrigin` 重建房间，未持久化 `Elite`：清房后重进为新掷骰实例，可能不再精英；令牌按 `floor-room-combatId` 确定性生成，因此同一槽位不会重复领奖。若要"回档后仍是精英"，需把 Elite/Token 写入 `MonsterOrigin`（属 C2 敌人语义，本轮未做）。
+2. G02 额外经验最少 +1：避免小额击杀被 `floor` 抹平，属可观测性最小保证。
+3. O05 只对 `Actor.Elite` 生效；Boss 不自动视为精英（设计未要求）。
+4. D04 只影响治疗结算，不影响护盾、吸血或再生；`healing_received_pct` 目前仅星图产出。
+
+**未完成**：B3（31 节点交互矩阵、57/55 真实购买事务、`node_coverage.csv`、全量 UI 截图、账本对账）。O05/D04/G02 现为可售（B2 已自检通过），但**不等于**设计验收通过。
+
+### 25.7 三方状态
+
+- **E：B2 PASS（工程自检）**；三项均有同种子 A/B、无效上下文对照、收据幂等与真机购买证据；B3 未实施。
+- **V-Design：未复核**。需确认 25.6 的四项差异（尤其"检查点不保留精英身份"）。
+- **V-User：未验收**。可在星图购买 O05/D04/G02 体验：精英怪伤害提升、祈祷回血更高、精英击杀额外经验（同实例只发一次）。
+
+---
+
 ## 24. S15-C1-B / B1 实施：星图 17 节点真实消费与四职业资格收口（2026-10-26）
 
 ### 24.1 授权与范围

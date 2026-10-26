@@ -59,6 +59,8 @@ public sealed class SessionSnapshot
     public bool RoomCheckpoint;
     public List<PartyEntry> RoomEntry=new();
     public StarProgressSave Stars=new(Array.Empty<StarRankSave>());
+    /// <summary>精英击杀收据令牌（C1-B B2 G02）；空数组=旧档，等同未领取任何精英奖励。</summary>
+    public string[] EliteKillReceipts=Array.Empty<string>();
     public double StarAttack,StarHp;
     public WorldSnapshot? World;
 }
@@ -109,7 +111,7 @@ public sealed partial class GameSession
     public SessionSnapshot Capture() => new() {
         Kp=Kp,KpEarned=KpEarned,KpSpent=KpSpent,DungeonEntrySerial=dungeonEntrySerial,MonsterLevelMin=MonsterLevelMin,MonsterLevelMax=MonsterLevelMax,KpKillReceipts=kpKillReceipts.ToList(),PublicExperience=PublicExperience,PublicExperienceFraction=PublicExperienceFraction,PublicExperienceVersion=1,RunVersion=1,RunId=RunId,TeamLocked=TeamLocked,Account=Account.Copy(),CampaignVersion=2,LatestMapIndex=LatestMapIndex,ActiveBranch=ActiveBranch,BranchQueue=branchQueue.ToList(),SuspendedWorld=suspendedWorld?.Capture(),
         DifficultyIndex=DifficultyIndex,ChapterIndex=ChapterIndex,CompletedMaps=CaptureChapters(),
-        Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=0,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,
+        Seed=Seed,DungeonSeed=dungeonSeed,FloorIndex=FloorIndex,CurrentRoom=CurrentRoom,Experience=0,Kills=Kills,Retries=Retries,RoomEntryLootState=roomEntryLootState,Stars=Stars.Capture(),StarAttack=starAttack,StarHp=starHp,EliteKillReceipts=eliteKillReceipts.OrderBy(x=>x,StringComparer.Ordinal).ToArray(),
         Gold=Gold,Revision=Revision,HitCount=HitCount,LootRandomState=lootRandom.State,HeroExperienceVersion=1,CombatVersion=3,SkillTreeVersion=1,CombatRandomState=combatRandom.State,RoomEntryCombatState=roomEntryCombatState,SkillState=skillState,Won=Won,Destination=destination,Phase=phase,DoorWait=destination>=0&&phase==1&&doorOpener is {Alive:true}?doorWait:0,DoorFallback=destination>=0&&phase==1&&doorOpener is {Alive:true}&&doorFallback,DoorOpenerHero=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Heroes.Contains(doorOpener)?Heroes.IndexOf(doorOpener):-1,DoorOpenerSummon=destination>=0&&phase==1&&doorOpener is {Alive:true}&&Summons.Contains(doorOpener)?Summons.IndexOf(doorOpener):-1,Regroup=regroup,
         ReviveElapsed=ReviveElapsed,ReviveTarget=ReviveTarget==null?-1:Heroes.IndexOf(ReviveTarget),Rescuer=Rescuer==null?-1:Heroes.IndexOf(Rescuer),
         ReserveHeroes=reserveHeroes.Select(h=>h.Copy()).ToList(),PendingFormation=pendingFormation.ToArray(),FormationCapacityFloor=formationCapacityFloor,Status=Status,ActiveDungeonId=ActiveDungeon?.Id??"",Heroes=Heroes.ToList(),Summons=Summons.Select(a=>a.Copy()).ToList(),RoomEntrySummons=roomEntrySummons.Select(a=>a.Copy()).ToList(),Floors=Floors,
@@ -211,6 +213,7 @@ public sealed partial class GameSession
         game.roomEntry=s.RoomEntry.ToList();
         game.roomEntryLootState=s.RoomEntryLootState;
         game.Stars=new StarProgression(config.Stars,s.Stars);game.starAttack=s.StarAttack;game.starHp=s.StarHp;
+        game.eliteKillReceipts.Clear();game.eliteKillReceipts.UnionWith(s.EliteKillReceipts);
         game.ValidateStarTotals(game.Stars.Totals());game.ApplyStarTotals(game.Stars.Totals());
         foreach(var i in s.Inventory)game.inventory.Add((i.ItemId,i.Price),i.Count);
         game.World=s.World==null?null:WorldCampaign.Restore(config,s.World,s.DifficultyIndex);
@@ -308,6 +311,8 @@ public sealed partial class GameSession
         Need((s.ReviveTarget<0)==(s.Rescuer<0)&&(s.ReviveTarget<0||(!s.Heroes[s.ReviveTarget].Alive&&s.Heroes[s.Rescuer].Alive)),"救援引用");
         c.Spawn.Validate(s.Modifiers!);
         Need(s.Stars!=null&&double.IsFinite(s.StarAttack)&&double.IsFinite(s.StarHp)&&s.StarAttack>=0&&s.StarHp>=0,"星图贡献");
+        // 精英击杀收据：数量有界、无重复、无非空字符串；旧档缺字段按空数组视为合法。
+        Need(s.EliteKillReceipts!=null&&s.EliteKillReceipts.Length<=4096&&s.EliteKillReceipts.All(r=>!string.IsNullOrWhiteSpace(r)&&r.Length<=128)&&s.EliteKillReceipts.Distinct().Count()==s.EliteKillReceipts.Length,"精英击杀收据无效");
         var talentStars=new StarProgression(c.Stars,s.Stars);ValidateFormationSnapshot(c,s);
         if(!c.LegacySkillRuntime)
         {

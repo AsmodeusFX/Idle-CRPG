@@ -20,6 +20,10 @@ public sealed class Actor
     public int Level = 1;
     public int Experience,ExperienceFraction;
     public bool Boss;
+    /// <summary>精英身份（C1-B B2）：仅由 TryApplyElite 在合法难度掷骰后标记，是"精英伤害/精英击杀收据"的唯一权威字段。</summary>
+    public bool Elite;
+    /// <summary>精英实例唯一令牌；用于一次性击杀收据，避免读档/重复结算二次领奖。</summary>
+    public string EliteToken="";
     public bool Ranged;
     /// <summary>显式特殊索敌；默认沿用普通容量规则，仅隔离原型启用。</summary>
     public MonsterTargetPolicy TargetPolicy;

@@ -18,7 +18,24 @@ public sealed partial class GameSession
     /// <summary>兼容API也只读公共池，不投影Heroes[0]。</summary>
     public long Experience=>PublicExperience;
     public int ExperienceRequired(Actor hero)=>hero.Level>=Config.MaxHeroLevel?0:Config.HeroLevels[hero.Level].Experience;
+    /// <summary>精英击杀收据（Run级）：令牌集合随存档保存，保证同一精英实例只结算一次额外XP。</summary>
+    private readonly HashSet<string> eliteKillReceipts=new(StringComparer.Ordinal);
+    /// <summary>只读查询：该精英令牌是否已结算（QA/UI 用）。</summary>
+    public bool EliteReceiptClaimed(string token)=>eliteKillReceipts.Contains(token);
     private void GainMonsterExperience(int amount,int monsterLevel)=>GainExperience(amount,"monster_kill");
+    /// <summary>精英击杀收据：令牌去重，保证同一精英实例只发一次；返回是否真的发放。</summary>
+    private bool GainEliteKillXp(Actor target)
+    {
+        double pct=StarValue("elite_xp_pct");
+        if(pct<=0||target.RewardXp<=0)return false;
+        string token=target.EliteToken!=""?target.EliteToken:$"E{FloorIndex}-{CurrentRoom}-{CombatId(target)}";
+        if(!eliteKillReceipts.Add(token))return false;
+        // 小额击杀也能观测到加成：至少+1，避免 floor 把真实节点效果抹成0（仍在账本中单独记 elite_kill）。
+        int bonus=Math.Max(1,(int)Math.Floor(target.RewardXp*pct));
+        if(bonus>0)GainExperience(bonus,"elite_kill");
+        Note($"精英击杀额外经验：{target.Name} +{bonus}（令牌 {token}）");
+        return bonus>0;
+    }
     private void GainExperience(int amount,string source="gm")
     {if(amount<=0)return;long before=PublicExperience;var scaled=amount*XpGainMultiplier;long gained=(long)Math.Floor(scaled);int fraction=PublicExperienceFraction+(int)Math.Round((scaled-gained)*100);if(fraction>=100){gained+=fraction/100;fraction%=100;}PublicExperience=checked(PublicExperience+gained);PublicExperienceFraction=fraction;AuditCurrency(source,"receive","xp",before,PublicExperience);MarkChanged();}
     /// <summary>指定实例一次恰升一级；验证属性及余额后提交，失败零变更。</summary>

@@ -125,6 +125,12 @@ public partial class Main
             SelectStarView(3);await Picture("star-retired-slots-absent");
             BuyStarNode("s_trait_warrior");Need(session.ClassTraitUnlocked("warrior"),"星图职业资格购买未生效");
             await Picture("star-class-trait-purchased");
+            // C1-B B2：精英伤害/受治疗/精英XP 三个节点必须可通过真实星图界面购买，并落到同一个消费派生值。
+            session.GrantGmResources(gold:20000);
+            foreach(var node in new[]{"s_hp","s_atk","s_xp_01","O02","O03","O04","O05","D02","D03","D04","G02"})BuyStarNode(node);
+            Need(session.Stars.Level("O05")==1&&session.Stars.Level("D04")==1&&session.Stars.Level("G02")==1,"B2节点未通过星图界面购买成功 lv="+string.Join(",",new[]{"s_hp","s_atk","s_xp_01","O02","O03","O04","O05","D02","D03","D04","G02"}.Select(x=>x+":"+session.Stars.Level(x)))+" gold="+session.Gold);
+            Need(session.StarDerived("elite_damage_pct")>0&&session.StarDerived("healing_received_pct")>0&&session.StarDerived("elite_xp_pct")>0,"B2节点未落到消费派生值");
+            await Picture("star-b2-nodes-bought");
             foreach(int member in new[]{0,1})
             {
                 selectedHero=session.Heroes[member].HeroInstanceId;selectedSkillRegion=5;SelectStarView(4);talentStamp="";RefreshTalentPage();
