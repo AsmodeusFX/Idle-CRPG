@@ -157,6 +157,7 @@ public partial class Main : Node2D
         if(capture&&bdSkillCapture!=null)PrepareSkillBdSkillCapture(bdSkillCapture.Substring("--capture-bd-skill=".Length));
         if(OS.GetCmdlineUserArgs().Contains("--display-smoke"))RunDisplaySmoke();
         if(OS.GetCmdlineUserArgs().Contains("--first-batch-smoke"))RunFirstBatchSmoke();
+        if(OS.GetCmdlineUserArgs().Contains("--legacy-migration-smoke"))RunLegacyMigrationSmoke();
         if(OS.GetCmdlineUserArgs().Contains("--performance-test"))RunPerformanceSmoke();
         if(OS.GetCmdlineUserArgs().Any(a=>a is "--persistence-write" or "--persistence-read"))RunReopenSmoke();
     }
@@ -164,7 +165,16 @@ public partial class Main : Node2D
     private void Start()
     {
         if(!int.TryParse(seed.Text,out int value)) { summary.Text="Seed 请输入有效整数。"; return; }
-        if(progressReadBlocked){summary.Text="旧档已保留，请先处理迁移提示或在设置明确清除所有进度";return;}
+        // 旧档待裁决时不能用“按钮禁用”做死路：重新打开迁移框，旧档一字节不改。
+        if(progressReadBlocked)
+        {
+            summary.Text="旧档已保留，请先完成迁移选择，或在设置中明确清除所有进度。";
+            // 迁移框已在屏幕上时不要重建，避免抹掉玩家已经勾好的选择。
+            if(legacyDialog!=null&&GodotObject.IsInstanceValid(legacyDialog)&&legacyDialog.Visible)return;
+            if(pendingLegacy!=null)ShowLegacyMigration(pendingLegacy);
+            else ShowMigrationBlockedNotice(progressBlockedReason);
+            return;
+        }
         var ids=config.Heroes.SelectMany((h,i)=>Enumerable.Repeat(h.Id,(int)partyCounts[i].Value)).ToArray();
         if(ids.Length is <1 or >4) {summary.Text="请选择1–4名英雄，允许重复职业；本轮确认后锁定。";return;}
         session=GameSession.StartRun(config,value,ids,pendingAccount); paused=false; accumulator=0; pause.Text="暂停";
