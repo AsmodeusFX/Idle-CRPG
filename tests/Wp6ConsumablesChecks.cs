@@ -24,6 +24,8 @@ public static class Wp6ConsumablesChecks
         GameSession Battle(int seed)
         {
             var game=GameSession.CreateWorld(c,seed,new[]{"warrior","ranger","mage"});
+            // C2-A 逐层节奏会在 spawn_rule 区间内加减数量；QA 夹具固定加 4 个名额，保证清房用例仍有足够目标。
+            game.SetGmBattle(new GmBattleSettings(RoomCountBonus:4));
             for(int i=0;i<20000&&game.CurrentRoom==0;i++)game.Tick(.05f);
             while(game.CombatEntryRemaining>0)game.Tick(.05f);
             var room=game.Floor.Rooms[game.CurrentRoom];
@@ -55,7 +57,8 @@ public static class Wp6ConsumablesChecks
         // 卷轴：击杀掉落入库 → 目标非法不扣 → 真实伤害恰好扣 1。
         var game=Battle(8801);
         var room=game.Floor.Rooms[game.CurrentRoom];
-        for(int i=0;i<4;i++){
+        // C2-A 逐层节奏会改变本房数量：只杀到剩 1 只，保证后续"合法目标"用例仍有活口。
+        for(int i=0;i<4&&room.Monsters.Count(m=>m.Alive)>1;i++){
             var victim=room.Monsters.FirstOrDefault(m=>m.Alive);if(victim==null)break;
             game.QaResolveHit(victim);
         }

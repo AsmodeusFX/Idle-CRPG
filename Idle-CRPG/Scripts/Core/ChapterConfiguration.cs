@@ -31,7 +31,7 @@ public sealed partial class Config
             if(i==0&&legacyFixture){maps.Add(this);continue;}
             string mapRoot=Path.GetFullPath(Path.Combine(directory,def.Directory));
             if(!mapRoot.StartsWith(Path.GetFullPath(directory)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("章节目录不得离开config");
-            var map=(Config)MemberwiseClone();map.ChapterIndex=i;map.LoadWorld(mapRoot,directory);map.LoadSceneConfig(mapRoot,directory);
+            var map=(Config)MemberwiseClone();map.ChapterIndex=i;map.LoadWorld(mapRoot,directory);map.LoadEncounterPlans(mapRoot);map.LoadSceneConfig(mapRoot,directory);
             // 区域投放池按章加载；缺失表示该章仍用全局怪物表（legacy 夹具与旧图不受影响）。
             map.LoadMonsterPools(mapRoot);map.ValidateMonsterPools();
             if(!legacyFixture){map.LoadTown(directory,i);map.LoadWaypoints(mapRoot);}

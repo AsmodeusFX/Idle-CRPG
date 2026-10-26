@@ -483,9 +483,13 @@ public sealed partial class GameSession
         var rule=Config.Spawn;var modifiers=SpawnModifiers;
         int levelMin=MonsterLevelMin,levelMax=MonsterLevelMax;
         var plan=ActiveDungeon==null?null:Config.FloorPlans.SingleOrDefault(p=>p.Poi==ActiveDungeon.Id&&p.Difficulty==DifficultyIndex&&p.Index==FloorIndex+1);
+        // C2-A：逐层遭遇计划只提供"内容偏置"，数量仍夹在 spawn_rule 区间，等级仍取 Run.[Lmin,Lmax]。
+        var encounter=ActiveDungeon==null?null:Config.EncounterFor(ChapterIndex+1,ActiveDungeon.Id,FloorIndex+1);
         room.SnapshotLevel=levelMin;
         var rng=new Random(unchecked(dungeonSeed*397 ^ FloorIndex*7919 ^ room.Id*104729));
         int count=rng.Next(rule.Min+modifiers.MinBonus,rule.Max+modifiers.MaxBonus+1);
+        // 逐层节奏只在 spawn_rule 的合法区间内加减，且不覆盖 GM 临时数量输入。
+        if(encounter!=null)count=Math.Clamp(count+encounter.CountBias,rule.Min+modifiers.MinBonus,rule.Max+modifiers.MaxBonus);
         // GM 数量是临时输入；已生成房间仍沿用原快照，BOSS 占总数中的一个名额。
         count=Math.Clamp(count+Gm.RoomCountBonus,1,1000);
         var inward=Vector2.Normalize(room.Center-entry);
@@ -507,7 +511,7 @@ public sealed partial class GameSession
         {
             bool boss=room.Boss&&i==count-1&&(plan==null||plan.BossActors==1);
             // 世界远征按本次地牢所在统治区的投放池抽取身份；无池（单地牢模拟、legacy）仍用原全局怪物表。
-            var spec=ActiveDungeon==null?Config.Monsters[rng.Next(Config.Monsters.Count)]:Config.PickSpawnMonster(rng,Config.AreaPart(ActiveDungeon.RegionId).Id);
+            var spec=ActiveDungeon==null?Config.Monsters[rng.Next(Config.Monsters.Count)]:Config.PickSpawnMonster(rng,Config.AreaPart(ActiveDungeon.RegionId).Id,encounter?.PoolBias??"mixed");
             var m=rule.Create(spec,rng.Next(levelMin,levelMax+1),boss,modifiers);
             m.Position=SpawnPoint();
             Config.ApplyCombatProfile(m);
@@ -518,7 +522,7 @@ public sealed partial class GameSession
             room.Origins.Add(new MonsterOrigin(m.SpecId,m.Level,m.Boss,m.Position,modifiers));
         }
         // 精英词缀：只在世界远征投掷，Boss 房不参与，每房最多一个。
-        if(ActiveDungeon!=null&&!room.Boss)TryApplyElite(room.Monsters,rng,DifficultyIndex);
+        if(ActiveDungeon!=null&&!room.Boss)TryApplyElite(room.Monsters,rng,DifficultyIndex,encounter?.EliteBias??0);
         if(!room.Boss && rng.NextDouble()<Config.EventChance) room.Event=rng.Next(2)==0?"营火":"宝箱";
         PrepareEnemySummons(Config,room);
         Floor.ActualSpawned+=room.Monsters.Count(m=>m.Alive);

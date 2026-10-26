@@ -75,20 +75,40 @@ public sealed partial class Config
         }
     }
 
-    /// <summary>按统治区加权抽取怪物身份；无池时回落到全局怪物表，保证旧档、单地牢模拟与 legacy 夹具行为不变。</summary>
-    public UnitSpec PickSpawnMonster(Random rng,string areaPartId)
+    /// <summary>按统治区加权抽取怪物身份；poolBias 只在该池内放大同类身份的权重（3倍），不改池成员与权重合计。</summary>
+    public UnitSpec PickSpawnMonster(Random rng,string areaPartId,string poolBias="mixed")
     {
         if(MonsterPools.TryGetValue(areaPartId,out var pool)&&pool.Count>0)
         {
-            int roll=rng.Next(100),accumulated=0;
-            foreach(var entry in pool)
+            // 内容形态偏好：远程=池内最长射程档、重型=池内最高生命档；相对池内分档，避免"全池同档时无效果"。
+            bool biased=poolBias is "melee" or "ranged" or "heavy";
+            double maxRange=pool.Max(e=>FindMonsterSpec(e.MonsterId)?.Range??0);
+            double maxHp=pool.Max(e=>FindMonsterSpec(e.MonsterId)?.Hp??0);
+            var weighted=biased
+                ?pool.Select(e=>(e.MonsterId,Weight:e.Weight*(MatchesBias(e.MonsterId,poolBias,maxRange,maxHp)?3:1))).ToArray()
+                :pool.Select(e=>(e.MonsterId,e.Weight)).ToArray();
+            int total=weighted.Sum(e=>e.Weight),roll=rng.Next(total),accumulated=0;
+            foreach(var entry in weighted)
             {
                 accumulated+=entry.Weight;
                 if(roll<accumulated)return FindSpawnSpec(entry.MonsterId);
             }
-            return FindSpawnSpec(pool[^1].MonsterId);
+            return FindSpawnSpec(weighted[^1].MonsterId);
         }
         return Monsters[rng.Next(Monsters.Count)];
+    }
+
+    /// <summary>身份分类只看既有模板字段（射程/生命），且相对本池最高档判定，不引入第二套行为标签。</summary>
+    private bool MatchesBias(string monsterId,string poolBias,double maxRange,double maxHp)
+    {
+        var spec=FindMonsterSpec(monsterId);if(spec==null)return false;
+        return poolBias switch
+        {
+            "ranged"=>maxRange>0&&spec.Range>=maxRange-.0001,
+            "melee"=>maxRange>0&&spec.Range<maxRange-.0001,
+            "heavy"=>maxHp>0&&spec.Hp>=maxHp-.0001,
+            _=>false
+        };
     }
 
     /// <summary>按稳定ID查怪物模板：先正式怪物，再章节内容身份；读档重建出生现场共用此入口。</summary>

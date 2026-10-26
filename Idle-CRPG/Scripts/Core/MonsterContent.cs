@@ -102,11 +102,13 @@ public sealed partial class GameSession
 
     /// <summary>每房最多一个精英：先按难度出现率掷骰，再按权重选词缀，最后在存活非Boss单位中确定目标。
     /// 只在世界远征（有实际地牢）时启用，单地牢模拟与 legacy 夹具不掷骰，保证旧回归稳定。</summary>
-    public bool TryApplyElite(List<Actor> monsters,Random rng,int difficulty)
+    public bool TryApplyElite(List<Actor> monsters,Random rng,int difficulty,int chanceBias=0)
     {
         var rules=Config.EliteAffixes.Where(a=>a.Difficulty==DifficultyName(difficulty)).ToArray();
         if(rules.Length==0)return false;
-        if(rng.Next(100)>=rules[0].ChancePct)return false;
+        // 逐层语气只调整"本房是否出现精英"的概率，上限仍由 elite.csv 的词缀与难度决定。
+        int chance=Math.Clamp(rules[0].ChancePct+chanceBias,0,100);
+        if(rng.Next(100)>=chance)return false;
         int total=rules.Sum(a=>a.Weight),roll=rng.Next(total),accumulated=0;
         var picked=rules[^1];
         foreach(var rule in rules){accumulated+=rule.Weight;if(roll<accumulated){picked=rule;break;}}
