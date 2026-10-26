@@ -1,0 +1,17 @@
+﻿design_id,design_class_id,design_class_name,design_slot,design_skill_name,design_intended_behavior_P,engine_class_id_observed,engine_slot,engine_slot_skill_id,candidate_existing_id_REVIEW_ONLY,preliminary_design_comparison,reason_and_test_need,approved_for_automatic_mapping,engine_real_effect_test,proposed_stage
+BAR-S1,BAR,野蛮人,S1,重击,近战单目标物理打击，天赋可改变硬直或下一次近战出手条件,warrior,fixed_S1,barb_bash,barb_bash,PARTIAL_REUSE_CANDIDATE,现行S1：同为基础重击；需核对物理攻击行为、AI、表现和天赋联动,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+BAR-S2,BAR,野蛮人,S2,旋风斩,合法近战区域内有界移动、多段物理伤害；各段Hit/Proc分别判资格,warrior,fixed_S2,barb_taunt,barb_whirlwind_window,SLOT_BEHAVIOR_CONFLICT,现行S2=barb_taunt；旋风候选位于现行S3，不能按槽号导入,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+BAR-S3,BAR,野蛮人,S3,战吼,范围友军增益或短时有限嘲讽，互斥分支决定主功能,warrior,fixed_S3,barb_whirlwind_window,barb_taunt,SLOT_BEHAVIOR_CONFLICT,现行S3=旋风；现行S2嘲讽只能算战吼的一部分，友军增益需核查,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+BAR-S4,BAR,野蛮人,S4,先祖援军,召唤一名有所有者与上限的临时先祖；A助攻或B护阵,warrior,fixed_S4,(empty),(none identified),SLOT_EMPTY,先祖援军未见该槽定义；新召唤机制与所有者保护需核查,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+RAN-S1,RAN,游侠,S1,弓箭射击,单箭物理远程基础攻；只锁合法目标,ranger,fixed_S1,ran_multishot,(none identified),SLOT_BEHAVIOR_CONFLICT,现行S1为多重箭；设计需要基础单箭,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+RAN-S2,RAN,游侠,S2,多重箭,一次动作发出扇面多弹道，分配给多个合法目标；同次同目标伤害次数有界,ranger,fixed_S2,ran_guided_arrow,ran_multishot,SLOT_BEHAVIOR_CONFLICT,现行多重箭在S1；设计在S2，候选不能自动迁移,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+RAN-S3,RAN,游侠,S3,导引箭,发出一枚追踪当前合法锁定目标的射击；对失效目标遵循已批准投射物合同,ranger,fixed_S3,ran_valkyrie,ran_guided_arrow,SLOT_BEHAVIOR_CONFLICT,现行导引箭在S2；设计在S3,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+RAN-S4,RAN,游侠,S4,女武神,少量高质量近战召唤物，真实HP/接敌/归属；在前排形成可见支援,ranger,fixed_S4,(empty),ran_valkyrie,SLOT_EMPTY,现行女武神在S3；设计在S4，新槽为空,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+SOR-S1,SOR,法师,S1,火球,击中目标后小范围火元素爆炸；同一目标一次合法爆炸资格,mage,fixed_S1,mage_fireball,mage_fireball,PARTIAL_REUSE_CANDIDATE,现行S1火球，需核对有界AOE/自动施法,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+SOR-S2,SOR,法师,S2,冰霜新星,近身周边合法敌人冰伤＋减速，默认不冻结,mage,fixed_S2,sor_chain_lightning,(none identified),SLOT_BEHAVIOR_CONFLICT,现行S2连锁闪电；设计需要冰霜新星,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+SOR-S3,SOR,法师,S3,连锁闪电,对不同合法目标按有界跳数传播雷伤，链内命中与Proc上限分开,mage,fixed_S3,(empty),sor_chain_lightning,SLOT_EMPTY,现行连锁闪电在S2，设计在S3,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+SOR-S4,SOR,法师,S4,陨星术,有明确可见前摇与落点的范围火爆发，前摇期间怪物可能离开,mage,fixed_S4,(empty),(none identified),SLOT_EMPTY,陨星前摇/落点/Commit内容未投放,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+PAL-S1,PAL,圣骑士,S1,圣击,合法近身物理基础攻，盾与圣光表现，不新增神圣伤害类型,priest,fixed_S1,paladin_smite,paladin_smite,PARTIAL_REUSE_CANDIDATE,现行S1盾击；设计S1圣击，类似近战但有身份表现差异,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+PAL-S2,PAL,圣骑士,S2,盾击,盾击物理打击，短控制依分支购买；无瞬移保护,priest,fixed_S2,pal_prayer,paladin_smite,SLOT_BEHAVIOR_CONFLICT,现行S2祈祷；设计S2盾击，候选在现行S1,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+PAL-S3,PAL,圣骑士,S3,祈祷,按合法友军损血条件自动触发一次范围治疗/保护脉冲；非持续Aura本体,priest,fixed_S3,pal_fanaticism,pal_prayer,SLOT_BEHAVIOR_CONFLICT,现行S3狂热光环；设计S3祈祷脉冲，不等同持续Aura,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION
+PAL-S4,PAL,圣骑士,S4,祝福之锤,有界飞锤绕体表现与范围物理判定，目标由1D合法集合决定，不会2D穿墙,priest,fixed_S4,pal_conviction,(none identified),SLOT_BEHAVIOR_CONFLICT,现行S4信念光环；设计S4祝福之锤；狂热/信念应核对T，不可算第五主动,NO,NOT_PROVIDED_FOR_S06_BEHAVIOR,S15-C1_AFTER_AUTHORIZATION

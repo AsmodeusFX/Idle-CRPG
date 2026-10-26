@@ -1,0 +1,9 @@
+INT-01~08 | seed=1660 | QA balance/drop/terminal prerequisites explicitly enabled | no formal balance claim
+INT-01 PASS: duplicate class Run; formal encode/decode; fixed seats and IDs
+INT-02 PASS: real damage kill/rewards; targeted upgrade; event source/sink conservation
+INT-03 PASS: generated room snapshots immutable; legal Lmax transaction; Lmin remains rejected; detailed revisit/castle gates in FirstBatchChecks
+INT-04 PASS: Run gold/class qualification; per-instance S2/T; no retired-slot purchase; real effect evidence in FixedSkillClosureChecks
+INT-05 PASS: six-slot batch, all N candidates consumed; HP/death/revival/unequip/cross-attribute boundaries in Wp5EquipmentChecks
+INT-06 PASS: scroll lethal consumption+same-kind drop conservation; potion state transition; no empty-effect charge
+INT-07 PASS: explicit QA chapter4 terminal -> real Rebirth -> new Run; Account facts retained, AP zero, Run assets reset; legacy quarantine in dedicated migration checks
+INT-08 PASS: explicit offline interval, duplicate zero, full save loop; no offline Tick or auto spend; live background uses ordinary Tick

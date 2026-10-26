@@ -1,0 +1,116 @@
+﻿# S15 read-only schema audit (2026-10-26)
+PARTIAL_INPUT: S06-S13 original row-level candidate assets are absent from current temp/suggest. S15 contains references and aggregate counts only. Do not infer design IDs or behavioral equivalence from existing similar skills. No production files are changed.
+
+| Design column | Current table/column | Type/consumer | Status and required test |
+|---|---|---|---|
+| unavailable: candidate source missing | skill/skill_slot.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill_slot.csv / hero | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill_slot.csv / slot | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill_slot.csv / skill_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / hero | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / tree | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / tree_name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / row | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / col | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / description | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / max_rank | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / bonus_allowed | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / kind | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / prerequisite | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / required_rank | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / required_points | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / effect | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / value | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / per_rank | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / cooldown | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / range | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / radius | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / damage_type | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / projectile_speed | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / skill_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / exclusive_group | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/talent.csv / class_trait | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / role | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / kind | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / cooldown_ticks | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / windup_ticks | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / recovery_ticks | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / coefficient | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / range | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / effect_ids | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / cast_sound_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / hit_sound_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / target_policy | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/skill.csv / cast_condition | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / role | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / kind | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / damage_type | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / share | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / extent | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / speed | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / impact_effect | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / behavior | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / spawn_tick | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / buff_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / entity_kind | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / lifetime_ticks | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / resolve_effect_ids | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / mechanic_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / damage_parts | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / projectile_count | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/effect.csv / spread_degrees | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / duration_ticks | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / stacking_policy | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / attributes | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / periodic_effect | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / periodic_interval_ticks | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / trigger_ids | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / mechanic | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / value | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / extra | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / target | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / stack_group | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | skill/buff.csv / stack_strength | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / max_level | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / cost_currency | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / cost | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / attr_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / operation | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / value_per_level | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / icon | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | star/star.csv / target_id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | combat/prototype_progression.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | combat/prototype_progression.csv / value | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | combat/prototype_progression.csv / status | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment.csv / slot | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment.csv / attr | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment.csv / base_value | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment.csv / per_level | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment.csv / name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment_quality.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment_quality.csv / name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment_quality.csv / multiplier | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/equipment_quality.csv / weight | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/scroll.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/scroll.csv / name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/scroll.csv / damage_pct | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/scroll.csv / drop_chance | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/potion.csv / id | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/potion.csv / name | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/potion.csv / duration_ticks | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/potion.csv / attack_pct | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+| unavailable: candidate source missing | item/potion.csv / drop_chance | CSV loader + technical field dictionary | CURRENT_SCHEMA_ONLY; requires design-ID, unit and real-effect validation |
+
+Fixed skills: skill_slot.csv has 16 nonempty definitions across FIVE classes; the first four classes have 12. This is not proof of S06 first-run 16 behavior definitions. Five prototype T nodes exist; only warrior qualification is deployed. Mutual exclusion, rank, per-instance investment and free regional reset are implemented; candidate effects still require individual matching.
+AR/DR/XP/KP: all nine prototype_progression.csv rows are H. HeroRatingBase+(Lv-1)*HeroRatingPerLevel and monster m*MonsterRatingPerLevel are current consumers, separate from missing H-B1 31-level candidate tables. Lmax requires every deployed hero AR/DR; Lmin remains closed.
+Equipment: six templates/six slots/four qualities/one ATK-or-HP attribute. Current IDs: common=普通, uncommon=优秀, rare=稀有, legendary=传奇. Candidate 普通/稀有/罕见/传奇 cannot be implicitly mapped by display name: DESIGN_DECISION.
+Consumables: one single-target physical scroll, one attack-percent potion. Five scroll UI positions and four occupied potion slots are implemented. Missing control/movement/team-buff definitions and capacity-node effects require original S12 rows before REUSE/NEEDS_RUNTIME_SUPPORT classification.

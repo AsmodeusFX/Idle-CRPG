@@ -1,0 +1,29 @@
+{
+  "source_files": 21,
+  "source_rows": 1003,
+  "source_hash_errors": [],
+  "design_ids": 675,
+  "effect_contracts": 154,
+  "engine_skill_slots_first_run": 16,
+  "engine_nonempty_first_run": 12,
+  "skill_comparison": {
+    "PARTIAL_REUSE_CANDIDATE": 3,
+    "SLOT_BEHAVIOR_CONFLICT": 9,
+    "SLOT_EMPTY": 4
+  },
+  "design_statuses": {
+    "PARTIAL_REUSE_CANDIDATE": 3,
+    "SLOT_BEHAVIOR_CONFLICT": 9,
+    "SLOT_EMPTY": 4,
+    "CONTENT_BEHAVIOR_NOT_DEPLOYED": 98,
+    "STAR_EFFECT_CONSUMER_UNVERIFIED": 31,
+    "P0_DESIGN_SOURCE_KEY_PRESENT_ENGINE_JOIN_PENDING": 393,
+    "P1_REUSE_CANDIDATE": 69,
+    "QUALITY_AND_VALUE_CONFLICT": 28,
+    "MINIMAL_PROTOTYPE_ONLY": 9,
+    "H_B1_NOT_PRODUCTION": 31
+  },
+  "audit_static_effect_key_count": 14,
+  "audit_static_effect_row_count": 34,
+  "S15_config_schema_rows": 258
+}

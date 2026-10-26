@@ -1,0 +1,5 @@
+buff_id,target_combat_id,source_hero_instance_id,remaining,stacking
+pal_conviction_buff,4,run-1605:0:hero:1,6.05,Strongest
+pal_conviction_buff,4,run-1605:0:hero:2,6.05,Strongest
+pal_conviction_buff,4,run-1605:0:hero:3,6.05,Strongest
+pal_conviction_buff,4,run-1605:0:hero:4,6.05,Strongest

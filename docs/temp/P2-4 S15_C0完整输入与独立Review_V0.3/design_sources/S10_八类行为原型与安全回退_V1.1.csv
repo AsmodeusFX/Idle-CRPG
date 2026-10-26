@@ -1,0 +1,9 @@
+﻿Archetype,DesignRole_P,Source,PlayPattern_P,GatedOrFallback,Approval
+M01,基础近战,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",基础接近→普攻,既有近战/普通远射规则不得假定已通过新版工程验收,P; implementation contingent on WP4-WP9 review
+M02,快速集群,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",快速群体→普攻,既有近战/普通远射规则不得假定已通过新版工程验收,P; implementation contingent on WP4-WP9 review
+M03,重型近战,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",慢步接近→较长前摇重击,既有近战/普通远射规则不得假定已通过新版工程验收,P; implementation contingent on WP4-WP9 review
+M04,普通射手,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",射程内站定投射,既有近战/普通远射规则不得假定已通过新版工程验收,P; implementation contingent on WP4-WP9 review
+M05,范围法师,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",清晰前摇后单次范围伤害,AOE/预警需验证，未通过退回普通远射,P; implementation contingent on WP4-WP9 review
+M06,后排猎手,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",合法目标集中而非跨地形,特殊目标/冲锋以新Review验证，未通过退回普通近战,P; implementation contingent on WP4-WP9 review
+M07,有限召援,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",有界召援/复生，召援不可刷奖,召援、收益/存活上限待验证，未通过退回普通射手,P; implementation contingent on WP4-WP9 review
+M08,辅助施术,"P1 M01-M08 TEST_ONLY semantics, some old runtime evidence",施放有限时/明确来源的增益,友军Buff来源/失效待验证，未通过退回普通射手,P; implementation contingent on WP4-WP9 review

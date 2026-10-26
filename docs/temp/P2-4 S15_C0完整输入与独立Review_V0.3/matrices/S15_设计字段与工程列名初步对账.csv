@@ -1,0 +1,259 @@
+﻿source_key,design_table,design_field,suggested_engine_table_REVIEW_ONLY,exact_label_column_present,match_status,unit_range_default_rounding,runtime_consumer,id_mapping
+skills,S06_四职业16技能身份行为表_V0.8.csv,ClassId,skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,职业,skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,SkillId,skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,技能槽位,skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,技能名称,skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,战斗行为[P],skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,AI使用前提[P],skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,职业特性联动[P],skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,建议首次体验窗口[P],skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+skills,S06_四职业16技能身份行为表_V0.8.csv,状态,skill/skill_slot.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,ClassId,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,NodeId,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,Region,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,NodeName,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,MaxRank,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,Prerequisite,skill/talent.csv,prerequisite,NAME_ONLY_NOT_SEMANTIC_VALIDATION,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,ExclusiveGroup,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,Behavior,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,FirstChapter,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,Status,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talents,S07_四职业天赋节点行为候选_V0.8.csv,Tier,skill/talent.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,职业,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,路线,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,路径主题[P],(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,天赋节点投入,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,消费点数[H-T1],(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,技能S2S3S4与特性T学齐,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,互斥与前置校验,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+talent_builds,S07_8套24点构筑合法清单_V0.8.csv,身份高光,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,NodeId,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,Branch,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,Name,star/star.csv,name,NAME_ONLY_NOT_SEMANTIC_VALIDATION,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,MaxRank,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,PrerequisiteOR,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,SuggestedEarliestChapter,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,PriceRank1_H,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,PriceRank2_H,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,PriceRank3_H,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,PriceRank4_H,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,MaxRankCost_H,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,Effect_P,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,Readiness,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,DesignBoundary,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+stars,S08_31星图定义与前置候选_V0.9.csv,Approval,star/star.csv,,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_ranks,S08_78阶价格测试参数_V0.9.csv,NodeId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_ranks,S08_78阶价格测试参数_V0.9.csv,Rank,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_ranks,S08_78阶价格测试参数_V0.9.csv,PriceGold_HS08,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_ranks,S08_78阶价格测试参数_V0.9.csv,CumulativeNodeCost_HS08,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_ranks,S08_78阶价格测试参数_V0.9.csv,PrerequisiteOR,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_ranks,S08_78阶价格测试参数_V0.9.csv,SuggestedEarliestChapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_ranks,S08_78阶价格测试参数_V0.9.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,Scenario,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,Party,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,SequenceInRoute,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,SourcePurchaseIndex,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,NodeId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,RankAfter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,Price_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,CumulativeGold_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+star_routes,S13_有效星图购买路线_条件性_V1.4.csv,ValueCondition,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,PoiId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,CompositeId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,Region,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,CastleName,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,Route,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,P0Boss,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,P0BossStatus,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,P0FloorCount,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,CandidateLmaxGate,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,ThreatArchetype,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,MainThreat_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,Telegraph_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,CounterPlay_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,Verification_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,Identity_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,RewardIntent_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,ContentPriority_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+castles,S09_31城堡Boss与挑战内容清单_V1.0.csv,SourcePOI,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,DungeonKey,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,RegionKey,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,RegionName,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0Name,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0Optional,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0RequiredForCastle,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0FloorCount,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0NormalFloors,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0CombatCells,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0EliteCells,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,P0KillTarget_Historical,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,OldP1PoolKey_REFERENCE,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,PrimaryCandidate_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,PrimaryName_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,SecondaryCandidate_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,SecondaryName_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,ThirdCandidate_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,Threat_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,UniqueCombatBeat_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,FloorRhythm_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,EliteRhythm_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,PlayerCounterplay_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,GatedArchetypes_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,NoMandatoryManualEvent,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+dungeons,S10_136地牢逐项战斗投放_V1.1.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,DungeonKey,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,DungeonName_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,RegionName_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,IsOptional_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,FloorIndex_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,FloorCount_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,FloorName_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,CombatCellCount_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,EliteCellCount_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,CorridorCellCount_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,EventCellCount_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,BossArenaCellCount_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,CombatMonstersPerCellTarget_Historical,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,PlannedKillTarget_Historical,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,RoomRhythm_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,EncounterPattern_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,ElitePurpose_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,ManualEventDependency,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,MonsterLevelSource_C,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+floors,S10_226层普通地牢战斗节拍_V1.1.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,RegionId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,RegionName,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,IsOptional_P0,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,P0CastlePoiId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,Theme_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,ThreatCurve_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,PlayerGain_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,OldP1PoolRef,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,MonsterCandidateIds_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,MonsterNames_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,OldP1Weights_REFERENCE,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,RequiresMechanicGate,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monster_pools,S10_31区域怪物身份候选池_V1.1.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,CandidateId_OldP1,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,CandidateDisplayName_OldP1,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,Archetype_OldP1,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,Behavior_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,VisualIdentity_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,NeedReviewGate,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,HistoricalP1Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+monsters,S10_38种前四章旧怪物身份再利用登记_V1.1.csv,CurrentS10Approval,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+behavior,S10_八类行为原型与安全回退_V1.1.csv,Archetype,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+behavior,S10_八类行为原型与安全回退_V1.1.csv,DesignRole_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+behavior,S10_八类行为原型与安全回退_V1.1.csv,Source,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+behavior,S10_八类行为原型与安全回退_V1.1.csv,PlayPattern_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+behavior,S10_八类行为原型与安全回退_V1.1.csv,GatedOrFallback,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+behavior,S10_八类行为原型与安全回退_V1.1.csv,Approval,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,TemplateId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,SlotId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,SlotName_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,MainStat,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,QualityId,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,QualityName_C,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,SlotStatFactor_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,QualityStatFactor_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,QualitySellFactor_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,IdentityAndUse_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip,S11_28种装备内容模板_P.csv,ComparisonPolicy_C,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_curve,S11_31级装备成长基础曲线_H-EQ1.csv,ItemLevel,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_curve,S11_31级装备成长基础曲线_H-EQ1.csv,ATKBase_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_curve,S11_31级装备成长基础曲线_H-EQ1.csv,HPBase_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_curve,S11_31级装备成长基础曲线_H-EQ1.csv,SaleBaseGold_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_curve,S11_31级装备成长基础曲线_H-EQ1.csv,Model,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_curve,S11_31级装备成长基础曲线_H-EQ1.csv,Scope,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,MonsterActualLevel,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,BaseEquipmentChancePerLegalKill_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,CommonProb_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,RareProb_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,EpicProb_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,LegendaryProb_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,ItemLevelSource_C,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+equip_drop,S11_31级怪物等级驱动掉率品质_H-EQ1.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Id,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Name,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Kind,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,FirstLevel_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Priority,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Target,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Effect_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Observable,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Limit,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Counterplay,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+scroll,S12_五种卷轴行为候选_P.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Id,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Name,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Kind,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,FirstLevel_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,DurationMin_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Effect_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Effect_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Observable,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,BestMoment,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Risk,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+potion,S12_四种药剂行为与数值假设_P-H.csv,Status,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+consumable_drop,S12_31怪级卷轴药剂候选掉率_H-C1.csv,MonsterLevel,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+consumable_drop,S12_31怪级卷轴药剂候选掉率_H-C1.csv,ScrollDropPct_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+consumable_drop,S12_31怪级卷轴药剂候选掉率_H-C1.csv,PotionDropPct_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+consumable_drop,S12_31怪级卷轴药剂候选掉率_H-C1.csv,ScrollEligible_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+consumable_drop,S12_31怪级卷轴药剂候选掉率_H-C1.csv,PotionEligible_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+consumable_drop,S12_31怪级卷轴药剂候选掉率_H-C1.csv,MonsterLevelAuthority,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+consumable_drop,S12_31怪级卷轴药剂候选掉率_H-C1.csv,Scope,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,怪级g,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,章节,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,本档评级要求AR,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,本档评级要求DR,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,四职自然最低英雄Lv,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,相比前档所需新增全队升级次数,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,该档怪击杀公共XP,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,"[1,g]均匀抽样期望XP/击杀",(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,购买该档KP费用,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,至本档累计KP费用,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+level,S04-S05_31档联立候选数值_H-B1.csv,来源及状态,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,TimeMin_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,P0PlannedLegalKills_Historical,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,XPIncomeAt100_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,XPUpgradeNeed_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,KPIncomeAt100_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,KPLmaxNeed_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,PartyEachMinHeroLevel_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,LmaxEnd_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,EquipmentGoldKillAt100_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,EquipmentAvgSaleAt100_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,ScrollExpectedDrops_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+budget,S13_四章统一输入表_H-V1.4.csv,PotionExpectedDrops_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,Case,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,Party,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,Chapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,Minutes_P,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,KillFactor_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,KillsH,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,GrossXP_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,XPRequired_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,CumulativeXPGapAtTarget_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,XPTargetFeasible_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,GrossKP_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,KPRequiredToLmax_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,CumulativeKPGapAtTarget_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,KPTargetFeasible_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,GrossGold_S11_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,RequiredStarGoldAdjusted_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,CumulativeGoldGapIfAllBought_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,StarPurchasesDueToChapter,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,StarPurchasesFundedAtChapterEnd_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,StarPurchasesDeferredAtChapterEnd_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,GoldCashAfterFundedBuys_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,GoldSpendActuallyFunded_H,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
+pressure,S13_四章三账联立情景_H-V1.4.csv,DesignProof,(multiple tables/P0 read-only),,NO_NAME_MATCH_OR_OUTSIDE_AUDIT,UNKNOWN,UNKNOWN,PENDING
