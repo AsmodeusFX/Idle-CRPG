@@ -13,6 +13,7 @@ if(args.Contains("--c1b3-checks")){C1B3ClosureChecks.Run(root);return;}
 if(args.Contains("--c2a-checks")){C2AContentChecks.Run(root);return;}
 if(args.Contains("--c2a-boss-checks")){C2ABossPhaseChecks.Run(root);return;}
 if(args.Contains("--c2b-checks")){C2BContentChecks.Run(root);return;}
+if(args.Contains("--c3-checks")){C3AcceptanceChecks.Run(root);return;}
 if(args.Contains("--fixed-skill-checks")){FixedSkillClosureChecks.Run(root);return;}
 if(args.Contains("--p2-4-closure-checks")){FirstBatchChecks.Run(root);FixedSkillClosureChecks.Run(root);Wp5EquipmentChecks.Run(root);Wp6ConsumablesChecks.Run(root);Wp7RebirthOfflineChecks.Run(root);IntegrationClosureChecks.Run(root);return;}
 if(args.Contains("--execution-safety-checks")){ExecutionSafetyChecks.Run(root);return;}

@@ -78,7 +78,7 @@ internal sealed class SimulationRun
     private readonly Dictionary<string, long> starPlanLevels = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> lastReject = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> learnedPlan = new(StringComparer.Ordinal);
-    private long nextCastle, nextStar, nextParty, nextTalent, nextUpgrade;
+    private long nextCastle, nextStar, nextParty, nextTalent, nextUpgrade, nextLmax;
     private int castleRequests;
     private long starGoldSpent;
     private bool starDone, partySettled, talentSettled;
@@ -327,6 +327,7 @@ internal sealed class SimulationRun
         if (policy.PartyMode != "none" && IsDue(nextParty, tick)) due.Add("party");
         if (policy.TalentMode != "none" && IsDue(nextTalent, tick)) due.Add("talents");
         if (policy.UpgradeMode != "none" && IsDue(nextUpgrade, tick)) due.Add("upgrade");
+        if (policy.LmaxEnabled && IsDue(nextLmax, tick)) due.Add("lmax");
         if (due.Count == 0) return;
         string chosen = due[0];
         if (due.Count > 1) rec.Event(tick, "policy_order", chosen, "single_group", "same_tick_contention", string.Join('|', due));
@@ -337,6 +338,7 @@ internal sealed class SimulationRun
             case "party": Advance(ref nextParty, tick, policy.PartyIntervalSeconds); ExecParty(tick); break;
             case "talents": Advance(ref nextTalent, tick, policy.TalentIntervalSeconds); ExecTalents(tick); break;
             case "upgrade": Advance(ref nextUpgrade, tick, policy.UpgradeIntervalSeconds); ExecUpgrade(tick); break;
+            case "lmax": Advance(ref nextLmax, tick, policy.LmaxIntervalSeconds); ExecLmax(tick); break;
         }
     }
 
@@ -351,6 +353,19 @@ internal sealed class SimulationRun
         int level = target.Level;
         if (!game.UpgradeHero(target.HeroInstanceId, out _)) return;
         rec.Event(tick, "upgrade_applied", target.HeroInstanceId, "applied", "player_click", $"lv={level}->{target.Level} xp={game.PublicExperience}");
+    }
+
+    /// <summary>
+    /// Lmax 购买代理：一次点击只尝试买一级；成功与否完全由正式命令判定（KP 余额、全员 AR/DR 资格），
+    /// 失败原因原样记录，不绕过准入。C3 需要它才能观测章末 Lmax 里程碑。
+    /// </summary>
+    private void ExecLmax(long tick)
+    {
+        if (game.MonsterLevelMax >= game.Config.MaxMonsterLevel) return;
+        int before = game.MonsterLevelMax;
+        bool ok = game.BuyKpUpgrade(KpPurchase.MonsterLevelMaximum, out string reason);
+        rec.Event(tick, "lmax_purchase", game.MonsterLevelMax.ToString(CultureInfo.InvariantCulture), ok ? "applied" : "rejected",
+            ok ? "player_click" : reason, $"lmax={before}->{game.MonsterLevelMax} kp={game.Kp}");
     }
 
     private void ExecCastle(long tick)

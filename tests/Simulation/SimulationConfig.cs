@@ -53,8 +53,7 @@ public sealed record SimulationConfig
         if (config.StartingHeroes != null)
         {
             if (config.StartingHeroes.Count is < 1 or > 5) throw new ArgumentException("starting_heroes 必须 1..5 人");
-            if (config.StartingHeroes.Distinct(StringComparer.Ordinal).Count() != config.StartingHeroes.Count)
-                throw new ArgumentException("starting_heroes 职业重复");
+            // C3 实验矩阵包含重复职业队伍（双游侠双圣骑、四同职业）；引擎按实例支持，模拟器不再拒绝重复职业。
         }
         return config;
     }
@@ -127,6 +126,13 @@ public sealed record TalentPolicyRule
     public List<SkillEquipRule>? Equip { get; init; }
 }
 
+/// <summary>Lmax 购买策略：按间隔尝试一次合法购买（玩家点击代理），是否成功由正式准入与KP余额决定。</summary>
+public sealed record LmaxPolicyRule
+{
+    public bool Enabled { get; init; }
+    public int IntervalSeconds { get; init; } = 60;
+}
+
 /// <summary>玩家手动升级策略：none/greedy（按最便宜可升级英雄逐次点击，代表显式玩家决策）。</summary>
 public sealed record UpgradePolicyRule
 {
@@ -150,6 +156,7 @@ public sealed record PlayerPolicyRule
     public PartyPolicyRule? Party { get; init; }
     public TalentPolicyRule? Talents { get; init; }
     public UpgradePolicyRule? Upgrade { get; init; }
+    public LmaxPolicyRule? Lmax { get; init; }
     public DiagnosticsRule? Diagnostics { get; init; }
 }
 
@@ -172,6 +179,8 @@ public sealed record SimulationPolicy
     public IReadOnlyList<SkillEquipRule> SkillEquip { get; init; } = Array.Empty<SkillEquipRule>();
     public string UpgradeMode { get; init; } = "none";
     public int UpgradeIntervalSeconds { get; init; }
+    public bool LmaxEnabled { get; init; }
+    public int LmaxIntervalSeconds { get; init; } = 60;
     public int StallWindowSeconds { get; init; } = 600;
     public int RecheckSeconds { get; init; } = 300;
     public int MaxAlerts { get; init; } = 5;
@@ -212,6 +221,7 @@ public sealed record SimulationPolicy
         var party = p.Party ?? new PartyPolicyRule();
         var talents = p.Talents ?? new TalentPolicyRule();
         var upgrade = p.Upgrade ?? new UpgradePolicyRule();
+        var lmax = p.Lmax ?? new LmaxPolicyRule();
         var diagnostics = p.Diagnostics ?? new DiagnosticsRule();
         if (!Modes.Contains(star.Mode)) throw new ArgumentException("未知星图策略：" + star.Mode);
         if (!Modes.Contains(party.Mode)) throw new ArgumentException("未知编队策略：" + party.Mode);
@@ -293,6 +303,8 @@ public sealed record SimulationPolicy
             SkillEquip = equip,
                 UpgradeMode = upgrade.Mode,
                 UpgradeIntervalSeconds = CheckInterval(upgrade.IntervalSeconds, "upgrade.interval_seconds"),
+            LmaxEnabled = lmax.Enabled,
+            LmaxIntervalSeconds = CheckInterval(lmax.IntervalSeconds, "lmax.interval_seconds"),
             StallWindowSeconds = CheckWindow(diagnostics.StallWindowSeconds, "diagnostics.stall_window_seconds"),
             RecheckSeconds = CheckInterval(diagnostics.RecheckSeconds, "diagnostics.recheck_seconds"),
             MaxAlerts = Math.Clamp(diagnostics.MaxAlerts, 1, 50)
@@ -318,6 +330,6 @@ public sealed record SimulationPolicy
         var talent = TalentMode == "explicit"
             ? "explicit[learn=" + string.Join(";", TalentLearn.Select(l => $"{l.Hero}:{l.Node}*{l.Ranks}")) + ";equip=" + string.Join(";", SkillEquip.Select(e => $"{e.Hero}:{string.Join("|", e.Skills ?? new List<string>())}")) + "]"
             : TalentMode;
-        return $"castle={(CastleEnabled ? "on" : "off")}@{CastleIntervalSeconds}s starmap={star}@{StarIntervalSeconds}s party={party}@{PartyIntervalSeconds}s talents={talent}@{TalentIntervalSeconds}s";
+        return $"castle={(CastleEnabled ? "on" : "off")}@{CastleIntervalSeconds}s starmap={star}@{StarIntervalSeconds}s party={party}@{PartyIntervalSeconds}s talents={talent}@{TalentIntervalSeconds}s lmax={(LmaxEnabled ? "on" : "off")}@{LmaxIntervalSeconds}s";
     }
 }
