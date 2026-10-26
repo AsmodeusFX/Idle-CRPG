@@ -110,6 +110,17 @@ public partial class Main
             await Picture("fixed-skills-s3-learned");
             await Click(talentRegionReset);Need(!session.Heroes[0].SkillIds.Contains("barb_taunt")&&session.Heroes[0].SkillIds.Contains("barb_bash"),"真实局部洗点未生效");
             await Picture("fixed-skills-local-reset");
+            // C1-A-2：区域2除技能卡外还必须出现技能级修饰器卡（BAR-S202…），且未学前置时按钮为不可学状态。
+            selectedSkillRegion=2;talentStamp="";RefreshTalentPage();
+            var regionNodes=talentRegionNodes.GetChildren().OfType<Button>().ToArray();
+            Need(regionNodes.Any(b=>b.Name=="LearnTalent_BAR-S202")&&regionNodes.Any(b=>b.Name=="LearnTalent_BAR-S206"),"区域2未渲染技能修饰器节点");
+            Need(regionNodes.Count(b=>b.Name.ToString().StartsWith("LearnTalent_"))>=7,"区域2节点数量不足（应为技能节点+修饰器+触发源）");
+            await Picture("talent-region2-modifiers");
+            // T区域：职业特性根+6条T路线节点，全部为C1-A新增内容，用于真实界面取证。
+            selectedSkillRegion=5;talentStamp="";RefreshTalentPage();
+            var traitNodes=talentRegionNodes.GetChildren().OfType<Button>().Select(b=>b.Name.ToString()).ToArray();
+            Need(traitNodes.Contains("LearnTalent_BAR-T02")&&traitNodes.Contains("LearnTalent_BAR-T07"),"T区域未渲染7个特性节点："+string.Join(",",traitNodes));
+            await Picture("talent-region5-traits");
             session.GrantGmResources(gold:10000);session.BuyStar("s_root",out _);
             SelectStarView(3);await Picture("star-retired-slots-absent");
             BuyStarNode("s_trait_warrior");Need(session.ClassTraitUnlocked("warrior"),"星图职业资格购买未生效");

@@ -96,4 +96,6 @@ public sealed class SkillEffectWork
     public long OriginCast;
     public SkillAttackSnapshot? Snapshot;
     public SkillFlightState? Flight;
+    /// <summary>由已学天赋trigger节点注册的常驻触发源：没有BuffInstance支撑，校验时按触发器OwnerBuff是否为空区分。</summary>
+    public bool TalentTrigger;
 }

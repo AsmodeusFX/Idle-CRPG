@@ -33,6 +33,9 @@ public sealed partial class Config
         {
             var definitions=ClassSkillSlots(hero.Id);var deployed=definitions.Where(id=>id!="").ToArray();
             if(definitions[0]!=config.Talents.StartingSkills[hero.Id]||deployed.Distinct().Count()!=deployed.Length||deployed.Any(id=>config.Talents.Nodes[id].SkillId==""))throw new InvalidDataException("固定S1须等于初始技能、定义不可重复且必须绑定真实Effect："+hero.Id);
+            // 修饰器/触发源只能指向本职业已投放的S1–S4，防止出现"绑了不存在的槽位"的假效果。
+            foreach(var node in config.Talents.Nodes.Values.Where(n=>n.Hero==hero.Id&&(n.Kind is "modifier" or "trait" or "trigger")))
+                if(!deployed.Contains(node.SkillId))throw new InvalidDataException("修饰器/触发源必须指向已投放槽位技能："+node.Id);
         }
     }
 }

@@ -808,6 +808,77 @@ S15-C0 只读对账已完成：675/154/258 全量覆盖，21 份设计源哈希�
 
 ---
 
+## 23. S15-C1-A-2 实施：98 节点天赋（2026-10-26）
+
+### 23.1 授权与输入
+
+用户指令：“继续执行 S15-C1-A-2：98天赋完整实施……先补齐技能级Modifier与已学天赋Trigger注册／注销能力，复用现有React、Proc限制和ICD机制；随后按野蛮人25、游侠25、法师24、圣骑士24的顺序实施”。授权沿用 C1-A 整包（`IMPLEMENT_APPROVED_SCOPE`），本轮不申请新授权；C1-B/C2/C3、正式数值、Lmin、第二轮内容均未触碰。
+
+设计输入：`docs/temp/P2-4 S15_C1A_正式实施授权与裁决回传_V1.0/C1A核心输入/` 的 `02_C1A_98天赋逐节点补规表.csv`（98行，Region/MaxRank/前置/互斥/行为）、`S07_四职业天赋节点行为候选_V0.8.csv`、`S07_8套24点构筑合法清单_V0.8.csv`。注：用户提到的《C1-A-1独立Review与C1-A-2已授权续行包 V1.1》在工作区未以独立文件存在（`refs/` 仅有 V0.3/V0.4 zip），本轮以 C1-A 包内 02/03/04 号文件与 §22 记录为准。
+
+### 23.2 引擎能力（本轮新增）
+
+1. **技能级修饰器**：`kind=modifier|trait` + `effect` 白名单（coefficient/range/extent/duration/control/cooldown/targets/summon_hp/summon_attack），由 `SkillRuntime.ModifiersFor(actor,skillId)` 聚合，消费点为 `Commit`（系数/冷却）、`EffectiveSkillRange`（索敌与接敌）、`EffectiveExtent`（Damage/ApplyBuff/AreaPulse）、`ApplyBuff`（持续）、`ChainRuntime`（跳跃数）、`SummonRuntime`（继承比例）。负值只允许出现在修饰器（如“缩小范围换集中”）。
+2. **已学天赋触发源**：`talent.csv` 新增 `trigger_id` 列；`trigger.csv.owner_buff` 允许为空表示“由天赋注册的常驻触发源”；`React()` 在Buff触发器之后遍历该角色已学节点，复用既有 `origin_filter` 过滤、`ProcAllowed`（每施放/每目标限额）与 `ProcIcdSeconds`；洗点/退休即注销，无独立可变注册表可泄漏。
+3. **前置表达式**：`prerequisite` 支持 `A@1&B@2`（跨区域终点节点，如 `BAR-T06` 需 `T04@1&S204@1`）；裸ID保留“同区域上溯”的旧语义。`TalentRegion` 增加 `trait` 与“前置链可达职业特性根”判定，使T路线节点归入区域5。
+4. **校验**：`kind` 白名单扩展；modifier/trait 必须绑定本职业已投放槽位技能；trigger 必须引用 `trigger.csv` 且带限额/ICD；`LoadSkillSlots` 复核槽位归属，避免“绑了不存在槽位”的假效果。
+
+### 23.3 节点落地（98/98）
+
+| 类别 | 数量 | 机制 |
+|---|---:|---|
+| 既有承载（C1-A-1） | 16 | S201/S301/S401 固定技能节点 + T01 职业特性节点 |
+| 新增 modifier | 49 | 技能系数/范围/持续/冷却/目标数/召唤继承 |
+| 新增 trigger | 23 | OnHit/OnKill/OnSkillCommit → 落Buff，逐条 `proc_limit`(1/1) 与ICD(3–6s) |
+| 新增 trait | 10 | T区域修饰器（避免与S区域混淆） |
+| **合计** | **98** | 82 新行 + 16 既有 |
+
+`talent.csv` 现 155 行（active 47 / passive 26 / modifier 49 / trigger 23 / trait 10）。逐节点“机制—作用技能—限额/ICD”台账：`artifacts/qa/s15-c1a2-node-ledger.csv`（82行，由 `tools/Apply-S15C1A2.ps1` 生成，可重复执行且按ID幂等）。
+
+### 23.4 差异台账（**不得**视为最终设计验收通过）
+
+**A-1 结转**：陨星术=前摇+命中点范围爆发（无固定落点）；祝福之锤=绕体径向脉冲；旋风斩=原地周期脉冲（无施放中位移）；T职业路线每职业仅1条资格链（其余职业按过渡规则可学）。
+
+**A-2 本轮新增近似**（均为“有真实消费者但语义收窄”，逐条列入台账，需设计Owner确认）：
+1. “优先/评分/转火”类（如 BAR-S303、RAN-S303、SOR-S303、PAL-S203/S303/S304）落地为**射程或范围修饰**，未新增目标评分器（C0 已列为 NEW_EFFECT，本轮未越权实现）。
+2. “下一次/限一次/独立收据”类（如 BAR-B03/S206、PAL-S405、T06）落地为**命中后短时增益Buff + 每施放1次限额**，是“命中后”而非严格的“下一次攻击”预置。
+3. “精英特化”类（RAN-B03、SOR-S404、PAL-B03/S205、RAN-S304）落地为系数/集中范围，**未引入精英伤害乘区**（C0 列为缺口）。
+4. “护阵/守护/牵制”类（RAN-S403、PAL-T03/T05、BAR-T05）落地为队伍护甲或召唤继承比例，未新增护卫AI。
+5. `BAR-B02` 硬直与 `PAL-S204` 硬直通过 `stun` Buff + ICD 表达，Boss免疫未单独建模。
+6. T01 资格：本轮未新增游侠/法师/圣骑士星图资格节点（属 C1-B），维持“未投放即可学”的过渡规则。
+
+以上为**非阻断性累计项**，不改变“每个节点都有真实Effect消费者”的验收口径，但**不能**标记为最终设计验收通过。
+
+### 23.5 验证（工程自检）
+
+| 入口 | 命令 | 结果 |
+|---|---|---|
+| 两工程构建 | `dotnet build Idle-CRPG/Idle-CRPG.csproj` / tests | 0 警告 0 错误 |
+| A-2 专项 | `dotnet run --project tests/IdleCrpg.Checks.csproj -- --c1a2-checks` | 退出0，`C1A2_TALENT_PASS`：98节点、8套构筑×24点、前置/互斥负向断言、存档往返、免费局部洗点、四同职与四职业队列、修饰器与触发器真实行为 |
+| A-1 专项 | `--c1a-checks` | `C1A_SKILL_PASS`（16/16槽位与行为未回归） |
+| 全量 Core | 默认运行 | 退出0（`FIXED_SKILLS_PASS`/`LEGACY_SELECTION_PASS`/`WP4…`/`INT_01_08_PASS`） |
+| Godot 无头 | `--headless --path Idle-CRPG -- --smoke-test` | 退出0，12段UI冒烟 + `SMOKE_OK` |
+| 真实窗口 UI | `--path Idle-CRPG -- --first-batch-smoke` | 退出0，`FIRST_BATCH_UI_PASS`（新增断言：S2区域渲染技能修饰器卡 ≥7；T区域渲染 7 个特性节点） |
+
+**真机证据**（`artifacts/qa/first-batch-ui-20261026-093239-9667460-014b9481c3884be2b51257e6050d17dd/`）：
+- `talent-region5-traits.png`：T区域真实渲染“野蛮特性 + 战场本能/狂战连携/狂怒阵线/护队战线/旋风压境/钢铁救援”，并显示真实前置提示（“需学习 野蛮特性 至1级”“需学习 战场本能 至1级”）与资格门禁文案。
+- `talent-region2-modifiers.png`：S2区域技能卡与修饰器卡共存（含 BAR-S202/S206）。
+- A-2 行为证据：`artifacts/qa/s15-c1a2-*/modifier-damage.csv`（投入BAR-B01×3后同样10秒内实际扣血更高）、`trigger-behavior.csv`（BAR-B02 命中产生 `talent_stun_short`，洗点后不再产生）。
+
+### 23.6 未决项与建议
+
+1. 23.4 的六类近似是否接受为“首轮实现口径”，或需在 C1-A 内追加目标评分器/精英乘区/护卫AI。建议：先接受累计台账，待 C2-A（敌人精英语义）与 C3（数值）确定后再决定是否升级。
+2. T01 资格节点：游侠/法师/圣骑士仍为“未投放即可学”；建议随 C1-B 补齐 4 个 `class_trait_unlock` 节点后关闭过渡规则（代码中规则已支持，仅缺配置）。
+3. 节点数值（系数/范围/持续）为工程首轮值，非最终平衡值，须 C3 授权后重算。
+
+### 23.7 三方状态
+
+- **E：PASS（工程自检）**；98/98 节点有真实消费者，八套构筑与四同职/四职业队列通过，真机UI与实机行为均有证据；未做10小时体验与数值验收。
+- **V-Design：未复核**。需确认 23.4 的六类近似与 T01 过渡规则。
+- **V-User：未验收**。可实机查看四职业五个区域的天赋页（S1–S4 + T）；C1-B 仍按已排定计划另行启动。
+
+---
+
 ## 22. S15-C1-A-1 实施：四职业16固定技能＋4职业特性T（2026-10-26）
 
 ### 22.1 授权与边界

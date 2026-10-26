@@ -11,7 +11,8 @@ public static class SkillPreviewChecks
         // M7 的 15 个 skill_XX 保持退役；48 个稳定天赋节点（含未绑定 skill_id 的旧主动）仍是正式内容。
         if(config.Skills.Skills.Keys.Any(id=>id.StartsWith("skill_")))throw new Exception("退役 skill_XX 仍混入正式配置/预览");
         // C1-A-1 追加 7 个节点（6 个固定技能 + 1 条互斥T），并把圣骑士T改为光环主动。
-        if(config.Talents.Nodes.Count!=73||config.Talents.Nodes.Values.Count(n=>n.Kind=="active")!=47)throw new Exception("正式节点/主动数量错误");
+        // C1-A-2 追加 82 个 modifier/trait/trigger 节点（技能级修饰与常驻触发源），主动节点数不变。
+        if(config.Talents.Nodes.Count!=155||config.Talents.Nodes.Values.Count(n=>n.Kind=="active")!=47)throw new Exception("正式节点/主动数量错误");
         // 只在QA目录验证：引用已删 skill_XX 且主备份均不兼容时自动重置，设置不受影响。
         {
             var directory=Path.Combine(root,"artifacts/qa/retired-save-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);

@@ -19,7 +19,9 @@ public sealed partial class GameSession
         var visited=new HashSet<int>();
         double coefficient=work.Coefficient*effect.Share;
         var fromPosition=owner.Position;
-        for(int jump=0;jump<chain.MaxTargets;jump++)
+        // 跳跃数可被modifier扩增（SOR-S302），仍受chain原型上限与visited去重约束，不会重复命中同一目标。
+        int jumps=chain.MaxTargets+ModifiersFor(owner,work.Skill).Targets;
+        for(int jump=0;jump<jumps;jump++)
         {
             if(jump>0)
             {

@@ -53,11 +53,13 @@ public sealed partial class GameSession
         if(!SkillConfig.Summons.TryGetValue(effect.MechanicId,out var definition))throw new InvalidDataException("召唤定义引用无效："+effect.MechanicId);
         if(Summons.Count(s=>s.Alive&&s.SummonOwner==work.Owner&&s.SummonDefinitionId==definition.Id)>=definition.MaxCount)return;
         var room=Floor.Rooms[CurrentRoom];
-        float maxHp=owner.MaxHp*(float)definition.HpRatio;
+        // 召唤继承比例可按来源技能被modifier增强（S402女武神/先祖存活与贡献），不额外生成召唤名额。
+        var summonMods=ModifiersFor(owner,work.Skill);
+        float maxHp=owner.MaxHp*(float)definition.HpRatio*(float)Math.Max(0,1+summonMods.SummonHp);
         var summon=new Actor
         {
             SpecId="summon:"+definition.Id,Name=definition.Name,Level=owner.Level,
-            MaxHp=maxHp,Hp=maxHp,Attack=owner.Attack*(float)definition.AttackRatio,Defense=owner.Defense*(float)definition.DefenseRatio,
+            MaxHp=maxHp,Hp=maxHp,Attack=owner.Attack*(float)definition.AttackRatio*(float)Math.Max(0,1+summonMods.SummonAttack),Defense=owner.Defense*(float)definition.DefenseRatio,
             Speed=definition.Speed,Range=definition.Range,Cooldown=(float)definition.Cooldown,Timer=0,Ranged=definition.RangedCombat,
             SummonDefinitionId=definition.Id,SummonSkill=work.Skill,SummonOwner=work.Owner,SummonOwnerInstanceId=Heroes[work.Owner].HeroInstanceId,SummonRemaining=(float)definition.Duration
         };

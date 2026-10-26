@@ -10,24 +10,27 @@ public sealed partial class GameSession
     private IEnumerable<Actor> Allies(int owner)=>IsFriendlyId(owner)?Heroes.Concat(Summons).Where(InCombatRoom):Floor.Rooms[CurrentRoom].Monsters.Where(InCombatRoom);
     private Actor? ChooseSkillTarget(Actor actor,SkillDefinition skill)
     {
-        if(skill.Condition=="nearby_melee"&&!Enemies(CombatId(actor)).Any(e=>!e.Ranged&&Vector2.Distance(e.Position,actor.Position)<=skill.Range))return null;
+        // 射程类修饰器（S302/S402等"扩大作用范围"）在这里统一生效，索敌与接敌距离保持一致。
+        float range=(float)EffectiveSkillRange(actor,skill.Id);
+        if(skill.Condition=="nearby_melee"&&!Enemies(CombatId(actor)).Any(e=>!e.Ranged&&Vector2.Distance(e.Position,actor.Position)<=range))return null;
         // 尸体技能只在本房存在未消费尸体且进入施放距离时有目标；无尸体时跳过且不进入冷却。
-        if(skill.TargetPolicy=="corpse")return ChooseCorpseTarget(actor,skill.Range);
+        if(skill.TargetPolicy=="corpse")return ChooseCorpseTarget(actor,range);
         if(skill.TargetPolicy=="self")return actor;
-        if(skill.TargetPolicy=="ally_lowest_hp")return Allies(CombatId(actor)).Where(a=>a.Hp<CombatMaximumHp(a)&&Vector2.Distance(a.Position,actor.Position)<=skill.Range).OrderBy(a=>a.Hp/CombatMaximumHp(a)).ThenBy(CombatId).FirstOrDefault();
+        if(skill.TargetPolicy=="ally_lowest_hp")return Allies(CombatId(actor)).Where(a=>a.Hp<CombatMaximumHp(a)&&Vector2.Distance(a.Position,actor.Position)<=range).OrderBy(a=>a.Hp/CombatMaximumHp(a)).ThenBy(CombatId).FirstOrDefault();
         if(skill.Condition=="missing_buff")
         {
             var buffs=skill.Effects.Select(id=>SkillConfig.Effects[id]).Where(f=>f.Kind=="ApplyBuff").Select(f=>f.BuffId).ToArray();
-            return Enemies(CombatId(actor)).Where(e=>Vector2.Distance(e.Position,actor.Position)<=skill.Range&&buffs.Any(id=>!ActorBuffs(CombatId(e)).Any(b=>b.Id==id))).OrderBy(e=>Vector2.DistanceSquared(actor.Position,e.Position)).ThenBy(CombatId).FirstOrDefault();
+            return Enemies(CombatId(actor)).Where(e=>Vector2.Distance(e.Position,actor.Position)<=range&&buffs.Any(id=>!ActorBuffs(CombatId(e)).Any(b=>b.Id==id))).OrderBy(e=>Vector2.DistanceSquared(actor.Position,e.Position)).ThenBy(CombatId).FirstOrDefault();
         }
-        return Choose(actor,SkillConfig.Abilities.GetValueOrDefault(skill.Id),skill.Range);
+        return Choose(actor,SkillConfig.Abilities.GetValueOrDefault(skill.Id),range);
     }
     private Actor[] BuffEffectTargets(SkillEffectWork work,EffectDefinition effect,Actor center)
     {
         var buff=SkillConfig.Buffs[effect.BuffId];
         if(buff.Target=="self")return new[]{CombatActor(work.Owner)!};
-        if(effect.Extent<=0)return new[]{center};
-        return (buff.Target=="ally"?Allies(work.Owner):Enemies(work.Owner)).Where(a=>Vector2.Distance(a.Position,center.Position)<=effect.Extent).ToArray();
+        float extent=EffectiveExtent(work,effect);
+        if(extent<=0)return new[]{center};
+        return (buff.Target=="ally"?Allies(work.Owner):Enemies(work.Owner)).Where(a=>Vector2.Distance(a.Position,center.Position)<=extent).ToArray();
     }
     /// <summary>显式治疗仅恢复存活合法单位至有效上限，不复活、不触发第二条伤害或奖励路径。</summary>
     private void HealTarget(Actor? target,double fraction,string skill="")

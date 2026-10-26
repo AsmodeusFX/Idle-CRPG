@@ -156,7 +156,8 @@ public sealed class SkillConfiguration
             if(!new[]{"OnHit","OnCritical","OnBlock","OnDamageDealt","OnKill","OnSkillCommit"}.Contains(r["event_kind"])||r["origin_filter"] is not ("" or "primary_cast" or "direct"))throw r.Error("event_kind","未实现的事件或来源过滤");
             double chance=hasChance&&r["proc_chance"]!=""?r.Number("proc_chance"):1;
             if(!double.IsFinite(chance)||chance<0||chance>1)throw r.Error("proc_chance","触发概率须在0～1内，缺省为1");
-            c.Triggers.Add(r.Id,new(r.Id,r["event_kind"],r.Required("effect_id"),r.Required("owner_buff"),r["origin_filter"],chance));
+            // owner_buff 为空表示"由已学天赋trigger节点注册的常驻触发源"，不依附任何Buff，注销随洗点发生。
+            c.Triggers.Add(r.Id,new(r.Id,r["event_kind"],r.Required("effect_id"),r["owner_buff"],r["origin_filter"],chance));
         }
         foreach(var r in Table("proc_limit",ProcLimitColumns).Rows)
         {
@@ -201,7 +202,13 @@ public sealed class SkillConfiguration
         foreach(var a in Abilities.Values){Need(Skills.ContainsKey(a.Id),a.Id);foreach(var id in a.Effects)Need(AbilityEffects.ContainsKey(id),id);foreach(var id in a.Buffs)Need(Buffs.ContainsKey(id),id);if(a.Root>0)Need(Buffs.TryGetValue("buff_stun",out var stun)&&stun.Mechanic=="stun",a.Id);}
         foreach(var fx in AbilityEffects.Values)if(fx.BuffId!="")Need(Buffs.ContainsKey(fx.BuffId),fx.Id);
         foreach(var b in Buffs.Values){if(b.Periodic!="")Need(Effects.ContainsKey(b.Periodic),b.Id);foreach(var id in b.Triggers)Need(Triggers.TryGetValue(id,out var t)&&t.OwnerBuff==b.Id,b.Id);}
-        foreach(var t in Triggers.Values)Need(Effects.ContainsKey(t.Effect)&&Buffs.TryGetValue(t.OwnerBuff,out var b)&&b.Triggers.Contains(t.Id),t.Id);
+        foreach(var t in Triggers.Values)
+        {
+            Need(Effects.ContainsKey(t.Effect),t.Id);
+            // owner_buff 为空=天赋常驻触发源：注册/注销由已学talent.trigger_id决定，不要求Buff反向引用。
+            if(t.OwnerBuff=="")continue;
+            Need(Buffs.TryGetValue(t.OwnerBuff,out var triggerOwner)&&triggerOwner.Triggers.Contains(t.Id),t.Id);
+        }
         foreach(var e in Effects.Values)
         {
             if(e.Kind is "ApplyBuff" or "MaintainAura")Need(Buffs.ContainsKey(e.BuffId),e.Id);

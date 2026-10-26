@@ -118,4 +118,22 @@ WorldSnapshot新增 `OutdoorTrail`（从排头向队尾的有限世界坐标折�
 
 区域1～4为固定主动顺位；非T被动沿旧tree+1归区，T为5。旧主动或跨区前置不成为新区域隐藏门禁，主动根不继承旧三系投入门槛；被动保留同区有效前置/原投入门槛。该适配服务于已有原型内容，不是S07候选98节点导入。
 
+### S15-C1-A-2：98节点的四种类型与消费合同（2026-10-26）
+
+`kind` 取值扩展为 `active / passive / modifier / trait / trigger`，全部由 `TalentConfiguration.Load` 强校验：
+
+| kind | 区域归属 | 必须列 | 真实消费者 |
+|---|---|---|---|
+| `active` | 槽位序号+1（S1–S4）；`class_trait` 为5 | `cooldown_ticks/range/skill_id` | `Commit` 按 `skill.csv` 执行 |
+| `passive` | `tree+1` | `effect ∈ atk/armor/crit_rate/engagement_capacity` | `PassiveTalentValue → EffectiveValue` |
+| `modifier` | 被作用技能的槽位序号+1 | `skill_id`（本职业已投放槽位）+ `effect` 白名单 | 见下表 |
+| `trait` | 5（T区域） | 同 modifier | 同 modifier（只改区域归属） |
+| `trigger` | 被作用技能的槽位序号+1；前置链可达职业特性根时归5 | `trigger_id` 指向 `trigger.csv`，`owner_buff` 留空 | `React()` + `proc_limit.csv` + `proc_icd.csv` |
+
+修饰器 `effect` 白名单与消费点：`coefficient`→`Commit` 系数乘区；`range`→`EffectiveSkillRange`（索敌/接敌）；`extent`→`EffectiveExtent`（Damage/ApplyBuff/AreaPulse）；`duration`→`ApplyBuff` 持续；`control`→同 duration（硬直/减速时长）；`cooldown`→`Commit` 冷却；`targets`→`ChainRuntime` 跳跃数与弹道数；`summon_hp/summon_attack`→`SummonRuntime` 继承比例。只有 modifier/trait 允许负值（示例：缩小范围换集中）。
+
+触发源合同：`trigger.csv.owner_buff` 为空表示"天赋常驻触发源"，`SkillConfiguration.ValidateGraph` 只要求 `effect_id` 存在且被某个 `talent.trigger_id` 引用；`React()` 在遍历Buff触发器后追加遍历该角色已学节点，同样套用 `origin_filter` 过滤、`ProcAllowed` 每施放/每目标限额与ICD；洗点/退休后节点消失即注销，不保留触发器现场。前置支持 `A@1&B@2` 表达式（跨区域终点节点），裸ID保留同区域上溯的旧语义。
+
+存档：只存 `Actor.Talents`（节点→等级），修饰器与触发源均为派生，不新增字段；`FixedSkillsVersion` 维持2。区域重置按 `TalentRegion` 判定，含T路线节点。
+
 生产学习/互斥/预算/资格与存档数值均须合法。区域重置不清整房现场，避免误删其他英雄CD；S1基础攻击保留。字段版本为V5文档内追加，未知已删技能仍拒绝读档、原主备份保留。验证：`--p2-4-closure-checks`、默认Core、Godot冒烟和真实GUI鼠标事件；证据见主review第19节。

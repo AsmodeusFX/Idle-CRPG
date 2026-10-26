@@ -14,8 +14,10 @@ public sealed partial class GameSession
         if(owner is not {Alive:true})return;
         var center=CombatActor(work.Target);
         if(center is not {Alive:true})return;
-        PushVisual(CombatVisualKind.Pulse,work.Skill,"",work.Owner,work.Target,center.Position,center.Position,0,effect.Extent,effect.DamageType,work.Depth);
-        var hits=Enemies(work.Owner).Where(e=>e.Alive&&InCombatRoom(e)&&Vector2.Distance(e.Position,center.Position)<=effect.Extent).ToArray();
+        // 旋风/新星/陨星/飞锤的覆盖范围受 extent 修饰器影响（S204/S202/S404/S402等），上限仍由技能配置决定。
+        float pulseExtent=EffectiveExtent(work,effect);
+        PushVisual(CombatVisualKind.Pulse,work.Skill,"",work.Owner,work.Target,center.Position,center.Position,0,pulseExtent,effect.DamageType,work.Depth);
+        var hits=Enemies(work.Owner).Where(e=>e.Alive&&InCombatRoom(e)&&Vector2.Distance(e.Position,center.Position)<=pulseExtent).ToArray();
         RecordAoe(hits.Length);
         foreach(var hit in hits)
             SettleDamage(owner,hit,work.Skill,work.Coefficient*effect.Share,effect.DamageType,owner.Ranged,work.Snapshot,depth:work.Depth,originCast:work.OriginCast);

@@ -7,7 +7,9 @@ using System.Numerics;
 namespace IdleCrpg.Core;
 
 /// <summary>学习等级与额外等级分开；加成不提供学习资格，不计入系内投入。SkillId 为空时沿用 CastTalent 旧分派，非空时引用同名 CSV 主动定义。</summary>
-public record TalentNode(string Id,string Hero,int Tree,string TreeName,int Row,int Col,string Name,string Description,int MaxRank,bool BonusAllowed,string Kind,string Prerequisite,int RequiredRank,int RequiredPoints,string Effect,double Value,double PerRank,double Cooldown,float Range,float Radius,DamageType DamageType,float ProjectileSpeed,string SkillId,string ExclusiveGroup="",bool ClassTrait=false);
+/// <summary>Kind：active=主动定义节点；passive=属性被动；modifier=技能级修饰器（Effect为修饰类型）；trigger=已学即注册的常驻触发源。
+/// Modifier/Trigger 通过 SkillId 指向被修饰技能以确定所在区域；TriggerId 为空表示不注册触发器。</summary>
+public record TalentNode(string Id,string Hero,int Tree,string TreeName,int Row,int Col,string Name,string Description,int MaxRank,bool BonusAllowed,string Kind,string Prerequisite,int RequiredRank,int RequiredPoints,string Effect,double Value,double PerRank,double Cooldown,float Range,float Radius,DamageType DamageType,float ProjectileSpeed,string SkillId,string ExclusiveGroup="",bool ClassTrait=false,string TriggerId="");
 public record TalentBonus(string Source,string Scope,string Target,int Levels);
 public sealed class TalentConfiguration
 {
@@ -39,22 +41,41 @@ public sealed class TalentConfiguration
         // 敌方兜底上限必须高于基础警觉，否则参考前方入房进度没有意义。
         if(c.Rule("combat_entry_threat_range_milli")>=c.Rule("combat_entry_pass_depth_milli"))throw new InvalidDataException("入口近距离威胁距离必须小于通行深度");
         if(c.Rule("combat_entry_alert_cap_milli")<=c.Rule("combat_entry_delay_milli"))throw new InvalidDataException("敌方警觉兜底上限必须大于基础警觉时间");
-        string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed,skill_id,exclusive_group,class_trait".Split(',');
+        string[] columns="id,hero,tree,tree_name,row,col,name,description,max_rank,bonus_allowed,kind,prerequisite,required_rank,required_points,effect,value,per_rank,cooldown,range,radius,damage_type,projectile_speed,skill_id,exclusive_group,class_trait,trigger_id".Split(',');
         foreach(var r in CsvTable.Load("skill/talent.csv",File.ReadAllText(Path.Combine(root,"skill/talent.csv")),columns).Rows)
         {
-            var n=new TalentNode(r.Id,r.Required("hero"),r.Integer("tree"),r.Required("tree_name"),r.Integer("row"),r.Integer("col"),r.Required("name"),r.Required("description"),r.Integer("max_rank"),r.Integer("bonus_allowed") is 1,r.Required("kind"),r["prerequisite"],r.Integer("required_rank"),r.Integer("required_points"),r.Required("effect"),r.Number("value"),r.Number("per_rank"),r.Number("cooldown"),(float)r.Number("range"),(float)r.Number("radius"),r.Enum<DamageType>("damage_type"),(float)r.Number("projectile_speed"),r["skill_id"],r["exclusive_group"],r["class_trait"]=="1");
-            if(r.Integer("bonus_allowed") is not (0 or 1)||!config.Heroes.Any(h=>h.Id==n.Hero)||n.Tree is <0 or >3||n.Col is <0 or >2||n.Row is <0 or >100||n.MaxRank is <1 or >100||n.RequiredPoints< -1||n.RequiredRank<0||n.Value<0||n.PerRank<0||n.Cooldown<0||n.Range<0||n.Radius<0||n.Kind is not ("active" or "passive")||n.Kind=="active"&&(n.Cooldown<0.05||n.Cooldown>5000||n.Range<=0)||n.Kind=="passive"&&n.Effect is not ("atk" or "armor" or "crit_rate" or "engagement_capacity")||!float.IsFinite(n.Range)||!float.IsFinite(n.Radius)||!float.IsFinite(n.ProjectileSpeed)||n.ProjectileSpeed<0||n.Effect=="shot"&&n.ProjectileSpeed<=0||n.Kind=="active"&&n.Effect is not ("bash" or "whirlwind" or "leap" or "shout" or "weaken" or "shot" or "nova" or "data"))throw new InvalidDataException("天赋节点无效："+n.Id);
+            var n=new TalentNode(r.Id,r.Required("hero"),r.Integer("tree"),r.Required("tree_name"),r.Integer("row"),r.Integer("col"),r.Required("name"),r.Required("description"),r.Integer("max_rank"),r.Integer("bonus_allowed") is 1,r.Required("kind"),r["prerequisite"],r.Integer("required_rank"),r.Integer("required_points"),r.Required("effect"),r.Number("value"),r.Number("per_rank"),r.Number("cooldown"),(float)r.Number("range"),(float)r.Number("radius"),r.Enum<DamageType>("damage_type"),(float)r.Number("projectile_speed"),r["skill_id"],r["exclusive_group"],r["class_trait"]=="1",r["trigger_id"]);
+            if(r.Integer("bonus_allowed") is not (0 or 1)||!config.Heroes.Any(h=>h.Id==n.Hero)||n.Tree is <0 or >3||n.Col is <0 or >2||n.Row is <0 or >200||n.MaxRank is <1 or >100||n.RequiredPoints< -1||n.RequiredRank<0||n.Cooldown<0||n.Range<0||n.Radius<0||n.Kind is not ("active" or "passive" or "modifier" or "trait" or "trigger")||!float.IsFinite(n.Range)||!float.IsFinite(n.Radius)||!float.IsFinite(n.ProjectileSpeed)||n.ProjectileSpeed<0||n.Effect=="shot"&&n.ProjectileSpeed<=0)throw new InvalidDataException("天赋节点无效："+n.Id);
+            if(n.Kind=="active"&&(n.Cooldown<0.05||n.Cooldown>5000||n.Range<=0||n.Effect is not ("bash" or "whirlwind" or "leap" or "shout" or "weaken" or "shot" or "nova" or "data")))throw new InvalidDataException("主动节点参数无效："+n.Id);
+            if(n.Kind=="passive"&&n.Effect is not ("atk" or "armor" or "crit_rate" or "engagement_capacity"))throw new InvalidDataException("被动效果无效："+n.Id);
+            // 只有修饰器允许负值（如"缩小范围换集中"）；其余节点数值必须非负。
+            if(n.Kind is not ("modifier" or "trait")&&(n.Value<0||n.PerRank<0))throw new InvalidDataException("非修饰器数值必须非负："+n.Id);
+            // 修饰器只作用于本职业固定槽技能；触发源必须引用 trigger.csv 的常驻触发器并在学得时注册。
+            // 槽位表在天赋之后加载，这里只校验"存在且为主动定义"；槽位归属由LoadSkillSlots复核。
+            bool onSlot=n.SkillId!=""&&config.Skills.Skills.TryGetValue(n.SkillId,out var targetSkill)&&targetSkill.Kind=="ActiveSkill";
+            // modifier=跟随槽位区域的修饰器；trait=T区域的修饰器（同表消费，只改区域归属）。
+            if(n.Kind is "modifier" or "trait"&&(!onSlot||n.Effect is not ("coefficient" or "range" or "extent" or "duration" or "targets" or "control" or "summon_hp" or "summon_attack" or "cooldown")))throw new InvalidDataException("修饰器目标技能无效："+n.Id);
+            if(n.Kind=="trigger"&&(n.Effect!="trigger"||!onSlot||n.TriggerId==""||!config.Skills.Triggers.ContainsKey(n.TriggerId)))throw new InvalidDataException("触发源定义无效："+n.Id);
+            if(n.Kind!="trigger"&&n.TriggerId!="")throw new InvalidDataException("只有trigger节点可注册触发器："+n.Id);
             // 槽位技能节点只能引用同名主动定义；职业特性T可另绑光环技能（T不占S1-S4槽，由学习状态持续维持）。
-            if(n.SkillId!=""&&(n.Kind!="active"||!config.Skills.Skills.TryGetValue(n.SkillId,out var bound)||bound.Kind!="ActiveSkill"||(!n.ClassTrait&&(n.SkillId!=n.Id||bound.Cooldown!=checked((int)Math.Ceiling(n.Cooldown*20))||Math.Abs(bound.Range-n.Range)>.0001f))))throw new InvalidDataException("天赋绑定技能无效："+n.Id);
-            if(n.Effect=="data"&&n.SkillId=="")throw new InvalidDataException("数据驱动主动缺少skill_id："+n.Id);
+            if(n.Kind=="active"&&n.SkillId!=""&&(!config.Skills.Skills.TryGetValue(n.SkillId,out var bound)||bound.Kind!="ActiveSkill"||(!n.ClassTrait&&(n.SkillId!=n.Id||bound.Cooldown!=checked((int)Math.Ceiling(n.Cooldown*20))||Math.Abs(bound.Range-n.Range)>.0001f))))throw new InvalidDataException("天赋绑定技能无效："+n.Id);
+            if(n.Kind=="active"&&n.Effect=="data"&&n.SkillId=="")throw new InvalidDataException("数据驱动主动缺少skill_id："+n.Id);
             c.Nodes.Add(n.Id,n);
         }
         foreach(var group in c.Nodes.Values.GroupBy(n=>(n.Hero,n.Tree)))
             if(group.Select(n=>(n.Row,n.Col)).Distinct().Count()!=group.Count()||group.Select(n=>n.TreeName).Distinct().Count()!=1)throw new InvalidDataException("天赋位置重叠或系名不一致");
         foreach(var n in c.Nodes.Values)
         {
-            if(n.Prerequisite!=""&&(!c.Nodes.TryGetValue(n.Prerequisite,out var p)||p.Hero!=n.Hero||p.Tree!=n.Tree||p.Row>=n.Row||n.RequiredRank<1||n.RequiredRank>p.MaxRank))throw new InvalidDataException("天赋前置必须为同系更早行："+n.Id);
-            if(n.Prerequisite==""&&n.RequiredRank!=0)throw new InvalidDataException("无前置节点时前置等级须为0："+n.Id);
+            // 前置支持 "A@1&B@2" 跨系表达式（设计S07的跨路线终点节点需要）；裸ID保持原有"同系更早行"语义。
+            if(n.Prerequisite==""){if(n.RequiredRank!=0)throw new InvalidDataException("无前置节点时前置等级须为0："+n.Id);continue;}
+            foreach(string token in n.Prerequisite.Split('&',StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries))
+            {
+                var parts=token.Split('@');string pid=parts[0];
+                if(!c.Nodes.TryGetValue(pid,out var p)||p.Hero!=n.Hero)throw new InvalidDataException("天赋前置不存在或跨职业："+n.Id+" -> "+pid);
+                if(p.Tree==n.Tree&&p.Row>=n.Row)throw new InvalidDataException("同系前置必须为更早行："+n.Id+" -> "+pid);
+                int need=parts.Length>1&&int.TryParse(parts[1],out int parsed)?parsed:Math.Max(1,n.RequiredRank);
+                if(need<1||need>p.MaxRank)throw new InvalidDataException("前置等级越界："+n.Id+" -> "+pid);
+            }
         }
         foreach(var row in CsvTable.Load("skill/hero_starting_skill.csv",File.ReadAllText(Path.Combine(root,"skill/hero_starting_skill.csv")),"id","skill_id").Rows)
         {

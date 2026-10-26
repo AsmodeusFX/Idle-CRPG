@@ -200,6 +200,49 @@ public sealed partial class GameSession
     }
     /// <summary>GM只读诊断：本房最近的技能选择与跳过原因，按变化追加，最多保留24条。</summary>
     public IEnumerable<string> SkillAiDiagnostics()=>skillDecisions;
+    /// <summary>已学modifier节点的聚合结果：百分比项按1+值放大，targets为个数增量，summon_*为基础比例增量。</summary>
+    internal sealed class TalentModifierSet
+    {
+        public double Coefficient,Range,Extent,Duration,Cooldown,Control,SummonHp,SummonAttack;public int Targets;
+        public bool Any=>Coefficient!=0||Range!=0||Extent!=0||Duration!=0||Cooldown!=0||Control!=0||SummonHp!=0||SummonAttack!=0||Targets!=0;
+    }
+    /// <summary>按(角色,技能)聚合已学修饰器；只读Talents字典，学习/洗点即时生效，不保存派生值。</summary>
+    internal TalentModifierSet ModifiersFor(Actor actor,string skillId)
+    {
+        var result=new TalentModifierSet();
+        if(skillId==""||actor.Talents.Count==0)return result;
+        foreach(var pair in actor.Talents)
+        {
+            if(pair.Value<=0||!Config.Talents.Nodes.TryGetValue(pair.Key,out var node)||node.Kind!="modifier"||node.SkillId!=skillId)continue;
+            double value=TalentValue(actor,node);if(value<=0)continue;
+            switch(node.Effect)
+            {
+                case "coefficient":result.Coefficient+=value;break;
+                case "range":result.Range+=value;break;
+                case "extent":result.Extent+=value;break;
+                case "duration":result.Duration+=value;break;
+                case "control":result.Control+=value;break;
+                case "cooldown":result.Cooldown+=value;break;
+                case "summon_hp":result.SummonHp+=value;break;
+                case "summon_attack":result.SummonAttack+=value;break;
+                case "targets":result.Targets+=(int)Math.Round(value);break;
+            }
+        }
+        return result;
+    }
+    /// <summary>技能有效射程：基础射程×(1+修饰器)，供索敌与接敌距离统一使用。</summary>
+    internal double EffectiveSkillRange(Actor actor,string skillId)
+    {
+        if(skillId==""||!SkillConfig.Skills.TryGetValue(skillId,out var skill))return 0;
+        return skill.Range*(1+ModifiersFor(actor,skillId).Range);
+    }
+    /// <summary>效果有效范围：基础extent×(1+修饰器)，0表示单目标语义保持不变。</summary>
+    private float EffectiveExtent(SkillEffectWork work,EffectDefinition fx)
+    {
+        if(fx.Extent<=0)return 0;
+        var owner=CombatActor(work.Owner);if(owner==null)return fx.Extent;
+        return fx.Extent*(float)(1+ModifiersFor(owner,work.Skill).Extent);
+    }
     private Actor? Choose(Actor owner,AbilityDefinition? ability,float range)
     {
         var enemies=Enemies(CombatId(owner)).Where(e=>ability?.Targeting=="highest_hp"||Vector2.Distance(owner.Position,e.Position)<=range).OrderBy(CombatId).ToArray();
@@ -220,7 +263,7 @@ public sealed partial class GameSession
         double cooldown=skill.Cooldown/(double)SkillConfig.TickRate;
         if(SkillConfig.Abilities.TryGetValue(id,out var ability)&&ability.Form=="buff")
             cooldown=Math.Max(ability.Buffs.Max(b=>SkillConfig.Buffs[b].Duration)/(double)SkillConfig.TickRate*SkillConfig.Setting("buff_cooldown_floor_ratio"),cooldown*(1-SkillConfig.Setting("buff_cooldown_per_level")*(LevelOf(actor,id)-1)));
-        action.Cooldowns[id]=cooldown;action.Recovery=skill.Recovery/(double)SkillConfig.TickRate;action.Active="";
+        action.Cooldowns[id]=Math.Max(.05,cooldown*Math.Max(.1,1-ModifiersFor(actor,id).Cooldown));action.Recovery=skill.Recovery/(double)SkillConfig.TickRate;action.Active="";
         long originCast=++skillState.NextId;
         DamageType castType=DamageType.Physical;
         foreach(string effect in skill.Effects){var definition=SkillConfig.Effects[effect];if(definition.Kind is "Damage" or "Chain" or "CorpseExplosion" or "AreaPulse" or "Heal"){castType=definition.DamageType;break;}}
@@ -229,7 +272,8 @@ public sealed partial class GameSession
         {
             // 绑定节点按 skill.csv/effect.csv 执行，倍率取当前生效等级；未绑定节点保持旧 CastTalent 分派。
             if(talent.SkillId==""){if(Config.LegacySkillRuntime||skillPreviewMode)CastTalent(actor,target,talent,originCast);return;}
-            double value=TalentValue(actor,talent);
+            // 基础系数取节点当前等级，再叠加 modifier 的系数增量（S2xx/S3xx/S4xx 的"提高伤害"走这里）。
+            double value=TalentValue(actor,talent)*(1+ModifiersFor(actor,id).Coefficient);
             foreach(string effect in skill.Effects)Enqueue(new(){Effect=effect,Skill=id,Owner=action.Owner,Target=action.Target,Coefficient=value,OriginCast=originCast});
             return;
         }
@@ -253,6 +297,16 @@ public sealed partial class GameSession
             if(trigger.Filter=="direct"&&depth!=0)continue;
             Enqueue(new(){Trigger=id,Effect=trigger.Effect,Skill=skill,Owner=buff.Owner,Target=target,Coefficient=coefficient,BuffInstance=buff.Instance,Depth=depth+1,Flight=flight,OriginCast=cast});
         }
+        // 已学trigger天赋：注册即"该角色拥有此事件源"，洗点/退休后立即消失；限额与ICD仍由proc_limit/proc_icd统一裁决。
+        if(CombatActor(owner) is { } talentOwner&&Heroes.Contains(talentOwner))
+            foreach(var pair in talentOwner.Talents)
+            {
+                if(pair.Value<=0||!Config.Talents.Nodes.TryGetValue(pair.Key,out var node)||node.Kind!="trigger"||node.TriggerId=="")continue;
+                var trigger=SkillConfig.Triggers[node.TriggerId];if(trigger.Event!=kind)continue;
+                if(trigger.Filter=="primary_cast"&&(flight==null||flight.Mirrored||!flight.PrimaryFirst))continue;
+                if(trigger.Filter=="direct"&&depth!=0)continue;
+                Enqueue(new(){Trigger=node.TriggerId,Effect=trigger.Effect,Skill=skill,Owner=owner,Target=target,Coefficient=coefficient,Depth=depth+1,Flight=flight,OriginCast=cast,TalentTrigger=true});
+            }
     }
     /// <summary>按proc_limit.csv限次；0表示不限，未声明的触发保持原有无限次行为。计数上限有界，超出时丢弃最旧施法。</summary>
     private bool ProcAllowed(string triggerId,int target,long originCast)
@@ -290,7 +344,9 @@ public sealed partial class GameSession
         var old=skillState.Buffs.FirstOrDefault(b=>b.Id==id&&b.Target==target&&(!sourced||b.Owner==owner&&b.Ability==ability&&b.AuraSkill==auraSkill));
         if(old!=null&&definition.Stacking=="NonStacking")return;
         if(old!=null)skillState.Buffs.Remove(old);
-        var buff=new SkillBuffState{Instance=++skillState.NextId,Id=id,Owner=owner,Target=target,Ability=ability,Remaining=definition.Duration/(double)SkillConfig.TickRate,Coefficient=coefficient,Cause=cause,Value=definition.Value,AuraSkill=auraSkill,OriginCast=originCast};
+        // 持续时间类修饰器（战吼持续、寒霜减速时长等）在施加时按来源技能换算，避免二次注册同一Buff。
+        double durationScale=CombatActor(owner) is { } buffOwner?1+ModifiersFor(buffOwner,ability).Duration:1;
+        var buff=new SkillBuffState{Instance=++skillState.NextId,Id=id,Owner=owner,Target=target,Ability=ability,Remaining=definition.Duration*Math.Max(0, durationScale)/(double)SkillConfig.TickRate,Coefficient=coefficient,Cause=cause,Value=definition.Value,AuraSkill=auraSkill,OriginCast=originCast};
         if(definition.Mechanic=="shield")buff.Value=AttackSnapshot(CombatActor(owner)!).Attack*definition.Value;
         if(definition.Mechanic=="mirror")buff.Value+=SkillConfig.Setting("mirror_level_bonus")*(LevelOf(CombatActor(owner)!,ability)-1);
         skillState.Buffs.Add(buff);
@@ -347,7 +403,7 @@ public sealed partial class GameSession
             var work=skillState.Pending[0];skillState.Pending.RemoveAt(0);var owner=CombatActor(work.Owner);if(owner is not {Alive:true})continue;
             var fx=SkillConfig.Effects[work.Effect];var target=CombatActor(work.Target);
             bool proc=work.Trigger!="";
-            if(proc&&(!InCombatRoom(owner)||!SkillConfig.Triggers.TryGetValue(work.Trigger,out var trigger)||trigger.Effect!=work.Effect||!skillState.Buffs.Any(b=>b.Instance==work.BuffInstance&&b.Remaining>0&&b.Owner==work.Owner&&b.Id==trigger.OwnerBuff)||
+            if(proc&&(!InCombatRoom(owner)||!SkillConfig.Triggers.TryGetValue(work.Trigger,out var trigger)||trigger.Effect!=work.Effect||(trigger.OwnerBuff!=""&&!skillState.Buffs.Any(b=>b.Instance==work.BuffInstance&&b.Remaining>0&&b.Owner==work.Owner&&b.Id==trigger.OwnerBuff))||
                 skillState.ProcIcds.Any(p=>p.Owner==work.Owner&&p.Trigger==work.Trigger&&p.ReadyTick>skillState.ProcTick)||!ProcAllowed(work.Trigger,work.Target,work.OriginCast)||!ProcHasFlightCapacity(work,fx)))continue;
             if(proc)
             {
@@ -359,7 +415,8 @@ public sealed partial class GameSession
             switch(fx.Kind)
             {
                 case "Damage":
-                    if(target is {Alive:true})foreach(var hit in fx.Extent>0?Enemies(work.Owner).Where(e=>Vector2.Distance(e.Position,target.Position)<=fx.Extent).ToArray():new[]{target})
+                    float damageExtent=EffectiveExtent(work,fx);
+                    if(target is {Alive:true})foreach(var hit in damageExtent>0?Enemies(work.Owner).Where(e=>Vector2.Distance(e.Position,target.Position)<=damageExtent).ToArray():new[]{target})
                         SettleDamage(owner,hit,work.Skill,work.Coefficient*fx.Share,fx.DamageType,owner.Ranged,work.Snapshot,depth:work.Depth,portions:fx.Portions,originCast:work.OriginCast,directMelee:fx.Extent<=0&&work.BuffInstance==0&&work.Flight==null&&!proc);
                     break;
                 case "ApplyBuff":

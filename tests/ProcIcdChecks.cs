@@ -159,7 +159,10 @@ public static class ProcIcdChecks
         var rows=triggerOriginal.TrimEnd().Split('\n').Select((line,i)=>line.TrimEnd('\r')+(i==0?",proc_chance":",0.5"));File.WriteAllText(triggerFile,string.Join('\n',rows)+"\n");
         Need(SkillConfiguration.Load(qa,c.Attributes).Triggers["tr_crit_shorten"].Chance==.5,"可选概率字段加载失败");File.WriteAllText(triggerFile,triggerOriginal);
         File.Delete(icdFile);Need(SkillConfiguration.Load(qa,c.Attributes).ProcIcdSeconds.Count==0,"缺少ICD文件不兼容旧配置");File.WriteAllText(icdFile,original);
-        Need(Config.Load(Path.Combine(root,"Idle-CRPG/config")).Skills.Triggers.Count==0,"首批退役触发器重新泄漏正式配置");
+        // C1-A-2：正式配置允许"天赋常驻触发源"（owner_buff为空且被talent.trigger_id引用）；退役基线触发器仍不得回流。
+        var production=Config.Load(Path.Combine(root,"Idle-CRPG/config"));
+        foreach(var trigger in production.Skills.Triggers.Values)
+            Need(trigger.Id.StartsWith("trg_")&&trigger.OwnerBuff==""&&production.Talents.Nodes.Values.Any(n=>n.TriggerId==trigger.Id),"非天赋触发源泄漏正式配置："+trigger.Id);
         Console.WriteLine("PROC_ICD_OK: same-tick queue/chain, owner/trigger isolation, 15-tick boundary, per-cast/target limits, probability/invalid/zero/cap failures, cooldown/mirror pilots, lifecycle and snapshot/progress regression");
     }
 }

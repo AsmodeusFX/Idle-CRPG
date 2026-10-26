@@ -16,3 +16,11 @@ sor_frost_nova_buff,60,RefreshDuration,,,,,chill,0.35,0,enemy,,
 pal_shield_bash_stun_buff,30,RefreshDuration,,,,,stun,0,0,enemy,,
 pal_guard_buff,121,Strongest,,pal_guard_heal,20,,,0,0,ally,pal_guard_group,1
 pal_zeal_buff,121,Strongest,attack_speed_pct:add:0.2,,,,,0,0,ally,pal_zeal_group,1
+talent_stun_short,20,RefreshDuration,,,,,stun,0,0,enemy,,
+talent_next_hit_atk,40,Strongest,atk:pct:0.25,,,,,0,0,self,talent_next_hit,1
+talent_team_atk,120,Strongest,atk:pct:0.10,,,,,0,0,ally,talent_team_atk,1
+talent_team_guard,120,Strongest,armor:flat:8,,,,,0,0,ally,talent_team_guard,1
+talent_haste,80,RefreshDuration,attack_speed_pct:add:0.15,,,,,0,0,self,,
+talent_guard,120,RefreshDuration,armor:flat:12,,,,,0,0,self,,
+talent_focus,80,RefreshDuration,crit_rate:add:0.10,,,,,0,0,self,,
+talent_slow,40,RefreshDuration,,,,,chill,0.25,0,enemy,,

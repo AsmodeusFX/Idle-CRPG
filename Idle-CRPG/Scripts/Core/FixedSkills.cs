@@ -14,10 +14,26 @@ public sealed partial class Config
     /// <summary>固定技能顺位为1～4，T为5；旧被动沿原三系归入对应区域，未绑定旧主动为0（退休）。</summary>
     public int TalentRegion(TalentNode node)
     {
-        if(node.ClassTrait)return 5;
+        if(node.ClassTrait||node.Kind=="trait"||InTraitRoute(node))return 5;
         if(node.Kind=="passive")return node.Tree+1;
-        int index=Array.IndexOf(ClassSkillSlots(node.Hero),node.Id);
+        // 修饰器/触发源跟随被作用的槽位技能（S2xx→区域2、S3xx→3、S4xx→4），保证区域洗点与UI分组一致。
+        int index=Array.IndexOf(ClassSkillSlots(node.Hero),node.Kind is "modifier" or "trigger"?node.SkillId:node.Id);
         return index<0?0:index+1;
+    }
+    /// <summary>T路线节点：前置链（含&amp;表达式）可达职业特性根的节点一律归入T区域，避免特性路线节点散落到S区域。</summary>
+    private bool InTraitRoute(TalentNode node)
+    {
+        var stack=new Stack<string>();var seen=new HashSet<string>();
+        void Push(string expression){foreach(string token in expression.Split('&',StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries))stack.Push(token.Split('@')[0]);}
+        Push(node.Prerequisite);
+        while(stack.Count>0)
+        {
+            string id=stack.Pop();if(!seen.Add(id))continue;
+            if(!Talents.Nodes.TryGetValue(id,out var parent))continue;
+            if(parent.ClassTrait)return true;
+            Push(parent.Prerequisite);
+        }
+        return false;
     }
     /// <summary>未进入固定职业定义的旧主动只保留归档，不参与生产学习或自动施放。</summary>
     public bool IsRetiredTalent(string id)=>Talents.Nodes.TryGetValue(id,out var node)&&TalentRegion(node)==0;
@@ -53,27 +69,40 @@ public sealed partial class GameSession
         hero.RetiredTalents=hero.RetiredTalents.Select(p=>p with {Returned=true}).ToList();
         MarkChanged();Note($"旧技能投入返还：{hero.Name} {points}点（原始记录保留）");reason="";return true;
     }
-    /// <summary>生产区域继承同区域的有效前置；旧主动或跨区域旧前置不成为新技能的隐藏门禁。</summary>
-    private string FixedPrerequisite(TalentNode node)
+    /// <summary>前置支持 "A@1&B@2" 表达式（跨区域终点节点）；裸ID保留按同区域上溯的旧语义，
+    /// 旧主动或跨区域旧前置不成为新技能的隐藏门禁。</summary>
+    private (string Token,int Need)? UnmetPrerequisite(Actor hero,TalentNode node)
     {
-        if(node.Kind=="active")return "";
-        var seen=new HashSet<string>();string id=node.Prerequisite;
-        while(id!=""&&seen.Add(id))
+        if(node.Kind=="active"||node.Prerequisite=="")return null;
+        if(node.Prerequisite.Contains('@')||node.Prerequisite.Contains('&'))
         {
-            var parent=Config.Talents.Nodes[id];
-            if(Config.TalentRegion(parent)==Config.TalentRegion(node))return id;
-            id=parent.Prerequisite;
+            foreach(string raw in node.Prerequisite.Split('&',StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries))
+            {
+                var parts=raw.Split('@');string pid=parts[0];
+                int need=parts.Length>1&&int.TryParse(parts[1],out int parsed)?parsed:Math.Max(1,node.RequiredRank);
+                if(hero.Talents.GetValueOrDefault(pid)<need)return (pid,need);
+            }
+            return null;
         }
-        return "";
+        var seen=new HashSet<string>();string cursor=node.Prerequisite;
+        while(cursor!=""&&seen.Add(cursor))
+        {
+            var parent=Config.Talents.Nodes[cursor];
+            if(Config.TalentRegion(parent)==Config.TalentRegion(node))
+                return hero.Talents.GetValueOrDefault(cursor)<Math.Max(1,node.RequiredRank)?(cursor,Math.Max(1,node.RequiredRank)):null;
+            cursor=parent.Prerequisite;
+        }
+        return null;
     }
     private bool CanLearnFixedTalent(Actor hero,string id,out string reason)
     {
-        if(!Config.Talents.Nodes.TryGetValue(id,out var node)||node.Hero!=hero.SpecId)reason="此角色没有该节点";
+        var unmet=Config.Talents.Nodes.TryGetValue(id,out var node)?UnmetPrerequisite(hero,node):null;
+        if(!Config.Talents.Nodes.TryGetValue(id,out node)||node.Hero!=hero.SpecId)reason="此角色没有该节点";
         else if(Config.TalentRegion(node)==0)reason="旧主动已退休，原投入可免费返还";
         else if(hero.Talents.GetValueOrDefault(id)>=node.MaxRank)reason="已达可学习最高等级";
         else if(node.ClassTrait&&!ClassTraitUnlocked(hero.SpecId))reason="需要在星图购买该职业特性资格（尚未投放资格时仍保持锁定）";
         else if(node.ExclusiveGroup!=""&&hero.Talents.Any(p=>p.Value>0&&p.Key!=id&&Config.Talents.Nodes[p.Key].ExclusiveGroup==node.ExclusiveGroup))reason="与已选分支互斥：请先免费重置该区域";
-        else if(FixedPrerequisite(node) is string prerequisite&&prerequisite!=""&&hero.Talents.GetValueOrDefault(prerequisite)<Math.Max(1,node.RequiredRank))reason="需学习 "+Config.Talents.Nodes[prerequisite].Name;
+        else if(unmet is { } requirement)reason="需学习 "+Config.Talents.Nodes[requirement.Token].Name+" 至"+requirement.Need+"级";
         else if(node.Kind!="active"&&RegionInvestment(hero,Config.TalentRegion(node))<Config.Talents.Required(node))reason=$"需在当前区域投入{Config.Talents.Required(node)}点";
         else if(TalentPoints(hero)<=0)reason="可用天赋点不足";
         else {reason="";return true;}

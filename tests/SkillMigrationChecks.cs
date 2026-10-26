@@ -14,7 +14,7 @@ public static class SkillMigrationChecks
         var c=LegacySkillConfig.Load(Path.Combine(root,"Idle-CRPG/config"));
         var nodes=c.Talents.Nodes;
         // C1-A-1 追加 7 个节点（6 固定技能 + 1 互斥T）；新节点使用第4棵树承载，旧三系节点全部保留。
-        Need(nodes.Count==73,"正式天赋节点数量");
+        Need(nodes.Count==155,"正式天赋节点数量");
         Need(nodes.Values.Select(n=>n.Hero).Distinct().Count()==5&&c.Heroes.All(h=>nodes.Values.Count(n=>n.Hero==h.Id)>0&&nodes.Values.Where(n=>n.Hero==h.Id).Select(n=>n.Tree).Distinct().Count()>=3),"五职业三系覆盖");
         // 旧节点 ID 全部保留，保证同 ID 存档不丢等级；新节点使用自己的 ID 并绑定同名主动定义。
         string[] legacyIds=("barb_voice barb_shout barb_weaken barb_courage barb_mastery barb_attack barb_defense barb_focus barb_bash barb_leap barb_whirlwind barb_power "+
@@ -23,7 +23,7 @@ public static class SkillMigrationChecks
             "paladin_weapon paladin_smite paladin_hammer paladin_armor paladin_resolve paladin_fortitude paladin_might paladin_shock paladin_zeal "+
             "necro_bone_armor necro_teeth necro_soulbolt necro_spear necro_soul_mastery necro_will necro_curse_mastery necro_weakness necro_frailty").Split(' ');
         Need(legacyIds.All(nodes.ContainsKey),"旧节点 ID 丢失");
-        foreach(var n in nodes.Values.Where(n=>n.SkillId!=""))
+        foreach(var n in nodes.Values.Where(n=>n.SkillId!=""&&n.Kind=="active"))
         {
             // 槽位技能节点必须同名；职业特性T按设计另绑光环技能（T不占S1-S4槽）。
             Need((n.ClassTrait||n.SkillId==n.Id)&&n.Kind=="active","绑定节点必须与同名主动一致："+n.Id);
