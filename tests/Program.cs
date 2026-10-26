@@ -9,6 +9,7 @@ var root=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../"))
 if(args.Contains("--c1a-checks")){C1ASkillChecks.Run(root);return;}
 if(args.Contains("--c1a2-checks")){C1A2TalentChecks.Run(root);return;}
 if(args.Contains("--c1b-checks")){C1BStarChecks.Run(root);return;}
+if(args.Contains("--c1b3-checks")){C1B3ClosureChecks.Run(root);return;}
 if(args.Contains("--fixed-skill-checks")){FixedSkillClosureChecks.Run(root);return;}
 if(args.Contains("--p2-4-closure-checks")){FirstBatchChecks.Run(root);FixedSkillClosureChecks.Run(root);Wp5EquipmentChecks.Run(root);Wp6ConsumablesChecks.Run(root);Wp7RebirthOfflineChecks.Run(root);IntegrationClosureChecks.Run(root);return;}
 if(args.Contains("--execution-safety-checks")){ExecutionSafetyChecks.Run(root);return;}

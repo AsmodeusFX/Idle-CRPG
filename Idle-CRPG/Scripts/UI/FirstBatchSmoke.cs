@@ -131,6 +131,14 @@ public partial class Main
             Need(session.Stars.Level("O05")==1&&session.Stars.Level("D04")==1&&session.Stars.Level("G02")==1,"B2节点未通过星图界面购买成功 lv="+string.Join(",",new[]{"s_hp","s_atk","s_xp_01","O02","O03","O04","O05","D02","D03","D04","G02"}.Select(x=>x+":"+session.Stars.Level(x)))+" gold="+session.Gold);
             Need(session.StarDerived("elite_damage_pct")>0&&session.StarDerived("healing_received_pct")>0&&session.StarDerived("elite_xp_pct")>0,"B2节点未落到消费派生值");
             await Picture("star-b2-nodes-bought");
+            // B3 UI 证据：满级重复点击与前置未满足都在真实界面路径上被拒绝，且不扣款。
+            BuyStarNode("O05"); // O05 上限2阶，先买满再验证重复点击被拒绝
+            long goldBeforeMax=session.Gold;int maxLv=session.Stars.Level("O05");
+            Need(maxLv==session.Config.Stars.Nodes["O05"].MaxLevel,"O05未达上限，无法验证重复购买");
+            BuyStarNode("O05");
+            Need(session.Stars.Level("O05")==maxLv&&session.Gold==goldBeforeMax,"满级节点重复购买未拒绝");
+            BuyStarNode("P02");Need(session.Stars.Level("P02")==0,"前置未满足仍可购买P02");
+            await Picture("star-b3-rejections");
             foreach(int member in new[]{0,1})
             {
                 selectedHero=session.Heroes[member].HeroInstanceId;selectedSkillRegion=5;SelectStarView(4);talentStamp="";RefreshTalentPage();
