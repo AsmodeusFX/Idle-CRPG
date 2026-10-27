@@ -1,0 +1,18 @@
+{
+  "name": "ofgui",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "node patches/apply-ofgui-patches.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@openfairygui/cli": "0.7.0",
+    "@openfairygui/mcp": "0.7.0"
+  }
+}
