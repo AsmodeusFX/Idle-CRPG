@@ -1,0 +1,36 @@
+{
+  "group_id": "c2dd13b6-a6d7-482b-a401-52257cb45030",
+  "states": [
+    {
+      "character": {
+        "id": "b53995ef-ceb8-4a61-8130-e568efff7903",
+        "name": "Idle",
+        "prompt": "A dark fantasy barbarian warrior for an isometric action RPG, inspired by classic late-90s dark dungeon crawler aesthetics. Massive muscular build, bare arms, rugged face, long messy dark hair, stern expression, leather and fur armor, heavy boots, metal belt, tribal details, worn and battle-damaged equipment. He carries a huge two-handed axe. Strong silhouette, readable at small pixel size, gritty and grounded design, muted earthy colors, dark medieval tone, low top-down isometric view, 8-direction character sprite, clean transparent background, high readability for game use, detailed pixel art, suitable for sprite animation.",
+        "size": {
+          "width": 48,
+          "height": 48
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-26T13:41:23.241181+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-27T03:00:57.807801"
+}
