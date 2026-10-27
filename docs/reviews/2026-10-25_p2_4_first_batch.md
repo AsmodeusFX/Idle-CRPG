@@ -1613,3 +1613,200 @@ diablo,phase2,终末雷暴（第5段）,迪亚波罗,mob_area_pulse|mob_heavy|bo
 - **E：C3-0/C3-1/C3-2 = PASS（工程自检）；C3-3 = 待裁决未实施**。
 - **V-Design：未复核**。需裁决 §31.5 三项正式数值，并确认矩阵缺少的三类策略是否需要补 QA 点击脚本。
 - **V-User：未验收**。当前生产数值下四章 10 小时不可达，尚不能作为体验验收依据。
+
+---
+
+## 32. Steam D2 设计—工程一致性只读对账（C1–C3，2026-10-27）
+
+### 32.1 授权与边界
+
+来源：`docs/temp/Steam_D2_设计工程一致性只读对账执行包_V1.0/01_转发工程AI_只读对账指令.md`，性质 `READ_ONLY_RECON`。本轮**未修改** `Scripts/`、`config/`、UI、存档，未执行 git 提交/推送，未按历史 C1/C2/C3 包再次实施，未调数值。
+
+### 32.2 环境与指纹
+
+- Windows 10.0.19045；dotnet 10.0.401；工作区 121 个 `.cs` / 212 个 `.csv`，指纹见 `artifacts/qa/s15-c1-c3-recon-20261027-100854/recon_fingerprint.json`。
+- 无 git 可执行文件（PATH 中无 `git`），因此以文件哈希代替提交号；未提交差异无法用 git 描述。
+
+### 32.3 交付物（`artifacts/qa/s15-c1-c3-recon-20261027-100854/`）
+
+| 文件 | 规模/内容 |
+|---|---|
+| `recon_facts.csv` | 16 条事实：星图 39 节点/38 边、226 层节奏、spawn 1–5、等级曲线、城堡门槛、装备属性、Boss 阶段文件 |
+| `recon_design_id_crosswalk.csv` | 264 行：技能 20 / 天赋 155 / 星图 39 / 装备槽 6 / 品质 4 / 卷轴 5 / 药剂 4 / 掉落 31 |
+| `recon_master_matrix.csv` | 41 行（种子清单逐条），状态分布 19/12/7/3 |
+| `recon_runtime_chain.csv` | 12 条运行消费链（XP→升级→AR/DR→KP→Lmax→城堡→刷怪/TTK→装备/星图/存档/Boss） |
+| `recon_user_observations.csv` | 6 项用户观察与已核实因果 |
+| `recon_c3_assumptions.csv` | 600min 策略、允许动作、未建模维度、种子 |
+| `recon_evidence_index.csv` | 14 条证据（命令/退出码/可复现） |
+| `recon_conflicts_decisions.md` | 冲突链与待裁决清单 |
+| `recon_summary_for_design_owner.md` | 一页结论 |
+
+### 32.4 关键事实（工程 E）
+
+1. **第一章 Lv5 卡点**：首座被挡城堡为 `A02-C01 冰冷之原哨站`，门槛 `MonsterLevelMax ≥ 5`（`challenge` 空则回退 `level_min=5`）且需 `A01-C01` 已通关；Lmax 1→5 需 4 笔 KP，第 4→5 笔要求全员 AR/DR ≥ 50（全员 Lv5，AR=10+(L-1)×10）；4 人各到 Lv5 需 180 XP/人 → 720 公共 XP ≈ 360 击杀（约 90–120 房）。
+2. **升级负担**：`UpgradeHero` 每次仅 +1 级；到 Lv5 需 16 次点击、到 Lv25 需 96 次，UI 未提供连续/批量。
+3. **密度与 TTK**：`spawn_rule` 1–5 + 节奏 ±1（常态 3–5）；怪 HP 35–55、英雄攻 22–30 → 约 2 击/只（≈1.7s），与用户"技能没放完就清房"一致。
+4. **装备与准入**：装备 6 槽 3×ATK + 3×HP（24 组合 = 6×4 品质），不提供 AR/DR；AR/DR 仅由等级与星图 R01/R02 产出。
+5. **星图**：39 节点/38 边/1 根(`s_root`)；引擎只判"点亮"，**无 `@Rank` 阈值**；10 个旧节点退休。
+6. **Armor 口径**：`DamagePipeline` 仍接收 `Armor`，护阵类天赋仍写 `armor` 属性 → "旧 Armor 退出伤害"未落实。
+7. **精英存档**：正式检查点用 `MonsterOrigin` 重建房间，`Elite/EliteToken` 不持久化（令牌确定性生成，故不重复领奖）。
+8. **C3 策略**：每 10/45 分钟仅 1 人 1 级、星图仅根，天赋/装备/卷轴/药剂未建模；P4 剩 103,448 公共 XP 却仅 Lv15–16 属脚本预算，而非 XP 产出不足。
+
+### 32.5 复跑与证据
+
+| 命令 | 退出码 |
+|---|---|
+| `dotnet build Idle-CRPG/Idle-CRPG.csproj` | 0 |
+| `dotnet run --project tests/IdleCrpg.Checks.csproj` | 0 |
+| `--c1a-checks` / `--c1a2-checks` / `--c1b-checks` / `--c1b3-checks` / `--c2a-checks` | 全部 0 |
+| `powershell tools/S15-Recon-Crosswalk.ps1` / `S15-Recon-Matrix.ps1` / `S15-Recon-Artifacts.ps1` | 0（生成 264/41 行与 6 份 CSV） |
+
+补充生成工具为只读审计脚本（读 config/code，写 artifacts），不进入生产运行路径。
+
+### 32.6 结论口径
+
+- 工程侧 **E：对账完成**（41 条主状态 + 264 行逐 ID），不代表体验达标、设计接受或用户验收。
+- **NOT_VERIFIED 7 条**：31 城堡威胁组合、四章终 Boss 阶段运行证据、五类卷轴连锁/保护、C3 21 参数逐项、真实通关、复刷击杀分解、真实 10h/Boss TTK。
+- 需用户裁决的最小问题：①`armor` 是否真正退出伤害；②星图是否允许 `@Rank`；③房间目标密度/TTK 区间；④EQ-01 单主属性下装备是否需 AR/DR 成长渠道。
+- 用户 6 项实机观察全部保留为 `USER_OBSERVED / USER_REVIEW_OPEN`，未改写为工程 PASS，本轮未按观察直接返工。
+
+### 32.7 三方状态
+
+- **E：对账完成**（只读，无生产写入）。
+- **V-Design：待独立复核**（本 § 不代替设计判定）。
+- **V-User：待裁决** 32.6 的四项最小问题；UI/密度/点击负担按包内 `05` 延期。
+---
+
+## 33. C1–C3 对账四项定向补证（R-01～R-04，2026-10-27）
+
+### 33.1 授权与边界
+
+来源：`docs/temp/Steam D2｜C1–C3对账独立Review与定向补证 V1.1/01_交执行AI_四项定向只读补证.md`，性质 `READ_ONLY_RECON`。仅修正 20261027-100854 审计结论、补证与分类；**未改** `Scripts/`、`config/`、UI、玩家存档、[H] 数值，未提交/推送，未重跑 41 项审计，未新建并行 Review。
+
+工件：`artifacts/qa/s15-c1-c3-recon-proof-20261027-104532/`（`proof_summary.md`、`recon_design_source_crosswalk.csv` 249 行、`recon_coverage_by_family.csv`、`recon_status_corrections.csv` 13 行、`recon_evidence_verification.csv` 10 条、`recon_fingerprint.json`）。
+
+### 33.2 R-01 Armor/ARDR：结论翻转
+
+- `DamagePipeline.Resolve`（`Scripts/Core/DamagePipeline.cs:69-99`）：`input.Armor` 只在第 72 行做 `IsFinite/>=0` 校验，**未进入任何乘区**；公式仅含 `basis=Attack`、AR/DR `rating`、skill/general/power/vulnerable/critical、`defense=rating×抗性`、`blocked`。
+- 全仓 `.Armor` 引用只有记录定义与该校验行 → **Armor = INPUT_ONLY**，上一轮"接收即参与"的推断不成立，`CORE-03` 更正为 `MATCHED_EVIDENCED`。
+- 但**护甲类天赋确为空效果**：7 个 passive + 3 个 buff 产 `armor`，无人读取 → `C1A-05` 更正为 `NOT_IMPLEMENTED / TALENT_NO_EFFECT`。
+- 动态 A/B：既有测试无 armor 对照，本轮禁止新增测试源码 → 动态差值 `E0_UNVERIFIED`；源码级"字段未使用"为确定性结论。
+
+### 33.3 R-02 31 城堡与 4 章末 Boss：证据找回
+
+- 配置：`config/chapters/act1-4/dungeon/castle_threat.csv`、`config/monster/archetypes.csv`、`config/monster/boss_phase.csv`。
+- 消费者：`EncounterPlans.cs:22/67/97` → `EncounterFor` → `GameSession.cs:497`（刷怪唯一入口）；`BossPhases.cs`/`BossPhaseRuntime.cs`。
+- 本机复现（2026-10-27）：`--c2a-boss-checks` **退出 0**，`C2A_A2_BOSS_PASS`（4 个章末阶段 + 31 城堡威胁组合 + 存读档/固定种子/收据），产物 `artifacts/qa/s15-c2a-boss-3ee6be759e964fe5a5063b15285e88ae/`。
+- 更正：`C2A-03`/`C2A-04` → `MATCHED_EVIDENCED`（机制级；UI 可读性仍归 UX）。
+- 原审计遗漏原因：只查 `boss_skill.csv`/`FloorPlans`，未检索 `castle_threat.csv` 与 `EncounterFor`。
+
+### 33.4 R-03 逐设计ID主子表（分母改为设计ID）
+
+249 行，列含 `source_file/source_id/source_authority/production_id/config_row/consumer/actual_runtime/evidence_status/main_state/reference_version/note`。
+
+| 家族 | 设计分母 | MATCHED | IMPL_DIFF | SUPERSEDED | NOT_VERIFIED | NOT_IMPL |
+|---|---:|---:|---:|---:|---:|---:|
+| C1A 16技能 | 16 | 16 | 0 | 0 | 0 | 0 |
+| C1A 4职业T(+1分支) | 5 | 5 | 0 | 0 | 0 | 0 |
+| S07 98节点 | 98 | 0 | 98 | 0 | 0 | 0 |
+| C1B 31星图 | 31 | 24 | 0 | 0 | 0 | 7 |
+| C1B 57/55路线 | 1 | 0 | 0 | 0 | 1 | 0 |
+| S11 28模板 | 28 | 24 | 0 | 4 | 0 | 0 |
+| 5 卷轴 / 4 药剂 | 5 / 4 | 0 | 0 | 0 | 9 | 0 |
+| 31 怪级掉落 | 31 | 0 | 0 | 0 | 31 | 0 |
+| 31 城堡 | 31 | 31 | 0 | 0 | 0 | 0 |
+
+- 98节点中 16 个设计ID（`*-S201/S301/S401/T01`）在生产以技能名/特性ID承载，本轮显式别名映射（如 `BAR-S201→barb_whirlwind_window`），98/98 命中，仍全标 `IMPLEMENTED_DIFFERENT`（§23.4 六类收窄）。
+- **57/55 路线本轮不可复现**：设计路线 CSV 已从 `docs/temp` 删除，`--c1b3-checks` 抛 `DirectoryNotFoundException` → `NOT_VERIFIED / SOURCE_MISSING`；历史产物 `s15-c1b3-9da00b57…`（2026-10-26）仅供参考。
+- 卷轴/药剂/怪级的逐条设计源不在 refs → `SOURCE_MISSING`。
+
+### 33.5 R-04 定性更正（13 条，另表）
+
+`CORE-03→MATCHED_EVIDENCED`；`C1A-05→NOT_IMPLEMENTED`；`C2A-03/04→MATCHED_EVIDENCED`；`C2B-02/06→SUPERSEDED_BY_USER`（EQ-01[C]/POT-01[C]；15% 仍 [H]，数值层 `NOT_VERIFIED`）；`C1B-03 @Rank→DESIGN_UNDECIDED`（源：`design_S07_98nodes_v0.8.csv` 98/98 `Status=P`，78 节点用 `A@Rank`）；`C3-03/C3-07→EXPERIMENT_LIMITATION`；`C2A-06→DESIGN_UNDECIDED`（无 [C] 密度/TTK 目标，观感保留 `USER_OBSERVED`）。
+
+### 33.6 仍开放
+
+1. 护甲类天赋效果替换方向（需用户裁决，本轮不修）；
+2. C1B 57/55 路线缺设计 CSV（需设计Owner重发或确认废止该断言）；
+3. 98 节点六类语义收窄待设计Owner逐条确认；
+4. 卷轴/药剂/怪级缺设计逐条源；
+5. Armor 动态 A/B 未做（禁止新增测试，`E0_UNVERIFIED`）；
+6. UI/体验五项维持 `USER_OBSERVED`，未改未验收。
+
+### 33.7 三方状态
+
+- **E：R-01～R-04 补证完成**（含一处结论翻转与一处证据找回）；一致性最终对账仍受 33.6 约束，**不宣告通过**。
+- **V-Design：待复核** 33.2 的 Armor 翻转与 33.4 的设计ID分母口径。
+- **V-User：待裁决** 护甲天赋方向与（若需要）`@Rank` 是否升 [C]。
+### 33.8 追加（同日）：设计源迁移后的 `SOURCE_MISSING` 更正
+
+设计包并未删除，而是迁移到 `docs/temp/P2-基础循环搭建/P2-Part2-新版数据重构/P2-4-2-第2批实施包/`（C1-B / C2-B / C3 三个子包）。据此重跑了受影响入口，结果：
+
+| 入口 | 结果 |
+|---|---|
+| `--c1b3-checks` | **退出 0**，`C1B3_PASS`（57/55 真实购买、29 节点矩阵、OR 路径、同职共享、账本）——路线 CSV 从迁移后路径**临时恢复到测试期望的旧路径**，跑完删除，未改测试源码 |
+| `--c2b-checks` | 退出 0，`C2B_PASS`（5 卷轴 + 4 药剂 + 28 模板 24 实投 × 31 怪级） |
+| `--c1b-checks` / `--c2a-boss-checks` | 继续退出 0（B1/B2 与 4 章末阶段 + 31 城堡组合） |
+
+逐设计ID覆盖（250 行，分母=设计ID）：16 技能 16/16、4T 5/5、S07 98 节点 98/98（全 `IMPLEMENTED_DIFFERENT`）、C1B 31 星图 24 实现 + 7 禁售、**C1B 57/55 路线 1/1（改判 MATCHED）**、S11 28 模板 24 + 4 覆盖、**5 卷轴 5/5**、**4 药剂 3 + 1（PO02 被 POT-01 覆盖）**、**31 怪级 31/31 覆盖但数值 [H] 未授权（IMPLEMENTED_DIFFERENT）**、31 城堡 31/31。
+
+设计ID→生产ID：`BAR-S201→barb_whirlwind_window` 等 16 别名；`SC01-05→scroll_bolt/arc/flame/frost/banner`；`PO01-04→potion_might/tough/greed/swift`；怪级源 `C3_31怪级联合参数待校准_H-B1.csv`（表内明标 `H_NOT_AUTHORIZED`）。
+
+更正记录：`C1B_ROUTE/SCROLL/POTION/DROP31` 由 `NOT_VERIFIED(SOURCE_MISSING)` 改为 `MATCHED_EVIDENCED`（前三者）与 `IMPLEMENTED_DIFFERENT`（怪级数值）；上一轮"设计文件已删除"的判断**不成立**，原因是当时只查了 `docs/temp` 一层。
+
+缺口（未变）：护甲天赋空效果、98 节点六类收窄、`@Rank` 的 [P] 定性、31 怪级 [H] 数值、Armor 动态 A/B、UI 五项体验。
+
+工件：`artifacts/qa/s15-c1-c3-recon-proof2-20261027-110100/`（crosswalk 250 行、coverage、corrections、evidence、fingerprint、`proof_summary.md`）。
+---
+
+## 34. C1–C3 对账最终收口（逐 DesignId 定性 + 250 行主表，2026-10-27）
+
+### 34.1 授权与边界
+
+用户指令：仅完成两项收口（①98 天赋逐 DesignId 重新定性，区分身份匹配/消费者/行为等价/语义近似/无消费者/缺运行时证据；②把今日设计源路径、57/55 与 C2-B 复跑、SC/PO 映射、31 怪级 [H] 写入最终主表与更正表）。性质仍为只读：**未改** `Scripts/`、`config/`、数值、UI、存档，未重跑 41 项总审计，未开始玩法返工。
+
+工件：`artifacts/qa/s15-c1-c3-recon-final-20261027-110902/`（`recon_final_design_master_250.csv`、`recon_final_stats_by_family.csv`、`recon_final_open_items.csv`、`recon_status_corrections.csv`、`recon_path_dependency.csv`、`recon_fingerprint.json`、`final_closure_summary.md`）。
+
+### 34.2 250 行主表结果
+
+| 家族 | 分母 | 身份匹配 | 有消费者 | 等价 | 近似 | 无法判定 | MATCHED | IMPL_DIFF | SUPERSEDED | NOT_IMPL |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 16 技能 | 16 | 16 | 16 | 13 | 3 | 0 | 13 | 3 | 0 | 0 |
+| 4职业T(+1) | 5 | 5 | 5 | 0 | 5 | 0 | 0 | 5 | 0 | 0 |
+| S07 98 | 98 | 98 | 98 | **29** | **69** | 0 | 29 | 69 | 0 | 0 |
+| C1B 31 | 31 | 31 | 31 | 24 | 0 | 7 | 24 | 0 | 0 | 7 |
+| C1B 路线 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| S11 28 | 28 | 28 | 28 | 24 | 0 | 0 | 24 | 0 | 4 | 0 |
+| 5 卷轴 | 5 | 5 | 5 | 5 | 0 | 0 | 5 | 0 | 0 | 0 |
+| 4 药剂 | 4 | 4 | 4 | 3 | 0 | 0 | 3 | 0 | 1 | 0 |
+| 31 怪级 | 31 | 31 | 31 | 0 | 0 | 31 | 0 | 31 | 0 | 0 |
+| 31 城堡 | 31 | 31 | 31 | 31 | 0 | 0 | 31 | 0 | 0 | 0 |
+| **合计** | **250** | **250** | **250** | **130** | **77** | **38** | **130** | **108** | **5** | **7** |
+
+### 34.3 98 节点定性规则（不再统一 IMPL_DIFF）
+
+顺序：active→等价；passive(T01 承载)→近似；含「下一次/限一次/结束后」→近似；含「优先/评分/集中/威胁」→近似；含「路径/位移/过程中」→近似；含「位置/站位/护卫/护阵」→近似；含「精英/首领」→近似；trigger 含「硬直/眩晕/减速/免疫/内置间隔」→等价，其余→近似；剩余按**设计维度 vs 生产 effect 维度**一致则等价、不一致则近似。
+
+结果 **29 EQUIVALENT / 69 APPROX**，98/98 身份匹配且消费者存在；69 项近似全部 `open_item=YES`。16 技能 **13 等价 + 3 近似**（旋风斩/陨星术/祝福之锤）；T **5 项全部近似**（单节点被动、互斥双光环，T 路线未拆分）。
+
+### 34.4 今日证据与状态写入
+
+- 设计源：迁移至 `docs/temp/P2-基础循环搭建/P2-Part2-新版数据重构/P2-4-2-第2批实施包/`（C1B/C2B/C3 三包）。
+- 复跑：`--c1b3-checks` 退出 0（57/55 真实购买）、`--c2b-checks` 退出 0（5 卷轴+4 药剂+24 实投×31 怪级）。
+- SC/PO 映射：`SC01-05→scroll_bolt/arc/flame/frost/banner`；`PO01-04→potion_might/tough/greed/swift`（PO02 被 POT-01[C] 覆盖，15% 仍 [H]）。
+- 31 怪级：31/31 行存在，设计表自标 `H_NOT_AUTHORIZED`，生产为工程首轮 [H] → `IMPLEMENTED_DIFFERENT`。
+- 状态更正：`C1A2_TALENT98_UNIFORM`（98 统一）、`C1A_SKILL_BEHAVIOR`（16 统一）、`C1A_T_BEHAVIOR`（5 统一）三条改判已入表。
+
+### 34.5 测试路径硬编码（工程建议，本轮不改源码）
+
+`tests/C1B3ClosureChecks.cs:13` 的 `RouteCsv` 常量指向旧路径；设计包迁移后该入口抛 `DirectoryNotFoundException`（输入缺失，非实现回归）。本轮以"临时复制→跑→删除"复跑，未改测试。建议改为可配置路径/搜索迁移目录/新目录 manifest（`recon_path_dependency.csv`）。
+
+### 34.6 未决清单
+
+OPEN=116：98 节点近似 69、技能表现近似 3、T 路线 5、31 怪级 [H] 31、C1B 禁售 7、PO02 数值 1。另有本表外开放项：护甲天赋 `TALENT_NO_EFFECT`、`@Rank` 属 [P]、Armor 动态 A/B 未做、UI 五项 `USER_OBSERVED`。
+
+### 34.7 三方状态
+
+- **E：最终对账表交付完成**（250 行，逐设计ID；116 OPEN 明确列出）。
+- **V-Design：待一致性收口 Review**（98 节点 69 项近似需逐条确认接受/返修/降级）。
+- **V-User：待裁决**护甲天赋方向与 `@Rank` 是否升 [C]；体验与 10 小时未通过，本轮不返工。

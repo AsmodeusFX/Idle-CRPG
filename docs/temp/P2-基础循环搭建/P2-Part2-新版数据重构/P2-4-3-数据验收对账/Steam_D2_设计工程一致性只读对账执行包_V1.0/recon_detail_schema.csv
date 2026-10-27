@@ -1,0 +1,2 @@
+﻿DesignId,DesignVersion,AuthorityC_P_H_O,Kind,ExpectedBehaviorOrExactEffect,ClassOrChapter,ProductionId,ConfigFileRow,RuntimeConsumerCodeLocation,ActualRuntimeBehavior,TestCommand,SeedOrEventRow,EvidencePathAndHash,EvidenceStrength,ActualVsDesignMainState,VisualUIState,SaveEconomyEffect,DecisionNeeded,EngineerSelfReview,DesignOwnerReviewPending
+EXAMPLE_ONLY_BAR-S2,S06_V0.8,P,FixedSkill,施法期间有限位移+多次旋风命中,warrior,barb_whirlwind_window,待查,待查,工程§22报告静态脉冲，需回仓核实,--c1a-checks,待查,待查,E0_UNVERIFIED,NOT_VERIFIED,待查,待查,需核对身份语义,NOT_REVIEWED,PENDING
