@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "openfairygui": {
+      "command": "node",
+      "args": [
+        "../../Tools/ofgui/node_modules/@openfairygui/mcp/bin/ofgui-mcp.cjs"
+      ],
+      "env": {
+        "OPENFAIRYGUI_ALLOWED_PROJECT_ROOTS": "."
+      }
+    }
+  }
+}

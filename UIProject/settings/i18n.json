@@ -1,0 +1,9 @@
+{
+  "langFiles": [
+    {
+      "name": "simplifiedChinese",
+      "path": "..\\Assets\\GameRes\\Configs\\languages\\simplifiedChinese.xml",
+      "fontName": ""
+    }
+  ]
+}

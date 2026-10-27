@@ -1,0 +1,15 @@
+{
+  "name": "@com.bbbirder.fgui-plugin/workspace",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "esbuild ./**/src/main.ts --bundle --platform=node --packages=external --external:./CodeWriter --outbase=. --outdir=. --entry-names=[dir]/../dist/[name]",
+    "watch": "npm run build -- --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.20.2",
+    "typescript": "^5.4.5"
+  },
+  "description": "FairyGUI 编辑器插件工作区：各插件源码在 <插件>/src，esbuild 打包到 <插件>/dist/main.js（shared/ 打进各插件，运行时互不依赖）；把插件目录（package.json + dist）复制到 FGUI 工程的 plugins 下使用"
+}

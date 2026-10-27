@@ -1,0 +1,11 @@
+{
+  "name": "spine-loader",
+  "displayName": "Spine Loader",
+  "description": "Spine 加载插件",
+  "version": "0.9",
+  "author": {
+    "name": "bbbirder"
+  },
+  "icon": "",
+  "main": "dist/main.js"
+}

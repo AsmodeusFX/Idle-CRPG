@@ -1,0 +1,11 @@
+{
+  "name": "shader-fx",
+  "displayName": "Shader Fx",
+  "description": "在编辑器中预览自定义 Shader 效果",
+  "version": "0.13",
+  "author": {
+    "name": "bbbirder"
+  },
+  "icon": "",
+  "main": "dist/main.js"
+}

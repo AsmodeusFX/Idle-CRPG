@@ -1,0 +1,11 @@
+{
+  "name": "@com.bbbirder.fgui-plugin/code-generator",
+  "displayName": "Code Generator",
+  "description": "自定义导出代码",
+  "version": "1.9",
+  "author": {
+    "name": "bbbirder"
+  },
+  "icon": "",
+  "main": "dist/main.js"
+}

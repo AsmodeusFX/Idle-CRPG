@@ -1,0 +1,11 @@
+{
+  "name": "@com.bbbirder.fgui-plugin/editor-extension",
+  "displayName": "Editor Extension",
+  "description": "编辑器基础功能扩展",
+  "version": "1.0",
+  "author": {
+    "name": "bbbirder"
+  },
+  "icon": "",
+  "main": "dist/main.js"
+}
