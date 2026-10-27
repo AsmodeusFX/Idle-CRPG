@@ -29,7 +29,7 @@ project/assembly_name="Idle-CRPG"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/AsepriteWizard/plugin.cfg")
+enabled=PackedStringArray("res://addons/AsepriteWizard/plugin.cfg", "res://addons/fairygui/plugin.cfg")
 
 [physics]
 

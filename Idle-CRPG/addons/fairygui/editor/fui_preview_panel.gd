@@ -1,0 +1,1025 @@
+@tool
+extends VBoxContainer
+
+const SelectionOverlay := preload("res://addons/fairygui/editor/fui_preview_selection.gd")
+const EventBindingService := preload("res://addons/fairygui/editor/event_binding_service.gd")
+const ObjectReference := preload("res://addons/fairygui/ui/object_reference.gd")
+
+signal target_expose_requested(view: FGUIView, reference: Resource, suggested_name: String)
+
+const MIN_ZOOM := 0.10
+const MAX_ZOOM := 4.0
+const ZOOM_FACTOR := 1.2
+const PREVIEW_PADDING := 24.0
+const HIERARCHY_WIDTH := 320.0
+
+var context_view_resolver: Callable
+var _initialized: bool = false
+var _package_resource: FGUIPackageResource
+var _component_names := PackedStringArray()
+var _current_component: String = ""
+var _root_object: FGUIObject
+var _selected_object: FGUIObject
+var _object_by_id: Dictionary = {}
+var _tree_item_by_id: Dictionary = {}
+var _node_count: int = 0
+var _zoom: float = 1.0
+var _content_size := Vector2.ZERO
+var _preview_origin := Vector2.ZERO
+var _syncing_selection: bool = false
+var _panning: bool = false
+var _pan_start_mouse := Vector2.ZERO
+var _last_navigation_event_id: int = 0
+var _view_states: Dictionary = {}
+var _context_view_ref: WeakRef
+var _context_view_is_explicit: bool = false
+var _pending_target_selection: Resource
+
+var _path_label: Label
+var _component_picker: OptionButton
+var _reload_button: Button
+var _bind_event_button: Button
+var _expose_target_button: Button
+var _filter_edit: LineEdit
+var _tree: Tree
+var _preview_scroll: ScrollContainer
+var _preview_canvas: Control
+var _preview_background: ColorRect
+var _preview_view: FGUIView
+var _selection_overlay
+var _zoom_out_button: Button
+var _zoom_in_button: Button
+var _fit_button: Button
+var _zoom_label: Label
+var _status_label: Label
+
+
+func _ready() -> void:
+	set_process_input(true)
+	_ensure_ui()
+
+
+func _input(event: InputEvent) -> void:
+	if not _initialized or not is_visible_in_tree() or _preview_scroll == null:
+		return
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_MIDDLE:
+			return
+		if mouse_event.pressed:
+			if not _preview_scroll.get_global_rect().has_point(mouse_event.position):
+				return
+			if not _claim_navigation_event(event):
+				return
+			_begin_panning(mouse_event.position)
+		elif _panning:
+			if not _claim_navigation_event(event):
+				return
+			_stop_panning()
+		else:
+			return
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseMotion and _panning:
+		if not _claim_navigation_event(event):
+			return
+		_update_panning(event as InputEventMouseMotion, null)
+		get_viewport().set_input_as_handled()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED and _initialized:
+		_apply_editor_theme()
+	elif what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		_stop_panning()
+
+
+func open_package(
+		resource: FGUIPackageResource,
+		preferred_component: String = "",
+		context_view: FGUIView = null
+	) -> void:
+	_ensure_ui()
+	if resource == null:
+		clear_preview()
+		return
+	_save_current_view_state()
+	_context_view_is_explicit = context_view != null
+	_context_view_ref = weakref(context_view) if context_view != null else null
+	_package_resource = resource
+	_component_names = resource.get_component_names()
+	_path_label.text = resource.get_source_path()
+	_path_label.tooltip_text = resource.get_source_path()
+	_component_picker.clear()
+	for component_name: String in _component_names:
+		_component_picker.add_item(component_name)
+	_component_picker.disabled = _component_names.is_empty()
+	if _component_names.is_empty():
+		_current_component = ""
+		_clear_hierarchy()
+		_preview_view.package = null
+		_status_label.text = "未找到可预览的组件"
+		_update_bind_event_button()
+		return
+	var selected_name := preferred_component
+	if not _component_names.has(selected_name):
+		selected_name = "Main" if _component_names.has("Main") else _component_names[0]
+	_current_component = selected_name
+	_component_picker.select(_component_names.find(selected_name))
+	_show_component(selected_name)
+
+
+func reload_current() -> void:
+	if _package_resource == null:
+		return
+	_save_current_view_state()
+	var source_path := _package_resource.resource_path
+	if source_path == "":
+		source_path = _package_resource.get_source_path()
+	var preferred_component := _current_component
+	var context_view := _get_context_view() if _context_view_is_explicit else null
+	_preview_view.package = null
+	var reloaded := ResourceLoader.load(source_path, "", ResourceLoader.CACHE_MODE_REPLACE)
+	if reloaded is FGUIPackageResource:
+		open_package(reloaded as FGUIPackageResource, preferred_component, context_view)
+
+
+func clear_preview() -> void:
+	_ensure_ui()
+	_save_current_view_state()
+	_package_resource = null
+	_context_view_ref = null
+	_context_view_is_explicit = false
+	_pending_target_selection = null
+	_component_names.clear()
+	_current_component = ""
+	_path_label.text = ""
+	_path_label.tooltip_text = ""
+	_component_picker.clear()
+	_component_picker.disabled = true
+	_preview_view.package = null
+	_preview_view.component_name = ""
+	_clear_hierarchy()
+	_status_label.text = "双击 .fui 文件以打开 GUI 预览"
+	_update_bind_event_button()
+
+
+func get_current_resource_path() -> String:
+	if _package_resource == null:
+		return ""
+	return _package_resource.resource_path if _package_resource.resource_path != "" else _package_resource.get_source_path()
+
+
+func get_current_component() -> String:
+	return _current_component
+
+
+func get_component_names() -> PackedStringArray:
+	return _component_names.duplicate()
+
+
+func get_preview_object() -> FGUIObject:
+	return _root_object
+
+
+func get_selected_object() -> FGUIObject:
+	return _selected_object
+
+
+func select_target_ref(reference: Resource) -> void:
+	_pending_target_selection = reference
+	_select_pending_target()
+
+
+func refresh_context_view() -> void:
+	if not _context_view_is_explicit:
+		_context_view_ref = null
+	_update_bind_event_button()
+
+
+func get_hierarchy_node_count() -> int:
+	return _node_count
+
+
+func get_hierarchy_tree() -> Tree:
+	return _tree
+
+
+func select_object(value: FGUIObject, reveal_in_tree: bool = true) -> void:
+	_select_object(value, reveal_in_tree, true)
+
+
+func pick_object_at(global_position: Vector2) -> FGUIObject:
+	var picked := _selection_overlay.pick_object_at(global_position) as FGUIObject
+	if picked != null:
+		_on_preview_object_picked(picked)
+	return picked
+
+
+func _ensure_ui() -> void:
+	if _initialized:
+		return
+	_initialized = true
+	name = "FairyGUIPreview"
+	custom_minimum_size = Vector2(0.0, 360.0)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var toolbar := HBoxContainer.new()
+	toolbar.add_theme_constant_override("separation", 6)
+	add_child(toolbar)
+
+	_path_label = Label.new()
+	_path_label.custom_minimum_size.x = HIERARCHY_WIDTH
+	_path_label.size_flags_horizontal = Control.SIZE_FILL
+	_path_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	toolbar.add_child(_path_label)
+
+	_component_picker = OptionButton.new()
+	_component_picker.custom_minimum_size.x = 180.0
+	_component_picker.tooltip_text = "选择包内组件"
+	_component_picker.item_selected.connect(_on_component_selected)
+	toolbar.add_child(_component_picker)
+
+	_reload_button = Button.new()
+	_reload_button.tooltip_text = "重新加载"
+	_reload_button.pressed.connect(reload_current)
+	toolbar.add_child(_reload_button)
+
+	_bind_event_button = Button.new()
+	_bind_event_button.text = "绑定事件"
+	_bind_event_button.tooltip_text = "从当前 FGUIView 的界面脚本连接所选对象事件"
+	_bind_event_button.disabled = true
+	_bind_event_button.pressed.connect(_on_bind_event_pressed)
+	toolbar.add_child(_bind_event_button)
+
+	_expose_target_button = Button.new()
+	_expose_target_button.text = "暴露节点"
+	_expose_target_button.tooltip_text = "把所选 FUI 对象暴露为当前 FGUIView 下的 Godot 节点"
+	_expose_target_button.disabled = true
+	_expose_target_button.pressed.connect(_on_expose_target_pressed)
+	toolbar.add_child(_expose_target_button)
+
+	var toolbar_spacer := Control.new()
+	toolbar_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	toolbar.add_child(toolbar_spacer)
+
+	_zoom_out_button = Button.new()
+	_zoom_out_button.tooltip_text = "缩小"
+	_zoom_out_button.pressed.connect(func() -> void: _zoom_at_view_center(_zoom / ZOOM_FACTOR))
+	toolbar.add_child(_zoom_out_button)
+
+	_zoom_label = Label.new()
+	_zoom_label.custom_minimum_size.x = 56.0
+	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toolbar.add_child(_zoom_label)
+
+	_zoom_in_button = Button.new()
+	_zoom_in_button.tooltip_text = "放大"
+	_zoom_in_button.pressed.connect(func() -> void: _zoom_at_view_center(_zoom * ZOOM_FACTOR))
+	toolbar.add_child(_zoom_in_button)
+
+	_fit_button = Button.new()
+	_fit_button.tooltip_text = "适应窗口"
+	_fit_button.pressed.connect(_fit_preview)
+	toolbar.add_child(_fit_button)
+
+	var split := HSplitContainer.new()
+	split.split_offset = int(HIERARCHY_WIDTH)
+	split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(split)
+
+	var hierarchy_panel := PanelContainer.new()
+	hierarchy_panel.custom_minimum_size.x = 260.0
+	split.add_child(hierarchy_panel)
+	var hierarchy_box := VBoxContainer.new()
+	hierarchy_panel.add_child(hierarchy_box)
+
+	_filter_edit = LineEdit.new()
+	_filter_edit.placeholder_text = "筛选节点"
+	_filter_edit.clear_button_enabled = true
+	_filter_edit.text_changed.connect(_on_filter_changed)
+	hierarchy_box.add_child(_filter_edit)
+
+	_tree = Tree.new()
+	_tree.columns = 2
+	_tree.column_titles_visible = true
+	_tree.set_column_title(0, "节点")
+	_tree.set_column_title(1, "类型")
+	_tree.set_column_expand(0, true)
+	_tree.set_column_expand(1, false)
+	_tree.set_column_custom_minimum_width(1, 110)
+	_tree.select_mode = Tree.SELECT_ROW
+	_tree.allow_reselect = true
+	_tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tree.item_selected.connect(_on_tree_item_selected)
+	_tree.set_drag_forwarding(Callable(self, "_get_tree_drag_data"), Callable(), Callable())
+	hierarchy_box.add_child(_tree)
+
+	var preview_panel := PanelContainer.new()
+	preview_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(preview_panel)
+
+	_preview_scroll = ScrollContainer.new()
+	_preview_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_preview_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_preview_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preview_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_preview_scroll.resized.connect(_layout_preview)
+	_preview_scroll.gui_input.connect(_on_preview_gui_input.bind(_preview_scroll))
+	preview_panel.add_child(_preview_scroll)
+
+	_preview_canvas = Control.new()
+	_preview_canvas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preview_canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_preview_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview_scroll.add_child(_preview_canvas)
+
+	_preview_background = ColorRect.new()
+	_preview_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_preview_canvas.add_child(_preview_background)
+
+	_preview_view = FGUIView.new()
+	_preview_view.preview_in_editor = true
+	_preview_view.resize_to_content = true
+	_preview_view.match_control_size = false
+	_preview_view.fairy_ready.connect(_on_preview_ready)
+	_preview_canvas.add_child(_preview_view)
+
+	_selection_overlay = SelectionOverlay.new()
+	_selection_overlay.object_picked.connect(_on_preview_object_picked)
+	_selection_overlay.gui_input.connect(_on_preview_gui_input.bind(_selection_overlay))
+	_preview_canvas.add_child(_selection_overlay)
+
+	_status_label = Label.new()
+	_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	add_child(_status_label)
+
+	_set_zoom(1.0)
+	_apply_editor_theme()
+	clear_preview()
+
+
+func _apply_editor_theme() -> void:
+	var editor_theme := EditorInterface.get_editor_theme()
+	_set_button_icon(_reload_button, editor_theme, "Reload")
+	_set_button_icon(_bind_event_button, editor_theme, "Signals")
+	_set_button_icon(_expose_target_button, editor_theme, "Add")
+	_set_button_icon(_zoom_out_button, editor_theme, "ZoomLess")
+	_set_button_icon(_zoom_in_button, editor_theme, "ZoomMore")
+	_set_button_icon(_fit_button, editor_theme, "ZoomReset")
+	if _preview_background != null and editor_theme.has_color("base_color", "Editor"):
+		_preview_background.color = editor_theme.get_color("base_color", "Editor").lightened(0.05)
+	if _filter_edit != null and editor_theme.has_icon("Search", "EditorIcons"):
+		_filter_edit.right_icon = editor_theme.get_icon("Search", "EditorIcons")
+
+
+func _set_button_icon(button: Button, editor_theme: Theme, icon_name: String) -> void:
+	if button != null and editor_theme.has_icon(icon_name, "EditorIcons"):
+		button.icon = editor_theme.get_icon(icon_name, "EditorIcons")
+
+
+func _show_component(component_name: String) -> void:
+	if _package_resource == null or not _component_names.has(component_name):
+		return
+	if _current_component != component_name and _root_object != null and _preview_view.package == _package_resource:
+		_save_current_view_state()
+	_current_component = component_name
+	if not _context_view_is_explicit:
+		_context_view_ref = null
+	_clear_hierarchy()
+	_status_label.text = "正在加载 %s..." % component_name
+	var changed := _preview_view.package != _package_resource or _preview_view.component_name != component_name
+	_preview_view.package = _package_resource
+	_preview_view.component_name = component_name
+	if not changed:
+		_preview_view.refresh_preview()
+	_update_bind_event_button()
+
+
+func _on_component_selected(index: int) -> void:
+	if index < 0 or index >= _component_names.size():
+		return
+	_show_component(_component_names[index])
+
+
+func _on_preview_ready(value: FGUIObject) -> void:
+	_root_object = value
+	_content_size = Vector2(maxf(1.0, value.width), maxf(1.0, value.height))
+	_preview_view.size = _content_size
+	_selection_overlay.set_root_object(value)
+	_build_hierarchy(value)
+	var state: Dictionary = _view_states.get(_current_state_key(), {})
+	if state.is_empty():
+		_select_object(value, true, false)
+		_status_label.text = "%s · %d 个节点 · %.0f × %.0f" % [
+			_current_component,
+			_node_count,
+			_content_size.x,
+			_content_size.y,
+		]
+		call_deferred("_fit_preview")
+	else:
+		_restore_view_state(state)
+	_select_pending_target()
+	_update_bind_event_button()
+
+
+func _clear_hierarchy() -> void:
+	_root_object = null
+	_selected_object = null
+	_object_by_id.clear()
+	_tree_item_by_id.clear()
+	_node_count = 0
+	_content_size = Vector2.ZERO
+	if _tree != null:
+		_tree.clear()
+	if _selection_overlay != null:
+		_selection_overlay.set_root_object(null)
+	_layout_preview()
+	_update_bind_event_button()
+
+
+func _build_hierarchy(root: FGUIObject) -> void:
+	_tree.clear()
+	_object_by_id.clear()
+	_tree_item_by_id.clear()
+	_node_count = 0
+	_append_object(root, null)
+	_on_filter_changed(_filter_edit.text)
+
+
+func _append_object(value: FGUIObject, parent_item: TreeItem) -> void:
+	if value == null:
+		return
+	var item := _tree.create_item(parent_item)
+	var object_id := value.get_instance_id()
+	var display_name := value.name
+	if value == _root_object and _current_component != "":
+		display_name = _current_component
+	if display_name == "":
+		display_name = value.id if value.id != "" else "<unnamed>"
+	var type_name := _object_type_name(value)
+	item.set_text(0, display_name)
+	item.set_text(1, type_name)
+	item.set_metadata(0, object_id)
+	item.set_tooltip_text(0, _object_tooltip(value, display_name, type_name))
+	item.set_tooltip_text(1, item.get_tooltip_text(0))
+	var icon := _object_icon(value)
+	if icon != null:
+		item.set_icon(0, icon)
+	item.collapsed = false
+	_object_by_id[object_id] = value
+	_tree_item_by_id[object_id] = item
+	_node_count += 1
+	if value is FGUIComponent:
+		for child: FGUIObject in (value as FGUIComponent).children:
+			_append_object(child, item)
+
+
+func _object_type_name(value: FGUIObject) -> String:
+	if value is FGUIComponent and value.package_item != null and value.package_item.name != "":
+		return value.package_item.name
+	if value is FGUITree:
+		return "Tree"
+	if value is FGUIList:
+		return "List"
+	if value is FGUIComboBox:
+		return "ComboBox"
+	if value is FGUISlider:
+		return "Slider"
+	if value is FGUIProgressBar:
+		return "ProgressBar"
+	if value is FGUIScrollBar:
+		return "ScrollBar"
+	if value is FGUIButton:
+		return "Button"
+	if value is FGUILabel:
+		return "Label"
+	if value is FGUITextInput:
+		return "TextInput"
+	if value is FGUIRichTextField:
+		return "RichText"
+	if value is FGUITextField:
+		return "Text"
+	if value is FGUIMovieClip:
+		return "MovieClip"
+	if value is FGUIImage:
+		return "Image"
+	if value is FGUILoader3D:
+		return "Loader3D"
+	if value is FGUILoader:
+		return "Loader"
+	if value is FGUIGraph:
+		return "Graph"
+	if value is FGUIGroup:
+		return "Group"
+	if value is FGUIComponent:
+		return "Component"
+	return "Object"
+
+
+func _object_icon(value: FGUIObject) -> Texture2D:
+	var icon_name := "Control"
+	if value is FGUITree:
+		icon_name = "Tree"
+	elif value is FGUIList:
+		icon_name = "ItemList"
+	elif value is FGUIButton:
+		icon_name = "Button"
+	elif value is FGUITextField:
+		icon_name = "Label"
+	elif value is FGUIImage or value is FGUILoader:
+		icon_name = "TextureRect"
+	elif value is FGUIGraph:
+		icon_name = "GraphNode"
+	var editor_theme := EditorInterface.get_editor_theme()
+	return editor_theme.get_icon(icon_name, "EditorIcons") if editor_theme.has_icon(icon_name, "EditorIcons") else null
+
+
+func _object_tooltip(value: FGUIObject, display_name: String, type_name: String) -> String:
+	return "%s (%s)\nID: %s\n位置: %.0f, %.0f\n尺寸: %.0f × %.0f" % [
+		display_name,
+		type_name,
+		value.id,
+		value.x,
+		value.y,
+		value.width,
+		value.height,
+	]
+
+
+func _on_tree_item_selected() -> void:
+	if _syncing_selection:
+		return
+	var item := _tree.get_selected()
+	if item == null:
+		return
+	var metadata: Variant = item.get_metadata(0)
+	if metadata == null:
+		return
+	var object_id := int(metadata)
+	var value := _object_by_id.get(object_id) as FGUIObject
+	if value != null:
+		_select_object(value, false, true)
+
+
+func _get_tree_drag_data(at_position: Vector2) -> Variant:
+	var item := _tree.get_item_at_position(at_position)
+	if item != null:
+		item.select(0)
+		_on_tree_item_selected()
+	var value := _selected_object
+	if not value is FGUIComponent:
+		return null
+	var package_path := ""
+	var component_name := ""
+	if value == _root_object:
+		package_path = _package_resource.get_source_path() if _package_resource != null else ""
+		component_name = _current_component
+	elif value.package_item != null and value.package_item.owner != null:
+		package_path = "%s.fui" % str(value.package_item.owner.res_key)
+		component_name = value.package_item.name
+	if package_path == "" or component_name == "" or not ResourceLoader.exists(package_path):
+		return null
+	var preview := Label.new()
+	preview.text = component_name
+	preview.add_theme_constant_override("outline_size", 4)
+	preview.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.8))
+	_tree.set_drag_preview(preview)
+	return {
+		"type": "fairygui_component",
+		"package_path": package_path,
+		"component_name": component_name,
+	}
+
+
+func _on_preview_object_picked(value: FGUIObject) -> void:
+	var mapped := value
+	while mapped != null and not _tree_item_by_id.has(mapped.get_instance_id()):
+		mapped = mapped.parent
+	if mapped != null:
+		_select_object(mapped, true, false)
+
+
+func _select_object(value: FGUIObject, reveal_in_tree: bool, center_preview: bool) -> void:
+	if value == null or value.is_disposed:
+		return
+	_selected_object = value
+	_selection_overlay.set_selected_object(value)
+	var item := _tree_item_by_id.get(value.get_instance_id()) as TreeItem
+	if reveal_in_tree and item != null:
+		if _filter_edit.text != "" and not item.is_visible_in_tree():
+			_filter_edit.clear()
+		var parent := item.get_parent()
+		while parent != null:
+			parent.collapsed = false
+			parent = parent.get_parent()
+		_syncing_selection = true
+		item.select(0)
+		_tree.scroll_to_item(item, true)
+		_syncing_selection = false
+	_status_label.text = "%s · %s · %.0f, %.0f · %.0f × %.0f" % [
+		value.name if value.name != "" else value.id,
+		_object_type_name(value),
+		value.x,
+		value.y,
+		value.width,
+		value.height,
+	]
+	if center_preview:
+		call_deferred("_center_selected_object")
+	_update_bind_event_button()
+
+
+func _on_bind_event_pressed() -> void:
+	var view := _get_context_view()
+	var target_path := _selected_target_path()
+	if view == null or target_path == null:
+		return
+	view.set_meta(EventBindingService.META_PREFERRED_TARGET, target_path)
+	view.notify_property_list_changed()
+	EditorInterface.edit_node(view)
+
+
+func _on_expose_target_pressed() -> void:
+	var view := _get_context_view()
+	var reference := _selected_target_reference()
+	if view == null or reference == null:
+		return
+	var suggested_name := _selected_object.name
+	if suggested_name == "":
+		suggested_name = _object_type_name(_selected_object)
+	target_expose_requested.emit(view, reference, suggested_name)
+
+
+func _update_bind_event_button() -> void:
+	if _bind_event_button == null:
+		return
+	var view := _get_context_view()
+	var valid_context := view != null \
+		and view.package != null \
+		and _package_resource != null \
+		and view.package.get_source_path() == _package_resource.get_source_path() \
+		and view.component_name == _current_component
+	var target_path := _selected_target_path() if valid_context else null
+	_bind_event_button.disabled = not valid_context or target_path == null
+	if view == null:
+		_bind_event_button.tooltip_text = "当前场景没有唯一匹配的 FGUIView；请先选中目标 FGUIView"
+	elif not valid_context:
+		_bind_event_button.tooltip_text = "预览组件与当前 FGUIView 配置不一致"
+	elif target_path == null:
+		_bind_event_button.tooltip_text = "所选对象经过未命名父节点，无法建立稳定绑定"
+	else:
+		_bind_event_button.tooltip_text = "在当前 FGUIView Inspector 中绑定所选对象事件"
+	_update_expose_target_button()
+
+
+func _update_expose_target_button() -> void:
+	if _expose_target_button == null:
+		return
+	var view := _get_context_view()
+	var valid_context := view != null \
+		and view.package != null \
+		and _package_resource != null \
+		and view.package.get_source_path() == _package_resource.get_source_path() \
+		and view.component_name == _current_component
+	var reference := _selected_target_reference() if valid_context else null
+	_expose_target_button.disabled = not valid_context or reference == null
+	if view == null:
+		_expose_target_button.tooltip_text = "当前场景没有唯一匹配的 FGUIView；请先选中目标 FGUIView"
+	elif not valid_context:
+		_expose_target_button.tooltip_text = "预览组件与当前 FGUIView 配置不一致"
+	elif reference == null:
+		_expose_target_button.tooltip_text = "动态列表或无法建立稳定引用的对象不能持久暴露"
+	else:
+		_expose_target_button.tooltip_text = "在当前 FGUIView 下创建可配置材质和附件的 FGUITarget"
+
+
+func _get_context_view() -> FGUIView:
+	var view := _context_view_ref.get_ref() as FGUIView if _context_view_ref != null else null
+	if view != null and (_context_view_is_explicit or _view_matches_context(view)):
+		return view
+	if _context_view_is_explicit or not context_view_resolver.is_valid() \
+			or _package_resource == null or _current_component == "":
+		return view
+	_context_view_ref = null
+	view = context_view_resolver.call(_package_resource, _current_component) as FGUIView
+	if view != null:
+		_context_view_ref = weakref(view)
+	return view
+
+
+func _view_matches_context(view: FGUIView) -> bool:
+	return view != null and view.package != null and _package_resource != null \
+		and view.package.get_source_path() == _package_resource.get_source_path() \
+		and view.component_name == _current_component
+
+
+func _selected_target_path() -> Variant:
+	if _selected_object == null or _root_object == null:
+		return null
+	var segments: Array[String] = []
+	var current := _selected_object
+	while current != null and current != _root_object:
+		if current.name == "":
+			return null
+		segments.push_front(current.name)
+		current = current.parent
+	return PackedStringArray(segments) if current == _root_object else null
+
+
+func _selected_target_reference() -> Resource:
+	if _selected_object == null or _root_object == null:
+		return null
+	return ObjectReference.from_object(_root_object, _selected_object)
+
+
+func _select_pending_target() -> void:
+	if _pending_target_selection == null or _root_object == null:
+		return
+	var value := _pending_target_selection.call("resolve", _root_object) as FGUIObject
+	_pending_target_selection = null
+	if value != null:
+		_select_object(value, true, true)
+
+
+func _on_filter_changed(query: String) -> void:
+	var root := _tree.get_root()
+	if root != null:
+		_filter_tree_item(root, query.strip_edges().to_lower())
+
+
+func _filter_tree_item(item: TreeItem, query: String) -> bool:
+	var child_match := false
+	var child := item.get_first_child()
+	while child != null:
+		child_match = _filter_tree_item(child, query) or child_match
+		child = child.get_next()
+	var own_text := "%s %s" % [item.get_text(0), item.get_text(1)]
+	var own_match := query == "" or own_text.to_lower().contains(query)
+	item.visible = own_match or child_match
+	if query != "" and child_match:
+		item.collapsed = false
+	return item.visible
+
+
+func _set_zoom(value: float) -> void:
+	_zoom = clampf(value, MIN_ZOOM, MAX_ZOOM)
+	if _zoom_label != null:
+		_zoom_label.text = "%d%%" % int(round(_zoom * 100.0))
+	_layout_preview()
+
+
+func _zoom_at_view_center(value: float) -> void:
+	if _preview_scroll == null:
+		_set_zoom(value)
+		return
+	_zoom_around(value, _preview_scroll.size * 0.5)
+
+
+func _zoom_around(value: float, focus_position: Vector2) -> void:
+	var next_zoom := clampf(value, MIN_ZOOM, MAX_ZOOM)
+	if is_equal_approx(next_zoom, _zoom):
+		return
+	if _content_size.x <= 0.0 or _content_size.y <= 0.0:
+		_set_zoom(next_zoom)
+		return
+	var current_scroll := Vector2(_preview_scroll.scroll_horizontal, _preview_scroll.scroll_vertical)
+	var preview_point := (current_scroll + focus_position - _preview_origin) / _zoom
+	_set_zoom(next_zoom)
+	var target_scroll := _preview_origin + preview_point * _zoom - focus_position
+	_apply_scroll_position(target_scroll)
+	call_deferred("_apply_scroll_position", target_scroll)
+
+
+func _fit_preview() -> void:
+	if _content_size.x <= 0.0 or _content_size.y <= 0.0 or _preview_scroll == null:
+		return
+	var available := _preview_scroll.size - Vector2.ONE * PREVIEW_PADDING * 2.0
+	if available.x <= 0.0 or available.y <= 0.0:
+		return
+	_set_zoom(minf(1.0, minf(available.x / _content_size.x, available.y / _content_size.y)))
+	_center_preview_content()
+	call_deferred("_center_preview_content")
+
+
+func _layout_preview() -> void:
+	if not _initialized or _preview_canvas == null:
+		return
+	var scaled_size := _content_size * _zoom
+	var available := _preview_scroll.size if _preview_scroll != null else Vector2.ZERO
+	var pan_margin := Vector2(
+		maxf(available.x, PREVIEW_PADDING),
+		maxf(available.y, PREVIEW_PADDING)
+	)
+	var canvas_size := scaled_size + pan_margin * 2.0
+	_preview_canvas.custom_minimum_size = canvas_size
+	_preview_origin = pan_margin
+	_preview_view.position = _preview_origin
+	_preview_view.scale = Vector2.ONE * _zoom
+	_selection_overlay.position = _preview_origin
+	_selection_overlay.size = scaled_size
+	_selection_overlay.queue_redraw()
+
+
+func _center_preview_content() -> void:
+	if _preview_scroll == null:
+		return
+	var scaled_size := _content_size * _zoom
+	var target_scroll := _preview_origin + scaled_size * 0.5 - _preview_scroll.size * 0.5
+	_apply_scroll_position(target_scroll)
+
+
+func _on_preview_gui_input(event: InputEvent, source: Control = null) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		var event_position := _preview_input_position(mouse_event.position, source)
+		if mouse_event.button_index == MOUSE_BUTTON_MIDDLE:
+			if not _claim_navigation_event(event):
+				return
+			if mouse_event.pressed:
+				_begin_panning(event_position)
+			else:
+				_stop_panning()
+			_accept_preview_input(source)
+			return
+		if mouse_event.pressed and mouse_event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			var wheel_factor := mouse_event.factor if mouse_event.factor > 0.0 else 1.0
+			var scale_factor := pow(ZOOM_FACTOR, wheel_factor)
+			var next_zoom := _zoom * scale_factor if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP else _zoom / scale_factor
+			_zoom_around(next_zoom, event_position)
+			_accept_preview_input(source)
+			return
+	if event is InputEventMouseMotion and _panning:
+		if not _claim_navigation_event(event):
+			return
+		_update_panning(event as InputEventMouseMotion, source)
+		_accept_preview_input(source)
+
+
+func _claim_navigation_event(event: InputEvent) -> bool:
+	var event_id := event.get_instance_id()
+	if event_id == _last_navigation_event_id:
+		return false
+	_last_navigation_event_id = event_id
+	return true
+
+
+func _begin_panning(position: Vector2) -> void:
+	_panning = true
+	_pan_start_mouse = position
+	_preview_scroll.mouse_default_cursor_shape = Control.CURSOR_DRAG
+
+
+func _update_panning(event: InputEventMouseMotion, source: Control) -> void:
+	var event_position := _preview_input_position(event.position, source)
+	var delta := event.relative
+	if delta.is_zero_approx():
+		delta = event_position - _pan_start_mouse
+	_pan_start_mouse = event_position
+	var current_scroll := Vector2(
+		_preview_scroll.scroll_horizontal,
+		_preview_scroll.scroll_vertical
+	)
+	_apply_scroll_position(current_scroll - delta)
+
+
+func _preview_input_position(position: Vector2, source: Control) -> Vector2:
+	if source == null or source == _preview_scroll:
+		return position
+	return _preview_scroll.get_global_transform().affine_inverse() \
+			* (source.get_global_transform() * position)
+
+
+func _accept_preview_input(source: Control) -> void:
+	var receiver := source if source != null else _preview_scroll
+	if receiver != null:
+		receiver.accept_event()
+
+
+func _apply_scroll_position(value: Vector2) -> void:
+	if _preview_scroll == null:
+		return
+	_preview_scroll.scroll_horizontal = maxi(0, int(round(value.x)))
+	_preview_scroll.scroll_vertical = maxi(0, int(round(value.y)))
+
+
+func _stop_panning() -> void:
+	_panning = false
+	if _preview_scroll != null:
+		_preview_scroll.mouse_default_cursor_shape = Control.CURSOR_ARROW
+
+
+func _center_selected_object() -> void:
+	if _selected_object == null or _selected_object.node == null or _preview_scroll == null:
+		return
+	var global_center := _selected_object.local_to_global(Vector2(_selected_object.width, _selected_object.height) * 0.5)
+	var canvas_center := _preview_canvas.get_global_transform().affine_inverse() * global_center
+	_preview_scroll.scroll_horizontal = maxi(0, int(canvas_center.x - _preview_scroll.size.x * 0.5))
+	_preview_scroll.scroll_vertical = maxi(0, int(canvas_center.y - _preview_scroll.size.y * 0.5))
+
+
+func _save_current_view_state() -> void:
+	var key := _current_state_key()
+	if key == "" or _root_object == null or _preview_scroll == null:
+		return
+	var collapsed := PackedStringArray()
+	_collect_collapsed_paths(_tree.get_root(), collapsed)
+	_view_states[key] = {
+		"selected_path": _object_index_path(_selected_object),
+		"collapsed_paths": collapsed,
+		"filter": _filter_edit.text,
+		"zoom": _zoom,
+		"scroll": Vector2(_preview_scroll.scroll_horizontal, _preview_scroll.scroll_vertical),
+	}
+
+
+func _restore_view_state(state: Dictionary) -> void:
+	_filter_edit.text = str(state.get("filter", ""))
+	_on_filter_changed(_filter_edit.text)
+	_set_zoom(float(state.get("zoom", 1.0)))
+	var collapsed_lookup: Dictionary = {}
+	for path: String in state.get("collapsed_paths", PackedStringArray()):
+		collapsed_lookup[path] = true
+	_apply_collapsed_paths(_tree.get_root(), collapsed_lookup)
+	var selected := _resolve_object_index_path(state.get("selected_path", []))
+	_select_object(selected if selected != null else _root_object, true, false)
+	call_deferred("_finish_restore_view_state", state)
+
+
+func _finish_restore_view_state(state: Dictionary) -> void:
+	_layout_preview()
+	_apply_scroll_position(state.get("scroll", Vector2.ZERO))
+
+
+func _current_state_key() -> String:
+	if _package_resource == null or _current_component == "":
+		return ""
+	return "%s::%s" % [_package_resource.get_source_path(), _current_component]
+
+
+func _object_index_path(value: FGUIObject) -> Array[int]:
+	var result: Array[int] = []
+	var current := value
+	while current != null and current != _root_object:
+		var parent := current.parent as FGUIComponent
+		if parent == null:
+			return []
+		var index := parent.get_child_index(current)
+		if index < 0:
+			return []
+		result.push_front(index)
+		current = parent
+	return result
+
+
+func _resolve_object_index_path(path_value: Variant) -> FGUIObject:
+	var current := _root_object
+	if not path_value is Array:
+		return current
+	for index_value: Variant in path_value:
+		if not current is FGUIComponent:
+			return null
+		var index := int(index_value)
+		if index < 0 or index >= (current as FGUIComponent).num_children:
+			return null
+		current = (current as FGUIComponent).get_child_at(index)
+	return current
+
+
+func _collect_collapsed_paths(item: TreeItem, result: PackedStringArray) -> void:
+	if item == null:
+		return
+	var value := _object_by_id.get(int(item.get_metadata(0)), null) as FGUIObject
+	if value != null and item.collapsed:
+		result.append(_index_path_key(_object_index_path(value)))
+	var child := item.get_first_child()
+	while child != null:
+		_collect_collapsed_paths(child, result)
+		child = child.get_next()
+
+
+func _apply_collapsed_paths(item: TreeItem, collapsed_lookup: Dictionary) -> void:
+	if item == null:
+		return
+	var value := _object_by_id.get(int(item.get_metadata(0)), null) as FGUIObject
+	if value != null:
+		item.collapsed = collapsed_lookup.has(_index_path_key(_object_index_path(value)))
+	var child := item.get_first_child()
+	while child != null:
+		_apply_collapsed_paths(child, collapsed_lookup)
+		child = child.get_next()
+
+
+func _index_path_key(path: Array[int]) -> String:
+	if path.is_empty():
+		return "."
+	var parts := PackedStringArray()
+	for index: int in path:
+		parts.append(str(index))
+	return "/".join(parts)
