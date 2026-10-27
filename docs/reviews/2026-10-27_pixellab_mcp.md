@@ -56,3 +56,54 @@
 - 工程自检：通过（文档 + 索引 + 配置 + 连通性实测完成；未运行游戏侧测试，原因见第 2 节）。
 - 设计 AI 复核：不适用（无设计交接，无玩法/数值影响）。
 - 用户验收：待用户重启客户端确认面板状态与对话内工具可用后回填。
+
+## 8. 第 2 轮：只读核验 + 单张素材生成测试（同日追加）
+
+需求：用户要求先只读验证连接与额度，再用免费套餐支持的工具生成一张 64×64 像素风药水 PNG，存独立测试目录；不得改动正式美术与 Godot 工程，不得购买额度。
+
+### 8.1 只读核验
+
+`get_balance`（免费）四次采样：生成前 `generations_remaining 35.90 / used 4.10 / credits $0.00 / trial`；生成后 `34.90 / 5.10`，`credits` 不变。
+
+### 8.2 尝试免费绘制工具（失败，记录为服务端问题）
+
+`pixelart_workbench` 为零成本绘制接口。按 `describe draw` 的说明构造 64×64 单帧配方（`grid` 操作逐像素绘制药水，调色板 9 色），被拒：
+
+```
+Invalid view timeline — every view needs one entry per frame (job.frame_count is 1)
+```
+
+逐步排查的组合（全部失败，均未渲染）：
+
+| 变体 | 结果 |
+| --- | --- |
+| 静帧仅 `nodes`（文档所述写法） | `Invalid view timeline` |
+| `poses {rest:{}}` + `frames ["rest"]` | 同上 |
+| `poses` 列表 / `poses` 含节点条目 / `frames` 用整数 | 同上 |
+| `tracks` + `keys [[1,[0,0]]]`（帧数 1 与 2 均试） | 帧数 1/2 都报同一错误（改用变量名探测时曾回报 `Track keys are [frame, value] pairs`，改写为规范键值后仍失败） |
+| 极简 `rect` 形状、无 `tracks`/`poses` | 同上 |
+| 仅 `frames` 无 `poses` | 明确报"neither `tracks` nor `poses`"，说明该分支可被读到，但补齐后仍不通过 |
+
+结论：该接口当前对 `view timeline` 的校验与自身文档不一致，`draw` 不可用；`search_help` 亦无对应条目（返回 `no information found`）。判定为服务端缺陷，不是本机配置问题。
+
+### 8.3 实际采用的生成方式
+
+`create_image_pixflux`（64×64，`no_background: true`），prompt 为红色治疗药水玻璃瓶。返回 `cost: 1 generation`、`asset_status: pending`，约 20 s 完成（`charged: 1 generation`），产物同步进账号画廊并提供下载地址。
+
+### 8.4 产物与校验
+
+- 本地路径：`artifacts/qa/pixellab-mcp-test/potion_64x64.png`（独立测试目录，`artifacts/` 已被 .gitignore 忽略）。
+- 文件：1731 字节，PNG 签名 `89504E470D0A1A0A`，IHDR `64x64`，colorType 6（RGBA，带透明通道），SHA-256 `5DF13800C3CCFF058D78479725948615E012E53C41E0193AF81D296A0A8766E5`。
+- 服务端副本：job `7d0cf075-c812-46f2-9b35-7c7f7cdd7c0d`，download `https://api.pixellab.ai/mcp/images/7d0cf075-c812-46f2-9b35-7c7f7cdd7c0d/download`。
+- 视觉：红色药水 + 玻璃瓶 + 木塞，透明底，符合 64×64 像素风。
+
+### 8.5 额度消耗与异常
+
+- 实际消耗：**1.00 代**（35.90 → 34.90），credits `$0.00` 未变，未购买额度。
+- 异常：`pixelart_workbench draw` 全类型配方被拒（见 8.2）；`get_image` 轮询过程中进度从 24% 回落到 3% 并给出 `eta ~463s`，约 20 s 后直接 `completed`，进度条非线性但最终成功。
+- 未改动：`Idle-CRPG/` 工程、正式美术、配置 CSV、存档；测试脚本用完即删，仅保留 PNG。
+
+### 8.6 文档同步
+
+`docs/technical/pixellab_mcp_setup.md` 增补 §2.1（实测成本与 `draw` 不可用）与 §7 对应排查行。
+

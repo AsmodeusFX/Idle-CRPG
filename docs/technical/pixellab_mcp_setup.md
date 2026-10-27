@@ -24,6 +24,11 @@ PixelLab 提供远程 MCP 服务，把像素美术生成能力挂到 AI 客户�
 
 官方页面只给 Claude Code 的 CLI 命令，未给其他客户端的 JSON；下列配置按实测端点与 CodeBuddy 实现自行推导并已验证。
 
+### 2.1 生成成本与工具可用性（实测）
+
+- 一张 64×64 透明底 PNG 走 `create_image_pixflux`：返回 `cost: 1 generation`，账户 `generations_remaining` 由 35.90 降至 34.90，`credits` 仍为 `$0.00`（试用套餐代数，非购买额度）。产物同时存进账号画廊，并给出 `download` 链接。
+- `pixelart_workbench` 声称零成本（"you are the artist"，`cost` 为 0），但 2026-10-27 实测其 `draw` 子命令**不可用**：单帧/双帧、`tracks`/`poses`/`frames` 各种写法均被服务端以 `Invalid view timeline — every view needs one entry per frame` 拒绝，未渲染任何图像；`describe draw` 中"静帧无需 `tracks`/`poses`"的说明与实际校验不一致。需要像素级精确绘制时先验证该接口是否已修复，否则退回 `create_image_pixflux`（每张 1 代）。
+
 ## 3. CodeBuddy 侧接入位置与限制
 
 ### 3.1 配置文件
@@ -122,6 +127,7 @@ curl -sS -X POST https://api.pixellab.ai/mcp \
 | 面板绿灯但对话里没有工具 | 配置在会话开始后写入，工具列表已固化 | 完全退出并重开客户端 |
 | 上下文异常膨胀 | 118 个工具描述全部注入 | MCP 页按需启用；或确认 `defer_loading` 是否被该版本识别 |
 | 生成一直 pending | 异步作业未完成 | 用 `wait_for_jobs` 等待，不要反复轮询 `get_image` |
+| `pixelart_workbench draw` 报 `Invalid view timeline` | 服务端校验与 `describe draw` 说明不一致（2026-10-27 仍存在） | 改用 `create_image_pixflux`（1 代/张），或稍后重试验证 |
 | 物件几小时后消失 | `create_map_object` 8 小时清理 | 生成后立即下载或 `save_to_asset` |
 
 ## 8. 卸载与回退
