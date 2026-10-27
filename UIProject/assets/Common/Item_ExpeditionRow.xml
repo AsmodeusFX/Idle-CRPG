@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="342,80">
+  <displayList>
+    <graph id="n0_erwbg1" name="imgAvatar" xy="6,8" size="30,30" type="rect" corner="4" lineSize="1" lineColor="#33415C" fillColor="#22304A"/>
+    <text id="n1_erwtx1" name="txtName" xy="42,6" size="180,20" fontSize="15" color="#D7E0EE" align="left" vAlign="middle" autoSize="none" singleLine="true" text="野蛮人 #1"/>
+    <text id="n2_erwtx2" name="txtXp" xy="230,6" size="100,20" fontSize="14" color="#E8C46A" align="right" vAlign="middle" autoSize="none" singleLine="true" text="234 XP"/>
+    <text id="n3_erwtx3" name="txtLevel" xy="42,26" size="290,18" fontSize="12" color="#8C99AD" align="left" vAlign="middle" autoSize="none" singleLine="true" text="等级 13 · AR 130 · DR 130"/>
+    <text id="n4_erwtx4" name="txtAction" xy="42,46" size="290,18" fontSize="13" color="#E8C46A" align="left" vAlign="middle" autoSize="none" singleLine="true" text="点击升级（消耗公共XP）"/>
+    <graph id="n5_erwln1" name="imgSeparator" xy="6,76" size="330,1" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#28324A"/>
+  </displayList>
+</component>

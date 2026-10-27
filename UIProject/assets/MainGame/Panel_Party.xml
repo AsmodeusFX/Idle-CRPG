@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="810,152">
+  <displayList>
+    <graph id="n0_ptybg1" name="imgBg" xy="0,0" size="810,152" type="rect" lineSize="1" lineColor="#2A3346" fillColor="#161C28"/>
+    <text id="n1_ptytx1" name="txtTitle" xy="14,8" size="120,22" fontSize="15" color="#E8C46A" align="left" vAlign="middle" autoSize="none" singleLine="true" text="小队状态"/>
+    <list id="n2_ptyls1" name="lstParty" xy="10,34" size="560,110" defaultItem="ui://ictx48x5citem_prw" layout="column" lineGap="1" overflow="scroll" scroll="vertical" selectionMode="none" autoClearItems="false">
+      <item title="野蛮人"/>
+      <item title="游侠"/>
+      <item title="法师"/>
+      <item title="本轮空席" controllers="conState,1"/>
+      <item title="未来永久第五席" controllers="conState,1"/>
+    </list>
+    <text id="n3_ptytx2" name="txtChallenge" xy="584,8" size="216,18" fontSize="13" color="#D7E0EE" align="left" vAlign="middle" autoSize="none" singleLine="true" text="小队挑战等级 13 · 待批 0 · 排队 0"/>
+    <text id="n4_ptytx3" name="txtPublicXp" xy="584,28" size="106,18" fontSize="13" color="#E8C46A" align="left" vAlign="middle" autoSize="none" singleLine="true" text="公共 XP 1.3K"/>
+    <text id="n5_ptytx4" name="txtSeats" xy="694,28" size="110,18" fontSize="13" color="#8C99AD" align="left" vAlign="middle" autoSize="none" singleLine="true" text="普通席位 4"/>
+    <list id="n6_ptyls2" name="lstSkills" xy="584,52" size="216,92" defaultItem="ui://ictx48x5citem_skl" layout="flow_hz" lineGap="4" colGap="4" overflow="visible" selectionMode="none" autoClearItems="false">
+      <item title="战吼"/>
+      <item title="穿透射击"/>
+      <item title="火球术"/>
+      <item title="连锁闪电"/>
+    </list>
+  </displayList>
+</component>

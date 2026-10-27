@@ -78,5 +78,6 @@
 
 - **FGUI 编辑器开着时**，它会自动把新建的组件 XML 登记进`package.xml`并分配资源 ID。此时不要再手动往`package.xml`加条目，否则会出现重复条目（`path_collision`）。以编辑器分配的 ID 为准，并据此修改`src`/`ui://`引用
 - **新建整页界面**：openfairygui MCP 的`addComponent`/`attachDisplayNode`要求每个节点填写全部字段，单个操作的文档就超过 10 万字符。整页新界面建议参照现有组件 XML 直接编写，小范围修改再用 MCP 事务（先预检、再应用、再校验、最后保存）
-- **交付前必须校验**：在 UIProject 目录下执行`../../Tools/ofgui/node_modules/.bin/ofgui validate . --json`，要求`status: valid`且`complete: true`。这是 shell 启动脚本，直接执行即可，不要用`node`去运行它
-- `Tools/ofgui`里有对 @openfairygui 0.7.0 的本地补丁（`patches/apply-ofgui-patches.cjs`，`npm install`时会自动执行）。升级 ofgui 版本后如果补丁报“anchor not found”，需要重新检查上游是否已经修复
+- **交付前必须校验**：在 UIProject 目录下执行`scripts\ofgui.cmd validate . --json`，要求`status: valid`且`complete: true`。该包装脚本会自己发现本机的 node 与 ofgui，不要写死盘符路径，也不要用`node`去运行`.bin\ofgui`
+- **工具不随仓库走**：OpenFairyGUI（ofgui）与 FairyGUI Editor 都是外部工具，装在仓库之外（本机在`D:\Program Files\`下，其他电脑可能不同）。首次接手或换机先跑`powershell -NoProfile -File scripts\Find-Ofgui.ps1`确认位置，再用`scripts\ofgui-verify.cmd`确认 MCP 可启动。详见`docs/technical/fgui_toolchain.md`
+- ofgui 安装目录里有对 @openfairygui 0.7.0 的本地补丁（`patches/apply-ofgui-patches.cjs`，`npm install`时会自动执行）。升级 ofgui 版本后如果补丁报“anchor not found”，需要重新检查上游是否已经修复

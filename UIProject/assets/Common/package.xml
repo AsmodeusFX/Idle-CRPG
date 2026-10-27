@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <packageDescription id="ictx48x5">
-  <resources/>
+  <resources>
+    <component id="cbtn_tab" name="Button_Tab.xml" path="/" exported="true"/>
+    <component id="cbtn_men" name="Button_Menu.xml" path="/" exported="true"/>
+    <component id="cbar_hp0" name="Bar_HP.xml" path="/" exported="true"/>
+    <component id="citem_prw" name="Item_PartyRow.xml" path="/" exported="true"/>
+    <component id="citem_erw" name="Item_ExpeditionRow.xml" path="/" exported="true"/>
+    <component id="citem_scr" name="Item_Scroll.xml" path="/" exported="true"/>
+    <component id="citem_ptn" name="Item_Potion.xml" path="/" exported="true"/>
+    <component id="citem_skl" name="Item_SkillTag.xml" path="/" exported="true"/>
+  </resources>
 </packageDescription>

@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <packageDescription id="i8r3uqlj">
-  <resources/>
+  <resources>
+    <component id="cmaiview" name="MainView.xml" path="/" exported="true"/>
+    <component id="cpnl_exp" name="Panel_Expedition.xml" path="/" exported="true"/>
+    <component id="cpnl_pty" name="Panel_Party.xml" path="/" exported="true"/>
+    <component id="cpnl_ptn" name="Panel_Potion.xml" path="/" exported="true"/>
+  </resources>
 </packageDescription>

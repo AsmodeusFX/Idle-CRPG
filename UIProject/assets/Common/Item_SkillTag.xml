@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="106,42">
+  <displayList>
+    <graph id="n0_skl01" name="imgBg" xy="0,0" size="106,42" type="rect" corner="3" lineSize="1" lineColor="#2E3A52" fillColor="#1A2230"/>
+    <text id="n1_skltx1" name="txtSkill" xy="4,4" size="98,18" fontSize="14" color="#D7E0EE" align="center" vAlign="middle" autoSize="none" singleLine="true" text="火球术"/>
+    <text id="n2_skltx2" name="txtState" xy="4,22" size="98,16" fontSize="12" color="#8C99AD" align="center" vAlign="middle" autoSize="none" singleLine="true" text="未学习"/>
+  </displayList>
+</component>

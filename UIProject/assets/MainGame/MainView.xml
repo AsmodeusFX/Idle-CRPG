@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="1440,900" remark="PC 横屏主界面 · 设计分辨率 1440x900">
+  <controller name="conMode" pages="0,游戏,1,英雄,2,星图,3,地图" selected="0"/>
+  <displayList>
+    <graph id="n0_mvbg01" name="imgBg" xy="0,0" size="1440,900" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#0E131C"/>
+
+    <group id="n1_mvgp01" name="grpTopBar" xy="12,12" size="1416,56"/>
+    <graph id="n2_mvtb01" name="imgTopBarBg" group="n1_mvgp01" xy="12,12" size="1416,56" type="rect" lineSize="1" lineColor="#222B3C" fillColor="#121824"/>
+    <graph id="n01_mvact1" name="imgTabActiveBg" group="n1_mvgp01" xy="40,20" size="104,40" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#233049"/>
+    <graph id="n02_mvact2" name="imgTabActiveLine" group="n1_mvgp01" xy="50,56" size="84,3" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#E8C46A"/>
+    <component id="n3_mvtab1" name="btnTabGame" group="n1_mvgp01" src="cbtn_tab" pkg="ictx48x5" fileName="Common/Button_Tab" xy="40,20" size="104,40" controller="conSelected,1">
+      <Button title="游戏"/>
+    </component>
+    <component id="n4_mvtab2" name="btnTabHero" group="n1_mvgp01" src="cbtn_tab" pkg="ictx48x5" fileName="Common/Button_Tab" xy="152,20" size="104,40" controller="conSelected,0">
+      <Button title="英雄"/>
+    </component>
+    <component id="n5_mvtab3" name="btnTabStar" group="n1_mvgp01" src="cbtn_tab" pkg="ictx48x5" fileName="Common/Button_Tab" xy="264,20" size="104,40" controller="conSelected,0">
+      <Button title="星图"/>
+    </component>
+    <component id="n6_mvtab4" name="btnTabMap" group="n1_mvgp01" src="cbtn_tab" pkg="ictx48x5" fileName="Common/Button_Tab" xy="376,20" size="104,40" controller="conSelected,0">
+      <Button title="地图"/>
+    </component>
+    <text id="n7_mvtx01" name="txtTitle" group="n1_mvgp01" xy="520,20" size="400,40" fontSize="22" color="#E8C46A" align="center" vAlign="middle" autoSize="none" singleLine="true" text="深渊远征 / IDLE CRPG"/>
+    <component id="n8_mvbtn1" name="btnGM" group="n1_mvgp01" src="cbtn_men" pkg="ictx48x5" fileName="Common/Button_Menu" xy="1178,26" size="70,30">
+      <Button title="GM"/>
+    </component>
+    <component id="n9_mvbtn2" name="btnSetting" group="n1_mvgp01" src="cbtn_men" pkg="ictx48x5" fileName="Common/Button_Menu" xy="1256,26" size="80,30">
+      <Button title="设置"/>
+    </component>
+    <component id="n10_mvbtn3" name="btnPause" group="n1_mvgp01" src="cbtn_men" pkg="ictx48x5" fileName="Common/Button_Menu" xy="1344,26" size="76,30">
+      <Button title="暂停"/>
+    </component>
+
+    <group id="n11_mvgp02" name="grpRouteInfo" xy="20,78" size="400,26"/>
+    <text id="n12_mvtx02" name="txtRoute" group="n11_mvgp02" xy="20,78" size="200,26" fontSize="15" color="#D7E0EE" align="left" vAlign="middle" autoSize="none" singleLine="true" text="前往：冰原兽窟"/>
+    <text id="n13_mvtx03" name="txtKills" group="n11_mvgp02" xy="200,78" size="200,26" fontSize="16" color="#E8C46A" align="left" vAlign="middle" autoSize="none" singleLine="true" text="| 击杀：1,553"/>
+
+    <group id="n14_mvgp03" name="grpResource" xy="1080,76" size="348,26"/>
+    <text id="n15_mvtx04" name="txtGold" group="n14_mvgp03" xy="1080,76" size="90,26" fontSize="14" color="#E8C46A" align="right" vAlign="middle" autoSize="none" singleLine="true" text="8.6K"/>
+    <text id="n16_mvtx05" name="txtKp" group="n14_mvgp03" xy="1186,76" size="90,26" fontSize="14" color="#B1DBF0" align="left" vAlign="middle" autoSize="none" singleLine="true" text="KP 1.5K"/>
+    <text id="n17_mvtx06" name="txtXp" group="n14_mvgp03" xy="1290,76" size="120,26" fontSize="14" color="#AAE1B6" align="left" vAlign="middle" autoSize="none" singleLine="true" text="XP 1.3K"/>
+
+    <group id="n18_mvgp04" name="grpStage" xy="12,110" size="1046,546"/>
+    <graph id="n19_mvsg01" name="imgStageBg" group="n18_mvgp04" xy="12,110" size="1046,546" type="rect" lineSize="1" lineColor="#222B3C" fillColor="#0A0E15">
+      <gearDisplay controller="conMode" pages="0"/>
+    </graph>
+    <graph id="n20_mvpf01" name="imgPlatform" group="n18_mvgp04" xy="286,196" size="500,340" type="rect" lineSize="2" lineColor="#33415C" fillColor="#1B2536">
+      <gearDisplay controller="conMode" pages="0"/>
+    </graph>
+    <text id="n21_mvtx07" name="txtStageHint" group="n18_mvgp04" xy="286,320" size="500,24" fontSize="13" color="#5F6C80" align="center" vAlign="middle" autoSize="none" singleLine="true" text="场景区域占位（3D 战场，后续由 Godot 渲染接入）">
+      <gearDisplay controller="conMode" pages="0"/>
+    </text>
+    <graph id="n22_mvmk01" name="imgMarker1" group="n18_mvgp04" xy="300,236" size="18,18" type="rect" lineSize="2" lineColor="#E8C46A" fillColor="#FFFFFF" alpha="0">
+      <gearDisplay controller="conMode" pages="0"/>
+    </graph>
+    <graph id="n23_mvmk02" name="imgMarker2" group="n18_mvgp04" xy="880,300" size="18,18" type="rect" lineSize="2" lineColor="#E8C46A" fillColor="#FFFFFF" alpha="0">
+      <gearDisplay controller="conMode" pages="0"/>
+    </graph>
+    <graph id="n24_mvmk03" name="imgMarker3" group="n18_mvgp04" xy="700,520" size="18,18" type="rect" lineSize="2" lineColor="#E8C46A" fillColor="#FFFFFF" alpha="0">
+      <gearDisplay controller="conMode" pages="0"/>
+    </graph>
+    <text id="n25_mvtx08" name="txtMarker1" group="n18_mvgp04" xy="252,214" size="120,20" fontSize="12" color="#E8C46A" align="right" vAlign="middle" autoSize="none" singleLine="true" text="未探索">
+      <gearDisplay controller="conMode" pages="0"/>
+    </text>
+    <text id="n26_mvtx09" name="txtMarker2" group="n18_mvgp04" xy="760,276" size="120,20" fontSize="12" color="#E8C46A" align="left" vAlign="middle" autoSize="none" singleLine="true" text="冰原兽窟">
+      <gearDisplay controller="conMode" pages="0"/>
+    </text>
+    <text id="n27_mvtx10" name="txtSpeed" group="n18_mvgp04" xy="34,618" size="120,24" fontSize="14" color="#C7D2E2" align="left" vAlign="middle" autoSize="none" singleLine="true" text="速度 ×2">
+      <gearDisplay controller="conMode" pages="0"/>
+    </text>
+
+    <group id="n28_mvgp05" name="grpModePlaceholder" xy="12,110" size="1046,546"/>
+    <graph id="n29_mvph01" name="imgPlaceholderBg" group="n28_mvgp05" xy="12,110" size="1046,546" type="rect" lineSize="1" lineColor="#222B3C" fillColor="#0A0E15">
+      <gearDisplay controller="conMode" pages="1,2,3"/>
+    </graph>
+    <text id="n30_mvtx11" name="txtPlaceholder" group="n28_mvgp05" xy="12,110" size="1046,546" fontSize="20" color="#5F6C80" align="center" vAlign="middle" autoSize="none" text="该模块界面尚未接入（本轮交付 MainView · 游戏）">
+      <gearDisplay controller="conMode" pages="1,2,3"/>
+    </text>
+
+    <list id="n31_mvls01" name="lstScroll" xy="12,664" size="1046,48" defaultItem="ui://ictx48x5citem_scr" layout="row" colGap="8" overflow="visible" selectionMode="none" autoClearItems="false">
+      <item title="闪电卷轴"/>
+      <item title="电弧卷轴"/>
+      <item title="烈焰卷轴"/>
+      <item title="寒霜卷轴"/>
+      <item title="战旗卷轴"/>
+    </list>
+
+    <component id="n32_mvpn01" name="pnlExpedition" src="cpnl_exp" fileName="MainGame/Panel_Expedition" xy="1066,110" size="362,546"/>
+    <component id="n33_mvpn02" name="pnlParty" src="cpnl_pty" fileName="MainGame/Panel_Party" xy="12,720" size="810,152"/>
+    <component id="n34_mvpn03" name="pnlPotion" src="cpnl_ptn" fileName="MainGame/Panel_Potion" xy="830,720" size="598,152"/>
+
+    <text id="n35_mvtx12" name="txtFooter" xy="12,876" size="400,18" fontSize="12" color="#5F6C80" align="left" vAlign="middle" autoSize="none" singleLine="true" text="已丢弃待用可丢弃"/>
+  </displayList>
+  <transition name="tAppear" autoPlay="false" autoPlayRepeat="1" frameRate="60" options="0">
+    <item time="0" target="n1_mvgp01" tween="true" duration="12" type="alpha" value="1"/>
+    <item time="4" target="n18_mvgp04" tween="true" duration="12" type="alpha" value="1"/>
+    <item time="8" target="n32_mvpn01" tween="true" duration="12" type="alpha" value="1"/>
+    <item time="8" target="n33_mvpn02" tween="true" duration="12" type="alpha" value="1"/>
+    <item time="8" target="n34_mvpn03" tween="true" duration="12" type="alpha" value="1"/>
+  </transition>
+</component>

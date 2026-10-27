@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="362,546">
+  <displayList>
+    <graph id="n0_expbg1" name="imgBg" xy="0,0" size="362,546" type="rect" lineSize="1" lineColor="#2A3346" fillColor="#161C28"/>
+    <text id="n1_exptx1" name="txtTitle" xy="14,10" size="200,22" fontSize="16" color="#E8C46A" align="left" vAlign="middle" autoSize="none" singleLine="true" text="远征交互"/>
+    <list id="n2_expls1" name="lstExpedition" xy="10,40" size="342,300" defaultItem="ui://ictx48x5citem_erw" layout="column" lineGap="2" overflow="scroll" scroll="vertical" selectionMode="none" autoClearItems="false">
+      <item title="野蛮人 #1"/>
+      <item title="游侠 #2"/>
+      <item title="法师 #3"/>
+      <item title="武器 · 普通 Lv.3"/>
+    </list>
+    <graph id="n3_expln1" name="imgSep1" xy="10,344" size="342,1" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#2A3346"/>
+    <text id="n4_exptx2" name="txtWeaponTitle" xy="14,352" size="120,18" fontSize="13" color="#8C99AD" align="left" vAlign="middle" autoSize="none" singleLine="true" text="装备 · 武器"/>
+    <text id="n5_exptx3" name="txtWeaponName" xy="14,370" size="200,22" fontSize="16" color="#D7E0EE" align="left" vAlign="middle" autoSize="none" singleLine="true" text="武器 · 普通 Lv.3"/>
+    <text id="n6_exptx4" name="txtWeaponStat" xy="14,392" size="220,18" fontSize="12" color="#8C99AD" align="left" vAlign="middle" autoSize="none" singleLine="true" text="ATK+8.8 · 当前 7.5"/>
+    <graph id="n7_expln2" name="imgSep2" xy="10,418" size="342,1" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#2A3346"/>
+    <text id="n8_exptx5" name="txtUnlockLevel" xy="14,426" size="334,18" fontSize="12" color="#8C99AD" align="center" vAlign="middle" autoSize="none" singleLine="true" text="解锁怪物等级 10"/>
+    <text id="n9_exptx6" name="txtUnlockCost" xy="14,446" size="334,18" fontSize="12" color="#8C99AD" align="center" vAlign="middle" autoSize="none" singleLine="true" text="费用 KP 10"/>
+    <text id="n10_exptx7" name="txtUnlockAr" xy="14,466" size="334,18" fontSize="12" color="#8C99AD" align="center" vAlign="middle" autoSize="none" singleLine="true" text="所需攻击评级 AR≥100"/>
+    <text id="n11_exptx8" name="txtUnlockDr" xy="14,486" size="334,18" fontSize="12" color="#8C99AD" align="center" vAlign="middle" autoSize="none" singleLine="true" text="所需防御评级 DR≥100"/>
+  </displayList>
+</component>

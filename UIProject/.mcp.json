@@ -1,13 +1,13 @@
 {
   "mcpServers": {
     "openfairygui": {
-      "command": "node",
+      "type": "stdio",
+      "command": "cmd",
       "args": [
-        "../../Tools/ofgui/node_modules/@openfairygui/mcp/bin/ofgui-mcp.cjs"
+        "/c",
+        "${workspaceFolder}\\scripts\\ofgui-mcp.cmd"
       ],
-      "env": {
-        "OPENFAIRYGUI_ALLOWED_PROJECT_ROOTS": "."
-      }
+      "cwd": "${workspaceFolder}"
     }
   }
 }

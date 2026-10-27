@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="598,152">
+  <displayList>
+    <graph id="n0_ptnbg1" name="imgBg" xy="0,0" size="598,152" type="rect" lineSize="1" lineColor="#2A3346" fillColor="#161C28"/>
+    <text id="n1_ptntx1" name="txtTitle" xy="14,8" size="400,22" fontSize="15" color="#E8C46A" align="left" vAlign="middle" autoSize="none" singleLine="true" text="药剂（点击使用 · 待用可丢弃）"/>
+    <list id="n2_ptnls1" name="lstPotion" xy="10,36" size="578,106" defaultItem="ui://ictx48x5citem_ptn" layout="flow_hz" lineGap="6" colGap="8" overflow="scroll" scroll="vertical" selectionMode="none" autoClearItems="false">
+      <item title="力量药剂"/>
+      <item title="空槽" controllers="conState,1"/>
+      <item title="空槽" controllers="conState,1"/>
+      <item title="空槽" controllers="conState,1"/>
+    </list>
+  </displayList>
+</component>

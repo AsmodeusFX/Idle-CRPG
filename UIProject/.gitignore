@@ -1,2 +1,5 @@
 .DS_Store
 .objs/
+
+# 本机专用的 FGUI 外部工具路径缓存（由 scripts/Find-Ofgui.ps1 -SaveLocal 生成）
+.ofgui.local.json

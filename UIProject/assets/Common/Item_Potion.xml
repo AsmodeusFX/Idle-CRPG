@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="274,50">
+  <controller name="conState" pages="0,待用,1,空槽" selected="0"/>
+  <displayList>
+    <graph id="n0_ptnbg1" name="imgBg" xy="0,0" size="274,50" type="rect" corner="4" lineSize="1" lineColor="#2E3A52" fillColor="#1A2230"/>
+    <text id="n1_ptntx1" name="txtName" xy="10,4" size="160,20" fontSize="14" color="#D7E0EE" align="left" vAlign="middle" autoSize="none" singleLine="true" text="力量药剂（攻击）">
+      <gearDisplay controller="conState" pages="0"/>
+    </text>
+    <text id="n2_ptntx2" name="txtState" xy="10,24" size="160,18" fontSize="12" color="#8C99AD" align="left" vAlign="middle" autoSize="none" singleLine="true" text="待用 · 点击使用">
+      <gearDisplay controller="conState" pages="0"/>
+    </text>
+    <component id="n3_ptnbt1" name="btnDrop" src="cbtn_men" fileName="Common/Button_Menu" xy="178,10" size="84,30">
+      <gearDisplay controller="conState" pages="0"/>
+      <Button title="丢弃" titleFontSize="14"/>
+    </component>
+    <text id="n4_ptntx3" name="txtEmpty" xy="10,15" size="254,20" fontSize="13" color="#6F7C90" align="left" vAlign="middle" autoSize="none" singleLine="true" text="空槽（击杀掉落药剂）">
+      <gearDisplay controller="conState" pages="1"/>
+    </text>
+  </displayList>
+</component>

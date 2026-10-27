@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="196,40">
+  <displayList>
+    <graph id="n0_scrbg1" name="imgBg" xy="0,0" size="196,40" type="rect" corner="3" lineSize="1" lineColor="#2A3448" fillColor="#151C29"/>
+    <graph id="n1_scric1" name="imgIcon" xy="6,8" size="24,24" type="rect" corner="3" lineSize="0" lineColor="#FFFFFF" fillColor="#2B3A52"/>
+    <text id="n2_scrtx1" name="txtName" xy="36,10" size="106,20" fontSize="14" color="#C7D2E2" align="left" vAlign="middle" autoSize="none" singleLine="true" text="闪电卷轴"/>
+    <text id="n3_scrtx2" name="txtCount" xy="144,10" size="46,20" fontSize="14" color="#8C99AD" align="right" vAlign="middle" autoSize="none" singleLine="true" text="×85"/>
+  </displayList>
+</component>

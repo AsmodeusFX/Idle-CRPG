@@ -1,46 +1,45 @@
 {
-	"font": "ui://ccmhb643w3g12",
-	"fontSize": 24,
-	"textColor": "#fffad2",
-	"fontAdjustment": false,
-	"colorScheme": [
-		"默认颜色 #fffad2",
-		"常用深色 #765a39",
-		"常用颜色2 #fff18a",
-		"常用颜色3 #da6e63",
-		"灰色Item #d1dcda",
-		"绿色Item #aae1b6",
-		"蓝色Item #b1dbf0",
-		"紫色Item #e4c1ff",
-		"橙色Item #f2da92",
-		"红色Item #feb5a1"
-	],
-	"fontSizeScheme": [
-		"1号字 大小 48",
-		"2号字 大小 40",
-		"3号字 大小 36",
-		"4号字 大小 32",
-		"4+号字 大小 30",
-		"5号字 大小 28",
-		"6号字 大小 26",
-		"7号字 大小 24",
-		"8号字 大小 22",
-		"9号字 大小 20",
-		"10号字 大小 18",
-		"11号字 大小 16",
-		"12号字 大小 14"
-	],
-	"fontScheme": [
-		"默认字体",
-		"英文标题 ui://ccmhb643w3g11"
-	],
-	"scrollBars": {
-		"horizontal": "",
-		"vertical": "",
-		"defaultDisplay": "visible"
-	},
-	"tipsRes": "",
-	"buttonClickSound": "",
-	"pivot": "default",
-	"listClearOnPublish": true
+  "font": "",
+  "fontSize": 18,
+  "textColor": "#fffad2",
+  "fontAdjustment": false,
+  "colorScheme": [
+    "默认颜色 #fffad2",
+    "常用深色 #765a39",
+    "常用颜色2 #fff18a",
+    "常用颜色3 #da6e63",
+    "灰色Item #d1dcda",
+    "绿色Item #aae1b6",
+    "蓝色Item #b1dbf0",
+    "紫色Item #e4c1ff",
+    "橙色Item #f2da92",
+    "红色Item #feb5a1"
+  ],
+  "fontSizeScheme": [
+    "1号字 大小 40",
+    "2号字 大小 34",
+    "3号字 大小 30",
+    "4号字 大小 26",
+    "4+号字 大小 24",
+    "5号字 大小 22",
+    "6号字 大小 20",
+    "7号字 大小 18",
+    "8号字 大小 17",
+    "9号字 大小 16",
+    "10号字 大小 15",
+    "11号字 大小 14",
+    "12号字 大小 12"
+  ],
+  "fontScheme": [
+    "默认字体"
+  ],
+  "scrollBars": {
+    "horizontal": "",
+    "vertical": "",
+    "defaultDisplay": "visible"
+  },
+  "tipsRes": "",
+  "buttonClickSound": "",
+  "pivot": "default",
+  "listClearOnPublish": true
 }

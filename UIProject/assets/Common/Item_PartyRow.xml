@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="560,21">
+  <controller name="conState" pages="0,正常,1,空席" selected="0"/>
+  <displayList>
+    <graph id="n0_prwbg1" name="imgAvatar" xy="2,3" size="14,14" type="rect" corner="7" lineSize="0" lineColor="#FFFFFF" fillColor="#2B3A52">
+      <gearDisplay controller="conState" pages="0"/>
+    </graph>
+    <text id="n1_prwtx1" name="txtName" xy="20,0" size="86,21" fontSize="14" color="#D7E0EE" align="left" vAlign="middle" autoSize="none" singleLine="true" text="野蛮人">
+      <gearDisplay controller="conState" pages="0"/>
+    </text>
+    <text id="n2_prwtx2" name="txtLv" xy="106,0" size="56,21" fontSize="13" color="#8C99AD" align="left" vAlign="middle" autoSize="none" singleLine="true" text="Lv.13">
+      <gearDisplay controller="conState" pages="0"/>
+    </text>
+    <component id="n3_prwba1" name="barHp" src="cbar_hp0" fileName="Common/Bar_HP" xy="168,3" size="190,16">
+      <gearDisplay controller="conState" pages="0"/>
+    </component>
+    <text id="n4_prwtx3" name="txtCombat" xy="366,0" size="190,21" fontSize="12" color="#8C99AD" align="left" vAlign="middle" autoSize="none" singleLine="true" text="AR 130 · DR 130">
+      <gearDisplay controller="conState" pages="0"/>
+    </text>
+    <text id="n5_prwtx4" name="txtEmpty" xy="20,0" size="300,21" fontSize="13" color="#6F7C90" align="left" vAlign="middle" autoSize="none" singleLine="true" text="本轮空席（锁定）">
+      <gearDisplay controller="conState" pages="1"/>
+    </text>
+  </displayList>
+</component>

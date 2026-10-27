@@ -1,23 +1,23 @@
 {
   "scaleMode": "ScaleWithScreenSize",
   "screenMathMode": "MatchWidthOrHeight",
-  "designResolutionX": 1080,
-  "designResolutionY": 1920,
+  "designResolutionX": 1440,
+  "designResolutionY": 900,
   "devices": [
     {
       "name": "设计尺寸",
-      "resolutionX": 1080,
-      "resolutionY": 1920
+      "resolutionX": 1440,
+      "resolutionY": 900
     },
     {
       "name": "高极限",
-      "resolutionX": 1080,
-      "resolutionY": 2200
+      "resolutionX": 1440,
+      "resolutionY": 1080
     },
     {
       "name": "宽极限",
-      "resolutionX": 1920,
-      "resolutionY": 2000
+      "resolutionX": 2560,
+      "resolutionY": 1080
     }
   ],
   "fileName": "Adaptation"

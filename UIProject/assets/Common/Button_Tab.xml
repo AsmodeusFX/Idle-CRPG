@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="104,40" extention="Button">
+  <controller name="conSelected" pages="0,未选中,1,选中" selected="0"/>
+  <displayList>
+    <graph id="n0_tabbg1" name="bg" xy="0,0" size="104,40" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#151B28" alpha="0"/>
+    <graph id="n1_tabhl1" name="imgHighlight" xy="0,0" size="104,40" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#1F2A40">
+      <gearDisplay controller="conSelected" pages="1"/>
+    </graph>
+    <graph id="n2_tabln1" name="imgUnderline" xy="10,36" size="84,3" type="rect" lineSize="0" lineColor="#FFFFFF" fillColor="#E8C46A">
+      <gearDisplay controller="conSelected" pages="1"/>
+    </graph>
+    <text id="n3_tabtx1" name="title" xy="0,0" size="104,36" fontSize="18" color="#9FB0C9" align="center" vAlign="middle" autoSize="none" singleLine="true" text="游戏"/>
+  </displayList>
+  <transition name="t0" autoPlay="false" frameRate="24" options="0">
+    <item time="0" target="n1_tabhl1" tween="true" duration="10" type="alpha" value="0"/>
+    <item time="0" target="n1_tabhl1" tween="true" duration="10" type="visible" value="true"/>
+  </transition>
+</component>

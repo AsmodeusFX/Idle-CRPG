@@ -111,3 +111,5 @@
 - [P0-A 模拟玩家对照统计](data/2026-10-23_21-54_data_p0_a_simulation.md)：A/B/C 各240游戏分钟，30分钟采样；B跨章与A/C停滞实测，缺失指标明确标注。
 
 - [P0-B合法成长与停滞归因](data/2026-10-23_22-12_data_p0_b_growth_stall.md)：五场景双轮一致；存活现场与疑似入口资格问题，未确认Core缺陷。
+
+- [FGUI 外部工具链接入规范](technical/fgui_toolchain.md)：OpenFairyGUI（ofgui 0.7.0 + Node >= 22）与 FairyGUI Editor 均为外部安装，不随仓库走；路径发现顺序、${workspaceFolder} 版 MCP 配置与 cmd 启动层、项目级审批门禁、换机 8 步与验证命令、版本/补丁清单及未实测风险；[执行归档](reviews/2026-10-27_fgui_mainview.md)（含 MainView 原生工程与编辑器截图证据）。

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component size="190,16">
+  <displayList>
+    <graph id="n0_hpbg01" name="imgBarBg" xy="0,0" size="190,16" type="rect" corner="2" lineSize="0" lineColor="#FFFFFF" fillColor="#1B2634"/>
+    <graph id="n1_hpfl01" name="imgBarFill" xy="1,1" size="150,14" type="rect" corner="2" lineSize="0" lineColor="#FFFFFF" fillColor="#3E8F6E"/>
+    <text id="n2_hptx01" name="txtHp" xy="0,0" size="190,16" fontSize="12" color="#DCE6F2" align="center" vAlign="middle" autoSize="none" singleLine="true" text="506/504"/>
+  </displayList>
+</component>
